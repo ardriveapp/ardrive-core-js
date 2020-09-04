@@ -4,8 +4,8 @@
     "moduleResolution": "node",
     "outDir": "build/compiled",
     "declaration": true,
+    "module": "CommonJS",
     /* Additional Checks */
-    "strict": true,
     "pretty": true,
     "sourceMap": true,
     "noUnusedLocals": true,

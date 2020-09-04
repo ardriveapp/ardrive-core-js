@@ -22,11 +22,12 @@ async function build() {
     sourcemap: false,
   })
 
-  const minified = terser.minify({
+  const minified = await terser.minify({
     bundle: output[0].code
   })
-  if (minified.error)
+  if (minified.error) {
     throw minified.error
+  }
 
   await writeFile(path.join(distNpmPath, `${bundleName}.min.js`), minified.code)
   await writeFile(path.join(distNpmPath, `${bundleName}.d.ts`), await makeDefinitionsCode())
