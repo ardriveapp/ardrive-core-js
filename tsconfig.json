@@ -3,7 +3,15 @@
     "target": "es2018",
     "moduleResolution": "node",
     "outDir": "build/compiled",
-    "declaration": true
+    "declaration": true,
+    "strict": true,
+    "pretty": true,
+    "sourceMap": true,
+    /* Additional Checks */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
   },
   "include": [
     "src"

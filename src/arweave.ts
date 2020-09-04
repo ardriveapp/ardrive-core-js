@@ -22,19 +22,19 @@ const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 // eslint-disable-next-line new-cap
 const community = new Community(arweave);
 
-export const getAddressForWallet = async (walletPrivateKey: JWKInterface) => {
+const getAddressForWallet = async (walletPrivateKey: JWKInterface) => {
   return arweave.wallets.jwkToAddress(walletPrivateKey);
 };
 
 // Creates a new Arweave wallet
-export const generateWallet = async (): Promise<Wallet> => {
+const generateWallet = async (): Promise<Wallet> => {
   const walletPrivateKey = await arweave.wallets.generate();
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
 };
 
 // Imports an existing wallet on a local drive
-export const getLocalWallet = async (existingWalletPath: string) => {
+const getLocalWallet = async (existingWalletPath: string) => {
   const walletPrivateKey = JSON.parse(
     fs.readFileSync(existingWalletPath).toString()
   );
@@ -43,7 +43,7 @@ export const getLocalWallet = async (existingWalletPath: string) => {
 };
 
 // Gets all of the ardrive IDs from a user's wallet
-export const getAllMyArDriveIds = async (walletPublicKey: any) => {
+const getAllMyArDriveIds = async (walletPublicKey: any) => {
   try {
     const query = {
       query: `query {
@@ -98,7 +98,7 @@ export const getAllMyArDriveIds = async (walletPublicKey: any) => {
 };
 
 // Gets all of the transactions from a user's wallet, filtered by owner and ardrive version.
-export const getAllMyDataFileTxs = async (
+const getAllMyDataFileTxs = async (
   walletPublicKey: any,
   arDriveId: any
 ) => {
@@ -148,7 +148,7 @@ export const getAllMyDataFileTxs = async (
 };
 
 // Gets only the transaction information, with no data
-export const getTransaction = async (txid: string): Promise<any> => {
+const getTransaction = async (txid: string): Promise<any> => {
   try {
     const tx = await arweave.transactions.get(txid);
     return tx;
@@ -159,7 +159,7 @@ export const getTransaction = async (txid: string): Promise<any> => {
 };
 
 // Gets only the data of a given ArDrive Data transaction
-export const getTransactionData = async (txid: string) => {
+const getTransactionData = async (txid: string) => {
   try {
     const data = await arweave.transactions.getData(txid, { decode: true });
     return data;
@@ -170,7 +170,7 @@ export const getTransactionData = async (txid: string) => {
 };
 
 // Gets only the JSON data of a given ArDrive MetaData transaction
-export const getTransactionMetaData = async (txid: string) => {
+const getTransactionMetaData = async (txid: string) => {
   try {
     const data = await arweave.transactions.getData(txid, { decode: true });
     return data;
@@ -181,7 +181,7 @@ export const getTransactionMetaData = async (txid: string) => {
 };
 
 // Get the latest status of a transaction
-export const getTransactionStatus = async (txid: string) => {
+const getTransactionStatus = async (txid: string) => {
   try {
     const response = await arweave.transactions.getStatus(txid);
     return response.status;
@@ -192,7 +192,7 @@ export const getTransactionStatus = async (txid: string) => {
 };
 
 // Get the balance of an Arweave wallet
-export const getWalletBalance = async (walletPublicKey: string) => {
+const getWalletBalance = async (walletPublicKey: string) => {
   try {
     let balance = await arweave.wallets.getBalance(walletPublicKey);
     balance = await arweave.ar.winstonToAr(balance);
@@ -204,7 +204,7 @@ export const getWalletBalance = async (walletPublicKey: string) => {
 };
 
 // Creates an arweave transaction to upload file data (and no metadata) to arweave
-export const createArDriveDataTransaction = async (
+const createArDriveDataTransaction = async (
   user: { jwk: string; owner: string },
   filePath: string,
   contentType: string,
@@ -249,7 +249,7 @@ export const createArDriveDataTransaction = async (
 };
 
 // Creates an arrweave transaction to upload only file metadata to arweave
-export const createArDriveMetaDataTransaction = async (
+const createArDriveMetaDataTransaction = async (
   user: { jwk: string; owner: string },
   primaryFileMetaDataTags: {
     appName: any;
@@ -320,7 +320,7 @@ export const createArDriveMetaDataTransaction = async (
 };
 
 // Create a wallet and return the key and address
-export const createArDriveWallet = async (): Promise<Wallet> => {
+const createArDriveWallet = async (): Promise<Wallet> => {
   try {
     const wallet = await generateWallet();
     // TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
@@ -337,7 +337,7 @@ export const createArDriveWallet = async (): Promise<Wallet> => {
 };
 
 // Sends a fee (15% of transaction price) to ArDrive Profit Sharing Community holders
-export const sendArDriveFee = async (
+const sendArDriveFee = async (
   user: { jwk: string },
   arPrice: number
 ) => {
@@ -379,3 +379,5 @@ export const sendArDriveFee = async (
     return 'ERROR sending ArDrive fee';
   }
 };
+
+export { getAddressForWallet, sendArDriveFee, createArDriveWallet, createArDriveMetaDataTransaction, createArDriveDataTransaction, getWalletBalance, getTransactionStatus, getTransactionMetaData, getTransactionData, getTransaction, getAllMyDataFileTxs, getAllMyArDriveIds, getLocalWallet, generateWallet }

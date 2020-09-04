@@ -116,7 +116,8 @@ const createSyncTable = () => {
         ignore INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
-        isApproved text
+        isApproved text,
+        isShared text
      );`;
   return run(sql);
 };
@@ -144,6 +145,7 @@ export const addFileToSyncTable = (file: {
   fileDataSyncStatus: any;
   fileMetaDataSyncStatus: any;
   permaWebLink: any;
+  isShared: any;
 }) => {
   const {
     appName,
@@ -168,9 +170,10 @@ export const addFileToSyncTable = (file: {
     fileDataSyncStatus,
     fileMetaDataSyncStatus,
     permaWebLink,
+    isShared,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, fileModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, fileModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, isShared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
@@ -194,6 +197,7 @@ export const addFileToSyncTable = (file: {
       fileDataSyncStatus,
       fileMetaDataSyncStatus,
       permaWebLink,
+      isShared,
     ]
   );
 };
@@ -443,7 +447,7 @@ export const getAll_fromProfile = (): Promise<any[]> => {
 
 const createOrOpenDb = (dbFilePath: string): Promise<Database> => {
   return new Promise((resolve, reject) => {
-    const database: Database = new sql3.Database(dbFilePath, (err) => {
+    const database: Database = new sql3.Database(dbFilePath, (err: any) => {
       if (err) {
         console.error('Could not connect to database: '.concat(err.message));
         return reject(err);

@@ -102,6 +102,7 @@ async function getFileMetaDataFromTx(
       permaWebLink: '',
       metaDataTxId: '',
       dataTxId: '',
+      isShared: ''
     };
 
     const { node } = fileDataTx;
@@ -174,6 +175,13 @@ async function getFileMetaDataFromTx(
       filePath = user.sync_folder_path.concat(dataJSON.path);
       permaWebLink = gatewayURL.concat(metaDataTxId);
     }
+
+    let isShared = '0'
+    if (filePath.indexOf(user.sync_folder_path.concat('\\Shared\\')) !== -1) {
+      // Shared by choice, encrypt with new password
+      isShared = '1';
+    }
+
     newFileToDownload.fileSize = dataJSON.size;
     newFileToDownload.filePath = filePath;
     newFileToDownload.fileName = dataJSON.name;
@@ -186,6 +194,7 @@ async function getFileMetaDataFromTx(
     newFileToDownload.permaWebLink = permaWebLink;
     newFileToDownload.metaDataTxId = metaDataTxId;
     newFileToDownload.dataTxId = dataJSON.dataTxId;
+    newFileToDownload.isShared = isShared;
 
     const exactFileMatch = {
       filePath,
