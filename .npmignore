@@ -1,1 +1,4 @@
 /build/compiled
+# Logs
+logs
+*.log
