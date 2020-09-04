@@ -1,6 +1,6 @@
 {
   "name": "ardrive-core-js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.",
   "main": "index.js",
   "types": "ardrive-core-js.d.ts",
@@ -42,5 +42,5 @@
     "watch": "tsc"
   },
   "author": "Phil Mataras",
-  "license": "GPL 3"
+  "license": "GPL-3.0-or-later"
 }
