@@ -1,7 +1,7 @@
-export { getWalletBalance, getLocalWallet, createArDriveWallet, getAllMyArDriveIds } from './arweave';
-export { setupDatabase, getAll_fromProfile, getMyFileDownloadConflicts } from './db';
-export { sleep, checkOrCreateFolder, backupWallet } from './common';
-export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
-export { watchFolder, resolveFileDownloadConflict } from './files';
-export { checkUploadStatus, uploadArDriveFiles, getPriceOfNextUploadBatch } from './upload';
-export { setUser, getUser } from './profile';
+export { getWalletBalance, getLocalWallet, createArDriveWallet, getAllMyArDriveIds } from './arweave.js';
+export { setupDatabase, getAll_fromProfile, getMyFileDownloadConflicts } from './db.js';
+export { sleep, checkOrCreateFolder, backupWallet } from './common.js';
+export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download.js';
+export { watchFolder, resolveFileDownloadConflict } from './files.js';
+export { checkUploadStatus, uploadArDriveFiles, getPriceOfNextUploadBatch } from './upload.js';
+export { setUser, getUser } from './profile.js';

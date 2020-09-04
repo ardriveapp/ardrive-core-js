@@ -4,10 +4,10 @@
     "moduleResolution": "node",
     "outDir": "build/compiled",
     "declaration": true,
+    /* Additional Checks */
     "strict": true,
     "pretty": true,
     "sourceMap": true,
-    /* Additional Checks */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
