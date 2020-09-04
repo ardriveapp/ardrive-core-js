@@ -1,7 +1,7 @@
 // index.js
 import * as mime from 'mime-types';
 import fetch from 'node-fetch';
-import * as fs from 'fs'
+import * as fs from 'fs';
 import { sep, extname } from 'path';
 import { Wallet } from './index';
 
@@ -67,7 +67,7 @@ const checkOrCreateFolder = (folderPath = '') => {
       return folderPath;
     }
     console.log(
-      'The path you have entered is not a directory, please enter a correct path for your ArDrive wallet backup.'
+      'The path you have entered is not a directory, please enter a correct path for your ArDrive wallet backup.',
     );
     return '';
   } catch (err) {
@@ -87,18 +87,9 @@ const checkFileExistsSync = (filePath: string) => {
   return exists;
 };
 
-const backupWallet = async (
-  backupWalletPath: string,
-  wallet: Wallet,
-  owner: string
-) => {
+const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
   try {
-    const backupWalletFile = backupWalletPath.concat(
-      sep,
-      'ArDrive_Backup_',
-      owner,
-      '.json'
-    );
+    const backupWalletFile = backupWalletPath.concat(sep, 'ArDrive_Backup_', owner, '.json');
     console.log('Writing your ArDrive Wallet backup to %s', backupWalletFile);
     fs.writeFileSync(backupWalletFile, JSON.stringify(wallet.walletPrivateKey));
     return 'Success!';

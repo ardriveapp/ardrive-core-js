@@ -4,10 +4,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import AppendInitVect from './appendInitVect';
 
-function getFileCipherKey(
-  password: crypto.BinaryLike,
-  jwk: { toString: () => crypto.BinaryLike }
-) {
+function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
   const hash = crypto.createHash('sha256');
   hash.update(password);
   hash.update(jwk.toString());
@@ -23,9 +20,7 @@ function getTextCipherKey(password: crypto.BinaryLike) {
 }
 
 // gets hash of a file using SHA512, used for ArDriveID
-export const checksumFile = async (
-  path: string | number | Buffer | import('url').URL
-) => {
+export const checksumFile = async (path: string | number | Buffer | import('url').URL) => {
   const hash = crypto.createHash('sha512');
   const file = fs.readFileSync(path, { encoding: 'base64' });
   hash.update(file);
@@ -33,25 +28,21 @@ export const checksumFile = async (
   return fileHash;
 };
 
-export const encryptFile = async (
-  file_path: string,
-  password: any,
-  jwk: any
-) => {
+export const encryptFile = async (filePath: string, password: any, jwk: any) => {
   try {
     let writeStream;
     // Generate a secure, pseudo random initialization vector.
     const initVect = crypto.randomBytes(16);
     // Generate a cipher key from the password.
     const CIPHER_KEY = getFileCipherKey(password, jwk);
-    const readStream = fs.createReadStream(file_path);
+    const readStream = fs.createReadStream(filePath);
     const cipher = crypto.createCipheriv('aes256', CIPHER_KEY, initVect);
     const appendInitVect = new AppendInitVect(initVect);
     // Create a write stream with a different file extension.
-    if (file_path.includes('.enc')) {
-      writeStream = fs.createWriteStream(file_path);
+    if (filePath.includes('.enc')) {
+      writeStream = fs.createWriteStream(filePath);
     } else {
-      writeStream = fs.createWriteStream(file_path.concat('.enc'));
+      writeStream = fs.createWriteStream(filePath.concat('.enc'));
     }
     readStream.pipe(cipher).pipe(appendInitVect).pipe(writeStream); // THIS SHIT IS CAUSING THE PROBLEM
     writeStream.on('finish', () => {
@@ -64,17 +55,13 @@ export const encryptFile = async (
   }
 };
 
-export const decryptFile = async (
-  encrypted_file_path: string,
-  password: any,
-  jwk: any
-) => {
+export const decryptFile = async (encryptedFilePath: string, password: any, jwk: any) => {
   try {
-    // console.log ("Decrypting %s", encrypted_file_path)
+    // console.log ("Decrypting %s", encryptedFilePath)
     // First, get the initialization vector from the file.
-    // var encrypted_file_path = file_path.concat(".enc")
-    // fs.renameSync(file_path, encrypted_file_path)
-    const readInitVect = fs.createReadStream(encrypted_file_path, { end: 15 });
+    // var encryptedFilePath = file_path.concat(".enc")
+    // fs.renameSync(file_path, encryptedFilePath)
+    const readInitVect = fs.createReadStream(encryptedFilePath, { end: 15 });
 
     let initVect: Buffer | string;
     readInitVect.on('data', async (chunk) => {
@@ -84,13 +71,11 @@ export const decryptFile = async (
     // Once we’ve got the initialization vector, we can decrypt the file.
     readInitVect.on('close', async () => {
       const cipherKey = getFileCipherKey(password, jwk);
-      const readStream = fs.createReadStream(encrypted_file_path, {
+      const readStream = fs.createReadStream(encryptedFilePath, {
         start: 16,
       });
       const decipher = crypto.createDecipheriv('aes256', cipherKey, initVect);
-      const writeStream = fs.createWriteStream(
-        encrypted_file_path.replace('.enc', '')
-      );
+      const writeStream = fs.createWriteStream(encryptedFilePath.replace('.enc', ''));
       readStream.pipe(decipher).pipe(writeStream);
     });
   } catch (err) {
@@ -122,7 +107,7 @@ export const decryptText = async (
     iv: { toString: () => string };
     encryptedText: { toString: () => string };
   },
-  password: any
+  password: any,
 ) => {
   try {
     const iv = Buffer.from(text.iv.toString(), 'hex');
@@ -138,11 +123,7 @@ export const decryptText = async (
   }
 };
 
-export const encryptTag = async (
-  text: crypto.BinaryLike,
-  password: any,
-  jwk: any
-) => {
+export const encryptTag = async (text: crypto.BinaryLike, password: any, jwk: any) => {
   try {
     const initVect = crypto.randomBytes(16);
     const CIPHER_KEY = getFileCipherKey(password, jwk);
@@ -165,7 +146,7 @@ export const decryptTag = async (
     encryptedText: { toString: () => string };
   },
   password: any,
-  jwk: any
+  jwk: any,
 ) => {
   try {
     const iv = Buffer.from(text.iv.toString(), 'hex');
@@ -185,7 +166,7 @@ export const decryptFileMetaData = async (
   fileIv: { toString: () => string },
   fileEncryptedText: { toString: () => string },
   password: any,
-  jwk: any
+  jwk: any,
 ) => {
   try {
     const iv = Buffer.from(fileIv.toString(), 'hex');

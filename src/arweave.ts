@@ -5,9 +5,9 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach } from './common';
 import { Wallet } from './index';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus } from './db';
+import Community from 'community-js';
+import Arweave from 'arweave';
 
-const Community = require('community-js');
-const Arweave = require('arweave');
 const arweave = Arweave.init({
   // host: 'perma.online', // ARCA Community Gateway
   host: 'arweave.net', // Arweave Gateway
@@ -35,9 +35,7 @@ const generateWallet = async (): Promise<Wallet> => {
 
 // Imports an existing wallet on a local drive
 const getLocalWallet = async (existingWalletPath: string) => {
-  const walletPrivateKey = JSON.parse(
-    fs.readFileSync(existingWalletPath).toString()
-  );
+  const walletPrivateKey = JSON.parse(fs.readFileSync(existingWalletPath).toString());
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
 };
@@ -88,9 +86,7 @@ const getAllMyArDriveIds = async (walletPublicKey: any) => {
       });
       x += 1;
     });
-    const uniqueArDriveIds = arDriveIds.filter(
-      (item, i, ar) => ar.indexOf(item) === i
-    );
+    const uniqueArDriveIds = arDriveIds.filter((item, i, ar) => ar.indexOf(item) === i);
     return uniqueArDriveIds;
   } catch (err) {
     return Promise.reject(err);
@@ -98,10 +94,7 @@ const getAllMyArDriveIds = async (walletPublicKey: any) => {
 };
 
 // Gets all of the transactions from a user's wallet, filtered by owner and ardrive version.
-const getAllMyDataFileTxs = async (
-  walletPublicKey: any,
-  arDriveId: any
-) => {
+const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
   try {
     const query = {
       query: `query {
@@ -208,13 +201,13 @@ const createArDriveDataTransaction = async (
   user: { jwk: string; owner: string },
   filePath: string,
   contentType: string,
-  id: any
+  id: any,
 ) => {
   try {
     const fileToUpload = fs.readFileSync(filePath);
     const transaction = await arweave.createTransaction(
       { data: arweave.utils.concatBuffers([fileToUpload]) },
-      JSON.parse(user.jwk)
+      JSON.parse(user.jwk),
     );
     // Tag file
     transaction.addTag('Content-Type', contentType);
@@ -232,15 +225,9 @@ const createArDriveDataTransaction = async (
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
-      console.log(
-        `${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`
-      );
+      console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
     }
-    console.log(
-      'SUCCESS %s was submitted with TX %s',
-      filePath,
-      transaction.id
-    );
+    console.log('SUCCESS %s was submitted with TX %s', filePath, transaction.id);
     return transaction.id;
   } catch (err) {
     console.log(err);
@@ -263,22 +250,14 @@ const createArDriveMetaDataTransaction = async (
   },
   secondaryFileMetaDataJSON: any,
   filePath: any,
-  id: any
+  id: any,
 ) => {
   try {
-    const transaction = await arweave.createTransaction(
-      { data: secondaryFileMetaDataJSON },
-      JSON.parse(user.jwk)
-    );
+    const transaction = await arweave.createTransaction({ data: secondaryFileMetaDataJSON }, JSON.parse(user.jwk));
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
-    console.log(
-      'Uploading %s (%d bytes) at %s to the Permaweb',
-      filePath,
-      txSize,
-      arPrice
-    );
+    console.log('Uploading %s (%d bytes) at %s to the Permaweb', filePath, txSize, arPrice);
 
     // Tag file
     transaction.addTag('App-Name', primaryFileMetaDataTags.appName);
@@ -287,10 +266,7 @@ const createArDriveMetaDataTransaction = async (
     transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
     transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
     transaction.addTag('Drive-Id', primaryFileMetaDataTags.arDriveId);
-    transaction.addTag(
-      'Parent-Folder-Id',
-      primaryFileMetaDataTags.parentFolderId
-    );
+    transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
     transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
 
     // Sign file
@@ -307,11 +283,7 @@ const createArDriveMetaDataTransaction = async (
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
     }
-    console.log(
-      'SUCCESS %s metadata was submitted with TX %s',
-      filePath,
-      transaction.id
-    );
+    console.log('SUCCESS %s metadata was submitted with TX %s', filePath, transaction.id);
     return arPrice;
   } catch (err) {
     console.log(err);
@@ -324,10 +296,7 @@ const createArDriveWallet = async (): Promise<Wallet> => {
   try {
     const wallet = await generateWallet();
     // TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
-    console.log(
-      'SUCCESS! Your new wallet public address is %s',
-      wallet.walletPublicKey
-    );
+    console.log('SUCCESS! Your new wallet public address is %s', wallet.walletPublicKey);
     return wallet;
   } catch (err) {
     console.error('Cannot create Wallet');
@@ -337,10 +306,7 @@ const createArDriveWallet = async (): Promise<Wallet> => {
 };
 
 // Sends a fee (15% of transaction price) to ArDrive Profit Sharing Community holders
-const sendArDriveFee = async (
-  user: { jwk: string },
-  arPrice: number
-) => {
+const sendArDriveFee = async (user: { jwk: string }, arPrice: number) => {
   try {
     await community.setCommunityTx(communityTxId);
     // Fee for all data submitted to ArDrive is 15%
@@ -356,7 +322,7 @@ const sendArDriveFee = async (
     // send a fee. You should inform the user about this fee and amount.
     const transaction = await arweave.createTransaction(
       { target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
-      JSON.parse(user.jwk)
+      JSON.parse(user.jwk),
     );
 
     // Sign file
@@ -365,11 +331,7 @@ const sendArDriveFee = async (
     // Submit the transaction
     const response = await arweave.transactions.post(transaction);
     if (response.status === 200 || response.status === 202) {
-      console.log(
-        'SUCCESS ArDrive fee of %s was submitted with TX %s',
-        fee.toFixed(9),
-        transaction.id
-      );
+      console.log('SUCCESS ArDrive fee of %s was submitted with TX %s', fee.toFixed(9), transaction.id);
     } else {
       console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
     }
@@ -380,4 +342,19 @@ const sendArDriveFee = async (
   }
 };
 
-export { getAddressForWallet, sendArDriveFee, createArDriveWallet, createArDriveMetaDataTransaction, createArDriveDataTransaction, getWalletBalance, getTransactionStatus, getTransactionMetaData, getTransactionData, getTransaction, getAllMyDataFileTxs, getAllMyArDriveIds, getLocalWallet, generateWallet }
+export {
+  getAddressForWallet,
+  sendArDriveFee,
+  createArDriveWallet,
+  createArDriveMetaDataTransaction,
+  createArDriveDataTransaction,
+  getWalletBalance,
+  getTransactionStatus,
+  getTransactionMetaData,
+  getTransactionData,
+  getTransaction,
+  getAllMyDataFileTxs,
+  getAllMyArDriveIds,
+  getLocalWallet,
+  generateWallet,
+};

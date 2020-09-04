@@ -6,7 +6,7 @@ export interface Wallet {
 }
 
 export { getWalletBalance, getLocalWallet, createArDriveWallet, getAllMyArDriveIds } from './arweave';
-export { setupDatabase, getAll_fromProfile, getMyFileDownloadConflicts } from './db';
+export { setupDatabase, getAllFromProfile, getMyFileDownloadConflicts } from './db';
 export { sleep, checkOrCreateFolder, backupWallet } from './common';
 export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
 export { watchFolder, resolveFileDownloadConflict } from './files';

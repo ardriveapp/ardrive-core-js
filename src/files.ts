@@ -13,15 +13,10 @@ import {
   setPermaWebFileToIgnore,
   setPermaWebFileToOverWrite,
 } from './db';
+import * as chokidar from 'chokidar';
+const { v4: uuidv4 } = require('uuid');
 
-const chokidar = require('chokidar');
-const uuidv4 = require('uuid/v4');
-
-const queueFile = async (
-  filePath: string,
-  syncFolderPath: string,
-  arDriveId: string
-) => {
+const queueFile = async (filePath: string, syncFolderPath: string, arDriveId: string) => {
   let stats = null;
   try {
     stats = fs.statSync(filePath);
@@ -60,9 +55,7 @@ const queueFile = async (
       fileModifiedDate,
       arDrivePath,
     };
-    const renamedFile = await getByFileHashAndModifiedDateAndArDrivePathFromSyncTable(
-      fileRename
-    );
+    const renamedFile = await getByFileHashAndModifiedDateAndArDrivePathFromSyncTable(fileRename);
 
     if (renamedFile) {
       // The file has been renamed.  Submit as Metadata.
@@ -88,11 +81,7 @@ const queueFile = async (
       newFileVersion.fileHash = fileHash;
       newFileVersion.fileSize = stats.size;
       newFileVersion.fileDataSyncStatus = '1'; // Sync status of 1
-      console.log(
-        '%s updating file version to %s',
-        filePath,
-        newFileVersion.fileVersion
-      );
+      console.log('%s updating file version to %s', filePath, newFileVersion.fileVersion);
       addFileToSyncTable(newFileVersion);
       return;
     }
@@ -105,9 +94,7 @@ const queueFile = async (
       fileName,
     };
 
-    const movedFile = await getByFileHashAndModifiedDateAndFileNameFromSyncTable(
-      fileMove
-    );
+    const movedFile = await getByFileHashAndModifiedDateAndFileNameFromSyncTable(fileMove);
     if (movedFile) {
       movedFile.unixTime = Math.round(new Date().getTime() / 1000);
       movedFile.metaDataTx = '0';
@@ -129,7 +116,7 @@ const queueFile = async (
       isPublic = '1';
     }
 
-    let isShared = '0'
+    let isShared = '0';
     if (filePath.indexOf(syncFolderPath.concat('\\Shared\\')) !== -1) {
       // Shared by choice, encrypt with new password
       isShared = '1';
@@ -161,17 +148,13 @@ const queueFile = async (
       permaWebLink: '',
       fileDataSyncStatus: '1', // Sync status of 1 requires a data tx
       fileMetaDataSyncStatus: '1', // Sync status of 1 requires a metadata tx
-      isShared
+      isShared,
     };
     addFileToSyncTable(newFileToQueue);
   }
 };
 
-const queueFolder = async (
-  folderPath: string,
-  syncFolderPath: string,
-  arDriveId: string
-) => {
+const queueFolder = async (folderPath: string, syncFolderPath: string, arDriveId: string) => {
   let isPublic = '0';
   let isShared = '0';
   let parentFolderId = null;
@@ -242,7 +225,7 @@ const queueFolder = async (
       permaWebLink: '',
       fileDataSyncStatus: '0', // Folders do not require a data tx
       fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
-      isShared
+      isShared,
     };
     addFileToSyncTable(folderToQueue);
   }
@@ -265,21 +248,14 @@ const watchFolder = (syncFolderPath: string, arDriveId: string) => {
     .on('add', async (path: any) => queueFile(path, syncFolderPath, arDriveId))
     .on('change', (path: any) => queueFile(path, syncFolderPath, arDriveId))
     .on('unlink', (path: any) => log(`File ${path} has been removed`))
-    .on('addDir', async (path: any) =>
-      queueFolder(path, syncFolderPath, arDriveId)
-    )
+    .on('addDir', async (path: any) => queueFolder(path, syncFolderPath, arDriveId))
     .on('unlinkDir', (path: any) => log(`Directory ${path} has been removed`))
     .on('error', (error: any) => log(`Watcher error: ${error}`))
     .on('ready', () => log('Initial scan complete. Ready for changes'));
   return 'Watched';
 };
 
-const resolveFileDownloadConflict = async (
-  resolution: string,
-  fileName: string,
-  filePath: string,
-  id: string
-) => {
+const resolveFileDownloadConflict = async (resolution: string, fileName: string, filePath: string, id: string) => {
   const folderPath = dirname(filePath);
   switch (resolution) {
     case 'R': {

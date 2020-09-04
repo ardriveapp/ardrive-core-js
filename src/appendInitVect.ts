@@ -5,14 +5,13 @@ export default class AppendInitVect extends Transform {
 
   appended: boolean;
 
-  constructor(
-    initVect: Buffer | string,
-    opts: import('stream').TransformOptions | undefined = undefined
-  ) {
+  constructor(initVect: Buffer | string, opts: import('stream').TransformOptions | undefined = undefined) {
     super(opts);
     this.initVect = initVect;
     this.appended = false;
   }
+
+  
 
   // eslint-disable-next-line no-underscore-dangle
   _transform(chunk: any, _encoding: any, cb: () => void) {

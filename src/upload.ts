@@ -6,14 +6,7 @@ import {
   sendArDriveFee,
   getTransactionStatus,
 } from './arweave';
-import {
-  asyncForEach,
-  getWinston,
-  formatBytes,
-  gatewayURL,
-  sleep,
-  checkFileExistsSync,
-} from './common';
+import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
 import { encryptFile, encryptTag } from './crypto';
 import {
   getFilesToUploadFromSyncTable,
@@ -48,24 +41,15 @@ export const getPriceOfNextUploadBatch = async () => {
       }) => {
         // If the file doesnt exist, we must remove it from the Sync table and not include it in our upload price
         if (!checkFileExistsSync(fileToUpload.filePath)) {
-          console.log(
-            '%s is not local anymore.  Removing from the queue.',
-            fileToUpload.filePath
-          );
+          console.log('%s is not local anymore.  Removing from the queue.', fileToUpload.filePath);
           await deleteFromSyncTable(fileToUpload.id);
           return 'File not local anymore';
         }
-        if (
-          fileToUpload.fileMetaDataSyncStatus === '1' &&
-          fileToUpload.entityType === 'folder'
-        ) {
+        if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.entityType === 'folder') {
           totalArweaveMetadataPrice += 0.0000005;
           totalNumberOfFolderUploads += 1;
         }
-        if (
-          fileToUpload.fileMetaDataSyncStatus === '1' &&
-          fileToUpload.fileDataSyncStatus === '1'
-        ) {
+        if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.fileDataSyncStatus === '1') {
           totalSize += +fileToUpload.fileSize;
           winston = await getWinston(fileToUpload.fileSize);
           totalWinstonData += +winston + 0.0000005;
@@ -75,17 +59,14 @@ export const getPriceOfNextUploadBatch = async () => {
           totalNumberOfMetaDataUploads += 1;
         }
         return 'Calculated price';
-      }
+      },
     );
     const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
     let arDriveFee = +totalArweaveDataPrice.toFixed(9) * 0.15;
     if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
       arDriveFee = 0.00001;
     }
-    const totalArDrivePrice =
-      +totalArweaveDataPrice.toFixed(9) +
-      arDriveFee +
-      totalArweaveMetadataPrice;
+    const totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
 
     return {
       totalArDrivePrice,
@@ -100,7 +81,7 @@ export const getPriceOfNextUploadBatch = async () => {
 
 // Tags and Uploads a single file to your ArDrive
 async function uploadArDriveFileData(
-  user: { sync_folder_path: string; password: any; jwk: string; owner: string },
+  user: { syncFolderPath: string; password: any; jwk: string; owner: string },
   fileToUpload: {
     id: any;
     appName: string;
@@ -122,18 +103,13 @@ async function uploadArDriveFileData(
     fileDataSyncStatus: any;
     fileMetaDataSyncStatus: any;
     dataTxId: any;
-  }
+  },
 ) {
   try {
     const winston = await getWinston(fileToUpload.fileSize);
     const arPrice = +winston * 0.000000000001;
     let dataTxId;
-    console.log(
-      'Uploading %s (%d bytes) at %s to the Permaweb',
-      fileToUpload.filePath,
-      fileToUpload.fileSize,
-      arPrice
-    );
+    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
 
     if (fileToUpload.isPublic === '1') {
       // Public file, do not encrypt
@@ -141,7 +117,7 @@ async function uploadArDriveFileData(
         user,
         fileToUpload.filePath,
         fileToUpload.contentType,
-        fileToUpload.id
+        fileToUpload.id,
       );
     } else {
       // Private file, so it must be encrypted
@@ -154,12 +130,7 @@ async function uploadArDriveFileData(
       if (encryptedStats.size < +fileToUpload.fileSize) {
         return 0;
       }
-      dataTxId = await createArDriveDataTransaction(
-        user,
-        encryptedFilePath,
-        fileToUpload.contentType,
-        fileToUpload.id
-      );
+      dataTxId = await createArDriveDataTransaction(user, encryptedFilePath, fileToUpload.contentType, fileToUpload.id);
       fs.unlinkSync(encryptedFilePath);
     }
     await sendArDriveFee(user, arPrice);
@@ -172,7 +143,7 @@ async function uploadArDriveFileData(
 
 // Tags and Uploads a single file/folder metadata to your ArDrive
 async function uploadArDriveFileMetaData(
-  user: { sync_folder_path: string; password: any; jwk: string; owner: string },
+  user: { syncFolderPath: string; password: any; jwk: string; owner: string },
   fileToUpload: {
     id: any;
     appName: string;
@@ -194,7 +165,7 @@ async function uploadArDriveFileMetaData(
     fileDataSyncStatus: any;
     fileMetaDataSyncStatus: any;
     dataTxId: any;
-  }
+  },
 ) {
   try {
     // create primary metadata, used to tag this transaction
@@ -228,21 +199,21 @@ async function uploadArDriveFileMetaData(
         primaryFileMetaDataTags,
         secondaryFileMetaDataJSON,
         fileToUpload.filePath,
-        fileToUpload.id
+        fileToUpload.id,
       );
     } else {
       // Private file, so it must be encrypted
       const encryptedSecondaryFileMetaDataJSON = await encryptTag(
         JSON.stringify(secondaryFileMetaDataTags),
         user.password,
-        user.jwk
+        user.jwk,
       );
       await createArDriveMetaDataTransaction(
         user,
         primaryFileMetaDataTags,
         JSON.stringify(encryptedSecondaryFileMetaDataJSON),
         fileToUpload.filePath,
-        fileToUpload.id
+        fileToUpload.id,
       );
     }
     return 'Success';
@@ -295,7 +266,7 @@ export const uploadArDriveFiles = async (user: any, readyToUpload: any) => {
             // console.log('Metadata uploaded!');
           }
           filesUploaded += 1;
-        }
+        },
       );
     }
     if (filesUploaded > 0) {
@@ -330,15 +301,8 @@ export const checkUploadStatus = async () => {
           status = await getTransactionStatus(unsyncedFile.dataTxId);
           if (status === 200) {
             permaWebLink = gatewayURL.concat(unsyncedFile.dataTxId);
-            console.log(
-              'SUCCESS! %s data was uploaded with TX of %s',
-              unsyncedFile.filePath,
-              unsyncedFile.dataTxId
-            );
-            console.log(
-              '...you can access the file here %s',
-              gatewayURL.concat(unsyncedFile.dataTxId)
-            );
+            console.log('SUCCESS! %s data was uploaded with TX of %s', unsyncedFile.filePath, unsyncedFile.dataTxId);
+            console.log('...you can access the file here %s', gatewayURL.concat(unsyncedFile.dataTxId));
             const fileToComplete = {
               fileDataSyncStatus: '3',
               permaWebLink,
@@ -347,23 +311,14 @@ export const checkUploadStatus = async () => {
             await completeFileDataFromSyncTable(fileToComplete);
           }
         } else if (status === 202) {
-          console.log(
-            '%s data is still being uploaded to the PermaWeb (TX_PENDING)',
-            unsyncedFile.filePath
-          );
+          console.log('%s data is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedFile.filePath);
         } else if (status === 410) {
-          console.log(
-            '%s data failed to be uploaded (TX_FAILED)',
-            unsyncedFile.filePath
-          );
+          console.log('%s data failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
         } else {
           // CHECK IF FILE EXISTS AND IF NOT REMOVE FROM QUEUE
           fs.access(unsyncedFile.filePath, async (err) => {
             if (err) {
-              console.log(
-                '%s data was not found locally anymore.  Removing from the queue',
-                unsyncedFile.filePath
-              );
+              console.log('%s data was not found locally anymore.  Removing from the queue', unsyncedFile.filePath);
               await removeFromSyncTable(unsyncedFile.id);
             }
           });
@@ -375,7 +330,7 @@ export const checkUploadStatus = async () => {
             console.log(
               'SUCCESS! %s metadata was uploaded with TX of %s',
               unsyncedFile.filePath,
-              unsyncedFile.metaDataTxId
+              unsyncedFile.metaDataTxId,
             );
             const fileMetaDataToComplete = {
               fileMetaDataSyncStatus: '3',
@@ -385,17 +340,11 @@ export const checkUploadStatus = async () => {
             await completeFileMetaDataFromSyncTable(fileMetaDataToComplete);
           }
         } else if (status === 202) {
-          console.log(
-            '%s metadata is still being uploaded to the PermaWeb (TX_PENDING)',
-            unsyncedFile.filePath
-          );
+          console.log('%s metadata is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedFile.filePath);
         } else if (status === 410) {
-          console.log(
-            '%s metadata failed to be uploaded (TX_FAILED)',
-            unsyncedFile.filePath
-          );
+          console.log('%s metadata failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
         }
-      }
+      },
     );
     return 'Success checking upload file status';
   } catch (err) {
