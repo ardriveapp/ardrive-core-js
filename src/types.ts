@@ -3,7 +3,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 export interface Wallet {
   walletPrivateKey: JWKInterface;
   walletPublicKey: string;
-}
+};
 
 export interface ArDriveUser {
   login: any,
@@ -15,4 +15,12 @@ export interface ArDriveUser {
   walletPrivateKey: any,
   walletPublicKey: any,
   syncFolderPath: any,
-}
+};
+
+export interface UploadBatch {
+  totalArDrivePrice: number,
+  totalSize: string,
+  totalNumberOfFileUploads: number,
+  totalNumberOfMetaDataUploads: number,
+  totalNumberOfFolderUploads: number
+};

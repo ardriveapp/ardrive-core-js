@@ -16,15 +16,20 @@ import {
   completeFileMetaDataFromSyncTable,
   deleteFromSyncTable,
 } from './db';
+import { UploadBatch } from './types';
 
 export const getPriceOfNextUploadBatch = async () => {
   let totalWinstonData = 0;
   let totalArweaveMetadataPrice = 0;
-  let totalNumberOfFileUploads = 0;
-  let totalNumberOfFolderUploads = 0;
-  let totalNumberOfMetaDataUploads = 0;
   let totalSize = 0;
   let winston = 0;
+  let uploadBatch: UploadBatch = {
+    totalArDrivePrice: 0,
+    totalSize: '0',
+    totalNumberOfFileUploads: 0,
+    totalNumberOfMetaDataUploads: 0,
+    totalNumberOfFolderUploads: 0,
+  }
 
   // Get all files that are ready to be uploaded
   const filesToUpload = await getFilesToUploadFromSyncTable();
@@ -47,16 +52,16 @@ export const getPriceOfNextUploadBatch = async () => {
         }
         if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.entityType === 'folder') {
           totalArweaveMetadataPrice += 0.0000005;
-          totalNumberOfFolderUploads += 1;
+          uploadBatch.totalNumberOfFolderUploads += 1;
         }
         if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.fileDataSyncStatus === '1') {
           totalSize += +fileToUpload.fileSize;
           winston = await getWinston(fileToUpload.fileSize);
           totalWinstonData += +winston + 0.0000005;
-          totalNumberOfFileUploads += 1;
+          uploadBatch.totalNumberOfFileUploads += 1;
         } else if (fileToUpload.entityType === 'file') {
           totalArweaveMetadataPrice += 0.0000005;
-          totalNumberOfMetaDataUploads += 1;
+          uploadBatch.totalNumberOfMetaDataUploads += 1;
         }
         return 'Calculated price';
       },
@@ -66,17 +71,11 @@ export const getPriceOfNextUploadBatch = async () => {
     if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
       arDriveFee = 0.00001;
     }
-    const totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
-
-    return {
-      totalArDrivePrice,
-      totalSize: formatBytes(totalSize),
-      totalNumberOfFileUploads,
-      totalNumberOfMetaDataUploads,
-      totalNumberOfFolderUploads,
-    };
+    uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
+    uploadBatch.totalSize = formatBytes(totalSize);
+    return uploadBatch;
   }
-  return 0;
+  return uploadBatch;
 };
 
 // Tags and Uploads a single file to your ArDrive
