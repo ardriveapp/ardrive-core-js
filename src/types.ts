@@ -5,7 +5,7 @@ export interface Wallet {
   walletPublicKey: string;
 }
 
-export interface arDriveUser {
+export interface ArDriveUser {
   login: any,
   privateArDriveId: any,
   privateArDriveTx: any,

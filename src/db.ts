@@ -1,5 +1,5 @@
 import * as sqlite3 from 'sqlite3';
-import { arDriveUser } from './types';
+import { ArDriveUser } from './types';
 
 // Use verbose mode in development
 let sql3 = sqlite3;
@@ -335,7 +335,7 @@ export const getMyFileDownloadConflicts = () => {
   return all('SELECT * FROM Sync WHERE isLocal = 2 ');
 };
 
-export const createArDriveProfile = (user: arDriveUser) => {
+export const createArDriveProfile = (user: ArDriveUser) => {
   return run(
     'REPLACE INTO Profile (login, privateArDriveId, privateArDriveTx, publicArDriveId, publicArDriveTx, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [user.login, user.privateArDriveId, user.privateArDriveTx, user.publicArDriveId, user.publicArDriveTx, user.dataProtectionKey, user.walletPrivateKey, user.walletPublicKey, user.syncFolderPath],

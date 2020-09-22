@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import { sep } from 'path';
 import { encryptText, decryptText } from './crypto';
 import { createArDriveProfile, getAllFromProfileWithWalletPublicKey } from './db';
+import { ArDriveUser } from './types';
+
 
 export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
   try {
@@ -11,77 +13,77 @@ export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
       if (!fs.existsSync(syncFolderPath.concat(sep, 'Public'))) {
         fs.mkdirSync(syncFolderPath.concat(sep, 'Public'));
       }
-      console.log('Using %s as the local ArDrive folder.', syncFolderPath);
-      return syncFolderPath;
+      if (!fs.existsSync(syncFolderPath.concat(sep, 'Private'))) {
+        fs.mkdirSync(syncFolderPath.concat(sep, 'Private'));
+      }
+      console.log('Using %s as your local Sync Folder Path for ArDrive.', syncFolderPath);
+      return "Exists";
     }
-    console.log('The path you have entered is not a directory, please enter a correct path for ArDrive.');
-    return '0';
+    console.log('The path you have entered is not a valid folder, please enter a correct Sync Folder Path for your Public and Private ArDrives.');
+    return 'Invalid';
   } catch (err) {
     console.log('Folder not found.  Creating new directory at %s', syncFolderPath);
     fs.mkdirSync(syncFolderPath);
     fs.mkdirSync(syncFolderPath.concat(sep, 'Public'));
-    return syncFolderPath;
+    fs.mkdirSync(syncFolderPath.concat(sep, 'Private'));
+    return "Created";
   }
 };
 
 // First Time Setup
-export const setUser = async (
-  owner: any,
-  arDriveId: string,
-  syncFolderPath: any,
-  walletPrivateKey: any,
-  walletPublicKey: any,
-  loginPassword: any,
-  dataProtectionKey: any,
-) => {
-  const encryptedWalletPrivateKey = await encryptText(JSON.stringify(walletPrivateKey), loginPassword);
-  const encryptedDataProtectionKey = await encryptText(dataProtectionKey, loginPassword);
-
-  // Set sync schedule, not modifiable at this time
-  const syncSchedule = '1 minute';
-  // 5 minutes, 15 mintues, 30 minutes, 60 minutes
-  // Save to Database
-  const profileToAdd = {
-    owner,
-    arDriveId,
-    syncSchedule,
-    dataProtectionKey: JSON.stringify(encryptedDataProtectionKey),
-    walletPrivateKey: JSON.stringify(encryptedWalletPrivateKey),
-    walletPublicKey,
-    syncFolderPath,
-    email: null,
-  };
-
-  await createArDriveProfile(profileToAdd);
-
-  console.log('New ArDrive user added!');
-  return {
-    owner,
-    arDriveId,
-    password: dataProtectionKey,
-    jwk: JSON.stringify(walletPrivateKey),
-    walletPublicKey,
-    syncFolderPath,
-  };
+export const setUser = async (loginPassword: string, user: ArDriveUser) => {
+  try {
+    const encryptedWalletPrivateKey = await encryptText(JSON.stringify(user.walletPrivateKey), loginPassword);
+    const encryptedDataProtectionKey = await encryptText(user.dataProtectionKey, loginPassword);
+  
+    // Save to Database
+    const userToAdd: ArDriveUser = {
+      login: user.login,
+      privateArDriveId: user.privateArDriveId,
+      privateArDriveTx: user.privateArDriveTx,
+      publicArDriveId: user.publicArDriveId,
+      publicArDriveTx: user.publicArDriveTx,
+      dataProtectionKey: JSON.stringify(encryptedDataProtectionKey),
+      walletPrivateKey: JSON.stringify(encryptedWalletPrivateKey),
+      walletPublicKey: user.walletPublicKey,
+      syncFolderPath: user.syncFolderPath,
+    };
+  
+    await createArDriveProfile(userToAdd)
+  
+    console.log('New ArDrive user added!');
+    return userToAdd;
+  }
+  catch (err) {
+    console.log(err);
+    console.log('Error setting up new user');
+    return "Error";
+  }
 };
 
 // Decrypts user's private key information and unlocks their ArDrive
 export const getUser = async (walletPublicKey: string, loginPassword: any) => {
   try {
-    const profile = await getAllFromProfileWithWalletPublicKey(walletPublicKey);
-    const jwk = await decryptText(JSON.parse(profile.walletPrivateKey), loginPassword);
+    const profile: ArDriveUser = await getAllFromProfileWithWalletPublicKey(walletPublicKey);
     const dataProtectionKey = await decryptText(JSON.parse(profile.dataProtectionKey), loginPassword);
+    const walletPrivateKey = await decryptText(JSON.parse(profile.walletPrivateKey), loginPassword);
+
+    const userToReturn: ArDriveUser = {
+      login: profile.login,
+      privateArDriveId: profile.privateArDriveId,
+      privateArDriveTx: profile.privateArDriveTx,
+      publicArDriveId: profile.publicArDriveId,
+      publicArDriveTx: profile.publicArDriveTx,
+      dataProtectionKey: dataProtectionKey,
+      walletPrivateKey: walletPrivateKey,
+      walletPublicKey: profile.walletPublicKey,
+      syncFolderPath: profile.syncFolderPath,
+  };
     console.log('');
     console.log('ArDrive unlocked!!');
     console.log('');
-    return {
-      password: dataProtectionKey,
-      jwk,
-      walletPublicKey,
-      owner: profile.owner,
-      arDriveId: profile.arDriveId,
-      syncFolderPath: profile.syncFolderPath,
-    };
+    return userToReturn;
+
   } catch (err) {
     console.log(err);
     console.log('Incorrect Password!! Cannot unlock ArDrive');

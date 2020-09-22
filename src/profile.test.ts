@@ -1,7 +1,7 @@
 import { getLocalWallet } from './arweave';
 import { setupDatabase } from './db';
 import { getUser, setUser, setupArDriveSyncFolder} from './profile';
-import { arDriveUser } from './types';
+import { ArDriveUser } from './types';
 
 async function main() {
     // Setup database if it doesnt exist
@@ -15,7 +15,7 @@ async function main() {
     // Sample user profile
     const wallet = await getLocalWallet("C:\\Stuff\\ardrive_test_key.json")
     const loginPassword: string = "dudeworduppasword"
-    const testUser: arDriveUser = {
+    const testUser: ArDriveUser = {
         login: "Vilenarios",
         privateArDriveId: "d87da4e4-76f9-4872-9a14-94e10ba73e1d",
         privateArDriveTx: "FsrovoXaV7U-IMfJOAr1Fiv8iXwTwJTdL9lSUDr2WQg",
