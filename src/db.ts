@@ -61,13 +61,14 @@ const all = (sql: any, params: any[] = []): Promise<any[]> => {
 const createProfileTable = async () => {
   const sql = `CREATE TABLE IF NOT EXISTS Profile (
         id integer NOT NULL PRIMARY KEY,
-        owner text NOT NULL UNIQUE,
-        arDriveId NOT NULL UNIQUE,
-        email text,
+        login text NOT NULL UNIQUE,
+        privateArDriveId NOT NULL UNIQUE,
+        privateArDriveTx text,
+        publicArDriveId NOT NULL UNIQUE,
+        publicArDriveTx text,
         dataProtectionKey text,
         walletPrivateKey text,
         walletPublicKey text,
-        syncSchedule text,
         syncFolderPath text
      );`;
   return run(sql);
@@ -334,28 +335,30 @@ export const getMyFileDownloadConflicts = () => {
 };
 
 export const createArDriveProfile = (profile: {
-  owner: any;
-  arDriveId: any;
-  email: any | null;
+  login: any;
+  privateArDriveId: any;
+  privateArDriveTx: any;
+  publicArDriveId: any;
+  publicArDriveTx: any;
   dataProtectionKey: any;
   walletPrivateKey: any;
   walletPublicKey: any;
-  syncSchedule: any;
   syncFolderPath: any;
 }) => {
   const {
-    owner,
-    arDriveId,
-    email,
+    login,
+    privateArDriveId,
+    privateArDriveTx,
+    publicArDriveId,
+    publicArDriveTx,
     dataProtectionKey,
     walletPrivateKey,
     walletPublicKey,
-    syncSchedule,
     syncFolderPath,
   } = profile;
   return run(
-    'REPLACE INTO Profile (owner, arDriveId, email, dataProtectionKey, walletPrivateKey, walletPublicKey, syncSchedule, syncFolderPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [owner, arDriveId, email, dataProtectionKey, walletPrivateKey, walletPublicKey, syncSchedule, syncFolderPath],
+    'REPLACE INTO Profile (login, privateArDriveId, privateArDriveTx, publicArDriveId, publicArDriveTx, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [login, privateArDriveId, privateArDriveTx, publicArDriveId, publicArDriveTx, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath],
   );
 };
 
