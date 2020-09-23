@@ -16,7 +16,7 @@ import {
 import * as chokidar from 'chokidar';
 const { v4: uuidv4 } = require('uuid');
 
-const queueFile = async (filePath: string, syncFolderPath: string, arDriveId: string) => {
+const queueFile = async (filePath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   let stats = null;
   try {
     stats = fs.statSync(filePath);
@@ -111,9 +111,11 @@ const queueFile = async (filePath: string, syncFolderPath: string, arDriveId: st
     // No match, so queue a new file
     console.log('%s queueing new file', filePath);
     let isPublic = '0';
+    let arDriveId = privateArDriveId;
     if (filePath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
-      // Public by choice, do not encrypt
+      // File is in the public drive.
       isPublic = '1';
+      arDriveId = publicArDriveId
     }
 
     let isShared = '0';
@@ -154,9 +156,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, arDriveId: st
   }
 };
 
-const queueFolder = async (folderPath: string, syncFolderPath: string, arDriveId: string) => {
-  let isPublic = '0';
-  let isShared = '0';
+const queueFolder = async (folderPath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   let parentFolderId = null;
   let stats = null;
 
@@ -173,12 +173,17 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, arDriveId
       return;
     }
 
+    let isPublic = '0';
+    let arDriveId = privateArDriveId;
     if (folderPath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
       // Public by choice, do not encrypt
       isPublic = '1';
+      arDriveId = publicArDriveId;
     }
+
+    let isShared = '0';
     if (folderPath.indexOf(syncFolderPath.concat('\\Shared\\')) !== -1) {
-      // Public by choice, do not encrypt
+      // ALL THIS SHOULD GET REMOVED
       isShared = '1';
     }
 
@@ -231,7 +236,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, arDriveId
   }
 };
 
-const watchFolder = (syncFolderPath: string, arDriveId: string) => {
+const watchFolder = (syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   const log = console.log.bind(console);
   const watcher = chokidar.watch(syncFolderPath, {
     persistent: true,
@@ -245,10 +250,10 @@ const watchFolder = (syncFolderPath: string, arDriveId: string) => {
     },
   });
   watcher
-    .on('add', async (path: any) => queueFile(path, syncFolderPath, arDriveId))
-    .on('change', (path: any) => queueFile(path, syncFolderPath, arDriveId))
+    .on('add', async (path: any) => queueFile(path, syncFolderPath, privateArDriveId, publicArDriveId))
+    .on('change', (path: any) => queueFile(path, syncFolderPath, privateArDriveId, publicArDriveId))
     .on('unlink', (path: any) => log(`File ${path} has been removed`))
-    .on('addDir', async (path: any) => queueFolder(path, syncFolderPath, arDriveId))
+    .on('addDir', async (path: any) => queueFolder(path, syncFolderPath, privateArDriveId, publicArDriveId))
     .on('unlinkDir', (path: any) => log(`Directory ${path} has been removed`))
     .on('error', (error: any) => log(`Watcher error: ${error}`))
     .on('ready', () => log('Initial scan complete. Ready for changes'));
