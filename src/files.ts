@@ -14,7 +14,7 @@ import {
   setPermaWebFileToOverWrite,
 } from './db';
 import * as chokidar from 'chokidar';
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
 
 const queueFile = async (filePath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   let stats = null;
