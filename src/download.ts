@@ -30,7 +30,7 @@ async function binArrayToJSON(binArray: any) {
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
-  user: { syncFolderPath: string; password: string; jwk: string },
+  user: ArDriveUser,
   filePath: any,
   dataTxId: string,
   isPublic: string,
@@ -51,7 +51,7 @@ async function downloadArDriveFileByTx(
       // Method with decryption
       fs.writeFileSync(filePath.concat('.enc'), data);
       await sleep(500);
-      await decryptFile(filePath.concat('.enc'), user.password, user.jwk);
+      await decryptFile(filePath.concat('.enc'), user.dataProtectionKey, user.walletPrivateKey);
       await sleep(500);
       fs.unlinkSync(filePath.concat('.enc'));
       console.log('DOWNLOADED AND DECRYPTED %s', filePath);
@@ -232,7 +232,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 };
 
 // Downloads all ardrive files that are not local
-export const downloadMyArDriveFiles = async (user: { syncFolderPath: string; password: string; jwk: string }) => {
+export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
   try {
     console.log('---Downloading any unsynced files---');
     const filesToDownload = await getFilesToDownload();
