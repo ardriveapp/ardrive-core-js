@@ -342,8 +342,12 @@ export const createArDriveProfile = (user: ArDriveUser) => {
   );
 };
 
-export const getAllFromProfileWithWalletPublicKey = (walletPublicKey: string) => {
-  return get(`SELECT * FROM Profile WHERE walletPublicKey = ?`, [walletPublicKey]);
+export const getUserFromProfileById = (id: number) => {
+  return get(`SELECT * FROM Profile WHERE id = ?`, [id]);
+};
+
+export const getUserIdFromProfile = (login: string) => {
+  return get(`SELECT id FROM Profile WHERE login = ?`, [login]);
 };
 
 export const deleteFromSyncTable = (id: string) => {
