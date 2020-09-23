@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach } from './common';
-import { Wallet } from './index';
+import { Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';

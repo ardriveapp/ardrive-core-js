@@ -3,7 +3,7 @@ import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import { sep, extname } from 'path';
-import { Wallet } from './index';
+import { Wallet } from './types';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive';

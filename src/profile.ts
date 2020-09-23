@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import { sep } from 'path';
 import { encryptText, decryptText } from './crypto';
-import { createArDriveProfile, getAllFromProfileWithWalletPublicKey } from './db';
+import { createArDriveProfile, getUserFromProfileById } from './db';
 import { ArDriveUser } from './types';
 
 
@@ -30,60 +30,33 @@ export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
   }
 };
 
-// First Time Setup
-export const setUser = async (loginPassword: string, user: ArDriveUser) => {
+// Encrypts the user's keys and adds a user to the database
+export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   try {
     const encryptedWalletPrivateKey = await encryptText(JSON.stringify(user.walletPrivateKey), loginPassword);
     const encryptedDataProtectionKey = await encryptText(user.dataProtectionKey, loginPassword);
-  
-    // Save to Database
-    const userToAdd: ArDriveUser = {
-      login: user.login,
-      privateArDriveId: user.privateArDriveId,
-      privateArDriveTx: user.privateArDriveTx,
-      publicArDriveId: user.publicArDriveId,
-      publicArDriveTx: user.publicArDriveTx,
-      dataProtectionKey: JSON.stringify(encryptedDataProtectionKey),
-      walletPrivateKey: JSON.stringify(encryptedWalletPrivateKey),
-      walletPublicKey: user.walletPublicKey,
-      syncFolderPath: user.syncFolderPath,
-    };
-  
-    await createArDriveProfile(userToAdd)
-  
+    user.dataProtectionKey = JSON.stringify(encryptedDataProtectionKey);
+    user.walletPrivateKey = JSON.stringify(encryptedWalletPrivateKey);
+    await createArDriveProfile(user)
     console.log('New ArDrive user added!');
-    return userToAdd;
+    return "Success";
   }
   catch (err) {
     console.log(err);
-    console.log('Error setting up new user');
     return "Error";
   }
 };
 
 // Decrypts user's private key information and unlocks their ArDrive
-export const getUser = async (walletPublicKey: string, loginPassword: any) => {
+export const getUser = async (loginPassword: string, userId: string) => {
   try {
-    const profile: ArDriveUser = await getAllFromProfileWithWalletPublicKey(walletPublicKey);
-    const dataProtectionKey = await decryptText(JSON.parse(profile.dataProtectionKey), loginPassword);
-    const walletPrivateKey = await decryptText(JSON.parse(profile.walletPrivateKey), loginPassword);
-
-    const userToReturn: ArDriveUser = {
-      login: profile.login,
-      privateArDriveId: profile.privateArDriveId,
-      privateArDriveTx: profile.privateArDriveTx,
-      publicArDriveId: profile.publicArDriveId,
-      publicArDriveTx: profile.publicArDriveTx,
-      dataProtectionKey: dataProtectionKey,
-      walletPrivateKey: walletPrivateKey,
-      walletPublicKey: profile.walletPublicKey,
-      syncFolderPath: profile.syncFolderPath,
-  };
+    let user: ArDriveUser = await getUserFromProfileById(userId);
+    user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
+    user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
     console.log('');
     console.log('ArDrive unlocked!!');
     console.log('');
-    return userToReturn;
-
+    return user;
   } catch (err) {
     console.log(err);
     console.log('Incorrect Password!! Cannot unlock ArDrive');

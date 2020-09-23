@@ -342,7 +342,7 @@ export const createArDriveProfile = (user: ArDriveUser) => {
   );
 };
 
-export const getUserFromProfileById = (id: number) => {
+export const getUserFromProfileById = (id: string) => {
   return get(`SELECT * FROM Profile WHERE id = ?`, [id]);
 };
 
