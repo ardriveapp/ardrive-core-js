@@ -24,3 +24,26 @@ export interface UploadBatch {
   totalNumberOfMetaDataUploads: number,
   totalNumberOfFolderUploads: number
 };
+
+export interface FileToUpload {
+  id: any,
+  appName: string,
+  appVersion: string,
+  unixTime: string,
+  contentType: string,
+  entityType: string,
+  arDriveId: string,
+  parentFolderId: string,
+  fileId: string,
+  fileSize: string,
+  filePath: any,
+  fileName: string,
+  arDrivePath: any,
+  fileHash: any,
+  fileModifiedDate: any,
+  fileVersion: any,
+  isPublic: any,
+  fileDataSyncStatus: any,
+  fileMetaDataSyncStatus: any,
+  dataTxId: any,
+};

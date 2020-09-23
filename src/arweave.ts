@@ -198,7 +198,7 @@ const getWalletBalance = async (walletPublicKey: string) => {
 
 // Creates an arweave transaction to upload file data (and no metadata) to arweave
 const createArDriveDataTransaction = async (
-  user: { jwk: string; owner: string },
+  walletPrivateKey: string,
   filePath: string,
   contentType: string,
   id: any,
@@ -207,13 +207,13 @@ const createArDriveDataTransaction = async (
     const fileToUpload = fs.readFileSync(filePath);
     const transaction = await arweave.createTransaction(
       { data: arweave.utils.concatBuffers([fileToUpload]) },
-      JSON.parse(user.jwk),
+      JSON.parse(walletPrivateKey),
     );
     // Tag file
     transaction.addTag('Content-Type', contentType);
 
     // Sign file
-    await arweave.transactions.sign(transaction, JSON.parse(user.jwk));
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
     const uploader = await arweave.transactions.getUploader(transaction);
     const fileToUpdate = {
       fileDataSyncStatus: '2',
@@ -306,7 +306,7 @@ const createArDriveWallet = async (): Promise<Wallet> => {
 };
 
 // Sends a fee (15% of transaction price) to ArDrive Profit Sharing Community holders
-const sendArDriveFee = async (user: { jwk: string }, arPrice: number) => {
+const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
   try {
     await community.setCommunityTx(communityTxId);
     // Fee for all data submitted to ArDrive is 15%
@@ -322,11 +322,11 @@ const sendArDriveFee = async (user: { jwk: string }, arPrice: number) => {
     // send a fee. You should inform the user about this fee and amount.
     const transaction = await arweave.createTransaction(
       { target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
-      JSON.parse(user.jwk),
+      JSON.parse(walletPrivateKey),
     );
 
     // Sign file
-    await arweave.transactions.sign(transaction, JSON.parse(user.jwk));
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
 
     // Submit the transaction
     const response = await arweave.transactions.post(transaction);
