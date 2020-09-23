@@ -18,6 +18,7 @@ import {
   setPermaWebFileToIgnore,
   getMyFileDownloadConflicts,
 } from './db';
+import { ArDriveUser } from './types';
 
 async function binArrayToJSON(binArray: any) {
   let str = '';
@@ -66,13 +67,7 @@ async function downloadArDriveFileByTx(
 // Takes an ArDrive File Data Transaction and writes to the database.
 async function getFileMetaDataFromTx(
   fileDataTx: any,
-  user: {
-    syncFolderPath: string;
-    walletPublicKey: string;
-    arDriveId: string;
-    password: string;
-    jwk: string;
-  },
+  user: ArDriveUser,
 ) {
   try {
     const newFileToDownload = {
@@ -100,7 +95,6 @@ async function getFileMetaDataFromTx(
       dataTxId: '',
       isShared: '',
     };
-
     const { node } = fileDataTx;
     const metaDataTxId = node.id;
     const isCompleted = await getByMetaDataTxFromSyncTable(metaDataTxId);
@@ -151,7 +145,7 @@ async function getFileMetaDataFromTx(
 
     if (Object.prototype.hasOwnProperty.call(dataJSON, 'iv')) {
       newFileToDownload.isPublic = '0';
-      dataJSON = await decryptFileMetaData(dataJSON.iv, dataJSON.encryptedText, user.password, user.jwk);
+      dataJSON = await decryptFileMetaData(dataJSON.iv, dataJSON.encryptedText, user.dataProtectionKey, user.walletPrivateKey);
     } else {
       newFileToDownload.isPublic = '1';
     }
@@ -221,18 +215,19 @@ async function getFileMetaDataFromTx(
 }
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
-export const getMyArDriveFilesFromPermaWeb = async (user: {
-  syncFolderPath: string;
-  walletPublicKey: string;
-  arDriveId: string;
-  password: string;
-  jwk: string;
-}) => {
+export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   // console.log ("FOUND PERMAFILE %s but not ready to be downloaded yet", full_path)
   console.log('---Getting all your ArDrive files---');
-  const txids = await getAllMyDataFileTxs(user.walletPublicKey, user.arDriveId);
-  await asyncForEach(txids, async (txid: string) => {
-    await getFileMetaDataFromTx(txid, user);
+  // Get your private files
+  const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.privateArDriveId);
+  await asyncForEach(privateTxIds, async (privateTxId: string) => {
+    await getFileMetaDataFromTx(privateTxId, user);
+  });
+
+  // Get your public files
+  const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.publicArDriveId);
+  await asyncForEach(publicTxIds, async (publicTxId: string) => {
+    await getFileMetaDataFromTx(publicTxId, user);
   });
 };
 
