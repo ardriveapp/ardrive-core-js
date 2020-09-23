@@ -202,7 +202,12 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       const parentFolderPath = dirname(folderPath);
       parentFolderId = await getFolderFromSyncTable(parentFolderPath);
       parentFolderId = parentFolderId.fileId;
+
+      // We do not upload the Private and Public Folders as these are represented by Drive entity-types instead.
       if (folderPath === syncFolderPath.concat('\\Public')) {
+        fileMetaDataSyncStatus = '0';
+      }
+      if (folderPath === syncFolderPath.concat('\\Private')) {
         fileMetaDataSyncStatus = '0';
       }
     }

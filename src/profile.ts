@@ -47,21 +47,29 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   }
 };
 
-// Decrypts user's private key information and unlocks their ArDrive
-export const getUser = async (loginPassword: string, userId: string) => {
+// Checks if the user's password is valid
+export const passwordCheck = async (loginPassword: string, userId: string) : Promise<boolean> => {
   try {
     let user: ArDriveUser = await getUserFromProfileById(userId);
     user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
     user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
-    console.log('');
-    console.log('ArDrive unlocked!!');
-    console.log('');
-    return user;
-  } catch (err) {
-    console.log(err);
-    console.log('Incorrect Password!! Cannot unlock ArDrive');
-    return 0;
+    return true;
   }
+  catch (err) {
+    return false;
+  }
+
+};
+
+// Decrypts user's private key information and unlocks their ArDrive
+export const getUser = async (loginPassword: string, userId: string) => {
+  let user: ArDriveUser = await getUserFromProfileById(userId);
+  user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
+  user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
+  console.log('');
+  console.log('ArDrive unlocked!!');
+  console.log('');
+  return user;
 };
 
 // TO DO

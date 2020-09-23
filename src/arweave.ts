@@ -40,8 +40,11 @@ const getLocalWallet = async (existingWalletPath: string) => {
   return { walletPrivateKey, walletPublicKey };
 };
 
+
 // Gets all of the ardrive IDs from a user's wallet
-const getAllMyArDriveIds = async (walletPublicKey: any) => {
+// Uses the Entity type to only search for Drive tags
+// Passes in a drivePrivacy string to control to look for public or private drives
+const getAllMyArDriveIds = async (walletPublicKey: any, drivePrivacy: string) => {
   try {
     const query = {
       query: `query {
@@ -52,6 +55,8 @@ const getAllMyArDriveIds = async (walletPublicKey: any) => {
         tags: [
           { name: "App-Name", values: "${appName}" }
           { name: "App-Version", values: "${appVersion}" }
+          { name: "Entity-Type", values: "drive" }
+          { name: "Drive-Privacy", values: "${drivePrivacy}" }
         ]
       ) {
         edges {
