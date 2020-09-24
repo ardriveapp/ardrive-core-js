@@ -8,6 +8,7 @@ import { Wallet } from './types';
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive';
 export const appVersion = '0.1.2';
+export const cipher = "AES256-GCM"
 
 // Pauses application
 const sleep = async (ms: number) => {

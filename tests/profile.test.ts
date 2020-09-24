@@ -1,8 +1,8 @@
-import { getLocalWallet } from '../src/arweave';
-import { setupDatabase, getUserIdFromProfile } from '../src/db';
+import { getLocalWallet, createPublicArDriveMetaDataTransaction } from '../src/arweave';
+import { setupDatabase, getUserIdFromProfile, getNewDriveFromSyncTable } from '../src/db';
 import { getUser, addNewUser, setupArDriveSyncFolder} from '../src/profile';
 import { ArDriveUser } from '../src/types';
-
+import { watchFolder } from '../src/files'
 async function main() {
     // Setup database if it doesnt exist
     try {
@@ -17,28 +17,34 @@ async function main() {
     const loginPassword: string = "dudeworduppasword"
     const testUser: ArDriveUser = {
         login: "Vilenarios",
-        privateArDriveId: "d87da4e4-76f9-4872-9a14-94e10ba73e1d",
-        privateArDriveTx: "FsrovoXaV7U-IMfJOAr1Fiv8iXwTwJTdL9lSUDr2WQg",
-        publicArDriveId: "81a73abd-2aff-4989-9b57-4e7fbf8ce825",
-        publicArDriveTx: "sjZV344k9BxPw1xjI1meZgCjm73tM5Ac86uN5Pwtxog",
+        privateArDriveId: "924224b2-6a7b-43a4-8454-aab08abb1944",
+        privateArDriveTx: "0",
+        publicArDriveId: "b6de11fb-9d93-4d65-a250-2930d1c4fa98",
+        publicArDriveTx: "0",
         dataProtectionKey: "aSUPERstr0ngZOOM1023(",
         walletPrivateKey: wallet.walletPrivateKey,
         walletPublicKey: wallet.walletPublicKey,
-        syncFolderPath: "C:\\ArDriveSyncFolder_Test\\"
+        syncFolderPath: "C:\\ArDriveSyncFolder_Test"
       };
 
     // Testing Sync Folder Creation
-    console.log ("Testing setupArDriveSyncFolder using %s", testUser.syncFolderPath);
     console.log ("Sync Folder Setup Results: %s", await setupArDriveSyncFolder(testUser.syncFolderPath));
 
+    // Initialize Chokidar Folder Watcher by providing the Sync Folder Path, Private and Public ArDrive IDs
+    watchFolder(testUser.syncFolderPath, testUser.privateArDriveId, testUser.publicArDriveId);
+
     // Testing Setting New User Profile
-    console.log ("Set New User results are: %s", await addNewUser(loginPassword, testUser))
+    await addNewUser(loginPassword, testUser);
 
     // Testing Getting Existing User Profile
     const userId = await getUserIdFromProfile(testUser.login)
-    console.log ("User Id is %s", userId.id)
-    const newUser = await getUser(loginPassword, userId.id)
-    console.log ("Get User Profile results are")
-    console.log (newUser);
+    await getUser(loginPassword, userId.id)
+
+    const publicDriveId = await getNewDriveFromSyncTable("Public");
+    if (publicDriveId !== undefined || publicDriveId.length !== 0)
+    {
+      // Upload public drive arweave transaction
+      createPublicArDriveMetaDataTransaction(wallet.walletPrivateKey, publicDriveId.id)
+    }
 }
 main();

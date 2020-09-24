@@ -101,8 +101,7 @@ const createSyncTable = () => {
         ignore INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
-        isApproved text,
-        isShared text
+        isApproved text
      );`;
   return run(sql);
 };
@@ -130,7 +129,6 @@ export const addFileToSyncTable = (file: {
   fileDataSyncStatus: any;
   fileMetaDataSyncStatus: any;
   permaWebLink: any;
-  isShared: any;
 }) => {
   const {
     appName,
@@ -155,10 +153,9 @@ export const addFileToSyncTable = (file: {
     fileDataSyncStatus,
     fileMetaDataSyncStatus,
     permaWebLink,
-    isShared,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, fileModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, isShared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, fileModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
@@ -182,7 +179,6 @@ export const addFileToSyncTable = (file: {
       fileDataSyncStatus,
       fileMetaDataSyncStatus,
       permaWebLink,
-      isShared,
     ],
   );
 };
@@ -368,6 +364,14 @@ export const updateFileDownloadStatus = (isLocal: string, id: string) => {
 
 export const getAllFromProfile = (): Promise<any[]> => {
   return all('SELECT * FROM Profile');
+};
+
+export const getNewDriveFromSyncTable = (drivePrivacy: string) => {
+  return get('SELECT id FROM Sync WHERE metaDataTxId = 0 AND fileName = ?', [drivePrivacy]);
+}
+
+export const getDriveInfoFromSyncTable = (id: string) => {
+  return get(`SELECT arDriveId, fileId FROM Sync WHERE id = ?`, [id]);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {

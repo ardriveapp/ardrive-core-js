@@ -5,6 +5,7 @@ import {
   createArDriveDataTransaction,
   sendArDriveFee,
   getTransactionStatus,
+  createPublicArDriveMetaDataTransaction,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
 import { encryptFile, encryptTag } from './crypto';
@@ -15,6 +16,7 @@ import {
   completeFileDataFromSyncTable,
   completeFileMetaDataFromSyncTable,
   deleteFromSyncTable,
+  getNewDriveFromSyncTable,
 } from './db';
 import { ArDriveUser, FileToUpload, UploadBatch } from './types';
 
@@ -181,12 +183,12 @@ async function uploadArDriveFileMetaData(
 }
 
 // Uploads all queued files
-export const uploadArDriveFiles = async (user: ArDriveUser, readyToUpload: any) => {
+export const uploadArDriveFiles = async (user: ArDriveUser) => {
   try {
     let filesUploaded = 0;
     console.log('---Uploading All Queued Files---');
     const filesToUpload = await getFilesToUploadFromSyncTable();
-    if (Object.keys(filesToUpload).length > 0 && readyToUpload === 'Y') {
+    if (Object.keys(filesToUpload).length > 0) {
       // Ready to upload
       await asyncForEach(
         filesToUpload,
@@ -207,6 +209,21 @@ export const uploadArDriveFiles = async (user: ArDriveUser, readyToUpload: any) 
     }
     if (filesUploaded > 0) {
       console.log('Uploaded %s files to your ArDrive!', filesUploaded);
+
+      // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
+      const publicDriveId = await getNewDriveFromSyncTable("Public");
+      if (publicDriveId !== undefined || publicDriveId.length !== 0)
+      {
+        // Upload public drive arweave transaction
+        createPublicArDriveMetaDataTransaction(user.walletPrivateKey, publicDriveId.id)
+      }
+      const privateDriveId = await getNewDriveFromSyncTable("Public");
+      if (privateDriveId === undefined || privateDriveId.length === 0)
+      {
+        // Upload private drive arweave transaction
+
+      }
+
     }
     return 'SUCCESS';
   } catch (err) {

@@ -118,11 +118,6 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       arDriveId = publicArDriveId
     }
 
-    let isShared = '0';
-    if (filePath.indexOf(syncFolderPath.concat('\\Shared\\')) !== -1) {
-      // Shared by choice, encrypt with new password
-      isShared = '1';
-    }
     const unixTime = Math.round(new Date().getTime() / 1000);
     const contentType = extToMime(filePath);
     const fileId = uuidv4();
@@ -150,7 +145,6 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       permaWebLink: '',
       fileDataSyncStatus: '1', // Sync status of 1 requires a data tx
       fileMetaDataSyncStatus: '1', // Sync status of 1 requires a metadata tx
-      isShared,
     };
     addFileToSyncTable(newFileToQueue);
   }
@@ -175,16 +169,10 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
 
     let isPublic = '0';
     let arDriveId = privateArDriveId;
-    if (folderPath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
+    if (folderPath.indexOf(syncFolderPath.concat('\\Public')) !== -1) {
       // Public by choice, do not encrypt
       isPublic = '1';
       arDriveId = publicArDriveId;
-    }
-
-    let isShared = '0';
-    if (folderPath.indexOf(syncFolderPath.concat('\\Shared\\')) !== -1) {
-      // ALL THIS SHOULD GET REMOVED
-      isShared = '1';
     }
 
     const unixTime = Math.round(new Date().getTime() / 1000);
@@ -235,7 +223,6 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       permaWebLink: '',
       fileDataSyncStatus: '0', // Folders do not require a data tx
       fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
-      isShared,
     };
     addFileToSyncTable(folderToQueue);
   }

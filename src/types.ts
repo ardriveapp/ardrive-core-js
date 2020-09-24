@@ -47,3 +47,15 @@ export interface FileToUpload {
   fileMetaDataSyncStatus: any,
   dataTxId: any,
 };
+
+export interface ArFSDriveMetadata {
+  contentType: string,
+  cipher: string,
+  cipherIV: string,
+  appName: string,
+  unixTime: string,
+  entityType: string,
+  driveId: string,
+  drivePrivacy: string,
+  driveAuthMode: string,
+}
