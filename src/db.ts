@@ -101,7 +101,8 @@ const createSyncTable = () => {
         ignore INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
-        isApproved text
+        isApproved text,
+        uploader text
      );`;
   return run(sql);
 };
@@ -356,6 +357,10 @@ export const setPermaWebFileToIgnore = (id: string) => {
 
 export const setPermaWebFileToOverWrite = (id: string) => {
   return get(`UPDATE Sync SET isLocal = 2 WHERE id = ?`, [id]);
+};
+
+export const setFileUploaderObject = (uploader: string, id: string) => {
+  return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
 export const updateFileDownloadStatus = (isLocal: string, id: string) => {

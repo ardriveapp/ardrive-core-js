@@ -5,7 +5,9 @@ import {
   createArDriveDataTransaction,
   sendArDriveFee,
   getTransactionStatus,
-  createPublicArDriveMetaDataTransaction,
+  createPublicArDriveTransaction,
+  createPrivateArDriveTransaction,
+  createArDrivePublicDataTransaction,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
 import { encryptFile, encryptTag } from './crypto';
@@ -88,12 +90,12 @@ async function uploadArDriveFileData(
   try {
     const winston = await getWinston(fileToUpload.fileSize);
     const arPrice = +winston * 0.000000000001;
-    let dataTxId;
+    let dataTxId: string;
     console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
 
     if (fileToUpload.isPublic === '1') {
       // Public file, do not encrypt
-      dataTxId = await createArDriveDataTransaction(
+      dataTxId = await createArDrivePublicDataTransaction(
         user.walletPrivateKey,
         fileToUpload.filePath,
         fileToUpload.contentType,
@@ -215,15 +217,14 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
       if (publicDriveId !== undefined || publicDriveId.length !== 0)
       {
         // Upload public drive arweave transaction
-        createPublicArDriveMetaDataTransaction(user.walletPrivateKey, publicDriveId.id)
+        createPublicArDriveTransaction(user.walletPrivateKey, publicDriveId.id)
       }
       const privateDriveId = await getNewDriveFromSyncTable("Public");
       if (privateDriveId === undefined || privateDriveId.length === 0)
       {
         // Upload private drive arweave transaction
-
+        createPrivateArDriveTransaction(user.walletPrivateKey, privateDriveId.id)
       }
-
     }
     return 'SUCCESS';
   } catch (err) {

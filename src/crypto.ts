@@ -1,8 +1,14 @@
-// Nodejs encryption with CTR
-// With help from https://medium.com/@brandonstilson/lets-encrypt-files-with-node-85037bea8c0e
+import { JWKInterface } from 'arweave/node/lib/wallet';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import AppendInitVect from './appendInitVect';
+import { parse } from 'uuid';
+import * as constants from 'constants'
+const hkdf = require('futoin-hkdf');
+const utf8 = require('utf8');
+const jwkToPem = require('jwk-to-pem')
+const keyByteLength = 256;
+const kdfHash = 'SHA-256';
 
 function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
   const hash = crypto.createHash('sha256');
@@ -17,6 +23,33 @@ function getTextCipherKey(password: crypto.BinaryLike) {
   hash.update(password);
   const KEY = hash.digest();
   return KEY;
+}
+
+async function getSigningKey (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
+  return crypto
+          .createSign('sha256')
+          .update(data)
+          .sign({
+            key: await jwkToPem(jwk),
+            padding: constants.RSA_PKCS1_PSS_PADDING,
+            saltLength: 0
+          })
+}
+
+export const deriveArDriveKeyWithPassword = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: JWKInterface) => {
+  const driveIdBytes = parse(driveId);
+  const walletSignature = await getSigningKey(walletPrivateKey, (utf8.encode('drive') + driveIdBytes))
+  const driveKdf = await hkdf(walletSignature, keyByteLength, {kdfHash})
+  console.log (dataEncryptionKey)
+  console.log (driveKdf)
+}
+
+export const deriveArDriveKeyWithFileId = async (fileId: string, driveId: string, walletPrivateKey: JWKInterface) => {
+  const driveIdBytes = parse(driveId);
+  const walletSignature = await getSigningKey(walletPrivateKey, (utf8.encode('drive') + driveIdBytes))
+  const driveKdf = await hkdf(walletSignature, keyByteLength, {kdfHash})
+  console.log (fileId)
+  console.log (driveKdf)
 }
 
 // gets hash of a file using SHA512, used for ArDriveID

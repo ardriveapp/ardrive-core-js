@@ -2,11 +2,12 @@
 // arweave.js
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { getWinston, appName, appVersion, asyncForEach } from './common';
+import { getWinston, appName, appVersion, asyncForEach, cipher } from './common';
 import { Wallet } from './types';
-import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, getDriveInfoFromSyncTable } from './db';
+import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, getDriveInfoFromSyncTable, setFileUploaderObject } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
+
 
 const arweave = Arweave.init({
   // host: 'perma.online', // ARCA Community Gateway
@@ -200,6 +201,87 @@ const getWalletBalance = async (walletPublicKey: string) => {
   }
 };
 
+const createArDrivePublicDataTransaction = async (
+  walletPrivateKey: string,
+  filePath: string,
+  contentType: string,
+  id: any,
+) : Promise<string> => {
+  try {
+    const fileToUpload = fs.readFileSync(filePath);
+    const transaction = await arweave.createTransaction(
+      { data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+      JSON.parse(walletPrivateKey),
+    );
+    // Tag file
+    transaction.addTag('Content-Type', contentType);
+
+    // Sign file
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+    const uploader = await arweave.transactions.getUploader(transaction);
+    await setFileUploaderObject(JSON.stringify(uploader), id)
+    const fileToUpdate = {
+      fileDataSyncStatus: '2',
+      dataTxId: transaction.id,
+      id,
+    };
+    // Update the queue since the file is now being uploaded
+    await updateFileDataSyncStatus(fileToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+      await setFileUploaderObject(JSON.stringify(uploader), id)
+      console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
+    }
+    console.log('SUCCESS %s was submitted with TX %s', filePath, transaction.id);
+    return transaction.id;
+  } catch (err) {
+    console.log(err);
+    return "Transaction failed";
+  }
+};
+
+// Creates an arweave transaction to upload file data (and no metadata) to arweave
+const createArDrivePrivateDataTransaction = async (
+  walletPrivateKey: string,
+  filePath: string,
+  contentType: string,
+  id: any,
+) => {
+  try {
+    const fileToUpload = fs.readFileSync(filePath);
+    const transaction = await arweave.createTransaction(
+      { data: arweave.utils.concatBuffers([fileToUpload]) },
+      JSON.parse(walletPrivateKey),
+    );
+    // Tag file with Content-Type, Cipher and Cipher-IV
+    transaction.addTag('Content-Type', contentType);
+    transaction.addTag('Cipher', cipher);
+    // transaction.addTag('Cipher-IV', cipherIV)
+
+    // Sign file
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+    const uploader = await arweave.transactions.getUploader(transaction);
+    const fileToUpdate = {
+      fileDataSyncStatus: '2',
+      dataTxId: transaction.id,
+      id,
+    };
+    // Update the queue since the file is now being uploaded
+    await updateFileDataSyncStatus(fileToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+      console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
+    }
+    console.log('SUCCESS %s was submitted with TX %s', filePath, transaction.id);
+    return transaction.id;
+  } catch (err) {
+    console.log(err);
+    return 0;
+  }
+};
+
 // Creates an arweave transaction to upload file data (and no metadata) to arweave
 const createArDriveDataTransaction = async (
   walletPrivateKey: string,
@@ -235,7 +317,7 @@ const createArDriveDataTransaction = async (
     return transaction.id;
   } catch (err) {
     console.log(err);
-    return 0;
+    return "Error submitting TX";
   }
 };
 
@@ -295,8 +377,61 @@ const createArDriveMetaDataTransaction = async (
   }
 };
 
+// Creates an arweave transaction to upload encrypted private ardrive metadata
+const createPrivateArDriveTransaction = async (
+  walletPrivateKey: JWKInterface,
+  id: string,
+) : Promise<number> => {
+  try {
+    const driveInfo = await getDriveInfoFromSyncTable(id);
+    // Create a JSON file, containing necessary drive metadata
+    const arDriveMetadataJSON = {
+      rootFolderId: driveInfo.fileId,
+    }
+
+    const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
+
+    // Create transaction
+    const transaction = await arweave.createTransaction({ data: arDriveMetaData }, walletPrivateKey);
+    const txSize = transaction.get('data_size');
+    const winston = await getWinston(txSize);
+    const arPrice = +winston * 0.000000000001;
+    // console.log('Uploading Public ArDrive Metadata (%d bytes) at %s to the Permaweb', txSize, arPrice);
+
+    // Tag file
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
+    transaction.addTag('Unix-Time', (Math.round(new Date().getTime() / 1000)).toString());
+    transaction.addTag('Content-Type', 'application/json');
+    transaction.addTag('Entity-Type', "drive");
+    transaction.addTag('Drive-Id', driveInfo.arDriveId);
+
+    // Sign file
+    await arweave.transactions.sign(transaction, walletPrivateKey);
+    const uploader = await arweave.transactions.getUploader(transaction);
+
+    const fileMetaDataToUpdate = {
+      id,
+      fileMetaDataSyncStatus: '2',
+      metaDataTxId: transaction.id,
+    };
+
+    // Update the queue since the file metadata is now being uploaded
+    await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+    }
+    // console.log('SUCCESS Public ArDrive metadata was submitted with TX %s', transaction.id);
+    return arPrice;
+  } catch (err) {
+    console.log(err);
+    return 0;
+  }
+};
+
 // Creates an arweave transaction to upload public ardrive metadata
-const createPublicArDriveMetaDataTransaction = async (
+const createPublicArDriveTransaction = async (
   walletPrivateKey: JWKInterface,
   id: string,
 ) : Promise<number> => {
@@ -405,7 +540,10 @@ export {
   createArDriveWallet,
   createArDriveMetaDataTransaction,
   createArDriveDataTransaction,
-  createPublicArDriveMetaDataTransaction,
+  createArDrivePrivateDataTransaction,
+  createArDrivePublicDataTransaction,
+  createPublicArDriveTransaction,
+  createPrivateArDriveTransaction,
   getWalletBalance,
   getTransactionStatus,
   getTransactionMetaData,
