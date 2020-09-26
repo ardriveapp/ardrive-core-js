@@ -20,12 +20,38 @@ import {
 } from './db';
 import { ArDriveUser } from './types';
 
-async function binArrayToJSON(binArray: any) {
-  let str = '';
-  for (const i of binArray) {
-    str += String.fromCharCode(parseInt(binArray[i], 10));
-  }
-  return JSON.parse(str);
+
+async function Utf8ArrayToStr(array: any) : Promise<string> {
+  var out, i, len, c;
+  var char2, char3;
+
+  out = "";
+  len = array.length;
+  i = 0;
+  while (i < len) {
+    c = array[i++];
+    switch (c >> 4)
+    { 
+      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+        // 0xxxxxxx
+        out += String.fromCharCode(c);
+        break;
+      case 12: case 13:
+        // 110x xxxx   10xx xxxx
+        char2 = array[i++];
+        out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+        break;
+      case 14:
+        // 1110 xxxx  10xx xxxx  10xx xxxx
+        char2 = array[i++];
+        char3 = array[i++];
+        out += String.fromCharCode(((c & 0x0F) << 12) |
+                                   ((char2 & 0x3F) << 6) |
+                                   ((char3 & 0x3F) << 0));
+        break;
+    }
+  }    
+  return out;
 }
 
 // Downloads a single file from ArDrive by transaction
@@ -84,7 +110,7 @@ async function getFileMetaDataFromTx(
       fileName: '',
       arDrivePath: '',
       fileHash: '',
-      fileModifiedDate: '',
+      lastModifiedDate: '',
       fileVersion: 0,
       isPublic: '',
       isLocal: 0,
@@ -93,23 +119,26 @@ async function getFileMetaDataFromTx(
       permaWebLink: '',
       metaDataTxId: '',
       dataTxId: '',
-      isShared: '',
     };
     const { node } = fileDataTx;
     const metaDataTxId = node.id;
     const isCompleted = await getByMetaDataTxFromSyncTable(metaDataTxId);
     if (isCompleted) {
-      // Does the file actual exist?
+      // Does the file actually exist?
       fs.access(isCompleted.filePath, async (err) => {
+        // console.log ("The file %s already exists", isCompleted.fileName)
         if (err) {
-          await updateFileDownloadStatus('0', isCompleted.id);
+          await updateFileDownloadStatus('0', isCompleted.id); // The file doesnt exist, so lets download it
         }
-        return 0;
       });
+      return 0;
     }
     const { tags } = node;
-    const data = await getTransactionMetaData(metaDataTxId);
-    let dataJSON = await binArrayToJSON(data);
+    const data : string | Uint8Array = await getTransactionMetaData(metaDataTxId);
+
+    let dataString = await Utf8ArrayToStr(data);
+    let dataJSON = await JSON.parse(dataString);
+
     tags.forEach((tag: any) => {
       const key = tag.name;
       const { value } = tag;
@@ -143,6 +172,7 @@ async function getFileMetaDataFromTx(
       }
     });
 
+    // Start to decrypt
     if (Object.prototype.hasOwnProperty.call(dataJSON, 'iv')) {
       newFileToDownload.isPublic = '0';
       dataJSON = await decryptFileMetaData(dataJSON.iv, dataJSON.encryptedText, user.dataProtectionKey, user.walletPrivateKey);
@@ -161,25 +191,18 @@ async function getFileMetaDataFromTx(
       permaWebLink = gatewayURL.concat(metaDataTxId);
     }
 
-    let isShared = '0';
-    if (filePath.indexOf(user.syncFolderPath.concat('\\Shared\\')) !== -1) {
-      // Shared by choice, encrypt with new password
-      isShared = '1';
-    }
-
     newFileToDownload.fileSize = dataJSON.size;
     newFileToDownload.filePath = filePath;
     newFileToDownload.fileName = dataJSON.name;
     newFileToDownload.arDrivePath = dataJSON.path;
     newFileToDownload.fileHash = dataJSON.hash;
-    newFileToDownload.fileModifiedDate = dataJSON.modifiedDate;
+    newFileToDownload.lastModifiedDate = dataJSON.modifiedDate;
     newFileToDownload.fileVersion = dataJSON.fileVersion;
     newFileToDownload.fileDataSyncStatus = 3;
     newFileToDownload.fileMetaDataSyncStatus = 3;
     newFileToDownload.permaWebLink = permaWebLink;
     newFileToDownload.metaDataTxId = metaDataTxId;
     newFileToDownload.dataTxId = dataJSON.dataTxId;
-    newFileToDownload.isShared = isShared;
 
     const exactFileMatch = {
       filePath,
@@ -216,15 +239,15 @@ async function getFileMetaDataFromTx(
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
 export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
-  // console.log ("FOUND PERMAFILE %s but not ready to be downloaded yet", full_path)
-  console.log('---Getting all your ArDrive files---');
   // Get your private files
+  console.log('---Getting all your Private ArDrive files---');
   const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.privateArDriveId);
   await asyncForEach(privateTxIds, async (privateTxId: string) => {
     await getFileMetaDataFromTx(privateTxId, user);
   });
 
   // Get your public files
+  console.log('---Getting all your Private ArDrive files---');
   const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.publicArDriveId);
   await asyncForEach(publicTxIds, async (publicTxId: string) => {
     await getFileMetaDataFromTx(publicTxId, user);

@@ -93,7 +93,7 @@ const createSyncTable = () => {
         fileName text,
         fileHash text,
         fileSize text,
-        fileModifiedDate text,
+        lastModifiedDate text,
         fileVersion integer DEFAULT 0,
         permaWebLink text,
         fileDataSyncStatus text,
@@ -121,7 +121,7 @@ export const addFileToSyncTable = (file: {
   fileName: any;
   fileHash: any;
   fileSize: any;
-  fileModifiedDate: any;
+  lastModifiedDate: any;
   fileVersion: any;
   isPublic: any;
   isLocal: any;
@@ -145,7 +145,7 @@ export const addFileToSyncTable = (file: {
     fileName,
     fileHash,
     fileSize,
-    fileModifiedDate,
+    lastModifiedDate,
     fileVersion,
     isPublic,
     isLocal,
@@ -156,7 +156,7 @@ export const addFileToSyncTable = (file: {
     permaWebLink,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, fileModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
@@ -171,7 +171,7 @@ export const addFileToSyncTable = (file: {
       fileName,
       fileHash,
       fileSize,
-      fileModifiedDate,
+      lastModifiedDate,
       fileVersion,
       isPublic,
       isLocal,
@@ -195,26 +195,26 @@ export const getByFilePathAndHashFromSyncTable = (file: { fileHash: string; file
 
 export const getByFileHashAndModifiedDateAndArDrivePathFromSyncTable = (file: {
   fileHash: string;
-  fileModifiedDate: number;
+  lastModifiedDate: number;
   arDrivePath: string;
 }) => {
-  const { fileHash, fileModifiedDate, arDrivePath } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileModifiedDate = ? AND arDrivePath = ?`, [
+  const { fileHash, lastModifiedDate, arDrivePath } = file;
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND lastModifiedDate = ? AND arDrivePath = ?`, [
     fileHash,
-    fileModifiedDate,
+    lastModifiedDate,
     arDrivePath,
   ]);
 };
 
 export const getByFileHashAndModifiedDateAndFileNameFromSyncTable = (file: {
   fileHash: string;
-  fileModifiedDate: number;
+  lastModifiedDate: number;
   fileName: string;
 }) => {
-  const { fileHash, fileModifiedDate, fileName } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileModifiedDate = ? AND fileName = ?`, [
+  const { fileHash, lastModifiedDate, fileName } = file;
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND lastModifiedDate = ? AND fileName = ?`, [
     fileHash,
-    fileModifiedDate,
+    lastModifiedDate,
     fileName,
   ]);
 };
@@ -296,6 +296,14 @@ export const updateFileInSyncTable = (file: {
       id,
     ],
   );
+};
+
+export const updateUserPublicArDriveTx = (publicArDriveIdTx: string, publicArDriveId: string) => {
+  return get(`UPDATE Profile SET publicArDriveIdTx = ? WHERE publicArDriveId = ?`, [publicArDriveIdTx, publicArDriveId]);
+};
+
+export const updateUserPrivateArDriveTx = (privateArDriveIdTx: string, privateArDriveId: string) => {
+  return get(`UPDATE Profile SET privateArDriveIdTx = ? WHERE privateArDriveId = ?`, [privateArDriveIdTx, privateArDriveId]);
 };
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {

@@ -40,7 +40,7 @@ export interface FileToUpload {
   fileName: string,
   arDrivePath: any,
   fileHash: any,
-  fileModifiedDate: any,
+  lastModifiedDate: any,
   fileVersion: any,
   isPublic: any,
   fileDataSyncStatus: any,

@@ -3,8 +3,8 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, cipher } from './common';
-import { Wallet } from './types';
-import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, getDriveInfoFromSyncTable, setFileUploaderObject } from './db';
+import { FileToUpload, Wallet } from './types';
+import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, getDriveInfoFromSyncTable, setFileUploaderObject, updateUserPublicArDriveTx } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
 
@@ -43,9 +43,11 @@ const getLocalWallet = async (existingWalletPath: string) => {
 
 // Gets all of the ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
-// Passes in a drivePrivacy string to control to look for public or private drives
-const getAllMyArDriveIds = async (walletPublicKey: any, drivePrivacy: string) => {
+const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   try {
+    const arDriveIds = new Array(1000);
+    let x = 0;
+
     const query = {
       query: `query {
       transactions(
@@ -56,7 +58,6 @@ const getAllMyArDriveIds = async (walletPublicKey: any, drivePrivacy: string) =>
           { name: "App-Name", values: "${appName}" }
           { name: "App-Version", values: "${appVersion}" }
           { name: "Entity-Type", values: "drive" }
-          { name: "Drive-Privacy", values: "${drivePrivacy}" }
         ]
       ) {
         edges {
@@ -71,6 +72,82 @@ const getAllMyArDriveIds = async (walletPublicKey: any, drivePrivacy: string) =>
       }
     }`,
     };
+
+    // Call the Arweave Graphql Endpoint
+    const response = await arweave.api
+      .request()
+      // .post('http://arca.arweave.io/graphql', query);
+      .post('https://arweave.dev/graphql', query);  // This must be updated to production when available
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+
+    // Iterate through each returned transaction and pull out the public drives
+    await asyncForEach(edges, async (edge: any) => {
+      const { node } = edge;
+      const { tags } = node;
+      let drivePrivacy : string = "";
+      let driveId : string = "";
+
+      // Iterate through each tag and pull out each drive ID as well the drives privacy status
+      tags.forEach((tag: any) => {
+        const key = tag.name;
+        if ((key === 'Drive-Privacy') && (tag.value === 'private')) {
+          drivePrivacy = 'private';
+        }
+        if (key === 'Drive-Id') {
+          driveId = tag.value;
+        }
+      });
+      if (drivePrivacy !== 'private') {
+        arDriveIds[x] = driveId;
+        x += 1;
+      }
+    });
+
+    // Eliminate any duplicates
+    const uniqueArDriveIds = arDriveIds.filter((item, i, ar) => ar.indexOf(item) === i);
+    return uniqueArDriveIds;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+// Gets all of the private ardrive IDs from a user's wallet
+// Uses the Entity type to only search for Drive tags
+// Only returns Private drives from graphql
+const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
+  try {
+    const arDriveIds = new Array(1000);
+    let x = 0;
+
+    const query = {
+      query: `query {
+      transactions(
+        first: 1000
+        sort: HEIGHT_ASC
+        owners: ["${walletPublicKey}"]
+        tags: [
+          { name: "App-Name", values: "${appName}" }
+          { name: "App-Version", values: "${appVersion}" }
+          { name: "Entity-Type", values: "drive" }
+          { name: "Drive-Privacy" values: "private" }
+        ]
+      ) {
+        edges {
+          node {
+            id
+            tags {
+              name
+              value
+            }
+          }
+        }
+      }
+    }`,
+    };
+
+    // Call the Arweave Graphql Endpoint
     const response = await arweave.api
       .request()
       // .post('http://arca.arweave.io/graphql', query);
@@ -78,19 +155,24 @@ const getAllMyArDriveIds = async (walletPublicKey: any, drivePrivacy: string) =>
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
-    const arDriveIds = new Array(1000);
-    let x = 0;
+
+    // Iterate through each returned transaction and pull out the private drive IDs
     await asyncForEach(edges, async (edge: any) => {
       const { node } = edge;
       const { tags } = node;
+      let driveId : string = "";
+
+      // Iterate through each tag and pull out each drive ID as well the drives privacy status
       tags.forEach((tag: any) => {
         const key = tag.name;
         if (key === 'Drive-Id') {
-          arDriveIds[x] = tag.value;
+          arDriveIds[x] = driveId;
         }
       });
       x += 1;
     });
+
+    // Eliminate any duplicates
     const uniqueArDriveIds = arDriveIds.filter((item, i, ar) => ar.indexOf(item) === i);
     return uniqueArDriveIds;
   } catch (err) {
@@ -201,6 +283,8 @@ const getWalletBalance = async (walletPublicKey: string) => {
   }
 };
 
+// Creates an arweave transaction to upload file data (and no metadata) to arweave
+// Saves the upload chunk of the object in case the upload has to be restarted
 const createArDrivePublicDataTransaction = async (
   walletPrivateKey: string,
   filePath: string,
@@ -241,7 +325,7 @@ const createArDrivePublicDataTransaction = async (
   }
 };
 
-// Creates an arweave transaction to upload file data (and no metadata) to arweave
+// Creates an arweave transaction to encrypt and upload file data (and no metadata) to arweave
 const createArDrivePrivateDataTransaction = async (
   walletPrivateKey: string,
   filePath: string,
@@ -283,6 +367,7 @@ const createArDrivePrivateDataTransaction = async (
 };
 
 // Creates an arweave transaction to upload file data (and no metadata) to arweave
+// OLD AND WILL BE DELETED
 const createArDriveDataTransaction = async (
   walletPrivateKey: string,
   filePath: string,
@@ -322,6 +407,7 @@ const createArDriveDataTransaction = async (
 };
 
 // Creates an arweave transaction to upload only file metadata to arweave
+// OLD AND WILL BE DELETED
 const createArDriveMetaDataTransaction = async (
   user: { jwk: string; owner: string },
   primaryFileMetaDataTags: {
@@ -377,26 +463,127 @@ const createArDriveMetaDataTransaction = async (
   }
 };
 
-// Creates an arweave transaction to upload encrypted private ardrive metadata
-const createPrivateArDriveTransaction = async (
-  walletPrivateKey: JWKInterface,
-  id: string,
-) : Promise<number> => {
+// Creates an arweave transaction to upload only file metadata to arweave
+const createArDrivePublicMetaDataTransaction = async (
+  walletPrivateKey: string,
+  fileToUpload: FileToUpload,
+  secondaryFileMetaDataJSON: any,
+) => {
   try {
-    const driveInfo = await getDriveInfoFromSyncTable(id);
-    // Create a JSON file, containing necessary drive metadata
-    const arDriveMetadataJSON = {
-      rootFolderId: driveInfo.fileId,
-    }
-
-    const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
-
-    // Create transaction
-    const transaction = await arweave.createTransaction({ data: arDriveMetaData }, walletPrivateKey);
+    const transaction = await arweave.createTransaction({ data: secondaryFileMetaDataJSON }, JSON.parse(walletPrivateKey));
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
-    // console.log('Uploading Public ArDrive Metadata (%d bytes) at %s to the Permaweb', txSize, arPrice);
+    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.fileName, txSize, arPrice);
+
+    // Tag file
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
+    transaction.addTag('Unix-Time', fileToUpload.unixTime);
+    transaction.addTag('Content-Type', 'application/json');
+    transaction.addTag('Entity-Type', fileToUpload.entityType);
+    transaction.addTag('Drive-Id', fileToUpload.arDriveId);
+    transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
+    transaction.addTag('File-Id', fileToUpload.fileId);
+
+    // Sign file
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+    const uploader = await arweave.transactions.getUploader(transaction);
+    const fileMetaDataToUpdate = {
+      id: fileToUpload.id,
+      fileMetaDataSyncStatus: '2',
+      metaDataTxId: transaction.id,
+    };
+    // Update the queue since the file metadata is now being uploaded
+    await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+    }
+    console.log('SUCCESS %s metadata was submitted with TX %s', fileToUpload.filePath, transaction.id);
+    return arPrice;
+  } catch (err) {
+    console.log(err);
+    return 0;
+  }
+};
+
+// Creates an arweave transaction to encrypt and upload only file metadata to arweave
+const createArDrivePrivateMetaDataTransaction = async (
+  user: { jwk: string; owner: string },
+  primaryFileMetaDataTags: {
+    appName: any;
+    appVersion: any;
+    unixTime: any;
+    contentType: any;
+    entityType: any;
+    arDriveId: any;
+    parentFolderId: any;
+    fileId: any;
+  },
+  secondaryFileMetaDataJSON: any,
+  filePath: any,
+  id: any,
+) => {
+  try {
+    const transaction = await arweave.createTransaction({ data: secondaryFileMetaDataJSON }, JSON.parse(user.jwk));
+    const txSize = transaction.get('data_size');
+    const winston = await getWinston(txSize);
+    const arPrice = +winston * 0.000000000001;
+    console.log('Uploading %s (%d bytes) at %s to the Permaweb', filePath, txSize, arPrice);
+
+    // Tag file
+    transaction.addTag('App-Name', primaryFileMetaDataTags.appName);
+    transaction.addTag('App-Version', primaryFileMetaDataTags.appVersion);
+    transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
+    transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
+    transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
+    transaction.addTag('Drive-Id', primaryFileMetaDataTags.arDriveId);
+    transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
+    transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
+
+    // Sign file
+    await arweave.transactions.sign(transaction, JSON.parse(user.jwk));
+    const uploader = await arweave.transactions.getUploader(transaction);
+    const fileMetaDataToUpdate = {
+      id,
+      fileMetaDataSyncStatus: '2',
+      metaDataTxId: transaction.id,
+    };
+    // Update the queue since the file metadata is now being uploaded
+    await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+    }
+    console.log('SUCCESS %s metadata was submitted with TX %s', filePath, transaction.id);
+    return arPrice;
+  } catch (err) {
+    console.log(err);
+    return 0;
+  }
+};
+
+// Creates an arweave transaction to upload public ardrive metadata
+const createPublicArDriveTransaction = async (
+  walletPrivateKey: string,
+  id: string,
+) : Promise<number> => {
+  try {
+
+    // Create a JSON file, containing necessary drive metadata
+    const driveInfo = await getDriveInfoFromSyncTable(id);
+    const arDriveMetadataJSON = {
+      rootFolderId: driveInfo.fileId,
+    }
+    const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
+
+    // Create transaction
+    const transaction = await arweave.createTransaction({ data: arDriveMetaData }, JSON.parse(walletPrivateKey));
+    const txSize = transaction.get('data_size');
+    const winston = await getWinston(txSize);
+    const arPrice = +winston * 0.000000000001;
+    console.log('Uploading Public ArDrive Metadata (%d bytes) at %s to the Permaweb', txSize, arPrice);
 
     // Tag file
     transaction.addTag('App-Name', appName);
@@ -407,7 +594,7 @@ const createPrivateArDriveTransaction = async (
     transaction.addTag('Drive-Id', driveInfo.arDriveId);
 
     // Sign file
-    await arweave.transactions.sign(transaction, walletPrivateKey);
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
     const uploader = await arweave.transactions.getUploader(transaction);
 
     const fileMetaDataToUpdate = {
@@ -416,13 +603,17 @@ const createPrivateArDriveTransaction = async (
       metaDataTxId: transaction.id,
     };
 
-    // Update the queue since the file metadata is now being uploaded
+    // Update the Sync Table record for the default /Public/ ArDrive since the metadata is now being uploaded
     await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
+
+    // Update the Profile table to include the default /Public/ ArDrive
+    await updateUserPublicArDriveTx(transaction.id, driveInfo.arDriveId)
+
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
     }
-    // console.log('SUCCESS Public ArDrive metadata was submitted with TX %s', transaction.id);
+    console.log('SUCCESS Public ArDrive metadata was submitted with TX %s', transaction.id);
     return arPrice;
   } catch (err) {
     console.log(err);
@@ -430,8 +621,8 @@ const createPrivateArDriveTransaction = async (
   }
 };
 
-// Creates an arweave transaction to upload public ardrive metadata
-const createPublicArDriveTransaction = async (
+// Creates an arweave transaction to upload encrypted private ardrive metadata
+const createPrivateArDriveTransaction = async (
   walletPrivateKey: JWKInterface,
   id: string,
 ) : Promise<number> => {
@@ -539,6 +730,8 @@ export {
   sendArDriveFee,
   createArDriveWallet,
   createArDriveMetaDataTransaction,
+  createArDrivePublicMetaDataTransaction,
+  createArDrivePrivateMetaDataTransaction,
   createArDriveDataTransaction,
   createArDrivePrivateDataTransaction,
   createArDrivePublicDataTransaction,
@@ -550,7 +743,8 @@ export {
   getTransactionData,
   getTransaction,
   getAllMyDataFileTxs,
-  getAllMyArDriveIds,
+  getAllMyPrivateArDriveIds,
+  getAllMyPublicArDriveIds,
   getLocalWallet,
   generateWallet,
 };

@@ -49,10 +49,10 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     const parentFolderPath = dirname(filePath);
     let arDrivePath = filePath.replace(syncFolderPath, '');
     arDrivePath = arDrivePath.replace(fileName, '');
-    const fileModifiedDate = stats.mtimeMs;
+    const lastModifiedDate = stats.mtimeMs;
     const fileRename = {
       fileHash,
-      fileModifiedDate,
+      lastModifiedDate,
       arDrivePath,
     };
     const renamedFile = await getByFileHashAndModifiedDateAndArDrivePathFromSyncTable(fileRename);
@@ -77,7 +77,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       newFileVersion.fileVersion += 1;
       newFileVersion.metaDataTx = '0';
       newFileVersion.dataTx = '0';
-      newFileVersion.fileModifiedDate = fileModifiedDate;
+      newFileVersion.lastModifiedDate = lastModifiedDate;
       newFileVersion.fileHash = fileHash;
       newFileVersion.fileSize = stats.size;
       newFileVersion.fileDataSyncStatus = '1'; // Sync status of 1
@@ -90,7 +90,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     const parentFolderId = await getFolderFromSyncTable(parentFolderPath);
     const fileMove = {
       fileHash,
-      fileModifiedDate,
+      lastModifiedDate,
       fileName,
     };
 
@@ -136,7 +136,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       fileName,
       fileHash,
       fileSize,
-      fileModifiedDate,
+      lastModifiedDate,
       fileVersion: 0,
       isPublic,
       isLocal: '1',
@@ -179,7 +179,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
     const contentType = 'application/json';
     const fileId = uuidv4();
     const fileName = folderPath.split(sep).pop();
-    const fileModifiedDate = stats.mtimeMs;
+    const lastModifiedDate = stats.mtimeMs;
     const arDrivePath = folderPath.replace(syncFolderPath, '');
     let fileMetaDataSyncStatus = '1'; // Set sync status to 1 for meta data transaction
 
@@ -214,7 +214,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       fileName,
       fileHash: '0',
       fileSize: '0',
-      fileModifiedDate,
+      lastModifiedDate,
       fileVersion: '0',
       isPublic,
       isLocal: '1',
