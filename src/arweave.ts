@@ -310,8 +310,9 @@ const createPublicArDriveTransaction = async (
     transaction.addTag('App-Version', appVersion);
     transaction.addTag('Unix-Time', (Math.round(new Date().getTime() / 1000)).toString());
     transaction.addTag('Content-Type', 'application/json');
-    transaction.addTag('Entity-Type', "drive");
+    transaction.addTag('Entity-Type', 'drive');
     transaction.addTag('Drive-Id', driveInfo.arDriveId);
+    transaction.addTag('Drive-Privacy:', 'public')
 
     // Sign file
     await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
