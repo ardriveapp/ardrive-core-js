@@ -184,8 +184,8 @@ export const addFileToSyncTable = (file: {
   );
 };
 
-export const getFolderFromSyncTable = (folderPath: string) => {
-  return get(`SELECT fileId FROM Sync WHERE filePath = ? AND entityType = 'folder'`, [folderPath]);
+export const getFolderOrDriveFromSyncTable = (folderPath: string) => {
+  return get(`SELECT fileId FROM Sync WHERE filePath = ? AND entityType = 'folder' OR entityType = 'drive'`, [folderPath]);
 };
 
 export const getByFilePathAndHashFromSyncTable = (file: { fileHash: string; filePath: string }) => {
@@ -299,11 +299,11 @@ export const updateFileInSyncTable = (file: {
 };
 
 export const updateUserPublicArDriveTx = (publicArDriveIdTx: string, publicArDriveId: string) => {
-  return get(`UPDATE Profile SET publicArDriveIdTx = ? WHERE publicArDriveId = ?`, [publicArDriveIdTx, publicArDriveId]);
+  return get(`UPDATE Profile SET publicArDriveTx = ? WHERE publicArDriveId = ?`, [publicArDriveIdTx, publicArDriveId]);
 };
 
 export const updateUserPrivateArDriveTx = (privateArDriveIdTx: string, privateArDriveId: string) => {
-  return get(`UPDATE Profile SET privateArDriveIdTx = ? WHERE privateArDriveId = ?`, [privateArDriveIdTx, privateArDriveId]);
+  return get(`UPDATE Profile SET privateArDriveTx = ? WHERE privateArDriveId = ?`, [privateArDriveIdTx, privateArDriveId]);
 };
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {
@@ -373,6 +373,10 @@ export const setFileUploaderObject = (uploader: string, id: string) => {
 
 export const updateFileDownloadStatus = (isLocal: string, id: string) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
+};
+
+export const updateArDriveRootDirectoryTx = (arDriveMetaDataTxId: string, permaWebLink: string, fileId: string, fileName: string, filePath: string) => {
+  return get(`UPDATE Sync SET metaDataTxId = ?, permaWebLink = ?, fileId = ?, fileMetaDataSyncStatus = 3 WHERE fileName = ? AND filePath = ?`, [arDriveMetaDataTxId, permaWebLink, fileId, fileName, filePath]);
 };
 
 export const getAllFromProfile = (): Promise<any[]> => {

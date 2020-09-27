@@ -5,7 +5,7 @@ import { extToMime, appName, appVersion } from './common';
 import { checksumFile } from './crypto';
 import {
   addFileToSyncTable,
-  getFolderFromSyncTable,
+  getFolderOrDriveFromSyncTable,
   getByFilePathAndHashFromSyncTable,
   getByFilePathFromSyncTable,
   getByFileHashAndModifiedDateAndArDrivePathFromSyncTable,
@@ -87,7 +87,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     }
 
     // Check if the file has been moved, or if there is another identical copy somewhere in your ArDrive.
-    const parentFolderId = await getFolderFromSyncTable(parentFolderPath);
+    const parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
     const fileMove = {
       fileHash,
       lastModifiedDate,
@@ -154,7 +154,8 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
   let parentFolderId = null;
   let stats = null;
 
-  const isQueuedOrCompleted = await getFolderFromSyncTable(folderPath);
+  // Check if the folder is already in the Sync Table, therefore we do not need to add a new one.
+  const isQueuedOrCompleted = await getFolderOrDriveFromSyncTable(folderPath);
 
   if (isQueuedOrCompleted) {
     // The folder is already in the queue, or it is the root and we do not want to process.
@@ -181,6 +182,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
     const fileName = folderPath.split(sep).pop();
     const lastModifiedDate = stats.mtimeMs;
     const arDrivePath = folderPath.replace(syncFolderPath, '');
+    let entityType = 'folder'
     let fileMetaDataSyncStatus = '1'; // Set sync status to 1 for meta data transaction
 
     if (folderPath === syncFolderPath) {
@@ -188,15 +190,21 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       fileMetaDataSyncStatus = '0'; // Set sync status to 0
     } else {
       const parentFolderPath = dirname(folderPath);
-      parentFolderId = await getFolderFromSyncTable(parentFolderPath);
+      parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
       parentFolderId = parentFolderId.fileId;
 
       // We do not upload the Private and Public Folders as these are represented by Drive entity-types instead.
       if (folderPath === syncFolderPath.concat('\\Public')) {
         fileMetaDataSyncStatus = '0';
+        entityType = 'drive'
       }
       if (folderPath === syncFolderPath.concat('\\Private')) {
         fileMetaDataSyncStatus = '0';
+        entityType = 'drive'
+      }
+      if (folderPath === syncFolderPath) {
+        fileMetaDataSyncStatus = '0';
+        entityType = 'drive'
       }
     }
 
@@ -205,7 +213,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       appVersion,
       unixTime,
       contentType,
-      entityType: 'folder',
+      entityType,
       arDriveId,
       parentFolderId,
       fileId,
@@ -237,8 +245,8 @@ const watchFolder = (syncFolderPath: string, privateArDriveId: string, publicArD
     interval: 7500,
     ignored: '*.enc',
     awaitWriteFinish: {
-      stabilityThreshold: 5000,
-      pollInterval: 5000,
+      stabilityThreshold: 10000,
+      pollInterval: 10000,
     },
   });
   watcher

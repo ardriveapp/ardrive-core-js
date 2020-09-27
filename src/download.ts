@@ -17,6 +17,7 @@ import {
   getLatestFileVersionFromSyncTable,
   setPermaWebFileToIgnore,
   getMyFileDownloadConflicts,
+  updateArDriveRootDirectoryTx,
 } from './db';
 import { ArDriveUser } from './types';
 
@@ -180,15 +181,42 @@ async function getFileMetaDataFromTx(
       newFileToDownload.isPublic = '1';
     }
 
-    let filePath: string;
-    let permaWebLink: string;
+    // Perform specific actions for File entities
+    let filePath = "";
+    let permaWebLink = "";
+
+    // By default, every file and folder is version 0
+    newFileToDownload.fileVersion = 0
+
     if (newFileToDownload.entityType === 'file') {
+      // Since the File MetaData Tx does not have the content type of underlying file, we get it here
       filePath = user.syncFolderPath.concat(dataJSON.path, dataJSON.name);
-      newFileToDownload.contentType = extToMime(filePath); // Since the File MetaData Tx does not have the content type of underlying file, we get it here
+      newFileToDownload.contentType = extToMime(filePath);
       permaWebLink = gatewayURL.concat(dataJSON.dataTxId);
-    } else {
+
+      // Check to see if a previous version exists, and if so, increment the version.
+      // Versions are determined by comparing old/new file hash.
+      const latestFile = await getLatestFileVersionFromSyncTable(newFileToDownload.fileId)
+      if (latestFile !== undefined) {
+        if (latestFile.fileHash !== newFileToDownload.fileHash) {
+          newFileToDownload.fileVersion = +latestFile.fileVersion + 1;
+          console.log ("%s has a new version %s", newFileToDownload.fileName, newFileToDownload.fileVersion)
+        }
+        // If the previous file id matches, but the hashes are same, then we do not increment the version
+        else {
+          newFileToDownload.fileVersion = latestFile.fileVersion;
+        }
+      }
+    // Perform specific actions for Folder entities
+    } else if (newFileToDownload.entityType === 'folder') {
       filePath = user.syncFolderPath.concat(dataJSON.path);
       permaWebLink = gatewayURL.concat(metaDataTxId);
+    } else if (newFileToDownload.entityType === 'drive') {
+      // update the sync table directly by exact file path and file name metaDataTxId for public ardrive
+      filePath = user.syncFolderPath.concat("\\Public");
+      permaWebLink = gatewayURL.concat(metaDataTxId);
+      await updateArDriveRootDirectoryTx(metaDataTxId, permaWebLink, dataJSON.rootFolderId, "Public", filePath)
+      return 'Success';
     }
 
     newFileToDownload.fileSize = dataJSON.size;
@@ -196,8 +224,8 @@ async function getFileMetaDataFromTx(
     newFileToDownload.fileName = dataJSON.name;
     newFileToDownload.arDrivePath = dataJSON.path;
     newFileToDownload.fileHash = dataJSON.hash;
-    newFileToDownload.lastModifiedDate = dataJSON.modifiedDate;
-    newFileToDownload.fileVersion = dataJSON.fileVersion;
+    newFileToDownload.lastModifiedDate = dataJSON.lastModifiedDate;
+    // newFileToDownload.fileVersion = dataJSON.fileVersion; Version is being deprecated from ArFS
     newFileToDownload.fileDataSyncStatus = 3;
     newFileToDownload.fileMetaDataSyncStatus = 3;
     newFileToDownload.permaWebLink = permaWebLink;
@@ -208,6 +236,7 @@ async function getFileMetaDataFromTx(
       filePath,
       fileHash: dataJSON.hash,
     };
+
     // Check if the exact file already exists in the same location
     const exactMatch = await getByFilePathAndHashFromSyncTable(exactFileMatch);
     if (exactMatch) {
@@ -247,7 +276,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   });
 
   // Get your public files
-  console.log('---Getting all your Private ArDrive files---');
+  console.log('---Getting all your Public ArDrive files---');
   const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.publicArDriveId);
   await asyncForEach(publicTxIds, async (publicTxId: string) => {
     await getFileMetaDataFromTx(publicTxId, user);

@@ -4,7 +4,6 @@ import {
   createArDrivePublicMetaDataTransaction,
   createArDrivePrivateMetaDataTransaction,
   createArDriveDataTransaction,
-  sendArDriveFee,
   getTransactionStatus,
   createPublicArDriveTransaction,
   createPrivateArDriveTransaction,
@@ -116,7 +115,7 @@ async function uploadArDriveFileData(
       dataTxId = await createArDriveDataTransaction(user.walletPrivateKey, encryptedFilePath, fileToUpload.contentType, fileToUpload.id);
       fs.unlinkSync(encryptedFilePath);
     }
-    await sendArDriveFee(user.walletPrivateKey, arPrice);
+    // await sendArDriveFee(user.walletPrivateKey, arPrice);
     return dataTxId;
   } catch (err) {
     console.log(err);
@@ -149,7 +148,6 @@ async function uploadArDriveFileMetaData(
       path: fileToUpload.arDrivePath,
       lastModifiedDate: fileToUpload.lastModifiedDate,
       dataTxId: fileToUpload.dataTxId,
-      fileVersion: fileToUpload.fileVersion,
     };
     // Convert to JSON string
     const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
@@ -195,12 +193,13 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
       await asyncForEach(
         filesToUpload,
         async (fileToUpload: FileToUpload) => {
+          console.log ("Uploading %s", fileToUpload.fileName)
+          // Check to see if we have to upload the File Data and Metadata
+          // If not, we just check to see if we have to update metadata.
           if (fileToUpload.fileDataSyncStatus === '1') {
-            // file data and metadata transaction
             const dataTxId = await uploadArDriveFileData(user, fileToUpload);
             fileToUpload.dataTxId = dataTxId;
             await uploadArDriveFileMetaData(user, fileToUpload);
-            // console.log('Metadata and file uploaded.');
           } else if (fileToUpload.fileMetaDataSyncStatus === '1') {
             await uploadArDriveFileMetaData(user, fileToUpload);
             // console.log('Metadata uploaded!');
@@ -220,7 +219,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         console.log ("Wow that was your first Public ARDRIVE Transaction!  Congrats!")
         createPublicArDriveTransaction(user.walletPrivateKey, publicDriveId.id)
       }
-      const privateDriveId = await getNewDriveFromSyncTable("Public");
+      const privateDriveId = await getNewDriveFromSyncTable("Private");
       if (privateDriveId === undefined )
       {
         // Upload private drive arweave transaction
