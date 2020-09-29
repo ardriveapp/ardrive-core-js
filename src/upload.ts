@@ -6,7 +6,7 @@ import {
   createArDriveDataTransaction,
   getTransactionStatus,
   createPublicArDriveTransaction,
-  createPrivateArDriveTransaction,
+  // createPrivateArDriveTransaction,
   createArDrivePublicDataTransaction,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
@@ -210,9 +210,8 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
     }
     if (filesUploaded > 0) {
       console.log('Uploaded %s files to your ArDrive!', filesUploaded);
-
       // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
-      const publicDriveId = await getNewDriveFromSyncTable("Public");
+      const publicDriveId = await getNewDriveFromSyncTable('Public');
       if (publicDriveId !== undefined )
       {
         // Upload public drive arweave transaction
@@ -220,11 +219,11 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         createPublicArDriveTransaction(user.walletPrivateKey, publicDriveId.id)
       }
       const privateDriveId = await getNewDriveFromSyncTable("Private");
-      if (privateDriveId === undefined )
+      if (privateDriveId !== undefined )
       {
         // Upload private drive arweave transaction
-        console.log ("Wow that was your first Private ARDRIVE Transaction!  Congrats!")
-        createPrivateArDriveTransaction(user.walletPrivateKey, privateDriveId.id)
+        // console.log ("Wow that was your first Private ARDRIVE Transaction!  Congrats!")
+        // createPrivateArDriveTransaction(user.walletPrivateKey, privateDriveId.id)
       }
     }
     return 'SUCCESS';

@@ -1,5 +1,5 @@
 import * as sqlite3 from 'sqlite3';
-import { ArDriveUser } from './types';
+import { ArDriveUser, ArFSFileMetaData } from './types';
 
 // Use verbose mode in development
 let sql3 = sqlite3;
@@ -107,41 +107,17 @@ const createSyncTable = () => {
   return run(sql);
 };
 
-export const addFileToSyncTable = (file: {
-  appName: any;
-  appVersion: any;
-  unixTime: any;
-  contentType: any;
-  entityType: any;
-  arDriveId: any;
-  parentFolderId: any;
-  fileId: any;
-  filePath: any;
-  arDrivePath: any;
-  fileName: any;
-  fileHash: any;
-  fileSize: any;
-  lastModifiedDate: any;
-  fileVersion: any;
-  isPublic: any;
-  isLocal: any;
-  metaDataTxId: any;
-  dataTxId: any;
-  fileDataSyncStatus: any;
-  fileMetaDataSyncStatus: any;
-  permaWebLink: any;
-}) => {
+export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   const {
     appName,
     appVersion,
     unixTime,
     contentType,
     entityType,
-    arDriveId,
+    driveId,
     parentFolderId,
     fileId,
     filePath,
-    arDrivePath,
     fileName,
     fileHash,
     fileSize,
@@ -156,18 +132,17 @@ export const addFileToSyncTable = (file: {
     permaWebLink,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, arDrivePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
       unixTime,
       contentType,
       entityType,
-      arDriveId,
+      driveId,
       parentFolderId,
       fileId,
       filePath,
-      arDrivePath,
       fileName,
       fileHash,
       fileSize,
@@ -184,13 +159,12 @@ export const addFileToSyncTable = (file: {
   );
 };
 
-export const getFolderOrDriveFromSyncTable = (folderPath: string) => {
-  return get(`SELECT fileId FROM Sync WHERE filePath = ? AND entityType = 'folder' OR entityType = 'drive'`, [folderPath]);
+export const getFolderOrDriveFromSyncTable = (filePath: string) => {
+  return get(`SELECT fileId FROM Sync WHERE filePath = ? AND (entityType = 'folder' OR entityType = 'drive')`, [filePath]);
 };
 
-export const getByFilePathAndHashFromSyncTable = (file: { fileHash: string; filePath: string }) => {
-  const { fileHash, filePath } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND filePath = ?`, [fileHash, filePath]);
+export const checkIfExistsInSyncTable = (fileHash: string, fileName: string, fileId: string) => {
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileName AND fileId = ?`, [fileHash, fileName, fileId]);
 };
 
 export const getByFileHashAndModifiedDateAndArDrivePathFromSyncTable = (file: {
@@ -223,6 +197,11 @@ export const getByFilePathFromSyncTable = (filePath: string) => {
   return get(`SELECT * FROM Sync WHERE filePath = ? ORDER BY fileVersion DESC`, [filePath]);
 };
 
+export const getByFilePathAndHashFromSyncTable = (file: { fileHash: string; filePath: string }) => {
+  const { fileHash, filePath } = file;
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND filePath = ?`, [fileHash, filePath]);
+};
+
 export const getLatestFileVersionFromSyncTable = (fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
@@ -241,6 +220,26 @@ export const getFilesToDownload = () => {
 
 export const getFoldersToCreate = () => {
   return all('SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 0 AND entityType = "folder"');
+};
+
+export const getNewDriveFromSyncTable = (fileName: string) => {
+  return get('SELECT * FROM Sync WHERE metaDataTxId = 0 AND fileName = ?', [fileName]);
+}
+
+export const getDriveInfoFromSyncTable = (id: string) => {
+  return get(`SELECT arDriveId, fileId FROM Sync WHERE id = ?`, [id]);
+};
+
+export const getFolderNameFromSyncTable = (fileId: string) => {
+  return get(`SELECT fileName FROM Sync WHERE fileId = ?`, [fileId]);
+};
+
+export const getFolderEntityFromSyncTable = (fileId: string) => {
+  return get(`SELECT entityType FROM Sync WHERE fileId = ?`, [fileId]);
+};
+
+export const getFolderParentIdFromSyncTable = (fileId: string) => {
+  return get(`SELECT parentFolderId FROM Sync WHERE fileId = ?`, [fileId]);
 };
 
 export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: any; metaDataTxId: any; id: any }) => {
@@ -355,6 +354,10 @@ export const getUserIdFromProfile = (login: string) => {
   return get(`SELECT id FROM Profile WHERE login = ?`, [login]);
 };
 
+export const getAllMissingPathsFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE filePath = ''`);
+}
+
 export const deleteFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
@@ -371,6 +374,10 @@ export const setFileUploaderObject = (uploader: string, id: string) => {
   return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
+export const setFilePath = (filePath: string, id: string) => {
+  return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
+};
+
 export const updateFileDownloadStatus = (isLocal: string, id: string) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
@@ -379,16 +386,12 @@ export const updateArDriveRootDirectoryTx = (arDriveMetaDataTxId: string, permaW
   return get(`UPDATE Sync SET metaDataTxId = ?, permaWebLink = ?, fileId = ?, fileMetaDataSyncStatus = 3 WHERE fileName = ? AND filePath = ?`, [arDriveMetaDataTxId, permaWebLink, fileId, fileName, filePath]);
 };
 
-export const getAllFromProfile = (): Promise<any[]> => {
-  return all('SELECT * FROM Profile');
-};
-
-export const getNewDriveFromSyncTable = (drivePrivacy: string) => {
-  return get('SELECT id FROM Sync WHERE metaDataTxId = 0 AND fileName = ?', [drivePrivacy]);
+export const getArDriveSyncFolderPathFromProfile = () => {
+  return get(`SELECT syncFolderPath FROM Profile WHERE id = 1`); // THIS ONLY WORKS WITH 1 PROFILE
 }
 
-export const getDriveInfoFromSyncTable = (id: string) => {
-  return get(`SELECT arDriveId, fileId FROM Sync WHERE id = ?`, [id]);
+export const getAllFromProfile = (): Promise<any[]> => {
+  return all('SELECT * FROM Profile');
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {

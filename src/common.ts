@@ -2,7 +2,7 @@
 import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
-import { sep, extname } from 'path';
+import { sep } from 'path';
 import { Wallet } from './types';
 
 export const gatewayURL = 'https://arweave.net/';
@@ -46,8 +46,8 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / gigaBytes).toFixed(decimal)} GB`;
 };
 
-const extToMime = (fullpath: string): string => {
-  let extension = extname(fullpath);
+const extToMime = (fullPath: string): string => {
+  let extension = fullPath.substring(fullPath.lastIndexOf(".")+1)
   extension = extension.toLowerCase();
   const m = mime.lookup(extension);
   return m === false ? 'unknown' : m;
@@ -55,8 +55,8 @@ const extToMime = (fullpath: string): string => {
 
 // Gets the price of AR based on amount of data
 const getWinston = async (bytes: any) => {
-  // const response = await fetch(`https://arweave.net/price/${bytes}`);
-  const response = await fetch(`https://perma.online/price/${bytes}`);
+  const response = await fetch(`https://arweave.net/price/${bytes}`);
+  // const response = await fetch(`https://perma.online/price/${bytes}`);
   const winston = await response.json();
   return winston;
 };

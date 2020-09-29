@@ -59,3 +59,27 @@ export interface ArFSDriveMetadata {
   drivePrivacy: string,
   driveAuthMode: string,
 }
+
+export interface ArFSFileMetaData {
+  appName: string,
+  appVersion: string,
+  unixTime: number,
+  contentType: string,
+  entityType: string,
+  driveId: string,
+  parentFolderId: string,
+  fileId: string,
+  fileSize: number,
+  fileName: string,
+  fileHash: string,
+  filePath: string,
+  fileVersion: number,
+  lastModifiedDate: number,
+  isLocal: number,
+  isPublic: number,
+  permaWebLink: string,
+  metaDataTxId: string,
+  dataTxId: string,
+  fileDataSyncStatus: number,
+  fileMetaDataSyncStatus: number,
+};

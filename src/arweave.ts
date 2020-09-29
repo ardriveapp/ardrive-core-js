@@ -43,6 +43,7 @@ const getLocalWallet = async (existingWalletPath: string) => {
 
 // Gets all of the ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
+// This has to be updated to specify Drive-Privacy: public
 const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   try {
     var arDriveMetaData: Array<{ driveId: string, metaDataTx: string }> = Array();
@@ -181,7 +182,7 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
   }
 };
 
-// Gets all of the transactions from a user's wallet, filtered by owner and ardrive version.
+// Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
 const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
   try {
     const query = {

@@ -15,6 +15,7 @@ import {
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
+import { ArFSFileMetaData } from './types';
 
 const queueFile = async (filePath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   let stats = null;
@@ -64,7 +65,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       renamedFile.metaDataTx = '0';
       renamedFile.fileName = fileName;
       renamedFile.filePath = filePath;
-      renamedFile.fileMetaDataSyncStatus = '1'; // Sync status of 1 = metadatatx only
+      renamedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
       addFileToSyncTable(renamedFile);
       return;
     }
@@ -80,7 +81,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       newFileVersion.lastModifiedDate = lastModifiedDate;
       newFileVersion.fileHash = fileHash;
       newFileVersion.fileSize = stats.size;
-      newFileVersion.fileDataSyncStatus = '1'; // Sync status of 1
+      newFileVersion.fileDataSyncStatus = 1; // Sync status of 1
       console.log('%s updating file version to %s', filePath, newFileVersion.fileVersion);
       addFileToSyncTable(newFileVersion);
       return;
@@ -94,6 +95,14 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       fileName,
     };
 
+    let isPublic = 0;
+    let arDriveId = privateArDriveId;
+    if (filePath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
+      // File is in the public drive.
+      isPublic = 1;
+      arDriveId = publicArDriveId
+    }
+
     const movedFile = await getByFileHashAndModifiedDateAndFileNameFromSyncTable(fileMove);
     if (movedFile) {
       movedFile.unixTime = Math.round(new Date().getTime() / 1000);
@@ -102,7 +111,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       movedFile.filePath = filePath;
       movedFile.arDrivePath = arDrivePath;
       movedFile.parentFolderId = parentFolderId.fileId;
-      movedFile.fileMetaDataSyncStatus = '1'; // Sync status of 1 = metadatatx only
+      movedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
       addFileToSyncTable(movedFile);
       console.log('%s has been moved', filePath);
       return;
@@ -110,41 +119,32 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
 
     // No match, so queue a new file
     console.log('%s queueing new file', filePath);
-    let isPublic = '0';
-    let arDriveId = privateArDriveId;
-    if (filePath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
-      // File is in the public drive.
-      isPublic = '1';
-      arDriveId = publicArDriveId
-    }
-
     const unixTime = Math.round(new Date().getTime() / 1000);
     const contentType = extToMime(filePath);
     const fileId = uuidv4();
     const fileSize = stats.size;
-    const newFileToQueue = {
+    const newFileToQueue : ArFSFileMetaData = {
       appName,
       appVersion,
       unixTime,
       contentType,
       entityType: 'file',
-      arDriveId,
+      driveId: arDriveId,
       parentFolderId: parentFolderId.fileId,
       fileId,
       filePath,
-      arDrivePath,
       fileName,
       fileHash,
       fileSize,
       lastModifiedDate,
       fileVersion: 0,
       isPublic,
-      isLocal: '1',
+      isLocal: 1,
       metaDataTxId: '0',
       dataTxId: '0',
       permaWebLink: '',
-      fileDataSyncStatus: '1', // Sync status of 1 requires a data tx
-      fileMetaDataSyncStatus: '1', // Sync status of 1 requires a metadata tx
+      fileDataSyncStatus: 1, // Sync status of 1 requires a data tx
+      fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
     };
     addFileToSyncTable(newFileToQueue);
   }
@@ -156,7 +156,6 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
 
   // Check if the folder is already in the Sync Table, therefore we do not need to add a new one.
   const isQueuedOrCompleted = await getFolderOrDriveFromSyncTable(folderPath);
-
   if (isQueuedOrCompleted) {
     // The folder is already in the queue, or it is the root and we do not want to process.
   } else {
@@ -168,26 +167,29 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       return;
     }
 
-    let isPublic = '0';
+    let isPublic = 0;
     let arDriveId = privateArDriveId;
     if (folderPath.indexOf(syncFolderPath.concat('\\Public')) !== -1) {
       // Public by choice, do not encrypt
-      isPublic = '1';
+      isPublic = 1;
       arDriveId = publicArDriveId;
     }
 
     const unixTime = Math.round(new Date().getTime() / 1000);
     const contentType = 'application/json';
     const fileId = uuidv4();
-    const fileName = folderPath.split(sep).pop();
+    let fileName = folderPath.split(sep).pop();
+    if (fileName === undefined)
+    {
+      fileName = "";
+    }
     const lastModifiedDate = stats.mtimeMs;
-    const arDrivePath = folderPath.replace(syncFolderPath, '');
     let entityType = 'folder'
-    let fileMetaDataSyncStatus = '1'; // Set sync status to 1 for meta data transaction
+    let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
     if (folderPath === syncFolderPath) {
       parentFolderId = uuidv4(); // This will act as the root parent Folder ID
-      fileMetaDataSyncStatus = '0'; // Set sync status to 0
+      fileMetaDataSyncStatus = 0; // Set sync status to 0
     } else {
       const parentFolderPath = dirname(folderPath);
       parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
@@ -195,41 +197,40 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
 
       // We do not upload the Private and Public Folders as these are represented by Drive entity-types instead.
       if (folderPath === syncFolderPath.concat('\\Public')) {
-        fileMetaDataSyncStatus = '0';
+        fileMetaDataSyncStatus = 0;
         entityType = 'drive'
       }
       if (folderPath === syncFolderPath.concat('\\Private')) {
-        fileMetaDataSyncStatus = '0';
+        fileMetaDataSyncStatus = 0;
         entityType = 'drive'
       }
       if (folderPath === syncFolderPath) {
-        fileMetaDataSyncStatus = '0';
+        fileMetaDataSyncStatus = 0;
         entityType = 'drive'
       }
     }
 
-    const folderToQueue = {
+    const folderToQueue : ArFSFileMetaData = {
       appName,
       appVersion,
       unixTime,
       contentType,
       entityType,
-      arDriveId,
+      driveId: arDriveId,
       parentFolderId,
       fileId,
       filePath: folderPath,
-      arDrivePath,
       fileName,
       fileHash: '0',
-      fileSize: '0',
+      fileSize: 0,
       lastModifiedDate,
-      fileVersion: '0',
+      fileVersion: 0,
       isPublic,
-      isLocal: '1',
+      isLocal: 1,
       metaDataTxId: '0',
       dataTxId: '0',
       permaWebLink: '',
-      fileDataSyncStatus: '0', // Folders do not require a data tx
+      fileDataSyncStatus: 0, // Folders do not require a data tx
       fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
     };
     addFileToSyncTable(folderToQueue);
@@ -242,7 +243,8 @@ const watchFolder = (syncFolderPath: string, privateArDriveId: string, publicArD
     persistent: true,
     ignoreInitial: false,
     usePolling: true,
-    interval: 7500,
+    interval: 10000,
+    binaryInterval: 10000,
     ignored: '*.enc',
     awaitWriteFinish: {
       stabilityThreshold: 10000,
