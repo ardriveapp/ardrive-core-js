@@ -16,6 +16,7 @@ import {
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArFSFileMetaData } from './types';
+const { hashElement } = require('folder-hash');
 
 const queueFile = async (filePath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
   let stats = null;
@@ -150,6 +151,17 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
   if (isQueuedOrCompleted) {
     // The folder is already in the queue, or it is the root and we do not want to process.
   } else {
+    const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
+    hashElement(__dirname, options)
+      .then((hash: { toString: () => any; }) => {
+        console.log('Result for folder "' + __dirname + '" (with options):');
+        console.log(hash.toString(), '\n');
+      })
+      .catch((error: any) => {
+        return console.error('hashing failed:', error);
+      }
+    );
+
     console.log('%s queueing folder', folderPath);
     try {
       stats = fs.statSync(folderPath);
