@@ -85,11 +85,10 @@ const createSyncTable = () => {
         unixTime integer,
         contentType text,
         entityType text,
-        arDriveId text,
+        driveId text,
         parentFolderId text,
         fileId text,
         filePath text,
-        arDrivePath text,
         fileName text,
         fileHash text,
         fileSize text,
@@ -132,7 +131,7 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
     permaWebLink,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, arDriveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
@@ -167,16 +166,10 @@ export const checkIfExistsInSyncTable = (fileHash: string, fileName: string, fil
   return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileName AND fileId = ?`, [fileHash, fileName, fileId]);
 };
 
-export const getByFileHashAndModifiedDateAndArDrivePathFromSyncTable = (file: {
-  fileHash: string;
-  lastModifiedDate: number;
-  arDrivePath: string;
-}) => {
-  const { fileHash, lastModifiedDate, arDrivePath } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND lastModifiedDate = ? AND arDrivePath = ?`, [
+export const getByFileHashAndParentFolderFromSyncTable = (fileHash: string, folderPath: string) => {
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND filePath LIKE ?`, [
     fileHash,
-    lastModifiedDate,
-    arDrivePath,
+    folderPath,
   ]);
 };
 
@@ -227,7 +220,7 @@ export const getNewDriveFromSyncTable = (fileName: string) => {
 }
 
 export const getDriveInfoFromSyncTable = (id: string) => {
-  return get(`SELECT arDriveId, fileId FROM Sync WHERE id = ?`, [id]);
+  return get(`SELECT driveId, fileId FROM Sync WHERE id = ?`, [id]);
 };
 
 export const getFolderNameFromSyncTable = (fileId: string) => {
@@ -257,7 +250,7 @@ export const updateFileDataSyncStatus = (file: { fileDataSyncStatus: any; dataTx
 };
 
 export const updateFileInSyncTable = (file: {
-  arDriveId: any;
+  driveId: any;
   parentFolderId: any;
   fileId: any;
   fileVersion: any;
@@ -269,7 +262,7 @@ export const updateFileInSyncTable = (file: {
   id: any;
 }) => {
   const {
-    arDriveId,
+    driveId,
     parentFolderId,
     fileId,
     fileVersion,
@@ -281,9 +274,9 @@ export const updateFileInSyncTable = (file: {
     id,
   } = file;
   return run(
-    'UPDATE Sync SET arDriveId = ?, parentFolderId = ?, fileId = ?, fileVersion = ?, metaDataTxId = ?, dataTxId = ?, fileDataSyncStatus = ?, fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?',
+    'UPDATE Sync SET driveId = ?, parentFolderId = ?, fileId = ?, fileVersion = ?, metaDataTxId = ?, dataTxId = ?, fileDataSyncStatus = ?, fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?',
     [
-      arDriveId,
+      driveId,
       parentFolderId,
       fileId,
       fileVersion,

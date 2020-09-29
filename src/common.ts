@@ -6,8 +6,8 @@ import { sep } from 'path';
 import { Wallet } from './types';
 
 export const gatewayURL = 'https://arweave.net/';
-export const appName = 'ArDrive';
-export const appVersion = '0.1.2';
+export const appName = 'ArDrive-Desktop';
+export const appVersion = '0.1.0';
 export const arFSVersion = '0.9';
 export const cipher = "AES256-GCM"
 

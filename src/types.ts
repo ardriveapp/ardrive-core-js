@@ -32,7 +32,7 @@ export interface FileToUpload {
   unixTime: string,
   contentType: string,
   entityType: string,
-  arDriveId: string,
+  driveId: string,
   parentFolderId: string,
   fileId: string,
   fileSize: string,

@@ -8,7 +8,7 @@ import {
   getFolderOrDriveFromSyncTable,
   getByFilePathAndHashFromSyncTable,
   getByFilePathFromSyncTable,
-  getByFileHashAndModifiedDateAndArDrivePathFromSyncTable,
+  getByFileHashAndParentFolderFromSyncTable,
   getByFileHashAndModifiedDateAndFileNameFromSyncTable,
   setPermaWebFileToIgnore,
   setPermaWebFileToOverWrite,
@@ -26,13 +26,24 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     return;
   }
 
-  let extension = extname(filePath);
+  let extension = extname(filePath).toLowerCase();
   const fileName = basename(filePath);
-  extension = extension.toLowerCase();
+  let isPublic = 0;
+  let driveId = privateArDriveId;
+
+  if (filePath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
+    // File is in the public drive.
+    isPublic = 1;
+    driveId = publicArDriveId
+  }
 
   // Skip if file is encrypted or size is 0
   if (extension !== '.enc' && stats.size !== 0 && !fileName.startsWith('~$')) {
     const fileHash = await checksumFile(filePath);
+    const parentFolderPath = dirname(filePath);
+    const lastModifiedDate = Math.floor(stats.mtimeMs);
+    const parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
+
     const exactFileMatch = {
       filePath,
       fileHash,
@@ -40,33 +51,8 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
 
     // Check if the exact file already exists in the same location
     const exactMatch = await getByFilePathAndHashFromSyncTable(exactFileMatch);
-
     if (exactMatch) {
       // This file's version already exists.  Do nothing
-      return;
-    }
-
-    // Check if the file has been renamed by looking at its path, modifiedDate and hash
-    const parentFolderPath = dirname(filePath);
-    let arDrivePath = filePath.replace(syncFolderPath, '');
-    arDrivePath = arDrivePath.replace(fileName, '');
-    const lastModifiedDate = stats.mtimeMs;
-    const fileRename = {
-      fileHash,
-      lastModifiedDate,
-      arDrivePath,
-    };
-    const renamedFile = await getByFileHashAndModifiedDateAndArDrivePathFromSyncTable(fileRename);
-
-    if (renamedFile) {
-      // The file has been renamed.  Submit as Metadata.
-      console.log('%s was just renamed', filePath);
-      renamedFile.unixTime = Math.round(new Date().getTime() / 1000);
-      renamedFile.metaDataTx = '0';
-      renamedFile.fileName = fileName;
-      renamedFile.filePath = filePath;
-      renamedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
-      addFileToSyncTable(renamedFile);
       return;
     }
 
@@ -86,34 +72,38 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       addFileToSyncTable(newFileVersion);
       return;
     }
+ 
+    // Check if the file has been renamed by looking at its path, modifiedDate and hash
+    const renamedFile = await getByFileHashAndParentFolderFromSyncTable(fileHash, parentFolderPath.concat('%'));
+    if (renamedFile) {
+      // The file has been renamed.  Submit as Metadata.
+      console.log('%s was just renamed', filePath);
+      renamedFile.unixTime = Math.round(new Date().getTime() / 1000);
+      renamedFile.metaDataTx = '0';
+      renamedFile.fileName = fileName;
+      renamedFile.filePath = filePath;
+      renamedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
+      addFileToSyncTable(renamedFile);
+      return;
+    }
 
     // Check if the file has been moved, or if there is another identical copy somewhere in your ArDrive.
-    const parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
     const fileMove = {
       fileHash,
       lastModifiedDate,
       fileName,
     };
 
-    let isPublic = 0;
-    let arDriveId = privateArDriveId;
-    if (filePath.indexOf(syncFolderPath.concat('\\Public\\')) !== -1) {
-      // File is in the public drive.
-      isPublic = 1;
-      arDriveId = publicArDriveId
-    }
-
     const movedFile = await getByFileHashAndModifiedDateAndFileNameFromSyncTable(fileMove);
     if (movedFile) {
+      console.log('%s has been moved', filePath);
       movedFile.unixTime = Math.round(new Date().getTime() / 1000);
       movedFile.metaDataTx = '0';
       movedFile.fileName = fileName;
       movedFile.filePath = filePath;
-      movedFile.arDrivePath = arDrivePath;
       movedFile.parentFolderId = parentFolderId.fileId;
       movedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
       addFileToSyncTable(movedFile);
-      console.log('%s has been moved', filePath);
       return;
     }
 
@@ -129,7 +119,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       unixTime,
       contentType,
       entityType: 'file',
-      driveId: arDriveId,
+      driveId,
       parentFolderId: parentFolderId.fileId,
       fileId,
       filePath,
@@ -147,6 +137,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
     };
     addFileToSyncTable(newFileToQueue);
+    return;
   }
 };
 
@@ -168,11 +159,11 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
     }
 
     let isPublic = 0;
-    let arDriveId = privateArDriveId;
+    let driveId = privateArDriveId;
     if (folderPath.indexOf(syncFolderPath.concat('\\Public')) !== -1) {
       // Public by choice, do not encrypt
       isPublic = 1;
-      arDriveId = publicArDriveId;
+      driveId = publicArDriveId;
     }
 
     const unixTime = Math.round(new Date().getTime() / 1000);
@@ -216,7 +207,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       unixTime,
       contentType,
       entityType,
-      driveId: arDriveId,
+      driveId,
       parentFolderId,
       fileId,
       filePath: folderPath,

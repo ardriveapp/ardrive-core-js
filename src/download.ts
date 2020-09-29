@@ -233,7 +233,7 @@ async function getFileMetaDataFromTx(
     fileToSync.fileSize = dataJSON.size;
     fileToSync.fileName = dataJSON.name;
     fileToSync.fileHash = dataJSON.hash;
-    fileToSync.lastModifiedDate = dataJSON.lastModifiedDate;
+    fileToSync.lastModifiedDate = Math.floor(Number(dataJSON.lastModifiedDate));
     fileToSync.fileDataSyncStatus = 3;
     fileToSync.fileMetaDataSyncStatus = 3;
     fileToSync.metaDataTxId = metaDataTxId;
@@ -360,6 +360,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           isPublic: string;
           fileHash: string;
           fileId: string;
+          lastModifiedDate: number;
           isLocal: string;
           parentFolderId: string;
         }) => {
@@ -394,6 +395,11 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               latestFileVersion.dataTxId,
               latestFileVersion.isPublic,
             );
+            
+            // Ensure the file downloaded has the same lastModifiedDate as before
+            let currentDate = new Date()
+            let lastModifiedDate = new Date(Number(latestFileVersion.lastModifiedDate))
+            fs.utimesSync(latestFileVersion.filePath, currentDate, lastModifiedDate)
             await updateFileDownloadStatus('1', fileToDownload.id);
           } else {
             // This is an older version, and we ignore it for now.

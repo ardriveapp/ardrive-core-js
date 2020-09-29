@@ -46,7 +46,10 @@ const getLocalWallet = async (existingWalletPath: string) => {
 // This has to be updated to specify Drive-Privacy: public
 const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   try {
-    var arDriveMetaData: Array<{ driveId: string, metaDataTx: string }> = Array();
+    let arDriveMetaData : {driveId: string, metaDataTx: string}[] = [
+      { "driveId": '', "metaDataTx": '' }
+    ]
+    let x = 0;
     // Create the Graphql Query to search for all drives relating to the User wallet
     const query = {
       query: `query {
@@ -58,6 +61,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
           { name: "App-Name", values: "${appName}" }
           { name: "App-Version", values: "${appVersion}" }
           { name: "Entity-Type", values: "drive" }
+          { name: "Drive-Privacy" values: "public" }
         ]
       ) {
         edges {
@@ -82,29 +86,23 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
     const { transactions } = data;
     const { edges } = transactions;
 
-    // Iterate through each returned transaction and pull out the public drives
+    // Iterate through each returned transaction and pull out the private drive IDs
     await asyncForEach(edges, async (edge: any) => {
       const { node } = edge;
       const { tags } = node;
-      let drivePrivacy : string = "";
       let driveId : string = "";
-      let foundMetaData = { "driveId": '', "metaDataTx": '' }
 
       // Iterate through each tag and pull out each drive ID as well the drives privacy status
       tags.forEach((tag: any) => {
         const key = tag.name;
-        if ((key === 'Drive-Privacy') && (tag.value === 'private')) {
-          drivePrivacy = 'private';
-        }
         if (key === 'Drive-Id') {
-          driveId = tag.value;
+          // Capture the private drive id
+          arDriveMetaData[x].driveId = driveId;
         }
       });
-      if (drivePrivacy !== 'private') {
-        foundMetaData.driveId = driveId
-        foundMetaData.metaDataTx = node.id
-        arDriveMetaData.push (foundMetaData)
-      }
+      // Capture the TX of the private drive metadata tx
+      arDriveMetaData[x].metaDataTx = node.id;
+      x += 1;
     });
     return arDriveMetaData;
   } catch (err) {
@@ -312,7 +310,7 @@ const createPublicArDriveTransaction = async (
     transaction.addTag('Unix-Time', (Math.round(new Date().getTime() / 1000)).toString());
     transaction.addTag('Content-Type', 'application/json');
     transaction.addTag('Entity-Type', 'drive');
-    transaction.addTag('Drive-Id', driveInfo.arDriveId);
+    transaction.addTag('Drive-Id', driveInfo.driveId);
     transaction.addTag('Drive-Privacy:', 'public')
 
     // Sign file
@@ -329,7 +327,7 @@ const createPublicArDriveTransaction = async (
     await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
 
     // Update the Profile table to include the default /Public/ ArDrive
-    await updateUserPublicArDriveTx(transaction.id, driveInfo.arDriveId)
+    await updateUserPublicArDriveTx(transaction.id, driveInfo.driveId)
 
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
@@ -404,7 +402,7 @@ const createArDrivePublicMetaDataTransaction = async (
     transaction.addTag('Unix-Time', fileToUpload.unixTime);
     transaction.addTag('Content-Type', 'application/json');
     transaction.addTag('Entity-Type', fileToUpload.entityType);
-    transaction.addTag('Drive-Id', fileToUpload.arDriveId);
+    transaction.addTag('Drive-Id', fileToUpload.driveId);
     transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
     transaction.addTag('File-Id', fileToUpload.fileId);
 
@@ -480,7 +478,7 @@ const createArDriveMetaDataTransaction = async (
     unixTime: any;
     contentType: any;
     entityType: any;
-    arDriveId: any;
+    driveId: any;
     parentFolderId: any;
     fileId: any;
   },
@@ -501,7 +499,7 @@ const createArDriveMetaDataTransaction = async (
     transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
     transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
     transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
-    transaction.addTag('Drive-Id', primaryFileMetaDataTags.arDriveId);
+    transaction.addTag('Drive-Id', primaryFileMetaDataTags.driveId);
     transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
     transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
     transaction.addTag('ArFS', arFSVersion);
@@ -555,7 +553,7 @@ const createPrivateArDriveTransaction = async (
     transaction.addTag('Unix-Time', (Math.round(new Date().getTime() / 1000)).toString());
     transaction.addTag('Content-Type', 'application/json');
     transaction.addTag('Entity-Type', "drive");
-    transaction.addTag('Drive-Id', driveInfo.arDriveId);
+    transaction.addTag('Drive-Id', driveInfo.driveId);
 
     // Sign file
     await arweave.transactions.sign(transaction, walletPrivateKey);
@@ -631,7 +629,7 @@ const createArDrivePrivateMetaDataTransaction = async (
     unixTime: any;
     contentType: any;
     entityType: any;
-    arDriveId: any;
+    driveId: any;
     parentFolderId: any;
     fileId: any;
   },
@@ -652,7 +650,7 @@ const createArDrivePrivateMetaDataTransaction = async (
     transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
     transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
     transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
-    transaction.addTag('Drive-Id', primaryFileMetaDataTags.arDriveId);
+    transaction.addTag('Drive-Id', primaryFileMetaDataTags.driveId);
     transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
     transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
 

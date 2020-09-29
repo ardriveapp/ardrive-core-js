@@ -136,7 +136,7 @@ async function uploadArDriveFileMetaData(
       unixTime: fileToUpload.unixTime,
       contentType: 'application/json',
       entityType: fileToUpload.entityType,
-      arDriveId: fileToUpload.arDriveId,
+      driveId: fileToUpload.driveId,
       parentFolderId: fileToUpload.parentFolderId,
       fileId: fileToUpload.fileId,
     };
@@ -145,7 +145,6 @@ async function uploadArDriveFileMetaData(
       name: fileToUpload.fileName,
       size: fileToUpload.fileSize,
       hash: fileToUpload.fileHash,
-      path: fileToUpload.arDrivePath,
       lastModifiedDate: fileToUpload.lastModifiedDate,
       dataTxId: fileToUpload.dataTxId,
     };
