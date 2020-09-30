@@ -1,5 +1,5 @@
 export { getWalletBalance, getLocalWallet, createArDriveWallet, getAllMyPrivateArDriveIds, getAllMyPublicArDriveIds } from './arweave';
-export { setupDatabase, getUserFromProfileById, getUserIdFromProfile, getMyFileDownloadConflicts } from './db';
+export { setupDatabase, getUserFromProfileById, getUserFromProfile, getMyFileDownloadConflicts } from './db';
 export { sleep, checkOrCreateFolder, checkFileExistsSync, backupWallet } from './common';
 export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
 export { watchFolder, resolveFileDownloadConflict } from './files';

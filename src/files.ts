@@ -12,13 +12,16 @@ import {
   getByFileHashAndModifiedDateAndFileNameFromSyncTable,
   setPermaWebFileToIgnore,
   setPermaWebFileToOverWrite,
+  updateFolderHashInSyncTable,
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArFSFileMetaData } from './types';
+
 const { hashElement } = require('folder-hash');
 
 const queueFile = async (filePath: string, syncFolderPath: string, privateArDriveId: string, publicArDriveId: string) => {
+  // Check to see if the file is ready
   let stats = null;
   try {
     stats = fs.statSync(filePath);
@@ -38,13 +41,22 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     driveId = publicArDriveId
   }
 
+  // Check if the parent folder has been added to the DB first
+  const parentFolderPath = dirname(filePath);
+  let parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
+  if (parentFolderId === undefined) {
+    console.log ("The parent folder is not present in the database yet, lets add it");
+    await queueFolder (parentFolderPath, syncFolderPath, privateArDriveId, publicArDriveId)
+    parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath)
+  }
   // Skip if file is encrypted or size is 0
   if (extension !== '.enc' && stats.size !== 0 && !fileName.startsWith('~$')) {
     const fileHash = await checksumFile(filePath);
-    const parentFolderPath = dirname(filePath);
-    const lastModifiedDate = Math.floor(stats.mtimeMs);
-    const parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
 
+    const lastModifiedDate = Math.floor(stats.mtimeMs);
+
+    console.log('%s found file change', filePath);
+    console.log ("parent folder id is %s with %s", parentFolderId.fileId, parentFolderPath)
     const exactFileMatch = {
       filePath,
       fileHash,
@@ -55,6 +67,17 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
     if (exactMatch) {
       // This file's version already exists.  Do nothing
       return;
+    }
+
+    try {
+      console.log ("Updating hash of parent folder")
+      // Update the hash of the parent folder
+      const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
+      const parentFolderHash = await hashElement(parentFolderPath, options)
+      await updateFolderHashInSyncTable(parentFolderHash.hash, parentFolderId.fileId)
+    }
+    catch (err) {
+      console.log ("The parent folder is not present in the database yet")
     }
 
     // Check if this is a new version of an existing file path
@@ -70,7 +93,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       newFileVersion.fileSize = stats.size;
       newFileVersion.fileDataSyncStatus = 1; // Sync status of 1
       console.log('%s updating file version to %s', filePath, newFileVersion.fileVersion);
-      addFileToSyncTable(newFileVersion);
+      await addFileToSyncTable(newFileVersion);
       return;
     }
  
@@ -84,7 +107,7 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       renamedFile.fileName = fileName;
       renamedFile.filePath = filePath;
       renamedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
-      addFileToSyncTable(renamedFile);
+      await addFileToSyncTable(renamedFile);
       return;
     }
 
@@ -104,12 +127,12 @@ const queueFile = async (filePath: string, syncFolderPath: string, privateArDriv
       movedFile.filePath = filePath;
       movedFile.parentFolderId = parentFolderId.fileId;
       movedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
-      addFileToSyncTable(movedFile);
+      await addFileToSyncTable(movedFile);
       return;
     }
 
     // No match, so queue a new file
-    console.log('%s queueing new file', filePath);
+    console.log('%s adding file', filePath);
     const unixTime = Math.round(new Date().getTime() / 1000);
     const contentType = extToMime(filePath);
     const fileId = uuidv4();
@@ -151,16 +174,11 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
   if (isQueuedOrCompleted) {
     // The folder is already in the queue, or it is the root and we do not want to process.
   } else {
+
+    // Generate a hash of all of the contents in this folder
     const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
-    hashElement(__dirname, options)
-      .then((hash: { toString: () => any; }) => {
-        console.log('Result for folder "' + __dirname + '" (with options):');
-        console.log(hash.toString(), '\n');
-      })
-      .catch((error: any) => {
-        return console.error('hashing failed:', error);
-      }
-    );
+    const folderHash = await hashElement(folderPath, options)
+    console.log (folderHash.hash)
 
     console.log('%s queueing folder', folderPath);
     try {
@@ -186,7 +204,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
     {
       fileName = "";
     }
-    const lastModifiedDate = stats.mtimeMs;
+    const lastModifiedDate = Math.floor(stats.mtimeMs);
     let entityType = 'folder'
     let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
@@ -194,9 +212,18 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       parentFolderId = uuidv4(); // This will act as the root parent Folder ID
       fileMetaDataSyncStatus = 0; // Set sync status to 0
     } else {
+      
+      // Check if its parent folder has been added.  If not, lets add it first
       const parentFolderPath = dirname(folderPath);
       parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
-      parentFolderId = parentFolderId.fileId;
+      if (parentFolderId === undefined) {
+        await queueFolder (parentFolderPath, syncFolderPath, privateArDriveId, publicArDriveId)
+        parentFolderId = await getFolderOrDriveFromSyncTable(parentFolderPath);
+        parentFolderId = parentFolderId.fileId;
+      } else {
+        parentFolderId = parentFolderId.fileId;
+      }
+
 
       // We do not upload the Private and Public Folders as these are represented by Drive entity-types instead.
       if (folderPath === syncFolderPath.concat('\\Public')) {
@@ -224,7 +251,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string, privateAr
       fileId,
       filePath: folderPath,
       fileName,
-      fileHash: '0',
+      fileHash: folderHash.hash,
       fileSize: 0,
       lastModifiedDate,
       fileVersion: 0,

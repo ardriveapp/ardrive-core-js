@@ -312,12 +312,6 @@ async function getFileMetaDataFromTx(
   }
 }
 
-/*export const getMyArDrivesFromPermaWeb = async (user: ArDriveUser) => {
-  // Get your listed private and public drives
-  console.log('---Getting all your ArDrives set up---');
-  const driveTxIds = await getAllMyDriveTxs ()
-}*/
-
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
 export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 

@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import { sep } from 'path';
 import { encryptText, decryptText } from './crypto';
-import { createArDriveProfile, getUserFromProfileById } from './db';
+import { createArDriveProfile, getUserFromProfile } from './db';
 import { ArDriveUser } from './types';
 
 
@@ -48,9 +48,9 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
 };
 
 // Checks if the user's password is valid
-export const passwordCheck = async (loginPassword: string, userId: string) : Promise<boolean> => {
+export const passwordCheck = async (loginPassword: string, login: string) : Promise<boolean> => {
   try {
-    let user: ArDriveUser = await getUserFromProfileById(userId);
+    let user: ArDriveUser = await getUserFromProfile(login);
     user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
     user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
     return true;
@@ -58,12 +58,11 @@ export const passwordCheck = async (loginPassword: string, userId: string) : Pro
   catch (err) {
     return false;
   }
-
 };
 
 // Decrypts user's private key information and unlocks their ArDrive
-export const getUser = async (loginPassword: string, userId: string) => {
-  let user: ArDriveUser = await getUserFromProfileById(userId);
+export const getUser = async (loginPassword: string, login: string) => {
+  let user: ArDriveUser = await getUserFromProfile(login)
   user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
   user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
   console.log('');

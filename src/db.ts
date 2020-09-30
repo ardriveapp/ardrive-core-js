@@ -216,11 +216,11 @@ export const getFoldersToCreate = () => {
 };
 
 export const getNewDriveFromSyncTable = (fileName: string) => {
-  return get('SELECT * FROM Sync WHERE metaDataTxId = 0 AND fileName = ?', [fileName]);
+  return get('SELECT * FROM Sync WHERE metaDataTxId = 0 AND entityType = "drive" AND fileName = ?', [fileName]);
 }
 
 export const getDriveInfoFromSyncTable = (id: string) => {
-  return get(`SELECT driveId, fileId FROM Sync WHERE id = ?`, [id]);
+  return get(`SELECT driveId, fileId, fileName FROM Sync WHERE id = ?`, [id]);
 };
 
 export const getFolderNameFromSyncTable = (fileId: string) => {
@@ -343,8 +343,8 @@ export const getUserFromProfileById = (id: string) => {
   return get(`SELECT * FROM Profile WHERE id = ?`, [id]);
 };
 
-export const getUserIdFromProfile = (login: string) => {
-  return get(`SELECT id FROM Profile WHERE login = ?`, [login]);
+export const getUserFromProfile = (login: string) => {
+  return get(`SELECT * FROM Profile WHERE login = ?`, [login]);
 };
 
 export const getAllMissingPathsFromSyncTable = () => {
@@ -369,6 +369,10 @@ export const setFileUploaderObject = (uploader: string, id: string) => {
 
 export const setFilePath = (filePath: string, id: string) => {
   return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
+};
+
+export const updateFolderHashInSyncTable = (folderHash: string, fileId: string) => {
+  return get(`UPDATE Sync SET fileHash = ? WHERE fileId = ?`, [folderHash, fileId]);
 };
 
 export const updateFileDownloadStatus = (isLocal: string, id: string) => {

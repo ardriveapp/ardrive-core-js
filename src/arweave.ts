@@ -61,7 +61,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
           { name: "App-Name", values: "${appName}" }
           { name: "App-Version", values: "${appVersion}" }
           { name: "Entity-Type", values: "drive" }
-          { name: "Drive-Privacy" values: "public" }
+          { name: "Drive-Privacy", values: "public" }
         ]
       ) {
         edges {
@@ -193,6 +193,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
           { name: "App-Name", values: "${appName}" }
           { name: "App-Version", values: "${appVersion}" }
           { name: "Drive-Id", values: "${arDriveId}" }
+          { name: "Entity-Type", values: ["file", "folder"]}
         ]
       ) {
         edges {
@@ -293,6 +294,7 @@ const createPublicArDriveTransaction = async (
     // Create a JSON file, containing necessary drive metadata
     const driveInfo = await getDriveInfoFromSyncTable(id);
     const arDriveMetadataJSON = {
+      name: driveInfo.fileName,
       rootFolderId: driveInfo.fileId,
     }
     const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
@@ -311,7 +313,7 @@ const createPublicArDriveTransaction = async (
     transaction.addTag('Content-Type', 'application/json');
     transaction.addTag('Entity-Type', 'drive');
     transaction.addTag('Drive-Id', driveInfo.driveId);
-    transaction.addTag('Drive-Privacy:', 'public')
+    transaction.addTag('Drive-Privacy', 'public')
 
     // Sign file
     await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
@@ -401,6 +403,7 @@ const createArDrivePublicMetaDataTransaction = async (
     transaction.addTag('App-Version', appVersion);
     transaction.addTag('Unix-Time', fileToUpload.unixTime);
     transaction.addTag('Content-Type', 'application/json');
+    transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Entity-Type', fileToUpload.entityType);
     transaction.addTag('Drive-Id', fileToUpload.driveId);
     transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
@@ -499,10 +502,10 @@ const createArDriveMetaDataTransaction = async (
     transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
     transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
     transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
+    transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Drive-Id', primaryFileMetaDataTags.driveId);
     transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
     transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
-    transaction.addTag('ArFS', arFSVersion);
 
     // Sign file
     await arweave.transactions.sign(transaction, JSON.parse(user.jwk));
@@ -553,6 +556,7 @@ const createPrivateArDriveTransaction = async (
     transaction.addTag('Unix-Time', (Math.round(new Date().getTime() / 1000)).toString());
     transaction.addTag('Content-Type', 'application/json');
     transaction.addTag('Entity-Type', "drive");
+    transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Drive-Id', driveInfo.driveId);
 
     // Sign file
@@ -649,6 +653,7 @@ const createArDrivePrivateMetaDataTransaction = async (
     transaction.addTag('App-Version', primaryFileMetaDataTags.appVersion);
     transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
     transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
+    transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
     transaction.addTag('Drive-Id', primaryFileMetaDataTags.driveId);
     transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
