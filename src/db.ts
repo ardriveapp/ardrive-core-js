@@ -100,7 +100,6 @@ const createSyncTable = () => {
         ignore INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
-        isApproved text,
         uploader text
      );`;
   return run(sql);
