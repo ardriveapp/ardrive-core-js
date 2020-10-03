@@ -485,11 +485,14 @@ const createArDrivePublicMetaDataTransaction = async (
     transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Entity-Type', fileToUpload.entityType);
     transaction.addTag('Drive-Id', fileToUpload.driveId);
-    transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
     if (fileToUpload.entityType === 'file') {
       transaction.addTag('File-Id', fileToUpload.fileId);
+      transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
     } else {
       transaction.addTag('Folder-Id', fileToUpload.fileId);
+      if (fileToUpload.parentFolderId !== '0') {
+        transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
+      }
     }
 
 
