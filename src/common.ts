@@ -3,13 +3,17 @@ import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import { sep } from 'path';
-import { Wallet } from './types';
+import { Wallet, ArFSDriveMetadata } from './types';
+import { getAllLocalFoldersFromSyncTable, updateFolderHashInSyncTable } from './db';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
 export const appVersion = '0.1.0';
 export const arFSVersion = '0.10';
 export const cipher = "AES256-GCM"
+
+const { v4: uuidv4 } = require('uuid');
+const { hashElement } = require('folder-hash');
 
 // Pauses application
 const sleep = async (ms: number) => {
@@ -61,7 +65,7 @@ const getWinston = async (bytes: any) => {
   return winston;
 };
 
-// Checks path if it exists, and creates if not
+// Checks path if it exists, and creates if not creates it
 const checkOrCreateFolder = (folderPath = '') => {
   try {
     const stats = fs.statSync(folderPath);
@@ -69,7 +73,7 @@ const checkOrCreateFolder = (folderPath = '') => {
       return folderPath;
     }
     console.log(
-      'The path you have entered is not a directory, please enter a correct path for your ArDrive wallet backup.',
+      'The path you have entered is not a directory, please enter a correct path.',
     );
     return '';
   } catch (err) {
@@ -78,6 +82,20 @@ const checkOrCreateFolder = (folderPath = '') => {
     return folderPath;
   }
 };
+
+const checkFolderExistsSync = (folderPath: string) => {
+  try {
+    const stats = fs.statSync(folderPath);
+    if (stats.isDirectory()) {
+      return true; // directory exists
+    }
+    else {
+      return false; // not a directory
+    }
+  } catch (err) {
+    return false; // directory doesnt exist
+  }
+}
 
 const checkFileExistsSync = (filePath: string) => {
   let exists = true;
@@ -101,6 +119,104 @@ const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: str
   }
 };
 
+const setAllFolderHashes = async () => {
+  try {
+    const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
+    const allFolders = await getAllLocalFoldersFromSyncTable()
+    // Update the hash of the parent folder
+    await asyncForEach(allFolders, async (folder: any) => {
+      const folderHash = await hashElement(folder.filePath, options)
+      await updateFolderHashInSyncTable(folderHash.hash, folder.id)
+    })
+    return "Folder hashes set"
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("The parent folder is not present in the database yet")
+    return "Error"
+  }
+}
+
+// Creates a new drive, using the standard public privacy settings and adds to the Drive table
+const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
+  let driveId = uuidv4();
+  let rootFolderId = uuidv4();
+  let drive : ArFSDriveMetadata = {
+    appName: appName,
+    appVersion: appVersion,
+    driveName,
+    rootFolderId,
+    cipher: '',
+    cipherIV: '',
+    unixTime: Date.now();
+    arFS: arFSVersion,
+    driveId,
+    drivePrivacy: 'public',
+    driveAuthMode: '',
+    metaDataTxId: '',
+    metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
+  };
+  console.log ("Creating a new public drive, %s | %s", driveName, driveId)
+  return drive;
+}
+
+// Creates a new drive, using the standard private privacy settings and adds to the Drive table
+const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
+  let driveId = uuidv4();
+  let rootFolderId = uuidv4();
+  let unixTime = Date.now();
+  let drive : ArFSDriveMetadata = {
+    appName: appName,
+    appVersion: appVersion,
+    driveName,
+    rootFolderId,
+    cipher: cipher,
+    cipherIV: '',
+    unixTime,
+    arFS: arFSVersion,
+    driveId,
+    drivePrivacy: 'private',
+    driveAuthMode: 'password',
+    metaDataTxId: '',
+    metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
+  };
+  console.log ("Creating a new private drive, %s | %s", driveName, driveId)
+  return drive;
+}
+
+async function Utf8ArrayToStr(array: any) : Promise<string> {
+  var out, i, len, c;
+  var char2, char3;
+
+  out = "";
+  len = array.length;
+  i = 0;
+  while (i < len) {
+    c = array[i++];
+    switch (c >> 4)
+    { 
+      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+        // 0xxxxxxx
+        out += String.fromCharCode(c);
+        break;
+      case 12: case 13:
+        // 110x xxxx   10xx xxxx
+        char2 = array[i++];
+        out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+        break;
+      case 14:
+        // 1110 xxxx  10xx xxxx  10xx xxxx
+        char2 = array[i++];
+        char3 = array[i++];
+        out += String.fromCharCode(((c & 0x0F) << 12) |
+                                   ((char2 & 0x3F) << 6) |
+                                   ((char3 & 0x3F) << 0));
+        break;
+    }
+  }    
+  return out;
+}
+
 export {
   sleep,
   asyncForEach,
@@ -110,4 +226,9 @@ export {
   checkOrCreateFolder,
   backupWallet,
   checkFileExistsSync,
+  setAllFolderHashes,
+  checkFolderExistsSync,
+  Utf8ArrayToStr,
+  createNewPublicDrive,
+  createNewPrivateDrive,
 };

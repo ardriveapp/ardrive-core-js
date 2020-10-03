@@ -25,42 +25,24 @@ export interface UploadBatch {
   totalNumberOfFolderUploads: number
 };
 
-export interface FileToUpload {
-  id: any,
+export interface ArFSDriveMetadata {
   appName: string,
   appVersion: string,
-  unixTime: string,
-  contentType: string,
-  entityType: string,
-  driveId: string,
-  parentFolderId: string,
-  fileId: string,
-  fileSize: string,
-  filePath: any,
-  fileName: string,
-  arDrivePath: any,
-  fileHash: any,
-  lastModifiedDate: any,
-  fileVersion: any,
-  isPublic: any,
-  fileDataSyncStatus: any,
-  fileMetaDataSyncStatus: any,
-  dataTxId: any,
-};
-
-export interface ArFSDriveMetadata {
-  contentType: string,
+  driveName: string,
+  rootFolderId: string,
   cipher: string,
   cipherIV: string,
-  appName: string,
-  unixTime: string,
-  entityType: string,
+  unixTime: number,
+  arFS: string,
   driveId: string,
   drivePrivacy: string,
   driveAuthMode: string,
-}
+  metaDataTxId: string,
+  metaDataSyncStatus: number,
+};
 
 export interface ArFSFileMetaData {
+  id: number,
   appName: string,
   appVersion: string,
   unixTime: number,

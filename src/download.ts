@@ -3,7 +3,7 @@
 // upload.js
 import * as fs from 'fs';
 import { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr } from './common';
 import { getTransactionMetaData, getAllMyDataFileTxs, getTransactionData } from './arweave';
 import { checksumFile, decryptFile, decryptFileMetaData } from './crypto';
 import {
@@ -21,43 +21,14 @@ import {
   setFilePath,
   getAllMissingPathsFromSyncTable,
   getArDriveSyncFolderPathFromProfile,
+  getAllLatestFileAndFolderVersionsFromSyncTable,
+  setFileToDownload,
+  getLatestFolderVersionFromSyncTable,
 } from './db';
 import { ArDriveUser, ArFSFileMetaData } from './types';
 
-
-async function Utf8ArrayToStr(array: any) : Promise<string> {
-  var out, i, len, c;
-  var char2, char3;
-
-  out = "";
-  len = array.length;
-  i = 0;
-  while (i < len) {
-    c = array[i++];
-    switch (c >> 4)
-    { 
-      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-        // 0xxxxxxx
-        out += String.fromCharCode(c);
-        break;
-      case 12: case 13:
-        // 110x xxxx   10xx xxxx
-        char2 = array[i++];
-        out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
-        break;
-      case 14:
-        // 1110 xxxx  10xx xxxx  10xx xxxx
-        char2 = array[i++];
-        char3 = array[i++];
-        out += String.fromCharCode(((c & 0x0F) << 12) |
-                                   ((char2 & 0x3F) << 6) |
-                                   ((char3 & 0x3F) << 0));
-        break;
-    }
-  }    
-  return out;
-}
-
+// This needs updating
+// Determines the file path based on parent folder ID
 async function determineFilePath(syncFolderPath: string, parentFolderId: string, fileName: string) {
   try {
     let filePath = '\\' + fileName;
@@ -67,7 +38,6 @@ async function determineFilePath(syncFolderPath: string, parentFolderId: string,
     let parentOfParentFolderId;
     let x = 0;
     while ((parentFolderEntityType !== 'drive') && (x < 10)) {
-      //public//test.txt
       parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
       filePath = '\\' + parentFolderName.fileName + filePath
       parentFolderEntity = await getFolderEntityFromSyncTable(parentFolderId)
@@ -87,6 +57,7 @@ async function determineFilePath(syncFolderPath: string, parentFolderId: string,
   }
 };
 
+// Fixes all empty file paths
 async function setNewFilePaths() {
   let syncFolderPath = await getArDriveSyncFolderPathFromProfile()  
   let filePath = '';
@@ -142,6 +113,7 @@ async function getFileMetaDataFromTx(
 ) {
   try {
     const fileToSync : ArFSFileMetaData = {
+      id: 0,
       appName: '',
       appVersion: '',
       unixTime: 0,
@@ -168,16 +140,11 @@ async function getFileMetaDataFromTx(
     const { tags } = node;
     const metaDataTxId = node.id;
 
-    // Is the File, Folder or Drive already present in the database?  If it is, lets ensure its already downloaded
+    // DOUBLE CHECK THIS
+    // Is the File or Folder already present in the database?  If it is, lets ensure its already downloaded
     const isMetaDataSynced = await getByMetaDataTxFromSyncTable(metaDataTxId);
     if (isMetaDataSynced) {
-      // Does the file actually exist?
-      fs.access(isMetaDataSynced.filePath, async (err) => {
-        // console.log ("The file %s already exists", isCompleted.fileName)
-        if (err) {
-          await updateFileDownloadStatus('0', isMetaDataSynced.id); // The file doesnt exist, so lets download it
-        }
-      });
+      // this file is already downloaded and synced
       return 0;
     }
 
@@ -210,6 +177,9 @@ async function getFileMetaDataFromTx(
           fileToSync.driveId = value;
           break;
         case 'File-Id':
+          fileToSync.fileId = value;
+          break;
+        case 'Folder-Id':
           fileToSync.fileId = value;
           break;
         case 'Parent-Folder-Id':
@@ -330,15 +300,30 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   });
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
-  await setNewFilePaths()
+  await setNewFilePaths();
+  await setAllFolderHashes();
 };
 
 // Downloads all ardrive files that are not local
 export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
   try {
     console.log('---Downloading any unsynced files---');
+
+    // Check the latest file versions to ensure they exist locally, if not set them to download
+    const localFiles : ArFSFileMetaData[] = await getAllLatestFileAndFolderVersionsFromSyncTable()
+    await asyncForEach(localFiles, async (localFile: ArFSFileMetaData) => {
+      fs.access(localFile.filePath, async (err) => {
+        if (err) {
+          await setFileToDownload(localFile.metaDataTxId); // The file doesnt exist, so lets download it
+        }
+      })
+    })
+
+    // Get the Files and Folders which have isLocal set to 0 that we are not ignoring
     const filesToDownload = await getFilesToDownload();
     const foldersToCreate = await getFoldersToCreate();
+
+    // Get the special batch of File Download Conflicts
     const fileConflictsToDownload = await getMyFileDownloadConflicts();
 
     // Process any files to download
@@ -358,7 +343,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           isLocal: string;
           parentFolderId: string;
         }) => {
-
           // Establish the file path first
           if (fileToDownload.filePath === '') {
             fileToDownload.filePath = await determineFilePath(user.syncFolderPath, fileToDownload.parentFolderId, fileToDownload.fileName)
@@ -367,6 +351,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
           // Get the latest file version from the DB
           const latestFileVersion = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
+          
           // console.log ("Latest file version is %s", latestFileVersion.filePath)
           // Only download if this is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
@@ -407,19 +392,27 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
     // Process any folders to create
     if (foldersToCreate.length > 0) {
       // there are new folders to create
-      await asyncForEach(foldersToCreate, async (folderToCreate: { id: any; parentFolderId: string; fileName: string; filePath: any }) => {
-
+      await asyncForEach(foldersToCreate, async (folderToCreate: { id: any; parentFolderId: string; fileName: string; filePath: any, fileId: string }) => {
         // Establish the folder path first
         if (folderToCreate.filePath === '') {
           folderToCreate.filePath = await determineFilePath(user.syncFolderPath, folderToCreate.parentFolderId, folderToCreate.fileName)
           await setFilePath (folderToCreate.filePath, folderToCreate.id)
         }
+        // Get the latest folder version from the DB
+        const latestFolderVersion: ArFSFileMetaData= await getLatestFolderVersionFromSyncTable(folderToCreate.fileId);
 
-        if (!fs.existsSync(folderToCreate.filePath)) {
-          console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
-          fs.mkdirSync(folderToCreate.filePath);
+        // If this folder is the same name/path then download
+        if (latestFolderVersion.filePath === folderToCreate.filePath) {
+          if (!fs.existsSync(folderToCreate.filePath)) {
+            console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
+            fs.mkdirSync(folderToCreate.filePath);
+          }
+          await updateFileDownloadStatus('1', folderToCreate.id);
+        } else {
+          // This is an older version, and we ignore it for now.
+          await updateFileDownloadStatus('0', folderToCreate.id); // Mark older fodler version as not local and ignored
+          await setPermaWebFileToIgnore(folderToCreate.id); // Mark older folder version as ignored
         }
-        await updateFileDownloadStatus('1', folderToCreate.id);
       });
     }
     // Process any previously conflicting file downloads

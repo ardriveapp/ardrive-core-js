@@ -1,9 +1,10 @@
 // index.js
 import * as fs from 'fs';
 import { sep } from 'path';
+import { asyncForEach, gatewayURL } from './common';
 import { encryptText, decryptText } from './crypto';
-import { createArDriveProfile, getUserFromProfile } from './db';
-import { ArDriveUser } from './types';
+import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
+import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
 
 export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
@@ -27,6 +28,76 @@ export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
     fs.mkdirSync(syncFolderPath.concat(sep, 'Public'));
     fs.mkdirSync(syncFolderPath.concat(sep, 'Private'));
     return "Created";
+  }
+};
+
+// This creates all of the Drives found
+export const setupDrives = async (syncFolderPath: string) => {
+  try {
+    console.log ("Initializing ArDrives");
+    // check if the root sync folder exists, if not create it
+    if (!fs.existsSync(syncFolderPath)) {
+      fs.mkdirSync(syncFolderPath);
+    }
+
+    // get all drives
+    const drives : ArFSDriveMetadata[] = await getAllDrivesFromDriveTable()
+
+    // for each drive, check if drive folder exists
+    await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+
+      // Check if the drive path exists, if not, create it
+      const drivePath : string = syncFolderPath + '\\' + drive.driveName;
+      if (!fs.existsSync(drivePath)) {
+        fs.mkdirSync(drivePath);
+      }
+
+      // check if drive folder entity is setup already in sync table
+      const driveFolderEntity : ArFSFileMetaData = await getFolderFromSyncTable(drivePath)
+      if (driveFolderEntity === undefined) {
+        // if not, add it to the sync table
+        // determine if the files are private or public
+        // this should be refactored, and isPublic should change to drivePrivacy
+        let isPublic = 1;
+        if (drive.drivePrivacy === 'private') {
+          isPublic = 0;
+        }
+
+        // Prepare a new folder to add to the sync table
+        // This folder will require a metadata transaction to arweave
+        const driveFolderToAdd : ArFSFileMetaData = {
+          id: 0,
+          appName: drive.appName,
+          appVersion: drive.appVersion,
+          unixTime: drive.unixTime,
+          contentType: 'application/json',
+          entityType: 'folder',
+          driveId: drive.driveId,
+          parentFolderId: '0', // Root folders have no parent folder ID.
+          fileId: drive.rootFolderId,
+          filePath: drivePath,
+          fileName: drive.driveName,
+          fileHash: '0',
+          fileSize: 0,
+          lastModifiedDate: drive.unixTime,
+          fileVersion: 0,
+          isPublic,
+          isLocal: 1,
+          metaDataTxId: '0', 
+          dataTxId: '0',
+          permaWebLink: gatewayURL.concat(drive.metaDataTxId),
+          fileDataSyncStatus: 0, // Folders do not require a data tx
+          fileMetaDataSyncStatus: drive.metaDataSyncStatus, // Sync status of 1 requries a metadata tx
+        };
+        await addFileToSyncTable(driveFolderToAdd);
+      }
+    });
+    console.log ("Initialization completed")
+    return "Initialization completed"
+  }
+  catch (err) {
+    console.log (err)
+    return "Error"
   }
 };
 

@@ -1,5 +1,5 @@
 import * as sqlite3 from 'sqlite3';
-import { ArDriveUser, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
 // Use verbose mode in development
 let sql3 = sqlite3;
@@ -91,8 +91,8 @@ const createSyncTable = () => {
         filePath text,
         fileName text,
         fileHash text,
-        fileSize text,
-        lastModifiedDate text,
+        fileSize integer,
+        lastModifiedDate integer,
         fileVersion integer DEFAULT 0,
         permaWebLink text,
         fileDataSyncStatus text,
@@ -103,6 +103,26 @@ const createSyncTable = () => {
         isApproved text,
         uploader text
      );`;
+  return run(sql);
+};
+
+const createDriveTable = async () => {
+  const sql = `CREATE TABLE IF NOT EXISTS Drive (
+      id integer NOT NULL PRIMARY KEY,
+      appName text,
+      appVersion text,
+      driveName text,
+      rootFolderId text,
+      cipher text,
+      cipherIV text,
+      unixTime integer,
+      arFS text,
+      driveId text UNIQUE,
+      drivePrivacy text,
+      driveAuthMode text,
+      metaDataTxId text,
+      metaDataSyncStatus integer
+    );`;
   return run(sql);
 };
 
@@ -158,8 +178,44 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   );
 };
 
-export const getFolderOrDriveFromSyncTable = (filePath: string) => {
-  return get(`SELECT fileId FROM Sync WHERE filePath = ? AND (entityType = 'folder' OR entityType = 'drive')`, [filePath]);
+export const addDriveToDriveTable = (drive: ArFSDriveMetadata) => {
+  const {
+    appName,
+    appVersion,
+    driveName,
+    rootFolderId,
+    cipher,
+    cipherIV,
+    arFS,
+    unixTime,
+    driveId,
+    drivePrivacy,
+    driveAuthMode,
+    metaDataTxId,
+    metaDataSyncStatus,
+  } = drive;
+  return run(
+    'REPLACE INTO Drive (appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      appName,
+      appVersion,
+      driveName,
+      rootFolderId,
+      cipher,
+      cipherIV,
+      arFS,
+      unixTime,
+      driveId,
+      drivePrivacy,
+      driveAuthMode,
+      metaDataTxId,
+      metaDataSyncStatus,
+    ]
+  )
+}
+
+export const getFolderFromSyncTable = (filePath: string) => {
+  return get(`SELECT * FROM Sync WHERE filePath = ? AND entityType = 'folder'`, [filePath]);
 };
 
 export const checkIfExistsInSyncTable = (fileHash: string, fileName: string, fileId: string) => {
@@ -173,15 +229,15 @@ export const getByFileHashAndParentFolderFromSyncTable = (fileHash: string, fold
   ]);
 };
 
-export const getByFileHashAndModifiedDateAndFileNameFromSyncTable = (file: {
-  fileHash: string;
-  lastModifiedDate: number;
-  fileName: string;
-}) => {
-  const { fileHash, lastModifiedDate, fileName } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND lastModifiedDate = ? AND fileName = ?`, [
+export const getFolderByHashFromSyncTable = (fileHash: string) => {
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND entityType = 'folder'`, [
     fileHash,
-    lastModifiedDate,
+  ]);
+};
+
+export const getByFileHashAndFileNameFromSyncTable = (fileHash: string, fileName: string) => {
+  return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileName = ?`, [
+    fileHash,
     fileName,
   ]);
 };
@@ -190,14 +246,17 @@ export const getByFilePathFromSyncTable = (filePath: string) => {
   return get(`SELECT * FROM Sync WHERE filePath = ? ORDER BY fileVersion DESC`, [filePath]);
 };
 
-export const getByFilePathAndHashFromSyncTable = (file: { fileHash: string; filePath: string }) => {
-  const { fileHash, filePath } = file;
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND filePath = ?`, [fileHash, filePath]);
+export const getByFileNameAndHashAndParentFolderIdFromSyncTable = (fileName: string, fileHash: string, parentFolderId: string) => {
+  return get(`SELECT * FROM Sync WHERE fileName = ? AND fileHash = ? AND parentFolderId = ?`, [fileName, fileHash, parentFolderId]);
 };
 
 export const getLatestFileVersionFromSyncTable = (fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
+
+export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
+  return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId])
+}
 
 export const getFilesToUploadFromSyncTable = () => {
   return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1 ');
@@ -205,6 +264,10 @@ export const getFilesToUploadFromSyncTable = () => {
 
 export const getAllUploadedFilesFromSyncTable = () => {
   return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2');
+};
+
+export const getAllUploadedDrivesFromDriveTable = () => {
+  return all('SELECT * FROM Drive WHERE metaDataSyncStatus = 2');
 };
 
 export const getFilesToDownload = () => {
@@ -215,8 +278,12 @@ export const getFoldersToCreate = () => {
   return all('SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 0 AND entityType = "folder"');
 };
 
-export const getNewDriveFromSyncTable = (fileName: string) => {
-  return get('SELECT * FROM Sync WHERE metaDataTxId = 0 AND entityType = "drive" AND fileName = ?', [fileName]);
+export const getNewDrivesFromDriveTable = () => {
+  return all('SELECT * FROM Drive WHERE metaDataTxId = ""');
+}
+
+export const getDriveRootFolderFromSyncTable = (folderId: string) => {
+  return get('SELECT * FROM Sync WHERE fileId = ? AND entityType = "folder"', [folderId]);
 }
 
 export const getDriveInfoFromSyncTable = (id: string) => {
@@ -290,8 +357,8 @@ export const updateFileInSyncTable = (file: {
   );
 };
 
-export const updateUserPublicArDriveTx = (publicArDriveIdTx: string, publicArDriveId: string) => {
-  return get(`UPDATE Profile SET publicArDriveTx = ? WHERE publicArDriveId = ?`, [publicArDriveIdTx, publicArDriveId]);
+export const updateDriveInDriveTable = (metaDataTxId: string, driveId: string) => {
+  return get(`UPDATE Drive SET metaDataTxId = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, driveId]);
 };
 
 export const updateUserPrivateArDriveTx = (privateArDriveIdTx: string, privateArDriveId: string) => {
@@ -319,6 +386,15 @@ export const completeFileMetaDataFromSyncTable = (file: {
     id,
   ]);
 };
+
+// Set a drive record to completely synchronized
+export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, permaWebLink: string, driveId: string) => {
+  return get(`UPDATE Drive SET metaDataSyncStatus = ?, permaWebLink = ? WHERE driveId = ?`, [
+    metaDataSyncStatus,
+    permaWebLink,
+    driveId,
+  ]);
+}
 
 export const removeFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
@@ -351,6 +427,10 @@ export const getAllMissingPathsFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE filePath = ''`);
 }
 
+export const getAllLocalFoldersFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE (entityType = 'drive' OR entityType = 'folder') AND isLocal = 1`);
+}
+
 export const deleteFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
@@ -379,6 +459,11 @@ export const updateFileDownloadStatus = (isLocal: string, id: string) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
 
+// Sets a file isLocal to 0, which will prompt a download
+export const setFileToDownload = (metaDataTxId: string) => {
+  return get(`UPDATE Sync SET isLocal = 0 WHERE metaDataTxId = ?`, [metaDataTxId]);
+}
+
 export const updateArDriveRootDirectoryTx = (arDriveMetaDataTxId: string, permaWebLink: string, fileId: string, fileName: string, filePath: string) => {
   return get(`UPDATE Sync SET metaDataTxId = ?, permaWebLink = ?, fileId = ?, fileMetaDataSyncStatus = 3 WHERE fileName = ? AND filePath = ?`, [arDriveMetaDataTxId, permaWebLink, fileId, fileName, filePath]);
 };
@@ -387,8 +472,17 @@ export const getArDriveSyncFolderPathFromProfile = () => {
   return get(`SELECT syncFolderPath FROM Profile WHERE id = 1`); // THIS ONLY WORKS WITH 1 PROFILE
 }
 
+// Gets all files that are not ignored so they can be validated they still exist locally
+export const getAllLatestFileAndFolderVersionsFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 1`);
+};
+
 export const getAllFromProfile = (): Promise<any[]> => {
   return all('SELECT * FROM Profile');
+};
+
+export const getAllDrivesFromDriveTable = () => {
+  return all(`SELECT * FROM Drive`);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {
@@ -406,6 +500,7 @@ const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {
 const createTablesInDB = async () => {
   await createProfileTable();
   await createSyncTable();
+  await createDriveTable();
 };
 
 // Main entrypoint for database. MUST call this before anything else can happen
