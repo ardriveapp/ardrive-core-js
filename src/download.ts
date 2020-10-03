@@ -324,7 +324,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               fileToDownload.dataTxId,
               fileToDownload.isPublic,
             );
-
             // Ensure the file downloaded has the same lastModifiedDate as before
             let currentDate = new Date()
             let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))

@@ -269,12 +269,12 @@ const watchFolder = (syncFolderPath: string) => {
     persistent: true,
     ignoreInitial: false,
     usePolling: true,
-    interval: 10000,
-    binaryInterval: 10000,
+    interval: 5000,
+    binaryInterval: 5000,
     ignored: '*.enc',
     awaitWriteFinish: {
-      stabilityThreshold: 10000,
-      pollInterval: 10000,
+      stabilityThreshold: 5000,
+      pollInterval: 5000,
     },
   });
   watcher
