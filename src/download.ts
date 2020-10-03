@@ -329,7 +329,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
             let currentDate = new Date()
             let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
             fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
-            console.log ("woot downloaded! setting to 1")
             await updateFileDownloadStatus('1', fileToDownload.id);
             return 'Downloaded';
           } else {

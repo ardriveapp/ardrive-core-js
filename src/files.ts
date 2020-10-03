@@ -104,6 +104,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
       renamedFile.metaDataTxId = '0';
       renamedFile.fileName = fileName;
       renamedFile.filePath = filePath;
+      renamedFile.isLocal = 1;
       renamedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
       await addFileToSyncTable(renamedFile);
       return;

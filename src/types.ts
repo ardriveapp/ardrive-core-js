@@ -7,10 +7,6 @@ export interface Wallet {
 
 export interface ArDriveUser {
   login: any,
-  privateArDriveId: any,
-  privateArDriveTx: any,
-  publicArDriveId: any,
-  publicArDriveTx: any,
   dataProtectionKey: any,
   walletPrivateKey: any,
   walletPublicKey: any,

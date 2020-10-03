@@ -63,10 +63,6 @@ const createProfileTable = async () => {
   const sql = `CREATE TABLE IF NOT EXISTS Profile (
         id integer NOT NULL PRIMARY KEY,
         login text NOT NULL UNIQUE,
-        privateArDriveId NOT NULL UNIQUE,
-        privateArDriveTx text,
-        publicArDriveId NOT NULL UNIQUE,
-        publicArDriveTx text,
         dataProtectionKey text,
         walletPrivateKey text,
         walletPublicKey text,
@@ -363,10 +359,6 @@ export const updateDriveInDriveTable = (metaDataTxId: string, driveId: string) =
   return get(`UPDATE Drive SET metaDataTxId = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, driveId]);
 };
 
-export const updateUserPrivateArDriveTx = (privateArDriveIdTx: string, privateArDriveId: string) => {
-  return get(`UPDATE Profile SET privateArDriveTx = ? WHERE privateArDriveId = ?`, [privateArDriveIdTx, privateArDriveId]);
-};
-
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {
   const { fileDataSyncStatus, permaWebLink, id } = file;
   return get(`UPDATE Sync SET fileDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
@@ -412,8 +404,8 @@ export const getMyFileDownloadConflicts = () => {
 
 export const createArDriveProfile = (user: ArDriveUser) => {
   return run(
-    'REPLACE INTO Profile (login, privateArDriveId, privateArDriveTx, publicArDriveId, publicArDriveTx, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [user.login, user.privateArDriveId, user.privateArDriveTx, user.publicArDriveId, user.publicArDriveTx, user.dataProtectionKey, user.walletPrivateKey, user.walletPublicKey, user.syncFolderPath],
+    'REPLACE INTO Profile (login, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath) VALUES (?, ?, ?, ?, ?)',
+    [user.login, user.dataProtectionKey, user.walletPrivateKey, user.walletPublicKey, user.syncFolderPath],
   );
 };
 
