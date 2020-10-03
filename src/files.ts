@@ -100,7 +100,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     if (renamedFile && !(checkFileExistsSync(renamedFile.filePath))) {
       // The file has been renamed.  Submit as Metadata.
       console.log('   %s was just renamed', filePath);
-      renamedFile.unixTime = Math.round(new Date().getTime() / 1000);
+      renamedFile.unixTime = Date.now();
       renamedFile.metaDataTxId = '0';
       renamedFile.fileName = fileName;
       renamedFile.filePath = filePath;
@@ -114,7 +114,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     const movedFile = await getByFileHashAndFileNameFromSyncTable(fileHash, fileName);
     if (movedFile && !(checkFileExistsSync(movedFile.filePath))) {
       console.log('   %s has been moved', filePath);
-      movedFile.unixTime = Math.round(new Date().getTime() / 1000);
+      movedFile.unixTime = Date.now();
       movedFile.metaDataTxId = '0';
       movedFile.fileName = fileName;
       movedFile.filePath = filePath;
@@ -126,7 +126,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
 
     // No match, so queue a new file
     console.log('   Queuing a new file for upload %s', filePath);
-    const unixTime = Math.round(new Date().getTime() / 1000);
+    const unixTime = Date.now();
     const contentType = extToMime(filePath);
     const fileId = uuidv4();
     const fileSize = stats.size;
@@ -211,7 +211,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       }
     })
 
-    const unixTime = Math.round(new Date().getTime() / 1000);
+    const unixTime = Date.now();
     const contentType = 'application/json';
     let fileId = uuidv4();
     const lastModifiedDate = Math.floor(stats.mtimeMs);

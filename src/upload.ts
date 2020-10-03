@@ -203,7 +203,6 @@ async function uploadArDriveFolderMetaData(
     // create secondary metadata, used to further ID the file (with encryption if necessary)
     const secondaryFileMetaDataTags = {
       name: fileToUpload.fileName,
-      lastModifiedDate: fileToUpload.lastModifiedDate,
     };
     // Convert to JSON string
     const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
