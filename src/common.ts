@@ -161,6 +161,7 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
   let rootFolderId = uuidv4();
   let unixTime = Date.now();
   let drive : ArFSDriveMetadata = {
+    id: 0,
     appName: appName,
     appVersion: appVersion,
     driveName,
@@ -174,6 +175,7 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
     driveAuthMode: '',
     metaDataTxId: '',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
+    permaWebLink: '',
   };
   console.log ("Creating a new public drive, %s | %s", driveName, driveId)
   return drive;
@@ -185,6 +187,7 @@ const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetad
   let rootFolderId = uuidv4();
   let unixTime = Date.now();
   let drive : ArFSDriveMetadata = {
+    id: 0,
     appName: appName,
     appVersion: appVersion,
     driveName,
@@ -198,6 +201,7 @@ const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetad
     driveAuthMode: 'password',
     metaDataTxId: '',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
+    permaWebLink: '',
   };
   console.log ("Creating a new private drive, %s | %s", driveName, driveId)
   return drive;

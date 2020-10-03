@@ -81,7 +81,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     const newFileVersion = await getByFilePathFromSyncTable(filePath);
     if (newFileVersion) {
       // Add new version of existing file
-      newFileVersion.unixTime = Math.round(new Date().getTime() / 1000);
+      newFileVersion.unixTime = Date.now();
       newFileVersion.fileVersion += 1;
       newFileVersion.metaDataTx = '0';
       newFileVersion.dataTx = '0';

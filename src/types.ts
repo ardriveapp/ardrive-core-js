@@ -26,6 +26,7 @@ export interface UploadBatch {
 };
 
 export interface ArFSDriveMetadata {
+  id: number,
   appName: string,
   appVersion: string,
   driveName: string,
@@ -39,6 +40,7 @@ export interface ArFSDriveMetadata {
   driveAuthMode: string,
   metaDataTxId: string,
   metaDataSyncStatus: number,
+  permaWebLink: string,
 };
 
 export interface ArFSFileMetaData {

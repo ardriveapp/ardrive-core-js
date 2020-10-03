@@ -87,6 +87,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
       const { node } = edge;
       const { tags } = node;
       let drive : ArFSDriveMetadata = {
+        id: 0,
         appName: '',
         appVersion: '',
         driveName: '',
@@ -100,6 +101,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
         driveAuthMode: '',
         metaDataTxId: '',
         metaDataSyncStatus: 3,
+        permaWebLink: '',
       }
       // Iterate through each tag and pull out each drive ID as well the drives privacy status
       tags.forEach((tag: any) => {
@@ -192,6 +194,7 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
       const { node } = edge;
       const { tags } = node;
       let drive : ArFSDriveMetadata = {
+        id: 0,
         appName: '',
         appVersion: '',
         driveName: '',
@@ -205,6 +208,7 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
         driveAuthMode: '',
         metaDataTxId: '',
         metaDataSyncStatus: 3,
+        permaWebLink: '',
       }
       // Iterate through each tag and pull out each drive ID as well the drives privacy status
       tags.forEach((tag: any) => {
@@ -388,6 +392,7 @@ const createPublicDriveTransaction = async (
     const arPrice = +winston * 0.000000000001;
     console.log('Uploading new Public Drive (name: %s) at %s to the Permaweb', drive.driveName, arPrice);
 
+    console.log ("Drive unix time: %s", drive.unixTime.toString())
     // Tag file
     transaction.addTag('App-Name', appName);
     transaction.addTag('App-Version', appVersion);
