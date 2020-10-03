@@ -428,14 +428,18 @@ export const getAllMissingPathsFromSyncTable = () => {
 }
 
 export const getAllLocalFoldersFromSyncTable = () => {
-  return all(`SELECT * FROM Sync WHERE (entityType = 'drive' OR entityType = 'folder') AND isLocal = 1`);
+  return all(`SELECT * FROM Sync WHERE entityType = 'folder' AND isLocal = 1`);
+}
+
+export const getAllLocalFilesFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE entityType = 'file' AND isLocal = 1`);
 }
 
 export const deleteFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
 
-export const setPermaWebFileToIgnore = (id: string) => {
+export const setPermaWebFileToIgnore = (id: number) => {
   return get(`UPDATE Sync SET ignore = 1 WHERE id = ?`, [id]);
 };
 
@@ -447,7 +451,7 @@ export const setFileUploaderObject = (uploader: string, id: string) => {
   return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
-export const setFilePath = (filePath: string, id: string) => {
+export const setFilePath = (filePath: string, id: number) => {
   return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
 
@@ -455,7 +459,11 @@ export const updateFolderHashInSyncTable = (folderHash: string, fileId: string) 
   return get(`UPDATE Sync SET fileHash = ? WHERE fileId = ?`, [folderHash, fileId]);
 };
 
-export const updateFileDownloadStatus = (isLocal: string, id: string) => {
+export const updateFileHashInSyncTable = (fileHash: string, id: number) => {
+  return get(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [fileHash, id]);
+};
+
+export const updateFileDownloadStatus = (isLocal: string, id: number) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
 
@@ -483,6 +491,10 @@ export const getAllFromProfile = (): Promise<any[]> => {
 
 export const getAllDrivesFromDriveTable = () => {
   return all(`SELECT * FROM Drive`);
+};
+
+export const getAllDrivesByPrivacyFromDriveTable = (drivePrivacy: string) => {
+  return all(`SELECT * FROM Drive WHERE drivePrivacy = ?`, [drivePrivacy]);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {

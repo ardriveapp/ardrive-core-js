@@ -3,9 +3,9 @@
 // upload.js
 import * as fs from 'fs';
 import { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes } from './common';
 import { getTransactionMetaData, getAllMyDataFileTxs, getTransactionData } from './arweave';
-import { checksumFile, decryptFile, decryptFileMetaData } from './crypto';
+import { decryptFile, decryptFileMetaData } from './crypto';
 import {
   getFilesToDownload,
   getFoldersToCreate,
@@ -17,33 +17,29 @@ import {
   getMyFileDownloadConflicts,
   getFolderNameFromSyncTable,
   getFolderParentIdFromSyncTable,
-  getFolderEntityFromSyncTable,
   setFilePath,
   getAllMissingPathsFromSyncTable,
   getArDriveSyncFolderPathFromProfile,
   getAllLatestFileAndFolderVersionsFromSyncTable,
   setFileToDownload,
   getLatestFolderVersionFromSyncTable,
+  getAllDrivesByPrivacyFromDriveTable,
 } from './db';
-import { ArDriveUser, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
 // This needs updating
 // Determines the file path based on parent folder ID
 async function determineFilePath(syncFolderPath: string, parentFolderId: string, fileName: string) {
   try {
     let filePath = '\\' + fileName;
-    let parentFolderEntityType;
     let parentFolderName;
-    let parentFolderEntity;
     let parentOfParentFolderId;
     let x = 0;
-    while ((parentFolderEntityType !== 'drive') && (x < 10)) {
+    while ((parentFolderId !== '0') && (x < 10)) {
       parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
       filePath = '\\' + parentFolderName.fileName + filePath
-      parentFolderEntity = await getFolderEntityFromSyncTable(parentFolderId)
       parentOfParentFolderId = await getFolderParentIdFromSyncTable(parentFolderId)
       parentFolderId = parentOfParentFolderId.parentFolderId;
-      parentFolderEntityType = parentFolderEntity.entityType;
       x += 1;
     }
     filePath = syncFolderPath.concat(filePath)
@@ -61,21 +57,21 @@ async function determineFilePath(syncFolderPath: string, parentFolderId: string,
 async function setNewFilePaths() {
   let syncFolderPath = await getArDriveSyncFolderPathFromProfile()  
   let filePath = '';
-  const pathsToFix = await getAllMissingPathsFromSyncTable()
+  const filesToFix : ArFSFileMetaData[]= await getAllMissingPathsFromSyncTable()
   // console.log ("Found %s paths to fix", pathsToFix.length)
-  await asyncForEach(pathsToFix, async (pathToFix: {fileName: string, parentFolderId: string, id: string})  => {
-    console.log ("   Fixing file path for %s | %s)", pathToFix.fileName, pathToFix.parentFolderId);
-    filePath = await determineFilePath(syncFolderPath.syncFolderPath, pathToFix.parentFolderId, pathToFix.fileName)
-    await setFilePath(filePath, pathToFix.id)
+  await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
+    console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
+    filePath = await determineFilePath(syncFolderPath.syncFolderPath, fileToFix.parentFolderId, fileToFix.fileName)
+    await setFilePath(filePath, fileToFix.id)
   })
 };
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
   user: ArDriveUser,
-  filePath: any,
+  filePath: string,
   dataTxId: string,
-  isPublic: string,
+  isPublic: number,
 ) {
   try {
     const folderPath = dirname(filePath);
@@ -85,12 +81,13 @@ async function downloadArDriveFileByTx(
     }
     const data = await getTransactionData(dataTxId);
 
-    // console.log("FOUND PERMAFILE! %s is on the Permaweb, but not local.  Downloading...", full_path, data)
-    if (isPublic === '1') {
+    //console.log("FOUND PERMAFILE! %s is on the Permaweb, but not local.  Downloading...", full_path, data)
+    if (+isPublic === 1) {
       fs.writeFileSync(filePath, data);
       console.log('DOWNLOADED %s', filePath);
     } else {
       // Method with decryption
+      console.log("shouldnt be decrypting...")
       fs.writeFileSync(filePath.concat('.enc'), data);
       await sleep(500);
       await decryptFile(filePath.concat('.enc'), user.dataProtectionKey, user.walletPrivateKey);
@@ -98,6 +95,7 @@ async function downloadArDriveFileByTx(
       fs.unlinkSync(filePath.concat('.enc'));
       console.log('DOWNLOADED AND DECRYPTED %s', filePath);
     }
+
     return 'Success';
   } catch (err) {
     console.log(err);
@@ -199,32 +197,41 @@ async function getFileMetaDataFromTx(
       fileToSync.isPublic = 1;
     }
 
-    // Set metadata for FOlder and File entities
+    // Set metadata for Folder and File entities
     fileToSync.fileSize = dataJSON.size;
     fileToSync.fileName = dataJSON.name;
-    fileToSync.fileHash = dataJSON.hash;
-    fileToSync.lastModifiedDate = Math.floor(Number(dataJSON.lastModifiedDate));
+    fileToSync.fileHash = '';
     fileToSync.fileDataSyncStatus = 3;
     fileToSync.fileMetaDataSyncStatus = 3;
     fileToSync.metaDataTxId = metaDataTxId;
+
+    // If it is a file, copy the lastModifiedDate from the JSON
+    // If a folder, use the Unix TIme
+    if (fileToSync.entityType === 'file') {
+      fileToSync.lastModifiedDate = dataJSON.lastModifiedDate;
+    }
+    else if (fileToSync.entityType === 'folder') {
+      fileToSync.lastModifiedDate = fileToSync.unixTime;
+    }
+
     fileToSync.dataTxId = '0';
 
     // Perform specific actions for File, Folder and Drive entities
     if (fileToSync.entityType === 'file') {
-      // filePath = user.syncFolderPath.concat(dataJSON.path, dataJSON.name);
       // Since the File MetaData Tx does not have the content type of underlying file, we get it here
       fileToSync.dataTxId = dataJSON.dataTxId;
       fileToSync.contentType = extToMime(dataJSON.name);
       fileToSync.permaWebLink = gatewayURL.concat(dataJSON.dataTxId);
+
       // Check to see if a previous version exists, and if so, increment the version.
       // Versions are determined by comparing old/new file hash.
       const latestFile = await getLatestFileVersionFromSyncTable(fileToSync.fileId)
       if (latestFile !== undefined) {
-        if (latestFile.fileHash !== fileToSync.fileHash) {
+        if (latestFile.fileDataTx !== fileToSync.dataTxId) {
           fileToSync.fileVersion = +latestFile.fileVersion + 1;
           console.log ("%s has a new version %s", dataJSON.name, fileToSync.fileVersion)
         }
-        // If the previous file id matches, but the hashes are same, then we do not increment the version
+        // If the previous file data tx matches, then we do not increment the version
         else {
           fileToSync.fileVersion = latestFile.fileVersion;
         }
@@ -232,45 +239,7 @@ async function getFileMetaDataFromTx(
     // Perform specific actions for Folder entities
     } else if (fileToSync.entityType === 'folder') {
       fileToSync.permaWebLink = gatewayURL.concat(metaDataTxId);
-    } else if (fileToSync.entityType === 'drive') {
-      // update the sync table directly by exact file path and file name metaDataTxId for public ardrive
-      // update to include private
-      // const driveRootFolderPath = user.syncFolderPath.concat("\\Public");
-      fileToSync.filePath = user.syncFolderPath.concat("\\Public");
-      fileToSync.fileName = 'Public'
-      fileToSync.permaWebLink = gatewayURL.concat(metaDataTxId);
-      fileToSync.fileId = dataJSON.rootFolderId;
-      fileToSync.parentFolderId = '0';
-      fileToSync.fileHash = '0';
-      fileToSync.lastModifiedDate = fileToSync.unixTime;
-      fileToSync.fileSize = 0;
-      // await updateArDriveRootDirectoryTx(metaDataTxId, permaWebLink, dataJSON.rootFolderId, "Public", driveRootFolderPath)
-      // return 'Success';
-    }
-
-    // If the File, Folder or Drive is already in the database, lets find it and update it with the latest metadata information
-    // If it is, we just update the metadata
-    /*const exactMatch = await checkIfExistsInSyncTable(fileToSync.fileHash, fileToSync.fileName, fileToSync.fileId)
-    if (exactMatch) {
-      const fileToUpdate = {
-        arDriveId: newFileToDownload.arDriveId,
-        parentFolderId: newFileToDownload.parentFolderId,
-        fileId: newFileToDownload.fileId,
-        fileVersion: newFileToDownload.fileVersion,
-        metaDataTxId: newFileToDownload.metaDataTxId,
-        dataTxId: newFileToDownload.dataTxId,
-        fileDataSyncStatus: '3',
-        fileMetaDataSyncStatus: '3',
-        permaWebLink,
-        id: exactMatch.id,
-      };
-      // console.log('%s is already local', filePath);
-      await updateFileInSyncTable(fileToUpdate);
-    } else {
-      // If the file is not local, then we add it to the Sync table so it can be downloaded.
-      console.log('%s | %s is unsynchronized', newFileToDownload.fileName, newFileToDownload.fileId);
-      addFileToSyncTable(newFileToDownload); 
-    } */
+    } 
 
     console.log('%s | %s is unsynchronized and needs to be downloaded', fileToSync.fileName, fileToSync.fileId);
     await addFileToSyncTable(fileToSync);
@@ -287,28 +256,32 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
-  const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.privateArDriveId);
-  await asyncForEach(privateTxIds, async (privateTxId: string) => {
-    await getFileMetaDataFromTx(privateTxId, user);
+  let drives : ArFSDriveMetadata[] = await getAllDrivesByPrivacyFromDriveTable("private");
+  await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+    const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    await asyncForEach(privateTxIds, async (privateTxId: string) => {
+      await getFileMetaDataFromTx(privateTxId, user); 
+    });
   });
 
   // Get your public files
   console.log('---Getting all your Public ArDrive files---');
-  const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, user.publicArDriveId);
-  await asyncForEach(publicTxIds, async (publicTxId: string) => {
-    await getFileMetaDataFromTx(publicTxId, user);
+  drives = await getAllDrivesByPrivacyFromDriveTable("public");
+  await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+    const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    await asyncForEach(publicTxIds, async (publicTxId: string) => {
+      await getFileMetaDataFromTx(publicTxId, user);
+    });
   });
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
   await setNewFilePaths();
-  await setAllFolderHashes();
 };
 
 // Downloads all ardrive files that are not local
 export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
   try {
     console.log('---Downloading any unsynced files---');
-
     // Check the latest file versions to ensure they exist locally, if not set them to download
     const localFiles : ArFSFileMetaData[] = await getAllLatestFileAndFolderVersionsFromSyncTable()
     await asyncForEach(localFiles, async (localFile: ArFSFileMetaData) => {
@@ -320,29 +293,18 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
     })
 
     // Get the Files and Folders which have isLocal set to 0 that we are not ignoring
-    const filesToDownload = await getFilesToDownload();
-    const foldersToCreate = await getFoldersToCreate();
+    const filesToDownload : ArFSFileMetaData[] = await getFilesToDownload();
+    const foldersToCreate : ArFSFileMetaData[] =  await getFoldersToCreate();
 
     // Get the special batch of File Download Conflicts
-    const fileConflictsToDownload = await getMyFileDownloadConflicts();
+    const fileConflictsToDownload : ArFSFileMetaData[] = await getMyFileDownloadConflicts();
 
     // Process any files to download
     if (filesToDownload.length > 0) {
       // There are unsynced files to process
       await asyncForEach(
         filesToDownload,
-        async (fileToDownload: {
-          id: any;
-          filePath: any;
-          fileName: string;
-          dataTxId: string;
-          isPublic: string;
-          fileHash: string;
-          fileId: string;
-          lastModifiedDate: number;
-          isLocal: string;
-          parentFolderId: string;
-        }) => {
+        async (fileToDownload: ArFSFileMetaData) => {
           // Establish the file path first
           if (fileToDownload.filePath === '') {
             fileToDownload.filePath = await determineFilePath(user.syncFolderPath, fileToDownload.parentFolderId, fileToDownload.fileName)
@@ -350,36 +312,26 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           }
 
           // Get the latest file version from the DB
-          const latestFileVersion = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
-          
-          // console.log ("Latest file version is %s", latestFileVersion.filePath)
+          const latestFileVersion : ArFSFileMetaData = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
+
           // Only download if this is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
-            // Does the file exist?
-            if (fs.existsSync(latestFileVersion.filePath)) {
-              // Does it have the same hash i.e. is the same version?
-              const localFileHash = await checksumFile(latestFileVersion.filePath);
-              if (localFileHash === latestFileVersion.fileHash) {
-                await updateFileDownloadStatus('1', latestFileVersion.id); // Mark latest version as local
-                return 'PermaWeb file is already local';
-              }
-              // The file hash is different, therefore we have a conflicting version but the same name.  The user must remediate.
-              await updateFileDownloadStatus('2', latestFileVersion.id);
-              return 'PermaWeb file conflicts with the local file.  Please resolve before continuing.';
-            }
-            // This file is on the Permaweb, but it is not local
+            // If there is a file already in this location with a different size, then skip mark as a conflict with isLocal 2
+            console.log ("Downloading the latest file version %s", fileToDownload.filePath)
             await downloadArDriveFileByTx(
               user,
-              latestFileVersion.filePath,
-              latestFileVersion.dataTxId,
-              latestFileVersion.isPublic,
+              fileToDownload.filePath,
+              fileToDownload.dataTxId,
+              fileToDownload.isPublic,
             );
-            
+
             // Ensure the file downloaded has the same lastModifiedDate as before
             let currentDate = new Date()
-            let lastModifiedDate = new Date(Number(latestFileVersion.lastModifiedDate))
-            fs.utimesSync(latestFileVersion.filePath, currentDate, lastModifiedDate)
+            let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+            fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+            console.log ("woot downloaded! setting to 1")
             await updateFileDownloadStatus('1', fileToDownload.id);
+            return 'Downloaded';
           } else {
             // This is an older version, and we ignore it for now.
             await updateFileDownloadStatus('0', fileToDownload.id); // Mark older version as not local ignored
@@ -419,7 +371,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
     if (fileConflictsToDownload.length > 0) {
       await asyncForEach(
         fileConflictsToDownload,
-        async (fileConflictToDownload: { id: any; filePath: any; dataTxId: string; isPublic: string }) => {
+        async (fileConflictToDownload: ArFSFileMetaData) => {
           // This file is on the Permaweb, but it is not local or the user wants to overwrite the local file
           console.log('Overwriting local file %s', fileConflictToDownload.filePath);
           await downloadArDriveFileByTx(
@@ -433,6 +385,11 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         },
       );
     }
+
+    // Ensure all of the folder hashes are set properly
+    await setAllFolderHashes();
+    await setAllFileHashes();
+
     return 'Downloaded all ArDrive files';
   } catch (err) {
     console.log(err);

@@ -83,7 +83,7 @@ export const setupDrives = async (syncFolderPath: string) => {
           fileVersion: 0,
           isPublic,
           isLocal: 1,
-          metaDataTxId: '0', 
+          metaDataTxId: drive.metaDataTxId, 
           dataTxId: '0',
           permaWebLink: gatewayURL.concat(drive.metaDataTxId),
           fileDataSyncStatus: 0, // Folders do not require a data tx

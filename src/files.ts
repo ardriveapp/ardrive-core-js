@@ -192,7 +192,6 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
     const folderHash = await hashElement(folderPath, options)
 
-
     // Get the Drive ID and Privacy status
     let isPublic = 0;
     let driveId = ''
@@ -227,11 +226,11 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       parentFolderId = await getFolderFromSyncTable(parentFolderPath)
     } 
 
-    // Check to see if this folder was renamed or moved by matching against its hash
+    // Check to see if this folder was moved by matching against its hash
     const movedFolder = await getFolderByHashFromSyncTable(folderHash.hash);
     if (movedFolder) {
       // create a new folder with previous folder ID
-      console.log ("Folder was renamed or moved!  Using existing previous file Id: %s", movedFolder.fileId);
+      console.log ("Folder was moved!  Using existing previous file Id: %s", movedFolder.fileId);
       fileId = movedFolder.fileId;
     }
 
@@ -304,7 +303,7 @@ const resolveFileDownloadConflict = async (resolution: string, fileName: string,
       setPermaWebFileToOverWrite(id);
       break;
     case 'I':
-      setPermaWebFileToIgnore(id);
+      setPermaWebFileToIgnore(+id);
       break;
     default:
       // Skipping this time

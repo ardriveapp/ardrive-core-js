@@ -3,8 +3,9 @@ import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import { sep } from 'path';
-import { Wallet, ArFSDriveMetadata } from './types';
-import { getAllLocalFoldersFromSyncTable, updateFolderHashInSyncTable } from './db';
+import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { getAllLocalFilesFromSyncTable, getAllLocalFoldersFromSyncTable, updateFileHashInSyncTable, updateFolderHashInSyncTable } from './db';
+import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
@@ -137,10 +138,28 @@ const setAllFolderHashes = async () => {
   }
 }
 
+const setAllFileHashes = async () => {
+  try {
+    const allFiles : ArFSFileMetaData[]= await getAllLocalFilesFromSyncTable()
+    // Update the hash of the parent folder
+    await asyncForEach(allFiles, async (file: ArFSFileMetaData) => {
+      let fileHash = await checksumFile(file.filePath);
+      await updateFileHashInSyncTable(fileHash, file.id)
+    })
+    return "Folder hashes set"
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("The parent folder is not present in the database yet")
+    return "Error"
+  }
+}
+
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
 const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
+  let unixTime = Date.now();
   let drive : ArFSDriveMetadata = {
     appName: appName,
     appVersion: appVersion,
@@ -148,7 +167,7 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
     rootFolderId,
     cipher: '',
     cipherIV: '',
-    unixTime: Date.now();
+    unixTime,
     arFS: arFSVersion,
     driveId,
     drivePrivacy: 'public',
@@ -227,6 +246,7 @@ export {
   backupWallet,
   checkFileExistsSync,
   setAllFolderHashes,
+  setAllFileHashes,
   checkFolderExistsSync,
   Utf8ArrayToStr,
   createNewPublicDrive,
