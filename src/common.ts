@@ -2,9 +2,9 @@
 import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
-import { sep } from 'path';
+import { dirname, sep } from 'path';
 import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
-import { getAllLocalFilesFromSyncTable, getAllLocalFoldersFromSyncTable, updateFileHashInSyncTable, updateFolderHashInSyncTable } from './db';
+import { getAllLocalFilesFromSyncTable, getAllLocalFoldersFromSyncTable, getAllMissingParentFolderIdsFromSyncTable, getFolderFromSyncTable, setParentFolderId, updateFileHashInSyncTable, updateFolderHashInSyncTable } from './db';
 import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
@@ -155,6 +155,27 @@ const setAllFileHashes = async () => {
   }
 }
 
+const setAllParentFolderIds = async () => {
+  try {
+    const allFilesOrFolders : ArFSFileMetaData[]= await getAllMissingParentFolderIdsFromSyncTable()
+    // Update the hash of the parent folder
+    await asyncForEach(allFilesOrFolders, async (fileOrFolder: ArFSFileMetaData) => {
+      const parentFolderPath = dirname(fileOrFolder.filePath);
+      let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+      if (parentFolder !== undefined) {
+        console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
+        setParentFolderId(parentFolder.fileId, fileOrFolder.id)
+      }
+    })
+    return "Folder hashes set"
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("The parent folder is not present in the database yet")
+    return "Error"
+  }
+
+}
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
 const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
@@ -173,7 +194,7 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
     driveId,
     drivePrivacy: 'public',
     driveAuthMode: '',
-    metaDataTxId: '',
+    metaDataTxId: '0',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
     permaWebLink: '',
   };
@@ -199,7 +220,7 @@ const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetad
     driveId,
     drivePrivacy: 'private',
     driveAuthMode: 'password',
-    metaDataTxId: '',
+    metaDataTxId: '0',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
     permaWebLink: '',
   };
@@ -255,4 +276,5 @@ export {
   Utf8ArrayToStr,
   createNewPublicDrive,
   createNewPrivateDrive,
+  setAllParentFolderIds,
 };

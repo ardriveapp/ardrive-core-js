@@ -421,6 +421,10 @@ export const getAllMissingPathsFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE filePath = ''`);
 }
 
+export const getAllMissingParentFolderIdsFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE parentFolderId = ''`);
+}
+
 export const getAllLocalFoldersFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE entityType = 'folder' AND isLocal = 1`);
 }
@@ -431,6 +435,10 @@ export const getAllLocalFilesFromSyncTable = () => {
 
 export const deleteFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
+};
+
+export const setParentFolderId = (parentFolderId: string, id: number) => {
+  return get(`UPDATE Sync SET parentFolderId = ? WHERE id = ?`, [parentFolderId, id]);
 };
 
 export const setPermaWebFileToIgnore = (id: number) => {

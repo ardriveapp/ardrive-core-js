@@ -38,11 +38,10 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
 
     // Check if the parent folder has been added to the DB first
     const parentFolderPath = dirname(filePath);
-    let parentFolderId = await getFolderFromSyncTable(parentFolderPath);
-    if (parentFolderId === undefined) {
-      console.log ("The parent folder is not present in the database yet, lets add it");
-      await queueFolder (parentFolderPath, syncFolderPath)
-      parentFolderId = await getFolderFromSyncTable(parentFolderPath)
+    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+    let parentFolderId = '';
+    if (parentFolder !== undefined) {
+      parentFolderId = parentFolder.fileId;
     }
 
     // Get the file hash using MD-5
@@ -70,7 +69,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     })
 
     // Check if the exact file already exists in the same location
-    const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(fileName, fileHash, parentFolderId.fileId);
+    const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(fileName, fileHash, parentFolderId);
     if (exactMatch) {
       // This file's version already exists.  Do nothing
       console.log ("   Already found a match for %s", filePath)
@@ -119,7 +118,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
       movedFile.metaDataTxId = '0';
       movedFile.fileName = fileName;
       movedFile.filePath = filePath;
-      movedFile.parentFolderId = parentFolderId.fileId;
+      movedFile.parentFolderId = parentFolderId;
       movedFile.fileMetaDataSyncStatus = 1; // Sync status of 1 = metadatatx only
       await addFileToSyncTable(movedFile);
       return;
@@ -139,7 +138,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
       contentType,
       entityType: 'file',
       driveId,
-      parentFolderId: parentFolderId.fileId,
+      parentFolderId,
       fileId,
       filePath,
       fileName,
@@ -219,12 +218,11 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
     // Check if its parent folder has been added.  If not, lets add it first
+    let parentFolderId = '';
     const parentFolderPath = dirname(folderPath);
-    let parentFolderId = await getFolderFromSyncTable(parentFolderPath);
-    if (parentFolderId === undefined) {
-      console.log ("The parent folder is not present in the database yet, lets add it");
-      await queueFolder (parentFolderPath, syncFolderPath)
-      parentFolderId = await getFolderFromSyncTable(parentFolderPath)
+    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+    if (parentFolder !== undefined) {
+      parentFolderId = parentFolder.fileId;
     } 
 
     // Check to see if this folder was moved by matching against its hash
@@ -243,7 +241,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       contentType,
       entityType,
       driveId,
-      parentFolderId: parentFolderId.fileId,
+      parentFolderId,
       fileId,
       filePath: folderPath,
       fileName,
