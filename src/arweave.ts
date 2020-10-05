@@ -10,7 +10,7 @@ import Arweave from 'arweave';
 
 const arweave = Arweave.init({
   // host: 'perma.online', // ARCA Community Gateway
-  host: 'arweave.net', // Arweave Gateway
+  host: 'arweave.dev', // Arweave Gateway
   port: 443,
   protocol: 'https',
   timeout: 600000,

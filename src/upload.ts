@@ -8,6 +8,7 @@ import {
   createPublicDriveTransaction,
   createPrivateDriveTransaction,
   createArDrivePublicDataTransaction,
+  sendArDriveFee,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
 import { encryptFile, encryptTag } from './crypto';
@@ -118,7 +119,10 @@ async function uploadArDriveFileData(
       dataTxId = await createArDriveDataTransaction(user.walletPrivateKey, encryptedFilePath, fileToUpload.contentType, fileToUpload.id);
       fs.unlinkSync(encryptedFilePath);
     }
-    // await sendArDriveFee(user.walletPrivateKey, arPrice);
+
+    // Send the ArDrive Profit Sharing Community Fee
+    await sendArDriveFee(user.walletPrivateKey, arPrice);
+    
     return dataTxId;
   } catch (err) {
     console.log(err);
@@ -285,6 +289,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
           await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
         }
         else if (newDrive.drivePrivacy === 'private') {
+          // THIS WILL NOT WORK BECAUSE ENCRYPTION IS NOT FULLY IMPLEMENTED
           await createPrivateDriveTransaction(user.walletPrivateKey, newDrive)
         }
         const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId)
