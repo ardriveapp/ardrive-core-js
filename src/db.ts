@@ -277,7 +277,7 @@ export const getFoldersToCreate = () => {
 };
 
 export const getNewDrivesFromDriveTable = () => {
-  return all('SELECT * FROM Drive WHERE metaDataTxId = ""');
+  return all('SELECT * FROM Drive WHERE metaDataTxId = "0"');
 }
 
 export const getDriveRootFolderFromSyncTable = (folderId: string) => {

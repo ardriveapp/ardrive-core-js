@@ -3,7 +3,7 @@
 // upload.js
 import * as fs from 'fs';
 import { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds } from './common';
 import { getTransactionMetaData, getAllMyDataFileTxs, getTransactionData } from './arweave';
 import { decryptFile, decryptFileMetaData } from './crypto';
 import {
@@ -387,6 +387,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
     // Ensure all of the folder hashes are set properly
     await setAllFolderHashes();
     await setAllFileHashes();
+    await setAllParentFolderIds();
 
     return 'Downloaded all ArDrive files';
   } catch (err) {
