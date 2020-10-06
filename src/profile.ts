@@ -1,7 +1,7 @@
 // index.js
 import * as fs from 'fs';
 import { sep } from 'path';
-import { asyncForEach, gatewayURL } from './common';
+import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
 import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
 import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
@@ -83,9 +83,9 @@ export const setupDrives = async (syncFolderPath: string) => {
           fileVersion: 0,
           isPublic,
           isLocal: 1,
-          metaDataTxId: drive.metaDataTxId, 
+          metaDataTxId: '0', 
           dataTxId: '0',
-          permaWebLink: gatewayURL.concat(drive.metaDataTxId),
+          permaWebLink: '',
           fileDataSyncStatus: 0, // Folders do not require a data tx
           fileMetaDataSyncStatus: drive.metaDataSyncStatus, // Sync status of 1 requries a metadata tx
         };
