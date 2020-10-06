@@ -1,6 +1,7 @@
 // index.js
 import * as fs from 'fs';
 import { sep } from 'path';
+import { getDriveRootFolderTxId } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
 import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
@@ -31,8 +32,8 @@ export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
   }
 };
 
-// This creates all of the Drives found
-export const setupDrives = async (syncFolderPath: string) => {
+// This creates all of the Drives found for the user
+export const setupDrives = async (walletPublicKey: string, syncFolderPath: string) => {
   try {
     console.log ("Initializing ArDrives");
     // check if the root sync folder exists, if not create it
@@ -63,6 +64,9 @@ export const setupDrives = async (syncFolderPath: string) => {
           isPublic = 0;
         }
 
+        // Get the root folder ID for this drive
+        const rootFolderTxId: string = await getDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId)
+
         // Prepare a new folder to add to the sync table
         // This folder will require a metadata transaction to arweave
         const driveFolderToAdd : ArFSFileMetaData = {
@@ -83,7 +87,7 @@ export const setupDrives = async (syncFolderPath: string) => {
           fileVersion: 0,
           isPublic,
           isLocal: 1,
-          metaDataTxId: '0', 
+          metaDataTxId: rootFolderTxId, 
           dataTxId: '0',
           permaWebLink: '',
           fileDataSyncStatus: 0, // Folders do not require a data tx

@@ -123,9 +123,9 @@ const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: str
 const setAllFolderHashes = async () => {
   try {
     const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
-    const allFolders = await getAllLocalFoldersFromSyncTable()
+    const allFolders : ArFSFileMetaData[] = await getAllLocalFoldersFromSyncTable()
     // Update the hash of the parent folder
-    await asyncForEach(allFolders, async (folder: any) => {
+    await asyncForEach(allFolders, async (folder: ArFSFileMetaData) => {
       const folderHash = await hashElement(folder.filePath, options)
       await updateFolderHashInSyncTable(folderHash.hash, folder.id)
     })

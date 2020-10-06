@@ -148,6 +148,54 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   }
 };
 
+// Gets the root folder ID for a Public Drive
+const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, folderId: string) : Promise<string> => {
+  try {
+    let metaDataTxId = '0';
+    const query = {
+      query: `query {
+      transactions(
+        first: 1
+        sort: HEIGHT_ASC
+        owners: ["${walletPublicKey}"]
+        tags: [
+          { name: "App-Name", values: "${appName}" }
+          { name: "App-Version", values: "${appVersion}" }
+          { name: "Drive-Id", values: "${driveId}" }
+          { name: "Folder-Id", values: "${folderId}"}
+        ]
+      ) {
+        edges {
+          node {
+            id
+            block {
+              id
+              timestamp
+              height
+              previous
+            }
+          }
+        }
+      }
+    }`,
+    };
+    const response = await arweave.api
+      .request()
+      .post('https://arweave.dev/graphql', query);
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+    await asyncForEach(edges, async (edge: any) => {
+      const { node } = edge;
+      metaDataTxId = node.id;
+    });
+    return metaDataTxId;
+  }
+  catch (err) {
+    console.log (err);
+    return "Error";
+  }
+}
 // Gets all of the private ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
@@ -836,6 +884,7 @@ export {
   createArDrivePublicMetaDataTransaction,
   createArDrivePrivateMetaDataTransaction,
   createArDriveDataTransaction,
+  getDriveRootFolderTxId,
   createArDrivePrivateDataTransaction,
   createArDrivePublicDataTransaction,
   createPublicDriveTransaction,

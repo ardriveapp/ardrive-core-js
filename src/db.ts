@@ -457,8 +457,8 @@ export const setFilePath = (filePath: string, id: number) => {
   return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
 
-export const updateFolderHashInSyncTable = (folderHash: string, fileId: string) => {
-  return get(`UPDATE Sync SET fileHash = ? WHERE fileId = ?`, [folderHash, fileId]);
+export const updateFolderHashInSyncTable = (folderHash: string, id: number) => {
+  return get(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [folderHash, id]);
 };
 
 export const updateFileHashInSyncTable = (fileHash: string, id: number) => {
