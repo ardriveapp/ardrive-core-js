@@ -282,7 +282,7 @@ const watchFolder = (syncFolderPath: string) => {
     .on('addDir', async (path: any) => queueFolder(path, syncFolderPath))
     .on('unlinkDir', (path: any) => log(`Directory ${path} has been removed`))
     .on('error', (error: any) => log(`Watcher error: ${error}`))
-    .on('ready', () => log('Initial scan complete. Ready for changes'));
+    .on('ready', () => log(''));
   return 'Watched';
 };
 

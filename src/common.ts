@@ -2,13 +2,14 @@
 import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
-import { dirname, sep } from 'path';
+import { dirname } from 'path';
 import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 import { getAllLocalFilesFromSyncTable, getAllLocalFoldersFromSyncTable, getAllMissingParentFolderIdsFromSyncTable, getFolderFromSyncTable, setParentFolderId, updateFileHashInSyncTable, updateFolderHashInSyncTable } from './db';
 import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
+export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';
 export const arFSVersion = '0.10';
 export const cipher = "AES256-GCM"
@@ -110,7 +111,7 @@ const checkFileExistsSync = (filePath: string) => {
 
 const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
   try {
-    const backupWalletFile = backupWalletPath.concat(sep, 'ArDrive_Backup_', owner, '.json');
+    const backupWalletFile = backupWalletPath.concat('\\ArDrive_Backup_', owner, '.json');
     console.log('Writing your ArDrive Wallet backup to %s', backupWalletFile);
     fs.writeFileSync(backupWalletFile, JSON.stringify(wallet.walletPrivateKey));
     return 'Success!';

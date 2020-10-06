@@ -2,7 +2,7 @@
 // arweave.js
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { getWinston, appName, appVersion, asyncForEach, cipher, arFSVersion, Utf8ArrayToStr } from './common';
+import { getWinston, appName, appVersion, asyncForEach, cipher, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
 import { ArFSDriveMetadata, ArFSFileMetaData, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
@@ -54,8 +54,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: "${appName}" }
-          { name: "App-Version", values: "${appVersion}" }
+          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
           { name: "Entity-Type", values: "drive" }
           { name: "Drive-Privacy", values: "public" }
         ]
@@ -159,7 +158,7 @@ const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, 
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: "${appName}" }
+          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
           { name: "App-Version", values: "${appVersion}" }
           { name: "Drive-Id", values: "${driveId}" }
           { name: "Folder-Id", values: "${folderId}"}
@@ -210,8 +209,7 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: "${appName}" }
-          { name: "App-Version", values: "${appVersion}" }
+          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
           { name: "Entity-Type", values: "drive" }
           { name: "Drive-Privacy", values: "private" }
         ]
@@ -325,8 +323,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: "${appName}" }
-          { name: "App-Version", values: "${appVersion}" }
+          { name: "App-Name", values: ["${appName}", "${webAppName}"]}
           { name: "Drive-Id", values: "${arDriveId}" }
           { name: "Entity-Type", values: ["file", "folder"]}
         ]
