@@ -11,6 +11,8 @@ import {
   getAllMissingPathsFromSyncTable, 
   getArDriveSyncFolderPathFromProfile, 
   getFolderFromSyncTable, 
+  getFolderNameFromSyncTable, 
+  getFolderParentIdFromSyncTable, 
   setFilePath, 
   setParentFolderId, 
   updateFileHashInSyncTable, 
