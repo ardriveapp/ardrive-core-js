@@ -199,7 +199,7 @@ async function setNewFilePaths() {
   const filesToFix : ArFSFileMetaData[]= await getAllMissingPathsFromSyncTable()
   // console.log ("Found %s paths to fix", pathsToFix.length)
   await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
-    console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
+    // console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
     filePath = await determineFilePath(syncFolderPath.syncFolderPath, fileToFix.parentFolderId, fileToFix.fileName)
     await setFilePath(filePath, fileToFix.id)
   })
@@ -207,27 +207,27 @@ async function setNewFilePaths() {
 
 // This needs updating
 // Determines the file path based on parent folder ID
-async function determineFilePath(syncFolderPath: string, parentFolderId: string, fileName: string) {
+const determineFilePath = async (syncFolderPath: string, parentFolderId: string, fileName: string) : Promise<string> => {
   try {
-    let filePath = '\\' + fileName;
+    let filePath = fileName;
     let parentFolderName;
     let parentOfParentFolderId;
     let x = 0;
     while ((parentFolderId !== '0') && (x < 10)) {
       parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
-      filePath = '\\' + parentFolderName.fileName + filePath
+      filePath = path.join(parentFolderName.fileName, filePath)
       parentOfParentFolderId = await getFolderParentIdFromSyncTable(parentFolderId)
       parentFolderId = parentOfParentFolderId.parentFolderId;
       x += 1;
     }
-    filePath = syncFolderPath.concat(filePath)
-    console.log ("      Fixed!!!", filePath)
-    return filePath;
+    const newFilePath : string = path.join(syncFolderPath, filePath)
+    // console.log ("      Fixed!!!", filePath)
+    return newFilePath;
   }
   catch (err) {
     console.log (err)
-    console.log ("Error fixing %s", fileName)
-    return 'Error'
+    console.log ("Error fixing the file path for %s", fileName)
+    return "Error";
   }
 };
 

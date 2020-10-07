@@ -1,5 +1,4 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { Path } from 'typescript';
 
 export interface Wallet {
   walletPrivateKey: JWKInterface;
@@ -11,7 +10,7 @@ export interface ArDriveUser {
   dataProtectionKey: any,
   walletPrivateKey: any,
   walletPublicKey: any,
-  syncFolderPath: Path,
+  syncFolderPath: string,
 };
 
 export interface UploadBatch {

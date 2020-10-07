@@ -23,8 +23,6 @@ import {
 } from './db';
 import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
-
-
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
   user: ArDriveUser,
