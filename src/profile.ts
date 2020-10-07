@@ -1,36 +1,11 @@
 // index.js
 import * as fs from 'fs';
-import { sep } from 'path';
+import path from 'path';
 import { getDriveRootFolderTxId } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
 import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
 import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
-
-
-export const setupArDriveSyncFolder = async (syncFolderPath: string) => {
-  try {
-    const stats = fs.statSync(syncFolderPath);
-    if (stats.isDirectory()) {
-      if (!fs.existsSync(syncFolderPath.concat(sep, 'Public'))) {
-        fs.mkdirSync(syncFolderPath.concat(sep, 'Public'));
-      }
-      if (!fs.existsSync(syncFolderPath.concat(sep, 'Private'))) {
-        fs.mkdirSync(syncFolderPath.concat(sep, 'Private'));
-      }
-      console.log('Using %s as your local Sync Folder Path for ArDrive.', syncFolderPath);
-      return "Exists";
-    }
-    console.log('The path you have entered is not a valid folder, please enter a correct Sync Folder Path for your Public and Private ArDrives.');
-    return 'Invalid';
-  } catch (err) {
-    console.log('Folder not found.  Creating new directory at %s', syncFolderPath);
-    fs.mkdirSync(syncFolderPath);
-    fs.mkdirSync(syncFolderPath.concat(sep, 'Public'));
-    fs.mkdirSync(syncFolderPath.concat(sep, 'Private'));
-    return "Created";
-  }
-};
 
 // This creates all of the Drives found for the user
 export const setupDrives = async (walletPublicKey: string, syncFolderPath: string) => {
@@ -48,7 +23,7 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
     await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
 
       // Check if the drive path exists, if not, create it
-      const drivePath : string = syncFolderPath + '\\' + drive.driveName;
+      const drivePath : string = path.join(syncFolderPath, drive.driveName);
       if (!fs.existsSync(drivePath)) {
         fs.mkdirSync(drivePath);
       }
