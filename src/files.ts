@@ -1,5 +1,5 @@
 // files.js
-import { sep, extname, basename, dirname } from 'path';
+import path, { sep, extname, basename, dirname } from 'path';
 import * as fs from 'fs';
 import { extToMime, appName, appVersion, checkFileExistsSync } from './common';
 import { checksumFile } from './crypto';
@@ -292,7 +292,7 @@ const resolveFileDownloadConflict = async (resolution: string, fileName: string,
       // Rename by adding - copy at the end.
       let newFileName: string[] | string = fileName.split('.');
       newFileName = newFileName[0].concat(' - Copy.', newFileName[1]);
-      const newFilePath = folderPath.concat(newFileName);
+      const newFilePath = path.join(folderPath, newFileName);
       console.log('   ...renaming existing file to : %s', newFilePath);
       fs.renameSync(filePath, newFilePath);
       break;
