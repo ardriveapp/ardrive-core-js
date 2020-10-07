@@ -3,7 +3,7 @@
 // upload.js
 import * as fs from 'fs';
 import { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, determineFilePath } from './common';
 import { getTransactionMetaData, getAllMyDataFileTxs, getTransactionData } from './arweave';
 import { decryptFile, decryptFileMetaData } from './crypto';
 import {
@@ -15,11 +15,7 @@ import {
   getLatestFileVersionFromSyncTable,
   setPermaWebFileToIgnore,
   getMyFileDownloadConflicts,
-  getFolderNameFromSyncTable,
-  getFolderParentIdFromSyncTable,
   setFilePath,
-  getAllMissingPathsFromSyncTable,
-  getArDriveSyncFolderPathFromProfile,
   getAllLatestFileAndFolderVersionsFromSyncTable,
   setFileToDownload,
   getLatestFolderVersionFromSyncTable,
@@ -27,44 +23,7 @@ import {
 } from './db';
 import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
-// This needs updating
-// Determines the file path based on parent folder ID
-async function determineFilePath(syncFolderPath: string, parentFolderId: string, fileName: string) {
-  try {
-    let filePath = '\\' + fileName;
-    let parentFolderName;
-    let parentOfParentFolderId;
-    let x = 0;
-    while ((parentFolderId !== '0') && (x < 10)) {
-      parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
-      filePath = '\\' + parentFolderName.fileName + filePath
-      parentOfParentFolderId = await getFolderParentIdFromSyncTable(parentFolderId)
-      parentFolderId = parentOfParentFolderId.parentFolderId;
-      x += 1;
-    }
-    filePath = syncFolderPath.concat(filePath)
-    console.log ("      Fixed!!!", filePath)
-    return filePath;
-  }
-  catch (err) {
-    console.log (err)
-    console.log ("Error fixing %s", fileName)
-    return 'Error'
-  }
-};
 
-// Fixes all empty file paths
-async function setNewFilePaths() {
-  let syncFolderPath = await getArDriveSyncFolderPathFromProfile()  
-  let filePath = '';
-  const filesToFix : ArFSFileMetaData[]= await getAllMissingPathsFromSyncTable()
-  // console.log ("Found %s paths to fix", pathsToFix.length)
-  await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
-    console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
-    filePath = await determineFilePath(syncFolderPath.syncFolderPath, fileToFix.parentFolderId, fileToFix.fileName)
-    await setFilePath(filePath, fileToFix.id)
-  })
-};
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(

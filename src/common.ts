@@ -2,10 +2,21 @@
 import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
-import { dirname } from 'path';
+import path, { dirname } from 'path';
 import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
-import { getAllLocalFilesFromSyncTable, getAllLocalFoldersFromSyncTable, getAllMissingParentFolderIdsFromSyncTable, getFolderFromSyncTable, setParentFolderId, updateFileHashInSyncTable, updateFolderHashInSyncTable } from './db';
+import { 
+  getAllLocalFilesFromSyncTable, 
+  getAllLocalFoldersFromSyncTable, 
+  getAllMissingParentFolderIdsFromSyncTable, 
+  getAllMissingPathsFromSyncTable, 
+  getArDriveSyncFolderPathFromProfile, 
+  getFolderFromSyncTable, 
+  setFilePath, 
+  setParentFolderId, 
+  updateFileHashInSyncTable, 
+  updateFolderHashInSyncTable } from './db';
 import { checksumFile } from './crypto';
+import { Path } from 'typescript';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
@@ -68,7 +79,7 @@ const getWinston = async (bytes: any) => {
 };
 
 // Checks path if it exists, and creates if not creates it
-const checkOrCreateFolder = (folderPath = '') => {
+const checkOrCreateFolder = (folderPath: Path) : Path | String => {
   try {
     const stats = fs.statSync(folderPath);
     if (stats.isDirectory()) {
@@ -77,7 +88,7 @@ const checkOrCreateFolder = (folderPath = '') => {
     console.log(
       'The path you have entered is not a directory, please enter a correct path.',
     );
-    return '';
+    return '0';
   } catch (err) {
     console.log('Folder not found.  Creating new directory at %s', folderPath);
     fs.mkdirSync(folderPath);
@@ -109,9 +120,10 @@ const checkFileExistsSync = (filePath: string) => {
   return exists;
 };
 
-const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
+const backupWallet = async (backupWalletPath: Path, wallet: Wallet, owner: string) => {
   try {
-    const backupWalletFile = backupWalletPath.concat('\\ArDrive_Backup_', owner, '.json');
+    const backupFileName = "ArDrive_Backup_" + owner + ".json";
+    const backupWalletFile = path.join(backupWalletPath, backupFileName)
     console.log('Writing your ArDrive Wallet backup to %s', backupWalletFile);
     fs.writeFileSync(backupWalletFile, JSON.stringify(wallet.walletPrivateKey));
     return 'Success!';
@@ -177,6 +189,46 @@ const setAllParentFolderIds = async () => {
   }
 
 }
+
+// Fixes all empty file paths
+async function setNewFilePaths() {
+  let syncFolderPath = await getArDriveSyncFolderPathFromProfile()  
+  let filePath = '';
+  const filesToFix : ArFSFileMetaData[]= await getAllMissingPathsFromSyncTable()
+  // console.log ("Found %s paths to fix", pathsToFix.length)
+  await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
+    console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
+    filePath = await determineFilePath(syncFolderPath.syncFolderPath, fileToFix.parentFolderId, fileToFix.fileName)
+    await setFilePath(filePath, fileToFix.id)
+  })
+};
+
+// This needs updating
+// Determines the file path based on parent folder ID
+async function determineFilePath(syncFolderPath: string, parentFolderId: string, fileName: string) {
+  try {
+    let filePath = '\\' + fileName;
+    let parentFolderName;
+    let parentOfParentFolderId;
+    let x = 0;
+    while ((parentFolderId !== '0') && (x < 10)) {
+      parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
+      filePath = '\\' + parentFolderName.fileName + filePath
+      parentOfParentFolderId = await getFolderParentIdFromSyncTable(parentFolderId)
+      parentFolderId = parentOfParentFolderId.parentFolderId;
+      x += 1;
+    }
+    filePath = syncFolderPath.concat(filePath)
+    console.log ("      Fixed!!!", filePath)
+    return filePath;
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("Error fixing %s", fileName)
+    return 'Error'
+  }
+};
+
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
 const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
@@ -278,4 +330,6 @@ export {
   createNewPublicDrive,
   createNewPrivateDrive,
   setAllParentFolderIds,
+  setNewFilePaths,
+  determineFilePath,
 };

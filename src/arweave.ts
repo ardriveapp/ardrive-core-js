@@ -7,6 +7,7 @@ import { ArFSDriveMetadata, ArFSFileMetaData, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
+import { Path } from 'typescript';
 
 const arweave = Arweave.init({
   // host: 'perma.online', // ARCA Community Gateway
@@ -34,7 +35,7 @@ const generateWallet = async (): Promise<Wallet> => {
 };
 
 // Imports an existing wallet on a local drive
-const getLocalWallet = async (existingWalletPath: string) => {
+const getLocalWallet = async (existingWalletPath: Path) => {
   const walletPrivateKey : JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
