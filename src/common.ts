@@ -18,7 +18,6 @@ import {
   updateFileHashInSyncTable, 
   updateFolderHashInSyncTable } from './db';
 import { checksumFile } from './crypto';
-import { Path } from 'typescript';
 
 export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
@@ -81,7 +80,7 @@ const getWinston = async (bytes: any) => {
 };
 
 // Checks path if it exists, and creates if not creates it
-const checkOrCreateFolder = (folderPath: Path) : Path | String => {
+const checkOrCreateFolder = (folderPath: string) : string => {
   try {
     const stats = fs.statSync(folderPath);
     if (stats.isDirectory()) {
@@ -122,7 +121,7 @@ const checkFileExistsSync = (filePath: string) => {
   return exists;
 };
 
-const backupWallet = async (backupWalletPath: Path, wallet: Wallet, owner: string) => {
+const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
   try {
     const backupFileName = "ArDrive_Backup_" + owner + ".json";
     const backupWalletFile = path.join(backupWalletPath, backupFileName)

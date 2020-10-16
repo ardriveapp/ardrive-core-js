@@ -3,15 +3,16 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, cipher, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
-import { ArFSDriveMetadata, ArFSFileMetaData, Wallet } from './types';
+import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
-import { Path } from 'typescript';
+import { deriveDriveKey, driveDecrypt } from './crypto';
+
+// var concat = require('concat-stream')
 
 const arweave = Arweave.init({
-  // host: 'perma.online', // ARCA Community Gateway
-  host: 'arweave.dev', // Arweave Gateway
+  host: 'arweave.net', // Arweave Gateway
   port: 443,
   protocol: 'https',
   timeout: 600000,
@@ -34,8 +35,13 @@ const generateWallet = async (): Promise<Wallet> => {
   return { walletPrivateKey, walletPublicKey };
 };
 
+// Gets a signing key based off a user's JWK
+async function getWalletSigningKey (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
+  return await arweave.crypto.sign(jwk, data);
+}
+
 // Imports an existing wallet on a local drive
-const getLocalWallet = async (existingWalletPath: Path) => {
+const getLocalWallet = async (existingWalletPath: string) => {
   const walletPrivateKey : JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
@@ -46,7 +52,6 @@ const getLocalWallet = async (existingWalletPath: Path) => {
 const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   try {
     let allPublicDrives : ArFSDriveMetadata[] = [];
-
     // Create the Graphql Query to search for all drives relating to the User wallet
     const query = {
       query: `query {
@@ -76,8 +81,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
     // Call the Arweave Graphql Endpoint
     const response = await arweave.api
       .request()
-      // .post('http://arca.arweave.io/graphql', query);
-      .post('https://arweave.dev/graphql', query);  // This must be updated to production when available
+      .post('https://arweave.net/graphql', query);  // This must be updated to production when available
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -149,7 +153,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
 };
 
 // Gets the root folder ID for a Public Drive
-const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, folderId: string) : Promise<string> => {
+const getPublicDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, folderId: string) : Promise<string> => {
   try {
     let metaDataTxId = '0';
     const query = {
@@ -159,8 +163,7 @@ const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, 
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
-          { name: "App-Version", values: "${appVersion}" }
+          { name: "ArFS", values: "${arFSVersion}" }
           { name: "Drive-Id", values: "${driveId}" }
           { name: "Folder-Id", values: "${folderId}"}
         ]
@@ -168,12 +171,6 @@ const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, 
         edges {
           node {
             id
-            block {
-              id
-              timestamp
-              height
-              previous
-            }
           }
         }
       }
@@ -181,7 +178,7 @@ const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, 
     };
     const response = await arweave.api
       .request()
-      .post('https://arweave.dev/graphql', query);
+      .post('https://arweave.net/graphql', query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -196,21 +193,82 @@ const getDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, 
     return "Error";
   }
 }
+
+// Gets the root folder ID for a Private Drive and includes the Cipher and IV
+const getPrivateDriveRootFolderTxId = async (walletPublicKey: string, driveId: string, folderId: string) => {
+  let metaDataTxId = '0';
+  let cipher = '';
+  let cipherIV = '';
+  try {
+    const query = {
+      query: `query {
+      transactions(
+        first: 1
+        sort: HEIGHT_ASC
+        owners: ["${walletPublicKey}"]
+        tags: [
+          { name: "ArFS", values: "${arFSVersion}" }
+          { name: "Drive-Id", values: "${driveId}" }
+          { name: "Folder-Id", values: "${folderId}"}
+        ]
+      ) {
+        edges {
+          node {
+            id
+            tags {
+              name
+              value
+            }
+          }
+        }
+      }
+    }`,
+    };
+    const response = await arweave.api
+      .request()
+      .post('https://arweave.net/graphql', query);
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+    await asyncForEach(edges, async (edge: any) => {
+      const { node } = edge;
+      const { tags } = node;
+      metaDataTxId = node.id;
+      tags.forEach((tag: any) => {
+        const key = tag.name;
+        const { value } = tag;
+        switch (key) {
+          case 'Cipher':
+            cipher = value;
+            break;
+          case 'Cipher-IV':
+            cipherIV = value;
+            break;
+        }
+      });
+    });
+    return {metaDataTxId, cipher, cipherIV}
+  }
+  catch (err) {
+    console.log (err);
+    return {metaDataTxId, cipher, cipherIV}
+  }
+}
+
 // Gets all of the private ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
-const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
+const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   try {
     let allPrivateDrives : ArFSDriveMetadata[] = [];
-
     const query = {
       query: `query {
       transactions(
         first: 1000
         sort: HEIGHT_ASC
-        owners: ["${walletPublicKey}"]
+        owners: ["${user.walletPublicKey}"]
         tags: [
-          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
+          { name: "ArFS", values: "${arFSVersion}" }
           { name: "Entity-Type", values: "drive" }
           { name: "Drive-Privacy", values: "private" }
         ]
@@ -231,11 +289,11 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
     // Call the Arweave Graphql Endpoint
     const response = await arweave.api
       .request()
-      // .post('http://arca.arweave.io/graphql', query);
-      .post('https://arweave.dev/graphql', query);
+      .post('https://arweave.net/graphql', query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
+
     // Iterate through each returned transaction and pull out the private drive IDs
     await asyncForEach(edges, async (edge: any) => {
       const { node } = edge;
@@ -295,17 +353,20 @@ const getAllMyPrivateArDriveIds = async (walletPublicKey: any) => {
       });
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
+
       // Download the File's Metadata using the metadata transaction ID
       let data : string | Uint8Array = await getTransactionMetaData(drive.metaDataTxId);
-      let dataString = await Utf8ArrayToStr(data);
-      let dataJSON = await JSON.parse(dataString);
+      const dataBuffer = Buffer.from(data);
 
-      // THIS DATAJSON WILL REQUIRE DECRYPTION 
-      // TO DO
+      // Since this is a private drive, we must decrypt the JSON data
+      const driveKey : Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
+      const decryptedDriveBuffer : Buffer = await driveDecrypt(drive.cipherIV, driveKey, dataBuffer);
+      const decryptedDriveString : string = await Utf8ArrayToStr(decryptedDriveBuffer)
+      let decryptedDriveJSON = await JSON.parse(decryptedDriveString);
 
       // Get the drive name and root folder id
-      drive.driveName = dataJSON.name;
-      drive.rootFolderId = dataJSON.rootFolderId;
+      drive.driveName = decryptedDriveJSON.name;
+      drive.rootFolderId = decryptedDriveJSON.rootFolderId;
       allPrivateDrives.push(drive)
     });
     return allPrivateDrives;
@@ -349,8 +410,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
     };
     const response = await arweave.api
       .request()
-      // .post('http://arca.arweave.io/graphql', query);
-      .post('https://arweave.dev/graphql', query);
+      .post('https://arweave.net/graphql', query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -372,7 +432,7 @@ const getTransaction = async (txid: string): Promise<any> => {
   }
 };
 
-// Gets only the data of a given ArDrive Data transaction
+// Gets only the data of a given ArDrive Data transaction (U8IntArray)
 const getTransactionData = async (txid: string) => {
   try {
     const data = await arweave.transactions.getData(txid, { decode: true });
@@ -876,13 +936,15 @@ const createArDriveMetaDataTransaction = async (
 
 export {
   getAddressForWallet,
+  getWalletSigningKey,
   sendArDriveFee,
   createArDriveWallet,
   createArDriveMetaDataTransaction,
   createArDrivePublicMetaDataTransaction,
   createArDrivePrivateMetaDataTransaction,
   createArDriveDataTransaction,
-  getDriveRootFolderTxId,
+  getPublicDriveRootFolderTxId,
+  getPrivateDriveRootFolderTxId,
   createArDrivePrivateDataTransaction,
   createArDrivePublicDataTransaction,
   createPublicDriveTransaction,

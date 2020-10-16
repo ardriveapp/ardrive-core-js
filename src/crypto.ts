@@ -3,12 +3,18 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import AppendInitVect from './appendInitVect';
 import { parse } from 'uuid';
-import * as constants from 'constants'
+// import * as constants from 'constants'
+import { getWalletSigningKey } from './arweave';
+import { ArFSEncryptedData } from './types';
 const hkdf = require('futoin-hkdf');
 const utf8 = require('utf8');
-const jwkToPem = require('jwk-to-pem')
-const keyByteLength = 256;
-const kdfHash = 'SHA-256';
+// const jwkToPem = require('jwk-to-pem')
+const authTagLength = 16;
+const keyByteLength = 32;
+const algo = 'aes-256-gcm';
+const gcmSize = 16;
+const keyHash = 'SHA-256';
+const keySalt = '';
 
 function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
   const hash = crypto.createHash('sha256');
@@ -25,31 +31,77 @@ function getTextCipherKey(password: crypto.BinaryLike) {
   return KEY;
 }
 
-async function getSigningKey (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
-  return crypto
-          .createSign('sha256')
-          .update(data)
-          .sign({
-            key: await jwkToPem(jwk),
-            padding: constants.RSA_PKCS1_PSS_PADDING,
-            saltLength: 0
-          })
+// Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
+export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: JWKInterface) => {
+  const driveIdBytes : Buffer = Buffer.from(parse(driveId));
+  const driveBuffer : Buffer = Buffer.from(utf8.encode('drive'))
+  const signingKey : Buffer = Buffer.concat([driveBuffer, driveIdBytes])
+  const walletSignature : Uint8Array = await getWalletSigningKey(walletPrivateKey, signingKey)
+  const info : string = utf8.encode(dataEncryptionKey);
+  const driveKey : Buffer = hkdf(walletSignature, keyByteLength, {info, keyHash});
+  return driveKey;
 }
 
-export const deriveArDriveKeyWithPassword = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: JWKInterface) => {
-  const driveIdBytes = parse(driveId);
-  const walletSignature = await getSigningKey(walletPrivateKey, (utf8.encode('drive') + driveIdBytes))
-  const driveKdf = await hkdf(walletSignature, keyByteLength, {kdfHash})
-  console.log (dataEncryptionKey)
-  console.log (driveKdf)
+// Derive a key from the user's Drive Key and the File Id
+export const deriveFileKey = async (fileId: string, driveKey: Buffer) => {
+  const fileIdBytes : Buffer = Buffer.from(parse(fileId));
+  const fileKey : Buffer = hkdf(driveKey, keyByteLength, {keySalt, fileIdBytes, keyHash});
+  return fileKey;
 }
 
-export const deriveArDriveKeyWithFileId = async (fileId: string, driveId: string, walletPrivateKey: JWKInterface) => {
-  const driveIdBytes = parse(driveId);
-  const walletSignature = await getSigningKey(walletPrivateKey, (utf8.encode('drive') + driveIdBytes))
-  const driveKdf = await hkdf(walletSignature, keyByteLength, {kdfHash})
-  console.log (fileId)
-  console.log (driveKdf)
+// New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
+// THIS MUST BE UPDATED TO SUPPORT STREAMS AND FILES LARGER THAN 1 GB
+export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSEncryptedData> => {
+  const iv : Buffer = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
+  const encryptedBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
+  //const authTag : Buffer = cipher.getAuthTag()
+  //const encryptedBuffer : Buffer = Buffer.concat([encryptedData, authTag])
+
+  // Lets package up our data and return it to be processed
+  const encryptedFile : ArFSEncryptedData = {
+    cipher: algo,
+    cipherIV: iv.toString('base64'),
+    data: encryptedBuffer,
+  }
+  return encryptedFile; 
+}
+
+// New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
+// THIS MUST BE UPDATED TO SUPPORT STREAMS AND FILES LARGER THAN 1 GB
+export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffer) => {
+  const authTag : Buffer = data.slice((data.byteLength - gcmSize), data.byteLength);
+  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - gcmSize));
+  const iv : Buffer = Buffer.from(cipherIV, 'base64');
+  const decipher = crypto.createDecipheriv(algo, fileKey, iv);
+  decipher.setAuthTag(authTag);
+  const decryptedFile : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+
+  /* console.log ("Data byte length is: ", data.byteLength)
+  console.log ("Cipher IV is: ", iv)
+  console.log ("Auth Tag is: ", authTag)
+  console.log ("Data Slice is: ", encryptedDataSlice) */
+  console.log (decryptedFile.toString('ascii'));
+
+  return decryptedFile;
+}
+
+// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
+export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) => {
+  const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
+  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - authTagLength))
+  const iv : Buffer = Buffer.from(cipherIV, 'base64');
+  const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength })
+  decipher.setAuthTag(authTag);
+  const decryptedDrive : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+
+  /* console.log ("Data byte length is: ", data.byteLength)
+  console.log ("Cipher IV is: ", iv.toString('base64'))
+  console.log ("Auth Tag is: ", authTag)
+  console.log ("Data Slice is: ", encryptedDataSlice) */
+
+  console.log ("Drive Info is: ", decryptedDrive.toString('ascii'));
+  return decryptedDrive;
 }
 
 // gets hash of a file using SHA512, used for ArDriveID
@@ -61,6 +113,7 @@ export const checksumFile = async (path: string | number | Buffer | import('url'
   return fileHash;
 };
 
+// OLD
 export const encryptFile = async (filePath: string, password: any, jwk: any) => {
   try {
     let writeStream;
@@ -88,6 +141,7 @@ export const encryptFile = async (filePath: string, password: any, jwk: any) => 
   }
 };
 
+// OLD
 export const decryptFile = async (encryptedFilePath: string, password: any, jwk: any) => {
   try {
     // console.log ("Decrypting %s", encryptedFilePath)

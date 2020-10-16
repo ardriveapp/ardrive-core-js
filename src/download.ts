@@ -90,6 +90,8 @@ async function getFileMetaDataFromTx(
       permaWebLink: '',
       metaDataTxId: '',
       dataTxId: '',
+      cipher: '',
+      cipherIV: '',
     };
     const { node } = fileDataTx;
     const { tags } = node;
@@ -140,14 +142,19 @@ async function getFileMetaDataFromTx(
         case 'Parent-Folder-Id':
           fileToSync.parentFolderId = value;
           break;
+        case 'Cipher':
+          fileToSync.cipher = value;
+          break;
+        case 'Cipher-IV':
+          fileToSync.cipherIV = value;
+          break;
         default:
           break;
       }
     });
 
     // If it is a private file, it should be decrypted
-    // THIS MUST BE UPDATED TO USE LATEST ENCRYPTION
-    if (Object.prototype.hasOwnProperty.call(dataJSON, 'iv')) {
+    if (fileToSync.cipher === 'AES256-GCM') {
       fileToSync.isPublic = 0;
       dataJSON = await decryptFileMetaData(dataJSON.iv, dataJSON.encryptedText, user.dataProtectionKey, user.walletPrivateKey);
     } else {

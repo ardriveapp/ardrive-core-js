@@ -1,7 +1,7 @@
 // index.js
 import * as fs from 'fs';
 import path from 'path';
-import { getDriveRootFolderTxId } from './arweave';
+import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
 import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
@@ -35,12 +35,18 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
         // determine if the files are private or public
         // this should be refactored, and isPublic should change to drivePrivacy
         let isPublic = 1;
+        let rootFolderMetaData = {
+          metaDataTxId: '',
+          cipher: '',
+          cipherIV: '',
+        }
         if (drive.drivePrivacy === 'private') {
           isPublic = 0;
+          rootFolderMetaData = await getPrivateDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId);
+        } else {
+          // Get the root folder ID for this drive
+          rootFolderMetaData.metaDataTxId = await getPublicDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId)
         }
-
-        // Get the root folder ID for this drive
-        const rootFolderTxId: string = await getDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId)
 
         // Prepare a new folder to add to the sync table
         // This folder will require a metadata transaction to arweave
@@ -62,11 +68,13 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
           fileVersion: 0,
           isPublic,
           isLocal: 1,
-          metaDataTxId: rootFolderTxId, 
+          metaDataTxId: rootFolderMetaData.metaDataTxId, 
           dataTxId: '0',
           permaWebLink: '',
           fileDataSyncStatus: 0, // Folders do not require a data tx
           fileMetaDataSyncStatus: drive.metaDataSyncStatus, // Sync status of 1 requries a metadata tx
+          cipher: rootFolderMetaData.cipher,
+          cipherIV: rootFolderMetaData.cipherIV,
         };
         await addFileToSyncTable(driveFolderToAdd);
       }

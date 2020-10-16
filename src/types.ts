@@ -54,6 +54,8 @@ export interface ArFSFileMetaData {
   fileHash: string,
   filePath: string,
   fileVersion: number,
+  cipher: string,
+  cipherIV: string,
   lastModifiedDate: number,
   isLocal: number,
   isPublic: number,
@@ -63,3 +65,9 @@ export interface ArFSFileMetaData {
   fileDataSyncStatus: number,
   fileMetaDataSyncStatus: number,
 };
+
+export interface ArFSEncryptedData {
+  cipher: string,
+  cipherIV: string,
+  data: Buffer,
+}
