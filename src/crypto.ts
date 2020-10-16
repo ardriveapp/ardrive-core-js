@@ -13,7 +13,6 @@ const keyByteLength = 32;
 const algo = 'aes-256-gcm';
 const gcmSize = 16;
 const keyHash = 'SHA-256';
-const keySalt = '';
 
 function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
   const hash = crypto.createHash('sha256');
@@ -32,15 +31,9 @@ function getTextCipherKey(password: crypto.BinaryLike) {
 
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
 export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string) => {
-  console.log ("dataencryptedkey: ", dataEncryptionKey);
-  console.log ("driveId: ", driveId)
-  console.log ("Wallet private key: ", walletPrivateKey)
   const driveIdBytes : Buffer = Buffer.from(parse(driveId));
-  console.log ("driveIdBytes: ", driveIdBytes)
   const driveBuffer : Buffer = Buffer.from(utf8.encode('drive'))
-  console.log ("driveBuffer: ", driveBuffer)
   const signingKey : Buffer = Buffer.concat([driveBuffer, driveIdBytes])
-  console.log ("Signing key: ", signingKey)
   const walletSignature : Uint8Array = await getWalletSigningKey(JSON.parse(walletPrivateKey), signingKey)
   const info : string = utf8.encode(dataEncryptionKey);
   const driveKey : Buffer = hkdf(walletSignature, keyByteLength, {info, keyHash});
@@ -50,8 +43,21 @@ export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, drive
 // Derive a key from the user's Drive Key and the File Id
 export const deriveFileKey = async (fileId: string, driveKey: Buffer) => {
   const fileIdBytes : Buffer = Buffer.from(parse(fileId));
-  const fileKey : Buffer = hkdf(driveKey, keyByteLength, {keySalt, fileIdBytes, keyHash});
+  const fileKey : Buffer = hkdf(driveKey, keyByteLength, {fileIdBytes, keyHash});
   return fileKey;
+}
+
+// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
+export const driveEncrypt = async (driveKey: Buffer, data: Buffer) : Promise<ArFSEncryptedData> => {
+  const iv : Buffer = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(algo, driveKey, iv, { authTagLength });
+  const encryptedDriveBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
+  const encryptedDrive : ArFSEncryptedData = {
+    cipher: algo,
+    cipherIV: iv.toString('base64'),
+    data: encryptedDriveBuffer,
+  }
+  return encryptedDrive;
 }
 
 // New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
@@ -60,16 +66,24 @@ export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSE
   const iv : Buffer = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
   const encryptedBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
-  //const authTag : Buffer = cipher.getAuthTag()
-  //const encryptedBuffer : Buffer = Buffer.concat([encryptedData, authTag])
-
-  // Lets package up our data and return it to be processed
   const encryptedFile : ArFSEncryptedData = {
     cipher: algo,
     cipherIV: iv.toString('base64'),
     data: encryptedBuffer,
   }
   return encryptedFile; 
+}
+
+// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
+export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) => {
+  const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
+  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - authTagLength))
+  const iv : Buffer = Buffer.from(cipherIV, 'base64');
+  const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength })
+  decipher.setAuthTag(authTag);
+  const decryptedDrive : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+  console.log ("Drive Info is: ", decryptedDrive.toString('ascii'));
+  return decryptedDrive;
 }
 
 // New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
@@ -89,37 +103,6 @@ export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffe
   console.log (decryptedFile.toString('ascii'));
 
   return decryptedFile;
-}
-
-// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
-export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) => {
-  const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
-  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - authTagLength))
-  const iv : Buffer = Buffer.from(cipherIV, 'base64');
-  const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength })
-  decipher.setAuthTag(authTag);
-  const decryptedDrive : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-
-  /* console.log ("Data byte length is: ", data.byteLength)
-  console.log ("Cipher IV is: ", iv.toString('base64'))
-  console.log ("Auth Tag is: ", authTag)
-  console.log ("Data Slice is: ", encryptedDataSlice) */
-
-  console.log ("Drive Info is: ", decryptedDrive.toString('ascii'));
-  return decryptedDrive;
-}
-
-// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
-export const driveEncrypt = async (driveKey: Buffer, data: Buffer) : Promise<ArFSEncryptedData> => {
-  const iv : Buffer = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(algo, driveKey, iv, { authTagLength });
-  const encryptedDriveBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
-  const encryptedDrive : ArFSEncryptedData = {
-    cipher: algo,
-    cipherIV: iv.toString('base64'),
-    data: encryptedDriveBuffer,
-  }
-  return encryptedDrive;
 }
 
 // gets hash of a file using SHA512, used for ArDriveID

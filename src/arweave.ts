@@ -7,7 +7,7 @@ import { ArDriveUser, ArFSDriveMetadata, ArFSEncryptedData, ArFSFileMetaData, Wa
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
-import { deriveDriveKey, driveDecrypt, driveEncrypt } from './crypto';
+import { deriveDriveKey, driveDecrypt, driveEncrypt, fileEncrypt } from './crypto';
 
 // var concat = require('concat-stream')
 
@@ -638,9 +638,9 @@ const createPrivateDriveTransaction = async (
       rootFolderId: drive.rootFolderId,
     }
 
+    // Turn the JSON into a string, and then encrypt it
     const driveMetaData : Buffer = Buffer.from(JSON.stringify(driveMetadataJSON));
     const encryptedDriveMetaData : ArFSEncryptedData = await driveEncrypt(driveKey, driveMetaData)
-    console.log ("Encrypted Drive Metadata: ", encryptedDriveMetaData)
 
     // Create transaction
     const transaction = await arweave.createTransaction({ data: encryptedDriveMetaData.data }, JSON.parse(walletPrivateKey));
@@ -653,7 +653,7 @@ const createPrivateDriveTransaction = async (
     transaction.addTag('App-Name', appName);
     transaction.addTag('App-Version', appVersion);
     transaction.addTag('Unix-Time', drive.unixTime.toString());
-    transaction.addTag('Content-Type', 'application/json');
+    transaction.addTag('Content-Type', 'application/octet-stream');
     transaction.addTag('ArFS', arFSVersion);
     transaction.addTag('Entity-Type', 'drive');
     transaction.addTag('Drive-Id', drive.driveId);
@@ -724,52 +724,49 @@ const createArDrivePrivateDataTransaction = async (
 
 // Creates an arweave transaction to encrypt and upload only file metadata to arweave
 const createArDrivePrivateMetaDataTransaction = async (
-  user: { jwk: string; owner: string },
-  primaryFileMetaDataTags: {
-    appName: any;
-    appVersion: any;
-    unixTime: any;
-    contentType: any;
-    entityType: any;
-    driveId: any;
-    parentFolderId: any;
-    fileId: any;
-  },
-  secondaryFileMetaDataJSON: any,
-  filePath: any,
-  id: any,
+  fileKey: Buffer,
+  walletPrivateKey: string,
+  fileToUpload: ArFSFileMetaData,
+  secondaryFileMetaDataTags: string,
 ) => {
   try {
-    const transaction = await arweave.createTransaction({ data: secondaryFileMetaDataJSON }, JSON.parse(user.jwk));
+
+    // Encrypt the file metadata first since this is a private transaction
+    const encryptedData : ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataTags))
+
+    // Setup the transaction and get the price
+    const transaction = await arweave.createTransaction({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
-    console.log('Uploading %s (%d bytes) at %s to the Permaweb', filePath, txSize, arPrice);
+    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, txSize, arPrice);
 
-    // Tag file
-    transaction.addTag('App-Name', primaryFileMetaDataTags.appName);
-    transaction.addTag('App-Version', primaryFileMetaDataTags.appVersion);
-    transaction.addTag('Unix-Time', primaryFileMetaDataTags.unixTime);
-    transaction.addTag('Content-Type', primaryFileMetaDataTags.contentType);
+    // Tag file with Private metadata
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
+    transaction.addTag('Unix-Time', fileToUpload.unixTime.toString());
+    transaction.addTag('Content-Type', 'application/octet-stream');
+    transaction.addTag('Cipher', encryptedData.cipher);
+    transaction.addTag('Cipher-IV', encryptedData.cipherIV)
     transaction.addTag('ArFS', arFSVersion);
-    transaction.addTag('Entity-Type', primaryFileMetaDataTags.entityType);
-    transaction.addTag('Drive-Id', primaryFileMetaDataTags.driveId);
-    if (primaryFileMetaDataTags.entityType === 'file') {
-      transaction.addTag('File-Id', primaryFileMetaDataTags.fileId);
-      transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
+    transaction.addTag('Entity-Type', fileToUpload.entityType);
+    transaction.addTag('Drive-Id', fileToUpload.driveId);
+    if (fileToUpload.entityType === 'file') {
+      transaction.addTag('File-Id', fileToUpload.fileId);
+      transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
     } else {
-      transaction.addTag('Folder-Id', primaryFileMetaDataTags.fileId);
+      transaction.addTag('Folder-Id', fileToUpload.fileId);
       // If parent folder ID is 0, then this is a root folder and we do not include this tag.
-      if (primaryFileMetaDataTags.parentFolderId !== '0') {
-        transaction.addTag('Parent-Folder-Id', primaryFileMetaDataTags.parentFolderId);
+      if (fileToUpload.parentFolderId !== '0') {
+        transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
       }
     }
 
     // Sign file
-    await arweave.transactions.sign(transaction, JSON.parse(user.jwk));
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
     const uploader = await arweave.transactions.getUploader(transaction);
     const fileMetaDataToUpdate = {
-      id,
+      id: fileToUpload.id,
       fileMetaDataSyncStatus: '2',
       metaDataTxId: transaction.id,
     };
@@ -779,7 +776,7 @@ const createArDrivePrivateMetaDataTransaction = async (
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
     }
-    console.log('SUCCESS %s metadata was submitted with TX %s', filePath, transaction.id);
+    console.log('SUCCESS %s metadata was submitted with TX %s', fileToUpload.filePath, transaction.id);
     return arPrice;
   } catch (err) {
     console.log(err);
