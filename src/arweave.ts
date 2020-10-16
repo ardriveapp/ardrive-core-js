@@ -3,11 +3,11 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, cipher, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
-import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData, Wallet } from './types';
+import { ArDriveUser, ArFSDriveMetadata, ArFSEncryptedData, ArFSFileMetaData, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
-import { deriveDriveKey, driveDecrypt } from './crypto';
+import { deriveDriveKey, driveDecrypt, driveEncrypt } from './crypto';
 
 // var concat = require('concat-stream')
 
@@ -514,7 +514,7 @@ const createPublicDriveTransaction = async (
     const uploader = await arweave.transactions.getUploader(transaction);
 
     // Update the Profile table to include the default /Public/ ArDrive
-    await updateDriveInDriveTable(transaction.id, drive.driveId)
+    await updateDriveInDriveTable(transaction.id, drive.cipher, drive.cipherIV, drive.driveId)
 
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
@@ -626,22 +626,24 @@ const createArDrivePublicMetaDataTransaction = async (
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
 const createPrivateDriveTransaction = async (
+  driveKey: Buffer,
   walletPrivateKey: string,
   drive: ArFSDriveMetadata
 ) : Promise<string> => {
   try {
 
     // Create a JSON file, containing necessary drive metadata
-    const arDriveMetadataJSON = {
+    const driveMetadataJSON = {
       name: drive.driveName,
       rootFolderId: drive.rootFolderId,
     }
-    const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
 
-    // THIS MUST BE ENCRYPTED
+    const driveMetaData : Buffer = Buffer.from(JSON.stringify(driveMetadataJSON));
+    const encryptedDriveMetaData : ArFSEncryptedData = await driveEncrypt(driveKey, driveMetaData)
+    console.log ("Encrypted Drive Metadata: ", encryptedDriveMetaData)
 
     // Create transaction
-    const transaction = await arweave.createTransaction({ data: arDriveMetaData }, JSON.parse(walletPrivateKey));
+    const transaction = await arweave.createTransaction({ data: encryptedDriveMetaData.data }, JSON.parse(walletPrivateKey));
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
@@ -657,15 +659,15 @@ const createPrivateDriveTransaction = async (
     transaction.addTag('Drive-Id', drive.driveId);
     transaction.addTag('Drive-Privacy', drive.drivePrivacy)
     transaction.addTag('Drive-Auth-Mode', drive.driveAuthMode)
-    transaction.addTag('Cipher', drive.cipher)
-    transaction.addTag('Cipher-IV', drive.cipherIV)
+    transaction.addTag('Cipher', encryptedDriveMetaData.cipher)
+    transaction.addTag('Cipher-IV', encryptedDriveMetaData.cipherIV)
 
     // Sign file
     await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
     const uploader = await arweave.transactions.getUploader(transaction);
 
-    // Update the Profile table to include this transaction information
-    await updateDriveInDriveTable(transaction.id, drive.driveId)
+    // Update the Drive table to include this transaction information
+    await updateDriveInDriveTable(transaction.id, encryptedDriveMetaData.cipher, encryptedDriveMetaData.cipherIV, drive.driveId);
 
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop

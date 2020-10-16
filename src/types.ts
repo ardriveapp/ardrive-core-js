@@ -6,10 +6,10 @@ export interface Wallet {
 };
 
 export interface ArDriveUser {
-  login: any,
-  dataProtectionKey: any,
+  login: string,
+  dataProtectionKey: string,
   walletPrivateKey: any,
-  walletPublicKey: any,
+  walletPublicKey: string,
   syncFolderPath: string,
 };
 

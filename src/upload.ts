@@ -11,7 +11,7 @@ import {
   sendArDriveFee,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
-import { encryptFile, encryptTag } from './crypto';
+import { deriveDriveKey, encryptFile, encryptTag } from './crypto';
 import {
   getFilesToUploadFromSyncTable,
   getAllUploadedFilesFromSyncTable,
@@ -220,7 +220,6 @@ async function uploadArDriveFolderMetaData(
       );
     } else {
       // Private file, so it must be encrypted
-      // console.log ("Getting ready to upload private metadata for %s", fileToUpload.fileName)
       const encryptedSecondaryFileMetaDataJSON = await encryptTag(
         JSON.stringify(secondaryFileMetaDataTags),
         user.dataProtectionKey,
@@ -286,13 +285,16 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
       await asyncForEach (newDrives, async (newDrive : ArFSDriveMetadata) => {
         if (newDrive.drivePrivacy === 'public') {
           // get the root folder for the drive
+          console.log ("Uploading Public drive TX")
           await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
         }
         else if (newDrive.drivePrivacy === 'private') {
-          // THIS WILL NOT WORK BECAUSE ENCRYPTION IS NOT FULLY IMPLEMENTED
-          await createPrivateDriveTransaction(user.walletPrivateKey, newDrive)
+          console.log ("Uploading Private drive TX")
+          const driveKey = await deriveDriveKey(user.dataProtectionKey, newDrive.driveId, user.walletPrivateKey);
+          console.log ("Drive Key: ", driveKey.toString('hex'));
+          await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
         }
-        const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId)
+        const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
         await uploadArDriveFolderMetaData(user, driveRootFolder);
       })
     }

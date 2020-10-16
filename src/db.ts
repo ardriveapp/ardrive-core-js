@@ -361,8 +361,8 @@ export const updateFileInSyncTable = (file: {
   );
 };
 
-export const updateDriveInDriveTable = (metaDataTxId: string, driveId: string) => {
-  return get(`UPDATE Drive SET metaDataTxId = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, driveId]);
+export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
+  return get(`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, cipher, cipherIV, driveId]);
 };
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {

@@ -1,4 +1,3 @@
-import { JWKInterface } from 'arweave/node/lib/wallet';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import AppendInitVect from './appendInitVect';
@@ -32,11 +31,17 @@ function getTextCipherKey(password: crypto.BinaryLike) {
 }
 
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
-export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: JWKInterface) => {
+export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string) => {
+  console.log ("dataencryptedkey: ", dataEncryptionKey);
+  console.log ("driveId: ", driveId)
+  console.log ("Wallet private key: ", walletPrivateKey)
   const driveIdBytes : Buffer = Buffer.from(parse(driveId));
+  console.log ("driveIdBytes: ", driveIdBytes)
   const driveBuffer : Buffer = Buffer.from(utf8.encode('drive'))
+  console.log ("driveBuffer: ", driveBuffer)
   const signingKey : Buffer = Buffer.concat([driveBuffer, driveIdBytes])
-  const walletSignature : Uint8Array = await getWalletSigningKey(walletPrivateKey, signingKey)
+  console.log ("Signing key: ", signingKey)
+  const walletSignature : Uint8Array = await getWalletSigningKey(JSON.parse(walletPrivateKey), signingKey)
   const info : string = utf8.encode(dataEncryptionKey);
   const driveKey : Buffer = hkdf(walletSignature, keyByteLength, {info, keyHash});
   return driveKey;
@@ -102,6 +107,19 @@ export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buf
 
   console.log ("Drive Info is: ", decryptedDrive.toString('ascii'));
   return decryptedDrive;
+}
+
+// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
+export const driveEncrypt = async (driveKey: Buffer, data: Buffer) : Promise<ArFSEncryptedData> => {
+  const iv : Buffer = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(algo, driveKey, iv, { authTagLength });
+  const encryptedDriveBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
+  const encryptedDrive : ArFSEncryptedData = {
+    cipher: algo,
+    cipherIV: iv.toString('base64'),
+    data: encryptedDriveBuffer,
+  }
+  return encryptedDrive;
 }
 
 // gets hash of a file using SHA512, used for ArDriveID
@@ -206,7 +224,7 @@ export const decryptText = async (
     return decrypted.toString();
   } catch (err) {
     console.log(err);
-    return 0;
+    return "ERROR";
   }
 };
 
