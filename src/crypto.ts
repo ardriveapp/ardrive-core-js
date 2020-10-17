@@ -14,6 +14,7 @@ const algo = 'aes-256-gcm';
 const gcmSize = 16;
 const keyHash = 'SHA-256';
 
+// may not need this anymore
 function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
   const hash = crypto.createHash('sha256');
   hash.update(password);
@@ -22,6 +23,7 @@ function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => cr
   return KEY;
 }
 
+// Used to encrypt data stored in SQLite DB
 function getTextCipherKey(password: crypto.BinaryLike) {
   const hash = crypto.createHash('sha256');
   hash.update(password);
@@ -53,7 +55,7 @@ export const driveEncrypt = async (driveKey: Buffer, data: Buffer) : Promise<ArF
   const cipher = crypto.createCipheriv(algo, driveKey, iv, { authTagLength });
   const encryptedDriveBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
   const encryptedDrive : ArFSEncryptedData = {
-    cipher: algo,
+    cipher: 'AES256-GCM',
     cipherIV: iv.toString('base64'),
     data: encryptedDriveBuffer,
   }
@@ -67,7 +69,7 @@ export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSE
   const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
   const encryptedBuffer : Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
   const encryptedFile : ArFSEncryptedData = {
-    cipher: algo,
+    cipher: 'AES256-GCM',
     cipherIV: iv.toString('base64'),
     data: encryptedBuffer,
   }
