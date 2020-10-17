@@ -91,7 +91,8 @@ const createSyncTable = () => {
         lastModifiedDate integer,
         fileVersion integer DEFAULT 0,
         cipher text,
-        cipherIV text,
+        dataCipherIV text,
+        metaDataCipherIV text,
         permaWebLink text,
         fileDataSyncStatus text,
         fileMetaDataSyncStatus text,
@@ -148,10 +149,11 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
     fileMetaDataSyncStatus,
     permaWebLink,
     cipher,
-    cipherIV,
+    dataCipherIV,
+    metaDataCipherIV,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, cipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, dataCipherIV, metaDataCipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       appName,
       appVersion,
@@ -175,7 +177,8 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
       fileMetaDataSyncStatus,
       permaWebLink,
       cipher, 
-      cipherIV,
+      dataCipherIV,
+      metaDataCipherIV,
     ],
   );
 };
