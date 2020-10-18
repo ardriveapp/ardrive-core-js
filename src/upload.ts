@@ -3,15 +3,15 @@ import * as fs from 'fs';
 import {
   createArDrivePublicMetaDataTransaction,
   createArDrivePrivateMetaDataTransaction,
-  createArDriveDataTransaction,
   getTransactionStatus,
   createPublicDriveTransaction,
   createPrivateDriveTransaction,
   createArDrivePublicDataTransaction,
   sendArDriveFee,
+  createArDrivePrivateDataTransaction,
 } from './arweave';
-import { asyncForEach, getWinston, formatBytes, gatewayURL, sleep, checkFileExistsSync } from './common';
-import { deriveDriveKey, deriveFileKey, encryptFile } from './crypto';
+import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync } from './common';
+import { deriveDriveKey, deriveFileKey, } from './crypto';
 import {
   getFilesToUploadFromSyncTable,
   getAllUploadedFilesFromSyncTable,
@@ -95,10 +95,10 @@ async function uploadArDriveFileData(
     const winston = await getWinston(fileToUpload.fileSize);
     const arPrice = +winston * 0.000000000001;
     let dataTxId: string;
-    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
 
     if (+fileToUpload.isPublic === 1) {
       // Public file, do not encrypt
+      console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
       dataTxId = await createArDrivePublicDataTransaction(
         user.walletPrivateKey,
         fileToUpload.filePath,
@@ -107,17 +107,11 @@ async function uploadArDriveFileData(
       );
     } else {
       // Private file, so it must be encrypted
-      const encryptedFilePath = fileToUpload.filePath.concat('.enc');
-      await encryptFile(fileToUpload.filePath, user.dataProtectionKey, user.walletPrivateKey);
-      await sleep(250);
-
-      // If encrypted file is not bigger than non-encrypted file, then there is a problem and we skip for now
-      const encryptedStats = fs.statSync(encryptedFilePath);
-      if (encryptedStats.size < +fileToUpload.fileSize) {
-        return "Skip file";
-      }
-      dataTxId = await createArDriveDataTransaction(user.walletPrivateKey, encryptedFilePath, fileToUpload.contentType, fileToUpload.id);
-      fs.unlinkSync(encryptedFilePath);
+      console.log('Encrypting and Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
+      dataTxId = await createArDrivePrivateDataTransaction(fileKey, fileToUpload, user.walletPrivateKey);
+      console.log ("Uploaded!")
     }
 
     // Send the ArDrive Profit Sharing Community Fee
