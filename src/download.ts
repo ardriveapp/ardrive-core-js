@@ -13,7 +13,7 @@ import {
   addFileToSyncTable,
   getByMetaDataTxFromSyncTable,
   getLatestFileVersionFromSyncTable,
-  setPermaWebFileToIgnore,
+  setPermaWebFileToCloudOnly,
   getMyFileDownloadConflicts,
   setFilePath,
   getAllLatestFileAndFolderVersionsFromSyncTable,
@@ -91,6 +91,7 @@ async function getFileMetaDataFromTx(
       cipher: '',
       dataCipherIV: '',
       metaDataCipherIV: '',
+      cloudOnly: 0,
     };
     const { node } = fileDataTx;
     const { tags } = node;
@@ -161,12 +162,17 @@ async function getFileMetaDataFromTx(
       if (decryptedData.toString('ascii') === 'Error') {
         console.log ("There was a problem decrypting a private %s with TXID: %s", fileToSync.entityType, fileToSync.metaDataTxId);
         console.log ("Skipping this file...")
-        dataJSON = {
-          size: 0,
-          name: '',
-          lastModifiedDate: fileToSync.unixTime,
-          dataTxId: ''
-        }
+        fileToSync.fileSize = 0;
+        fileToSync.fileName = '';
+        fileToSync.fileHash = '';
+        fileToSync.fileDataSyncStatus = 0;
+        fileToSync.fileMetaDataSyncStatus = 3;
+        fileToSync.dataTxId = '0';
+        fileToSync.lastModifiedDate = fileToSync.unixTime;
+        fileToSync.permaWebLink = gatewayURL.concat(fileToSync.metaDataTxId);
+        fileToSync.cloudOnly = 1;
+        //  await addFileToSyncTable(fileToSync);  This must be handled better.
+        return 'Error Decrypting'
       } else {
         dataJSON = await JSON.parse(decryptedData.toString('ascii'));
       }
@@ -185,22 +191,12 @@ async function getFileMetaDataFromTx(
     fileToSync.fileMetaDataSyncStatus = 3;
     fileToSync.dataTxId = '0';
 
-    // If it is a file, copy the lastModifiedDate from the JSON
-    // If a folder, use the Unix TIme
-    if (fileToSync.entityType === 'file') {
-      fileToSync.lastModifiedDate = dataJSON.lastModifiedDate;
-    }
-    else if (fileToSync.entityType === 'folder') {
-      fileToSync.lastModifiedDate = fileToSync.unixTime;
-    }
-
     // Perform specific actions for File, Folder and Drive entities
     if (fileToSync.entityType === 'file') {
 
-      // The actual data transaction ID is pulled from the metadata transaction
+      // The actual data transaction ID, lastModifiedDate, and Filename of the underlying file are pulled from the metadata transaction
+      fileToSync.lastModifiedDate = dataJSON.lastModifiedDate;
       fileToSync.dataTxId = dataJSON.dataTxId;
-
-      // Since the File MetaData Tx does not have the content type of underlying file, we get it here
       fileToSync.contentType = extToMime(dataJSON.name);
       fileToSync.permaWebLink = gatewayURL.concat(dataJSON.dataTxId);
 
@@ -224,6 +220,7 @@ async function getFileMetaDataFromTx(
       }
     // Perform specific actions for Folder entities
     } else if (fileToSync.entityType === 'folder') {
+      fileToSync.lastModifiedDate = fileToSync.unixTime;
       fileToSync.permaWebLink = gatewayURL.concat(fileToSync.metaDataTxId);
     } 
 
@@ -303,7 +300,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           // Only download if this is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
             // If there is a file already in this location with a different size, then skip mark as a conflict with isLocal 2
-            console.log ("Downloading the latest file version %s", fileToDownload.filePath)
+            //console.log ("Downloading the latest file version %s", fileToDownload.filePath)
 
             // Download and decrypt the file if necessary
             await downloadArDriveFileByTx(user, fileToDownload);
@@ -317,7 +314,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           } else {
             // This is an older version, and we ignore it for now.
             await updateFileDownloadStatus('0', fileToDownload.id); // Mark older version as not local ignored
-            await setPermaWebFileToIgnore(fileToDownload.id); // Mark older version as ignored
+            await setPermaWebFileToCloudOnly(fileToDownload.id); // Mark older version as ignored
           }
           return 'Checked file';
         },
@@ -345,7 +342,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         } else {
           // This is an older version, and we ignore it for now.
           await updateFileDownloadStatus('0', folderToCreate.id); // Mark older fodler version as not local and ignored
-          await setPermaWebFileToIgnore(folderToCreate.id); // Mark older folder version as ignored
+          await setPermaWebFileToCloudOnly(folderToCreate.id); // Mark older folder version as ignored
         }
       });
     }

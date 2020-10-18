@@ -76,6 +76,7 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
           cipher: rootFolderMetaData.cipher,
           dataCipherIV: '',
           metaDataCipherIV: rootFolderMetaData.cipherIV,
+          cloudOnly: 0,
         };
         await addFileToSyncTable(driveRootFolderToAdd);
       }

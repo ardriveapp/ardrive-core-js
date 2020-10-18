@@ -10,7 +10,7 @@ import {
   getByFilePathFromSyncTable,
   getByFileHashAndParentFolderFromSyncTable,
   getByFileHashAndFileNameFromSyncTable,
-  setPermaWebFileToIgnore,
+  setPermaWebFileToCloudOnly,
   setPermaWebFileToOverWrite,
   getFolderByHashFromSyncTable,
   getAllDrivesFromDriveTable
@@ -156,6 +156,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
       cipher: '',
       dataCipherIV: '',
       metaDataCipherIV: '',
+      cloudOnly: 0,
     };
     addFileToSyncTable(newFileToQueue);
     return;
@@ -262,6 +263,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       cipher: '',
       dataCipherIV: '',
       metaDataCipherIV: '',
+      cloudOnly: 0,
     };
     await addFileToSyncTable(folderToQueue);
   }
@@ -307,7 +309,7 @@ const resolveFileDownloadConflict = async (resolution: string, fileName: string,
       setPermaWebFileToOverWrite(id);
       break;
     case 'I':
-      setPermaWebFileToIgnore(+id);
+      setPermaWebFileToCloudOnly(+id);
       break;
     default:
       // Skipping this time
