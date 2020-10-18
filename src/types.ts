@@ -65,6 +65,7 @@ export interface ArFSFileMetaData {
   dataTxId: string,
   fileDataSyncStatus: number,
   fileMetaDataSyncStatus: number,
+  cloudOnly: number,
 };
 
 export interface ArFSEncryptedData {

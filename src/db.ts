@@ -96,7 +96,7 @@ const createSyncTable = () => {
         permaWebLink text,
         fileDataSyncStatus text,
         fileMetaDataSyncStatus text,
-        ignore INTEGER DEFAULT 0,
+        cloudOnly INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
         uploader text
@@ -278,11 +278,11 @@ export const getAllUploadedDrivesFromDriveTable = () => {
 };
 
 export const getFilesToDownload = () => {
-  return all('SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 0 AND entityType = "file"');
+  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "file"');
 };
 
 export const getFoldersToCreate = () => {
-  return all('SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 0 AND entityType = "folder"');
+  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "folder"');
 };
 
 export const getNewDrivesFromDriveTable = () => {
@@ -450,8 +450,8 @@ export const setParentFolderId = (parentFolderId: string, id: number) => {
   return get(`UPDATE Sync SET parentFolderId = ? WHERE id = ?`, [parentFolderId, id]);
 };
 
-export const setPermaWebFileToIgnore = (id: number) => {
-  return get(`UPDATE Sync SET ignore = 1 WHERE id = ?`, [id]);
+export const setPermaWebFileToCloudOnly = (id: number) => {
+  return get(`UPDATE Sync SET cloudOnly = 1 WHERE id = ?`, [id]);
 };
 
 export const setPermaWebFileToOverWrite = (id: string) => {
@@ -491,9 +491,9 @@ export const getArDriveSyncFolderPathFromProfile = () => {
   return get(`SELECT syncFolderPath FROM Profile WHERE id = 1`); // THIS ONLY WORKS WITH 1 PROFILE
 }
 
-// Gets all files that are not ignored so they can be validated they still exist locally
+// Gets all files that are not Cloud Only so they can be validated they still exist locally
 export const getAllLatestFileAndFolderVersionsFromSyncTable = () => {
-  return all(`SELECT * FROM Sync WHERE ignore = 0 AND isLocal = 1`);
+  return all(`SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 1`);
 };
 
 export const getAllFromProfile = (): Promise<any[]> => {
