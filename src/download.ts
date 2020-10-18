@@ -4,8 +4,8 @@
 import * as fs from 'fs';
 import { dirname } from 'path';
 import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, determineFilePath, setNewFilePaths } from './common';
-import { getTransactionMetaData, getAllMyDataFileTxs, getTransactionData } from './arweave';
-import { decryptFile, decryptFileMetaData } from './crypto';
+import { getAllMyDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
   getFoldersToCreate,
@@ -26,33 +26,31 @@ import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
   user: ArDriveUser,
-  filePath: string,
-  dataTxId: string,
-  isPublic: number,
+  fileToDownload: ArFSFileMetaData,
 ) {
   try {
-    const folderPath = dirname(filePath);
+    const folderPath = dirname(fileToDownload.filePath);
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
       await sleep(1000);
     }
-    const data = await getTransactionData(dataTxId);
+    
+    // Get the transaction data
+    const data = await getTransactionData(fileToDownload.dataTxId);
 
-    //console.log("FOUND PERMAFILE! %s is on the Permaweb, but not local.  Downloading...", full_path, data)
-    if (+isPublic === 1) {
-      fs.writeFileSync(filePath, data);
-      console.log('DOWNLOADED %s', filePath);
+    if (+fileToDownload.isPublic === 1) {
+      fs.writeFileSync(fileToDownload.filePath, data);
+      console.log('DOWNLOADED %s', fileToDownload.filePath);
     } else {
-      // Method with decryption
-      console.log("shouldnt be decrypting...")
-      fs.writeFileSync(filePath.concat('.enc'), data);
-      await sleep(500);
-      await decryptFile(filePath.concat('.enc'), user.dataProtectionKey, user.walletPrivateKey);
-      await sleep(500);
-      fs.unlinkSync(filePath.concat('.enc'));
-      console.log('DOWNLOADED AND DECRYPTED %s', filePath);
+      // Get the transaction IV
+      const dataBuffer = Buffer.from(data);
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToDownload.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey (fileToDownload.fileId, driveKey);
+      console.log ("File key is: %s for DataTx %s", fileKey.toString('hex'), fileToDownload.dataTxId)
+      const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
+      fs.writeFileSync(fileToDownload.filePath, decryptedData)
+      console.log('DOWNLOADED AND DECRYPTED %s', fileToDownload.filePath);
     }
-
     return 'Success';
   } catch (err) {
     console.log(err);
@@ -91,24 +89,23 @@ async function getFileMetaDataFromTx(
       metaDataTxId: '',
       dataTxId: '',
       cipher: '',
-      cipherIV: '',
+      dataCipherIV: '',
+      metaDataCipherIV: '',
     };
     const { node } = fileDataTx;
     const { tags } = node;
-    const metaDataTxId = node.id;
+    fileToSync.metaDataTxId = node.id;
 
     // DOUBLE CHECK THIS
     // Is the File or Folder already present in the database?  If it is, lets ensure its already downloaded
-    const isMetaDataSynced = await getByMetaDataTxFromSyncTable(metaDataTxId);
+    const isMetaDataSynced = await getByMetaDataTxFromSyncTable(fileToSync.metaDataTxId);
     if (isMetaDataSynced) {
       // this file is already downloaded and synced
-      return 0;
+      return "Synced Already";
     }
 
     // Download the File's Metadata using the metadata transaction ID
-    const data : string | Uint8Array = await getTransactionMetaData(metaDataTxId);
-    let dataString = await Utf8ArrayToStr(data);
-    let dataJSON = await JSON.parse(dataString);
+    const data : string | Uint8Array = await getTransactionData(fileToSync.metaDataTxId);
 
     // Enumerate through each tag to pull the data
     tags.forEach((tag: any) => {
@@ -146,18 +143,37 @@ async function getFileMetaDataFromTx(
           fileToSync.cipher = value;
           break;
         case 'Cipher-IV':
-          fileToSync.cipherIV = value;
+          fileToSync.metaDataCipherIV = value;
           break;
         default:
           break;
       }
     });
 
-    // If it is a private file, it should be decrypted
+    let dataJSON;
+    // If it is a private file or folder, the data will need decryption.
     if (fileToSync.cipher === 'AES256-GCM') {
       fileToSync.isPublic = 0;
-      dataJSON = await decryptFileMetaData(dataJSON.iv, dataJSON.encryptedText, user.dataProtectionKey, user.walletPrivateKey);
+      const dataBuffer = Buffer.from(data);
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToSync.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey (fileToSync.fileId, driveKey);
+      const decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, fileKey, dataBuffer);
+      if (decryptedData.toString('ascii') === 'Error') {
+        console.log ("There was a problem decrypting a private %s with TXID: %s", fileToSync.entityType, fileToSync.metaDataTxId);
+        console.log ("Skipping this file...")
+        dataJSON = {
+          size: 0,
+          name: '',
+          lastModifiedDate: fileToSync.unixTime,
+          dataTxId: ''
+        }
+      } else {
+        dataJSON = await JSON.parse(decryptedData.toString('ascii'));
+      }
     } else {
+      // the file is public and does not require decryption
+      let dataString = await Utf8ArrayToStr(data);
+      dataJSON = await JSON.parse(dataString);
       fileToSync.isPublic = 1;
     }
 
@@ -167,7 +183,7 @@ async function getFileMetaDataFromTx(
     fileToSync.fileHash = '';
     fileToSync.fileDataSyncStatus = 3;
     fileToSync.fileMetaDataSyncStatus = 3;
-    fileToSync.metaDataTxId = metaDataTxId;
+    fileToSync.dataTxId = '0';
 
     // If it is a file, copy the lastModifiedDate from the JSON
     // If a folder, use the Unix TIme
@@ -178,14 +194,20 @@ async function getFileMetaDataFromTx(
       fileToSync.lastModifiedDate = fileToSync.unixTime;
     }
 
-    fileToSync.dataTxId = '0';
-
     // Perform specific actions for File, Folder and Drive entities
     if (fileToSync.entityType === 'file') {
-      // Since the File MetaData Tx does not have the content type of underlying file, we get it here
+
+      // The actual data transaction ID is pulled from the metadata transaction
       fileToSync.dataTxId = dataJSON.dataTxId;
+
+      // Since the File MetaData Tx does not have the content type of underlying file, we get it here
       fileToSync.contentType = extToMime(dataJSON.name);
       fileToSync.permaWebLink = gatewayURL.concat(dataJSON.dataTxId);
+
+      if (fileToSync.isPublic === 0) {
+        // if this is a private file, the CipherIV of the Data transaction should also be captured
+        fileToSync.dataCipherIV = await getPrivateTransactionCipherIV(fileToSync.dataTxId)
+      }
 
       // Check to see if a previous version exists, and if so, increment the version.
       // Versions are determined by comparing old/new file hash.
@@ -202,10 +224,10 @@ async function getFileMetaDataFromTx(
       }
     // Perform specific actions for Folder entities
     } else if (fileToSync.entityType === 'folder') {
-      fileToSync.permaWebLink = gatewayURL.concat(metaDataTxId);
+      fileToSync.permaWebLink = gatewayURL.concat(fileToSync.metaDataTxId);
     } 
 
-    console.log('%s | %s is unsynchronized and needs to be downloaded', fileToSync.fileName, fileToSync.fileId);
+    console.log('QUEUING %s %s | Id: %s | Tx: %s for download', fileToSync.entityType, fileToSync.fileName, fileToSync.fileId, fileToSync.metaDataTxId);
     await addFileToSyncTable(fileToSync);
     return 'Success';
   } catch (err) {
@@ -282,12 +304,10 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           if (fileToDownload.id === latestFileVersion.id) {
             // If there is a file already in this location with a different size, then skip mark as a conflict with isLocal 2
             console.log ("Downloading the latest file version %s", fileToDownload.filePath)
-            await downloadArDriveFileByTx(
-              user,
-              fileToDownload.filePath,
-              fileToDownload.dataTxId,
-              fileToDownload.isPublic,
-            );
+
+            // Download and decrypt the file if necessary
+            await downloadArDriveFileByTx(user, fileToDownload);
+
             // Ensure the file downloaded has the same lastModifiedDate as before
             let currentDate = new Date()
             let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
@@ -336,12 +356,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         async (fileConflictToDownload: ArFSFileMetaData) => {
           // This file is on the Permaweb, but it is not local or the user wants to overwrite the local file
           console.log('Overwriting local file %s', fileConflictToDownload.filePath);
-          await downloadArDriveFileByTx(
-            user,
-            fileConflictToDownload.filePath,
-            fileConflictToDownload.dataTxId,
-            fileConflictToDownload.isPublic,
-          );
+          await downloadArDriveFileByTx(user, fileConflictToDownload);
           await updateFileDownloadStatus('1', fileConflictToDownload.id);
           return 'File Overwritten';
         },

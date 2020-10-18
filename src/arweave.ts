@@ -137,7 +137,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
       // Download the File's Metadata using the metadata transaction ID
-      let data : string | Uint8Array = await getTransactionMetaData(drive.metaDataTxId);
+      let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
       let dataString = await Utf8ArrayToStr(data);
       let dataJSON = await JSON.parse(dataString);
 
@@ -255,8 +255,7 @@ const getPrivateDriveRootFolderTxId = async (walletPublicKey: string, driveId: s
   }
 }
 
-// Gets all of the private ardrive IDs from a user's wallet
-// Uses the Entity type to only search for Drive tags
+// Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
 const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   try {
@@ -353,9 +352,9 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       });
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
-
+      console.log ("TX is: ", node.id)
       // Download the File's Metadata using the metadata transaction ID
-      let data : string | Uint8Array = await getTransactionMetaData(drive.metaDataTxId);
+      let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
       const dataBuffer = Buffer.from(data);
 
       // Since this is a private drive, we must decrypt the JSON data
@@ -421,6 +420,52 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
   }
 };
 
+// Gets the CipherIV tag of a private data transaction
+const getPrivateTransactionCipherIV = async (txid: string) : Promise<string> => {
+  try {
+    let dataCipherIV = '';
+    const query = {
+      query: `query {
+        transactions(ids: ["${txid}"]) {
+        edges {
+          node {
+            id
+            tags {
+              name
+              value
+            }
+          }
+        }
+      }
+    }`,
+    };
+    // Call the Arweave Graphql Endpoint
+    const response = await arweave.api
+    .request()
+    .post('https://arweave.net/graphql', query);
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+    const { node } = edges[0];
+    const { tags } = node;
+    tags.forEach((tag: any) => {
+      const key = tag.name;
+      const { value } = tag;
+      switch (key) {
+        case 'Cipher-IV':
+          dataCipherIV = value;
+          break;
+        default:
+          break;
+      }
+    })
+    return dataCipherIV;
+  }
+  catch (err) {
+    console.log (err)
+    return "Error"
+  }
+}
 // Gets only the transaction information, with no data
 const getTransaction = async (txid: string): Promise<any> => {
   try {
@@ -434,17 +479,6 @@ const getTransaction = async (txid: string): Promise<any> => {
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
 const getTransactionData = async (txid: string) => {
-  try {
-    const data = await arweave.transactions.getData(txid, { decode: true });
-    return data;
-  } catch (err) {
-    console.log(err);
-    return Promise.reject(err);
-  }
-};
-
-// Gets only the JSON data of a given ArDrive MetaData transaction
-const getTransactionMetaData = async (txid: string) => {
   try {
     const data = await arweave.transactions.getData(txid, { decode: true });
     return data;
@@ -949,8 +983,8 @@ export {
   createPublicDriveTransaction,
   createPrivateDriveTransaction,
   getWalletBalance,
+  getPrivateTransactionCipherIV,
   getTransactionStatus,
-  getTransactionMetaData,
   getTransactionData,
   getTransaction,
   getAllMyDataFileTxs,

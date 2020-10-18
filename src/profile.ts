@@ -50,7 +50,7 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
 
         // Prepare a new folder to add to the sync table
         // This folder will require a metadata transaction to arweave
-        const driveFolderToAdd : ArFSFileMetaData = {
+        const driveRootFolderToAdd : ArFSFileMetaData = {
           id: 0,
           appName: drive.appName,
           appVersion: drive.appVersion,
@@ -74,9 +74,10 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
           fileDataSyncStatus: 0, // Folders do not require a data tx
           fileMetaDataSyncStatus: drive.metaDataSyncStatus, // Sync status of 1 requries a metadata tx
           cipher: rootFolderMetaData.cipher,
-          cipherIV: rootFolderMetaData.cipherIV,
+          dataCipherIV: '',
+          metaDataCipherIV: rootFolderMetaData.cipherIV,
         };
-        await addFileToSyncTable(driveFolderToAdd);
+        await addFileToSyncTable(driveRootFolderToAdd);
       }
     });
     console.log ("Initialization completed")
@@ -91,7 +92,7 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
 // Encrypts the user's keys and adds a user to the database
 export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   try {
-    const encryptedWalletPrivateKey = await encryptText(JSON.stringify(user.walletPrivateKey), loginPassword);
+    const encryptedWalletPrivateKey = await encryptText(user.walletPrivateKey, loginPassword);
     const encryptedDataProtectionKey = await encryptText(user.dataProtectionKey, loginPassword);
     user.dataProtectionKey = JSON.stringify(encryptedDataProtectionKey);
     user.walletPrivateKey = JSON.stringify(encryptedWalletPrivateKey);

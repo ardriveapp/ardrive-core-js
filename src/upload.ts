@@ -151,9 +151,7 @@ async function uploadArDriveFileMetaData(
     } else {
       // Private file, so it must be encrypted
       const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
-      console.log ("Data upload drive key: ", driveKey.toString('hex'))
       const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
-      console.log ("Data upload file key: ", fileKey.toString('hex'))
       await createArDrivePrivateMetaDataTransaction(fileKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
     }
     return 'Success';

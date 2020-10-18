@@ -154,7 +154,8 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
       fileDataSyncStatus: 1, // Sync status of 1 requires a data tx
       fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
       cipher: '',
-      cipherIV: '',
+      dataCipherIV: '',
+      metaDataCipherIV: '',
     };
     addFileToSyncTable(newFileToQueue);
     return;
@@ -259,7 +260,8 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       fileDataSyncStatus: 0, // Folders do not require a data tx
       fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
       cipher: '',
-      cipherIV: '',
+      dataCipherIV: '',
+      metaDataCipherIV: '',
     };
     await addFileToSyncTable(folderToQueue);
   }

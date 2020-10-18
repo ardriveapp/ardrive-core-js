@@ -11,7 +11,6 @@ const utf8 = require('utf8');
 const authTagLength = 16;
 const keyByteLength = 32;
 const algo = 'aes-256-gcm';
-const gcmSize = 16;
 const keyHash = 'SHA-256';
 
 // may not need this anymore
@@ -44,8 +43,8 @@ export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, drive
 
 // Derive a key from the user's Drive Key and the File Id
 export const deriveFileKey = async (fileId: string, driveKey: Buffer) => {
-  const fileIdBytes : Buffer = Buffer.from(parse(fileId));
-  const fileKey : Buffer = hkdf(driveKey, keyByteLength, {fileIdBytes, keyHash});
+  const info : Buffer = Buffer.from(parse(fileId));
+  const fileKey : Buffer = hkdf(driveKey, keyByteLength, {info, keyHash});
   return fileKey;
 }
 
@@ -79,32 +78,32 @@ export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSE
 // New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
 export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) => {
   const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
-  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - authTagLength))
+  const encryptedDataSlice : Buffer = data.slice(0, (data.byteLength - authTagLength))
   const iv : Buffer = Buffer.from(cipherIV, 'base64');
   const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength })
   decipher.setAuthTag(authTag);
   const decryptedDrive : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-  console.log ("Drive Info is: ", decryptedDrive.toString('ascii'));
   return decryptedDrive;
 }
 
 // New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
 // THIS MUST BE UPDATED TO SUPPORT STREAMS AND FILES LARGER THAN 1 GB
 export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffer) => {
-  const authTag : Buffer = data.slice((data.byteLength - gcmSize), data.byteLength);
-  const encryptedDataSlice : Buffer  = data.slice(0, (data.byteLength - gcmSize));
-  const iv : Buffer = Buffer.from(cipherIV, 'base64');
-  const decipher = crypto.createDecipheriv(algo, fileKey, iv);
-  decipher.setAuthTag(authTag);
-  const decryptedFile : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+  try {
+    const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
+    const encryptedDataSlice : Buffer = data.slice(0, (data.byteLength - authTagLength))
+    const iv : Buffer = Buffer.from(cipherIV, 'base64');
+    const decipher = crypto.createDecipheriv(algo, fileKey, iv, { authTagLength })
+    decipher.setAuthTag(authTag);
+    const decryptedFile : Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+    return decryptedFile;
+  }
+  catch (err) {
+    // console.log (err);
+    console.log ("Error decrypting file data");
+    return Buffer.from('Error', 'ascii');
+  }
 
-  /* console.log ("Data byte length is: ", data.byteLength)
-  console.log ("Cipher IV is: ", iv)
-  console.log ("Auth Tag is: ", authTag)
-  console.log ("Data Slice is: ", encryptedDataSlice) */
-  console.log (decryptedFile.toString('ascii'));
-
-  return decryptedFile;
 }
 
 // gets hash of a file using SHA512, used for ArDriveID
