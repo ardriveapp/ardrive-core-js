@@ -309,18 +309,20 @@ export const getFolderParentIdFromSyncTable = (fileId: string) => {
   return get(`SELECT parentFolderId FROM Sync WHERE fileId = ?`, [fileId]);
 };
 
-export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: any; metaDataTxId: any; id: any }) => {
-  const { fileMetaDataSyncStatus, metaDataTxId, id } = file;
-  return get(`UPDATE Sync SET fileMetaDataSyncStatus = ?, metaDataTxId = ? WHERE id = ?`, [
+export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: string; metaDataTxId: string; metaDataCipherIV: string, cipher: string, id: number }) => {
+  const { fileMetaDataSyncStatus, metaDataTxId, metaDataCipherIV, cipher, id } = file;
+  return get(`UPDATE Sync SET fileMetaDataSyncStatus = ?, metaDataTxId = ?, metaDataCipherIV = ?, cipher = ? WHERE id = ?`, [
     fileMetaDataSyncStatus,
     metaDataTxId,
+    metaDataCipherIV,
+    cipher,
     id,
   ]);
 };
 
-export const updateFileDataSyncStatus = (file: { fileDataSyncStatus: any; dataTxId: any; id: any }) => {
-  const { fileDataSyncStatus, dataTxId, id } = file;
-  return get(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ? WHERE id = ?`, [fileDataSyncStatus, dataTxId, id]);
+export const updateFileDataSyncStatus = (file: { fileDataSyncStatus: string, dataTxId: string, dataCipherIV: string, cipher: string, id: number }) => {
+  const { fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id } = file;
+  return get(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ?, dataCipherIV = ?, cipher = ? WHERE id = ?`, [fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id]);
 };
 
 export const updateFileInSyncTable = (file: {
@@ -458,7 +460,7 @@ export const setPermaWebFileToOverWrite = (id: string) => {
   return get(`UPDATE Sync SET isLocal = 2 WHERE id = ?`, [id]);
 };
 
-export const setFileUploaderObject = (uploader: string, id: string) => {
+export const setFileUploaderObject = (uploader: string, id: number) => {
   return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 

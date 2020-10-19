@@ -586,6 +586,8 @@ const createArDrivePublicDataTransaction = async (
     const fileToUpdate = {
       fileDataSyncStatus: '2',
       dataTxId: transaction.id,
+      dataCipherIV: '',
+      cipher: '',
       id,
     };
     // Update the queue since the file is now being uploaded
@@ -642,6 +644,8 @@ const createArDrivePublicMetaDataTransaction = async (
     const fileMetaDataToUpdate = {
       id: fileToUpload.id,
       fileMetaDataSyncStatus: '2',
+      metaDataCipherIV: '',
+      cipher: '',
       metaDataTxId: transaction.id,
     };
     // Update the queue since the file metadata is now being uploaded
@@ -735,15 +739,18 @@ const createArDrivePrivateDataTransaction = async (
     await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
     const uploader = await arweave.transactions.getUploader(transaction);
     const fileToUpdate = {
+      id: fileToUpload.id,
       fileDataSyncStatus: '2',
       dataTxId: transaction.id,
-      id: fileToUpload.id,
+      dataCipherIV: encryptedData.cipherIV,
+      cipher: encryptedData.cipher,
     };
     // Update the queue since the file is now being uploaded
     await updateFileDataSyncStatus(fileToUpdate);
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
+      await setFileUploaderObject(JSON.stringify(uploader), fileToUpload.id)
       console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
     }
     console.log('SUCCESS %s was submitted with TX %s', fileToUpload.filePath, transaction.id);
@@ -801,6 +808,8 @@ const createArDrivePrivateMetaDataTransaction = async (
       id: fileToUpload.id,
       fileMetaDataSyncStatus: '2',
       metaDataTxId: transaction.id,
+      metaDataCipherIV: encryptedData.cipherIV,
+      cipher: encryptedData.cipher,
     };
     // Update the queue since the file metadata is now being uploaded
     await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);

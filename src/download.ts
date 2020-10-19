@@ -152,13 +152,23 @@ async function getFileMetaDataFromTx(
     });
 
     let dataJSON;
+    let decryptedData = Buffer.from('');
+    
     // If it is a private file or folder, the data will need decryption.
     if (fileToSync.cipher === 'AES256-GCM') {
       fileToSync.isPublic = 0;
       const dataBuffer = Buffer.from(data);
       const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToSync.driveId, user.walletPrivateKey);
-      const fileKey : Buffer = await deriveFileKey (fileToSync.fileId, driveKey);
-      const decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, fileKey, dataBuffer);
+      if (fileToSync.entityType === 'file') {
+        // Decrypt files using a File Key derived from the Drive key
+        const fileKey : Buffer = await deriveFileKey (fileToSync.fileId, driveKey);
+        decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, fileKey, dataBuffer);
+      } else if (fileToSync.entityType === 'folder') {
+        // Decrypt folders using the Drive Key only
+        decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, driveKey, dataBuffer);
+      }
+
+      // Handle an error with decryption by ignoring this file.  THIS NEEDS TO BE IMPROVED.
       if (decryptedData.toString('ascii') === 'Error') {
         console.log ("There was a problem decrypting a private %s with TXID: %s", fileToSync.entityType, fileToSync.metaDataTxId);
         console.log ("Skipping this file...")
@@ -309,8 +319,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
             let currentDate = new Date()
             let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
             fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
-            await updateFileDownloadStatus('1', fileToDownload.id);
-            return 'Downloaded';
+            await updateFileDownloadStatus('1', fileToDownload.id);            return 'Downloaded';
           } else {
             // This is an older version, and we ignore it for now.
             await updateFileDownloadStatus('0', fileToDownload.id); // Mark older version as not local ignored

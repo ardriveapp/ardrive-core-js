@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import AppendInitVect from './appendInitVect';
 import { parse } from 'uuid';
 // import * as constants from 'constants'
 import { getWalletSigningKey } from './arweave';
@@ -113,65 +112,6 @@ export const checksumFile = async (path: string | number | Buffer | import('url'
   hash.update(file);
   const fileHash = hash.digest('hex');
   return fileHash;
-};
-
-// OLD
-export const encryptFile = async (filePath: string, password: any, jwk: any) => {
-  try {
-    let writeStream;
-    // Generate a secure, pseudo random initialization vector.
-    const initVect = crypto.randomBytes(16);
-    // Generate a cipher key from the password.
-    const CIPHER_KEY = getFileCipherKey(password, jwk);
-    const readStream = fs.createReadStream(filePath);
-    const cipher = crypto.createCipheriv('aes256', CIPHER_KEY, initVect);
-    const appendInitVect = new AppendInitVect(initVect);
-    // Create a write stream with a different file extension.
-    if (filePath.includes('.enc')) {
-      writeStream = fs.createWriteStream(filePath);
-    } else {
-      writeStream = fs.createWriteStream(filePath.concat('.enc'));
-    }
-    readStream.pipe(cipher).pipe(appendInitVect).pipe(writeStream); // THIS SHIT IS CAUSING THE PROBLEM
-    writeStream.on('finish', () => {
-      // Do nothing
-    });
-    return 'Success!';
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-};
-
-// OLD
-export const decryptFile = async (encryptedFilePath: string, password: any, jwk: any) => {
-  try {
-    // console.log ("Decrypting %s", encryptedFilePath)
-    // First, get the initialization vector from the file.
-    // var encryptedFilePath = file_path.concat(".enc")
-    // fs.renameSync(file_path, encryptedFilePath)
-    const readInitVect = fs.createReadStream(encryptedFilePath, { end: 15 });
-
-    let initVect: Buffer | string;
-    readInitVect.on('data', async (chunk) => {
-      initVect = chunk;
-    });
-
-    // Once we’ve got the initialization vector, we can decrypt the file.
-    readInitVect.on('close', async () => {
-      const cipherKey = getFileCipherKey(password, jwk);
-      const readStream = fs.createReadStream(encryptedFilePath, {
-        start: 16,
-      });
-      const decipher = crypto.createDecipheriv('aes256', cipherKey, initVect);
-      const writeStream = fs.createWriteStream(encryptedFilePath.replace('.enc', ''));
-      readStream.pipe(decipher).pipe(writeStream);
-    });
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-  return 'Success!';
 };
 
 export const encryptText = async (text: crypto.BinaryLike, password: any) => {
