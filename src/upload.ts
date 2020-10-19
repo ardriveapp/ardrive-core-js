@@ -136,6 +136,7 @@ async function uploadArDriveFileMetaData(
       size: fileToUpload.fileSize,
       lastModifiedDate: fileToUpload.lastModifiedDate,
       dataTxId: fileToUpload.dataTxId,
+      dataContentType: fileToUpload.contentType,
     };
     // Convert to JSON string
     const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
