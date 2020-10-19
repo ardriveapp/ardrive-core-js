@@ -234,7 +234,7 @@ const determineFilePath = async (syncFolderPath: string, parentFolderId: string,
 const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
-  let unixTime = Date.now();
+  let unixTime = Math.round(Date.now() / 1000)
   let drive : ArFSDriveMetadata = {
     id: 0,
     appName: appName,
@@ -260,7 +260,7 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
 const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
-  let unixTime = Date.now();
+  let unixTime = Math.round(Date.now() / 1000)
   let drive : ArFSDriveMetadata = {
     id: 0,
     appName: appName,

@@ -80,7 +80,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     const newFileVersion = await getByFilePathFromSyncTable(filePath);
     if (newFileVersion) {
       // Add new version of existing file
-      newFileVersion.unixTime = Date.now();
+      newFileVersion.unixTime = Math.round(Date.now() / 1000);
       newFileVersion.fileVersion += 1;
       newFileVersion.metaDataTx = '0';
       newFileVersion.dataTx = '0';
@@ -99,7 +99,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     if (renamedFile && !(checkFileExistsSync(renamedFile.filePath))) {
       // The file has been renamed.  Submit as Metadata.
       console.log('   %s was just renamed', filePath);
-      renamedFile.unixTime = Date.now();
+      renamedFile.unixTime = Math.round(Date.now() / 1000)
       renamedFile.metaDataTxId = '0';
       renamedFile.fileName = fileName;
       renamedFile.filePath = filePath;
@@ -114,7 +114,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     const movedFile = await getByFileHashAndFileNameFromSyncTable(fileHash, fileName);
     if (movedFile && !(checkFileExistsSync(movedFile.filePath))) {
       console.log('   %s has been moved', filePath);
-      movedFile.unixTime = Date.now();
+      movedFile.unixTime = Math.round(Date.now() / 1000)
       movedFile.metaDataTxId = '0';
       movedFile.fileName = fileName;
       movedFile.filePath = filePath;
@@ -126,7 +126,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
 
     // No match, so queue a new file
     console.log('   Queuing a new file for upload %s', filePath);
-    const unixTime = Date.now();
+    const unixTime = Math.round(Date.now() / 1000)
     const contentType = extToMime(filePath);
     const fileId = uuidv4();
     const fileSize = stats.size;
@@ -214,7 +214,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       }
     })
 
-    const unixTime = Date.now();
+    const unixTime = Math.round(Date.now() / 1000)
     const contentType = 'application/json';
     let fileId = uuidv4();
     const lastModifiedDate = Math.floor(stats.mtimeMs);
