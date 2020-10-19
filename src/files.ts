@@ -179,7 +179,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
 
   // Check if the folder is already in the Sync Table, therefore we do not need to add a new one.
   const isQueuedOrCompleted = await getFolderFromSyncTable(folderPath);
-  if (isQueuedOrCompleted || fileName === 'New Folder') {
+  if (isQueuedOrCompleted || fileName === 'New folder') {
     // The folder is already in the queue, or it is the root and we do not want to process.
     // Or the folder is a "New Folder" and we do not capture this
   } else {
