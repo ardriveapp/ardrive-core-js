@@ -261,12 +261,16 @@ export const getLatestFileVersionFromSyncTable = (fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
 
+export const getPreviousFileVersionFromSyncTable = (fileId: string) => {
+  return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC LIMIT 1 OFFSET 1`, [fileId]);
+};
+
 export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
   return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId])
 }
 
 export const getFilesToUploadFromSyncTable = () => {
-  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1 ');
+  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1');
 };
 
 export const getAllUploadedFilesFromSyncTable = () => {
@@ -442,6 +446,10 @@ export const getAllLocalFoldersFromSyncTable = () => {
 
 export const getAllLocalFilesFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE entityType = 'file' AND isLocal = 1`);
+}
+
+export const getAllUnhashedLocalFilesFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE fileHash = '' AND entityType = 'file' AND isLocal = 1`);
 }
 
 export const deleteFromSyncTable = (id: string) => {

@@ -20,6 +20,7 @@ import {
   setFileToDownload,
   getLatestFolderVersionFromSyncTable,
   getAllDrivesByPrivacyFromDriveTable,
+  getPreviousFileVersionFromSyncTable,
 } from './db';
 import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 
@@ -46,7 +47,6 @@ async function downloadArDriveFileByTx(
       const dataBuffer = Buffer.from(data);
       const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToDownload.driveId, user.walletPrivateKey);
       const fileKey : Buffer = await deriveFileKey (fileToDownload.fileId, driveKey);
-      console.log ("File key is: %s for DataTx %s", fileKey.toString('hex'), fileToDownload.dataTxId)
       const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
       fs.writeFileSync(fileToDownload.filePath, decryptedData)
       console.log('DOWNLOADED AND DECRYPTED %s', fileToDownload.filePath);
@@ -153,7 +153,7 @@ async function getFileMetaDataFromTx(
 
     let dataJSON;
     let decryptedData = Buffer.from('');
-    
+
     // If it is a private file or folder, the data will need decryption.
     if (fileToSync.cipher === 'AES256-GCM') {
       fileToSync.isPublic = 0;
@@ -309,20 +309,43 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
           // Only download if this is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
-            // If there is a file already in this location with a different size, then skip mark as a conflict with isLocal 2
-            //console.log ("Downloading the latest file version %s", fileToDownload.filePath)
+            // Compare against the previous version for a different file name or parent folder
+            // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
+            const previousFileVersion : ArFSFileMetaData = await getPreviousFileVersionFromSyncTable(fileToDownload.fileId);
 
-            // Download and decrypt the file if necessary
-            await downloadArDriveFileByTx(user, fileToDownload);
+            // If undefined, then there is no previous file version.
+            if (previousFileVersion === undefined) {
+              // Download and decrypt the file if necessary
+              await downloadArDriveFileByTx(user, fileToDownload);
 
-            // Ensure the file downloaded has the same lastModifiedDate as before
-            let currentDate = new Date()
-            let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
-            fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
-            await updateFileDownloadStatus('1', fileToDownload.id);            return 'Downloaded';
+              // Ensure the file downloaded has the same lastModifiedDate as before
+              let currentDate = new Date()
+              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+            }
+            else if ((+previousFileVersion.isLocal === 1) && (fileToDownload.fileName !== previousFileVersion.fileName || fileToDownload.parentFolderId !== previousFileVersion.parentFolderId)) {
+              // Need error handling here in case file is in use
+              fs.renameSync(previousFileVersion.filePath, fileToDownload.filePath)
+
+              // Change the older version to not local/ignored since it has been renamed or moved
+              await updateFileDownloadStatus('0', previousFileVersion.id); // Mark older version as not local
+              await setPermaWebFileToCloudOnly(previousFileVersion.id); // Mark older version as ignored
+            } else {
+              // Download and decrypt the file if necessary
+              await downloadArDriveFileByTx(user, fileToDownload);
+
+              // Ensure the file downloaded has the same lastModifiedDate as before
+              let currentDate = new Date()
+              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+            }
+
+            // Update the database
+            await updateFileDownloadStatus('1', fileToDownload.id);
+            return 'Downloaded';
           } else {
             // This is an older version, and we ignore it for now.
-            await updateFileDownloadStatus('0', fileToDownload.id); // Mark older version as not local ignored
+            await updateFileDownloadStatus('0', fileToDownload.id); // Mark older version as not local
             await setPermaWebFileToCloudOnly(fileToDownload.id); // Mark older version as ignored
           }
           return 'Checked file';
@@ -343,7 +366,25 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
         // If this folder is the same name/path then download
         if (latestFolderVersion.filePath === folderToCreate.filePath) {
-          if (!fs.existsSync(folderToCreate.filePath)) {
+            // Compare against the previous version for a different file name or parent folder
+            // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
+            const previousFolderVersion : ArFSFileMetaData = await getPreviousFileVersionFromSyncTable(folderToCreate.fileId);
+            // If undefined, then there is no previous folder version.
+            if (previousFolderVersion === undefined) {
+              if (!fs.existsSync(folderToCreate.filePath)) {
+                console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
+                fs.mkdirSync(folderToCreate.filePath);
+              }
+            }
+            else if ((+previousFolderVersion.isLocal === 1) && (folderToCreate.fileName !== previousFolderVersion.fileName || folderToCreate.parentFolderId !== previousFolderVersion.parentFolderId)) {
+              // Need error handling here in case file is in use
+              fs.renameSync(previousFolderVersion.filePath, folderToCreate.filePath)
+
+              // Change the older version to not local/ignored since it has been renamed or moved
+              await updateFileDownloadStatus('0', previousFolderVersion.id); // Mark older version as not local
+              await setPermaWebFileToCloudOnly(previousFolderVersion.id); // Mark older version as ignored
+            }
+          else if (!fs.existsSync(folderToCreate.filePath)) {
             console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
             fs.mkdirSync(folderToCreate.filePath);
           }

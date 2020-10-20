@@ -5,10 +5,10 @@ import * as fs from 'fs';
 import path, { dirname } from 'path';
 import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
 import { 
-  getAllLocalFilesFromSyncTable, 
   getAllLocalFoldersFromSyncTable, 
   getAllMissingParentFolderIdsFromSyncTable, 
   getAllMissingPathsFromSyncTable, 
+  getAllUnhashedLocalFilesFromSyncTable, 
   getArDriveSyncFolderPathFromProfile, 
   getFolderFromSyncTable, 
   getFolderNameFromSyncTable, 
@@ -23,7 +23,7 @@ export const gatewayURL = 'https://arweave.net/';
 export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';
-export const arFSVersion = '0.10';
+export const arFSVersion = '0.11';
 export const cipher = "AES256-GCM"
 
 const { v4: uuidv4 } = require('uuid');
@@ -154,8 +154,8 @@ const setAllFolderHashes = async () => {
 
 const setAllFileHashes = async () => {
   try {
-    const allFiles : ArFSFileMetaData[]= await getAllLocalFilesFromSyncTable()
-    // Update the hash of the parent folder
+    const allFiles : ArFSFileMetaData[]= await getAllUnhashedLocalFilesFromSyncTable();
+    // Update the hash of the file
     await asyncForEach(allFiles, async (file: ArFSFileMetaData) => {
       let fileHash = await checksumFile(file.filePath);
       await updateFileHashInSyncTable(fileHash, file.id)
@@ -164,7 +164,7 @@ const setAllFileHashes = async () => {
   }
   catch (err) {
     console.log (err)
-    console.log ("The parent folder is not present in the database yet")
+    console.log ("The file is not local and cannot be hashed")
     return "Error"
   }
 }

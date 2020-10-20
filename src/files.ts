@@ -285,10 +285,10 @@ const watchFolder = (syncFolderPath: string) => {
   });
   watcher
     .on('add', async (path: any) => queueFile(path, syncFolderPath))
-    .on('change', (path: any) => queueFile(path, syncFolderPath))
-    .on('unlink', (path: any) => log(`File ${path} has been removed`))
+    .on('change', async (path: any) => queueFile(path, syncFolderPath))
+    .on('unlink', async (path: any) => log(`File ${path} has been removed`))
     .on('addDir', async (path: any) => queueFolder(path, syncFolderPath))
-    .on('unlinkDir', (path: any) => log(`Directory ${path} has been removed`))
+    .on('unlinkDir', async (path: any) => log(`Directory ${path} has been removed`))
     .on('error', (error: any) => log(`Watcher error: ${error}`))
   return 'Watched';
 };
