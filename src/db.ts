@@ -1,5 +1,5 @@
 import * as sqlite3 from 'sqlite3';
-import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // Use verbose mode in development
 let sql3 = sqlite3;
@@ -184,7 +184,7 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   );
 };
 
-export const addDriveToDriveTable = (drive: ArFSDriveMetadata) => {
+export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
   const {
     login,
     appName,
@@ -408,9 +408,30 @@ export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, 
   ]);
 }
 
+// Same as remove from sync table.  which to remove?
+export const deleteFromSyncTable = (id: string) => {
+  return get(`DELETE FROM Sync WHERE id = ?`, [id]);
+};
+
+// Same as delete from sync table.  which to remove?
 export const removeFromSyncTable = (id: string) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
+
+// Deletes a file from the Sync table based on driveID
+export const removeByDriveIdFromSyncTable = (id: string) => {
+  return get(`DELETE FROM Sync WHERE driveId = ?`, [id]);
+};
+
+// Deletes a profile based on login
+export const removeFromProfileTable = (login: string) => {
+  return get(`DELETE FROM Profile WHERE login = ?`, [login])
+}
+
+// Deletes a drive based on the drive ID
+export const removeFromDriveTable = (driveId: string) => {
+  return get(`DELETE FROM Drive WHERE driveId = ?`, [driveId])
+}
 
 export const getByMetaDataTxFromSyncTable = (metaDataTxId: string) => {
   return get(`SELECT * FROM Sync WHERE metaDataTxId = ?`, [metaDataTxId]);
@@ -454,10 +475,6 @@ export const getAllLocalFilesFromSyncTable = () => {
 export const getAllUnhashedLocalFilesFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE fileHash = '' AND entityType = 'file' AND isLocal = 1`);
 }
-
-export const deleteFromSyncTable = (id: string) => {
-  return get(`DELETE FROM Sync WHERE id = ?`, [id]);
-};
 
 export const setParentFolderId = (parentFolderId: string, id: number) => {
   return get(`UPDATE Sync SET parentFolderId = ? WHERE id = ?`, [parentFolderId, id]);
@@ -515,6 +532,10 @@ export const getAllFromProfile = (): Promise<any[]> => {
 
 export const getAllDrivesFromDriveTable = () => {
   return all(`SELECT * FROM Drive`);
+};
+
+export const getAllDrivesByLoginFromDriveTable = (login: string) => {
+  return all(`SELECT * FROM Drive WHERE login = ?`, [login]);
 };
 
 export const getAllDrivesByPrivacyFromDriveTable = (drivePrivacy: string) => {
