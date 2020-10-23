@@ -231,12 +231,13 @@ const determineFilePath = async (syncFolderPath: string, parentFolderId: string,
 };
 
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
-const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
+const createNewPublicDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
   let unixTime = Math.round(Date.now() / 1000)
   let drive : ArFSDriveMetadata = {
     id: 0,
+    login,
     appName: appName,
     appVersion: appVersion,
     driveName,
@@ -257,12 +258,13 @@ const createNewPublicDrive = async (driveName: string) : Promise<ArFSDriveMetada
 }
 
 // Creates a new drive, using the standard private privacy settings and adds to the Drive table
-const createNewPrivateDrive = async (driveName: string) : Promise<ArFSDriveMetadata> => {
+const createNewPrivateDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetadata> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
   let unixTime = Math.round(Date.now() / 1000)
   let drive : ArFSDriveMetadata = {
     id: 0,
+    login,
     appName: appName,
     appVersion: appVersion,
     driveName,

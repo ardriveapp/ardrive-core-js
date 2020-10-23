@@ -92,6 +92,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
       const { tags } = node;
       let drive : ArFSDriveMetadata = {
         id: 0,
+        login: '',
         appName: '',
         appVersion: '',
         driveName: '',
@@ -299,6 +300,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       const { tags } = node;
       let drive : ArFSDriveMetadata = {
         id: 0,
+        login: '',
         appName: '',
         appVersion: '',
         driveName: '',
