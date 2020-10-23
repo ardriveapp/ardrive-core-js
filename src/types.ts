@@ -23,6 +23,7 @@ export interface UploadBatch {
 
 export interface ArFSDriveMetadata {
   id: number,
+  login: string,
   appName: string,
   appVersion: string,
   driveName: string,

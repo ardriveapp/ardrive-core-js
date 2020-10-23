@@ -107,6 +107,7 @@ const createSyncTable = () => {
 const createDriveTable = async () => {
   const sql = `CREATE TABLE IF NOT EXISTS Drive (
       id integer NOT NULL PRIMARY KEY,
+      login text,
       appName text,
       appVersion text,
       driveName text,
@@ -185,6 +186,7 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
 
 export const addDriveToDriveTable = (drive: ArFSDriveMetadata) => {
   const {
+    login,
     appName,
     appVersion,
     driveName,
@@ -201,8 +203,9 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetadata) => {
     permaWebLink,
   } = drive;
   return run(
-    'REPLACE INTO Drive (appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
+      login,
       appName,
       appVersion,
       driveName,
