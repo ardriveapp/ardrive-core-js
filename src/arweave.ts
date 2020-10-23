@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
-import { ArDriveUser, ArFSDriveMetadata, ArFSEncryptedData, ArFSFileMetaData, Wallet } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
@@ -51,7 +51,7 @@ const getLocalWallet = async (existingWalletPath: string) => {
 // Uses the Entity type to only search for Drive tags
 const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   try {
-    let allPublicDrives : ArFSDriveMetadata[] = [];
+    let allPublicDrives : ArFSDriveMetaData[] = [];
     // Create the Graphql Query to search for all drives relating to the User wallet
     const query = {
       query: `query {
@@ -90,7 +90,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
     await asyncForEach(edges, async (edge: any) => {
       const { node } = edge;
       const { tags } = node;
-      let drive : ArFSDriveMetadata = {
+      let drive : ArFSDriveMetaData = {
         id: 0,
         login: '',
         appName: '',
@@ -260,7 +260,7 @@ const getPrivateDriveRootFolderTxId = async (walletPublicKey: string, driveId: s
 // Only returns Private drives from graphql
 const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   try {
-    let allPrivateDrives : ArFSDriveMetadata[] = [];
+    let allPrivateDrives : ArFSDriveMetaData[] = [];
     const query = {
       query: `query {
       transactions(
@@ -298,7 +298,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
     await asyncForEach(edges, async (edge: any) => {
       const { node } = edge;
       const { tags } = node;
-      let drive : ArFSDriveMetadata = {
+      let drive : ArFSDriveMetaData = {
         id: 0,
         login: '',
         appName: '',
@@ -516,7 +516,7 @@ const getWalletBalance = async (walletPublicKey: string) => {
 // Creates an arweave transaction to upload public ardrive metadata
 const createPublicDriveTransaction = async (
   walletPrivateKey: string,
-  drive: ArFSDriveMetadata
+  drive: ArFSDriveMetaData
 ) : Promise<string> => {
   try {
 
@@ -668,7 +668,7 @@ const createArDrivePublicMetaDataTransaction = async (
 const createPrivateDriveTransaction = async (
   driveKey: Buffer,
   walletPrivateKey: string,
-  drive: ArFSDriveMetadata
+  drive: ArFSDriveMetaData
 ) : Promise<string> => {
   try {
 

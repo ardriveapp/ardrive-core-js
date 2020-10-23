@@ -24,7 +24,7 @@ import {
   getAllUploadedDrivesFromDriveTable, 
   completeDriveMetaDataFromDriveTable,
 } from './db';
-import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData, UploadBatch } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
 export const getPriceOfNextUploadBatch = async () => {
   let totalWinstonData = 0;
@@ -226,7 +226,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         console.log ("   Wow that was your first ARDRIVE Transaction!  Congrats!")
         console.log ("   Lets finish setting up your profile by submitting a few more small transactions to the network.")
       }
-      await asyncForEach (newDrives, async (newDrive : ArFSDriveMetadata) => {
+      await asyncForEach (newDrives, async (newDrive : ArFSDriveMetaData) => {
         if (newDrive.drivePrivacy === 'public') {
           // get the root folder for the drive
           await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
@@ -317,8 +317,8 @@ export const checkUploadStatus = async () => {
     );
     
     // Get all drives that need to have their transactions checked (metaDataSyncStatus of 2)
-    const unsyncedDrives : ArFSDriveMetadata[] = await getAllUploadedDrivesFromDriveTable();
-    await asyncForEach(unsyncedDrives, async (unsyncedDrive: ArFSDriveMetadata) => {
+    const unsyncedDrives : ArFSDriveMetaData[] = await getAllUploadedDrivesFromDriveTable();
+    await asyncForEach(unsyncedDrives, async (unsyncedDrive: ArFSDriveMetaData) => {
       status = await getTransactionStatus(unsyncedDrive.metaDataTxId);
       if (status === 200) {
         permaWebLink = gatewayURL.concat(unsyncedDrive.metaDataTxId);

@@ -4,8 +4,8 @@ import path from 'path';
 import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
-import { addFileToSyncTable, createArDriveProfile, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile } from './db';
-import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // This creates all of the Drives found for the user
 export const setupDrives = async (walletPublicKey: string, syncFolderPath: string) => {
@@ -17,10 +17,10 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
     }
 
     // get all drives
-    const drives : ArFSDriveMetadata[] = await getAllDrivesFromDriveTable()
+    const drives : ArFSDriveMetaData[] = await getAllDrivesFromDriveTable()
 
     // for each drive, check if drive folder exists
-    await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+    await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
 
       // Check if the drive path exists, if not, create it
       const drivePath : string = path.join(syncFolderPath, drive.driveName);
@@ -107,6 +107,20 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   }
 };
 
+// Deletes a user and all of their associated drives and files in the database
+export const deleteUserAndDrives = async (login: string) => {
+  // Delete profile matching login
+  await removeFromProfileTable(login);
+  // Get DriveIDs for login
+  const drivesToDelete : ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(login);
+  // Delete drives and files matching login
+  await asyncForEach(drivesToDelete, async (drive: ArFSDriveMetaData) => {
+    // Delete files in the sync table with matching DriveIDs
+    await removeByDriveIdFromSyncTable(drive.driveId);
+    // Remove the drive itself from the Drive Table
+    await removeFromDriveTable(drive.driveId);
+  })
+}
 // Checks if the user's password is valid
 export const passwordCheck = async (loginPassword: string, login: string) : Promise<boolean> => {
   try {

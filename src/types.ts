@@ -21,7 +21,7 @@ export interface UploadBatch {
   totalNumberOfFolderUploads: number
 };
 
-export interface ArFSDriveMetadata {
+export interface ArFSDriveMetaData {
   id: number,
   login: string,
   appName: string,

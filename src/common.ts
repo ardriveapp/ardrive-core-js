@@ -3,7 +3,7 @@ import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { Wallet, ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { Wallet, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 import { 
   getAllLocalFoldersFromSyncTable, 
   getAllMissingParentFolderIdsFromSyncTable, 
@@ -231,11 +231,11 @@ const determineFilePath = async (syncFolderPath: string, parentFolderId: string,
 };
 
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
-const createNewPublicDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetadata> => {
+const createNewPublicDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetaData> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
   let unixTime = Math.round(Date.now() / 1000)
-  let drive : ArFSDriveMetadata = {
+  let drive : ArFSDriveMetaData = {
     id: 0,
     login,
     appName: appName,
@@ -253,16 +253,16 @@ const createNewPublicDrive = async (login: string, driveName: string) : Promise<
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
     permaWebLink: '',
   };
-  console.log ("Creating a new public drive, %s | %s", driveName, driveId)
+  console.log ("Creating a new public drive for %s, %s | %s", login, driveName, driveId)
   return drive;
 }
 
 // Creates a new drive, using the standard private privacy settings and adds to the Drive table
-const createNewPrivateDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetadata> => {
+const createNewPrivateDrive = async (login: string, driveName: string) : Promise<ArFSDriveMetaData> => {
   let driveId = uuidv4();
   let rootFolderId = uuidv4();
   let unixTime = Math.round(Date.now() / 1000)
-  let drive : ArFSDriveMetadata = {
+  let drive : ArFSDriveMetaData = {
     id: 0,
     login,
     appName: appName,
@@ -280,7 +280,7 @@ const createNewPrivateDrive = async (login: string, driveName: string) : Promise
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
     permaWebLink: '',
   };
-  console.log ("Creating a new private drive, %s | %s", driveName, driveId)
+  console.log ("Creating a new private drive for %s, %s | %s", login, driveName, driveId)
   return drive;
 }
 

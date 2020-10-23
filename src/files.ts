@@ -13,11 +13,12 @@ import {
   setPermaWebFileToCloudOnly,
   setPermaWebFileToOverWrite,
   getFolderByHashFromSyncTable,
-  getAllDrivesFromDriveTable
+  getAllDrivesFromDriveTable,
+  setFilePath
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
-import { ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 const { hashElement } = require('folder-hash');
 
@@ -53,8 +54,8 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     // Get the Drive ID and Privacy status
     let isPublic = 0;
     let driveId = '';
-    const allDrives: ArFSDriveMetadata[] = await getAllDrivesFromDriveTable();
-    allDrives.forEach((drive: ArFSDriveMetadata) => {
+    const allDrives: ArFSDriveMetaData[] = await getAllDrivesFromDriveTable();
+    allDrives.forEach((drive: ArFSDriveMetaData) => {
       let pathToCheck : string = syncFolderPath + '\\' + drive.driveName + '\\'
       if (filePath.indexOf(pathToCheck) !== -1) {
         driveId = drive.driveId;
@@ -71,8 +72,9 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     // Check if the exact file already exists in the same location
     const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(fileName, fileHash, parentFolderId);
     if (exactMatch) {
-      // This file's version already exists.  Do nothing
-      console.log ("   Already found a match for %s", filePath)
+      // This file's version already exists.  Ensure file path is updated and do nothing
+      await setFilePath(filePath, exactMatch.id);
+      console.log ("   Already found a match for %s", filePath);
       return;
     }
 
@@ -199,8 +201,8 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     // Get the Drive ID and Privacy status
     let isPublic = 0;
     let driveId = ''
-    const allDrives: ArFSDriveMetadata[] = await getAllDrivesFromDriveTable();
-    allDrives.forEach((drive: ArFSDriveMetadata) => {
+    const allDrives: ArFSDriveMetaData[] = await getAllDrivesFromDriveTable();
+    allDrives.forEach((drive: ArFSDriveMetaData) => {
       let pathToCheck : string = syncFolderPath + '\\' + drive.driveName + '\\'
       if (folderPath.indexOf(pathToCheck) !== -1) {
         driveId = drive.driveId;

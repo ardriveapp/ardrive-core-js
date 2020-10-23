@@ -22,7 +22,7 @@ import {
   getAllDrivesByPrivacyFromDriveTable,
   getPreviousFileVersionFromSyncTable,
 } from './db';
-import { ArDriveUser, ArFSDriveMetadata, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
@@ -249,8 +249,8 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
-  let drives : ArFSDriveMetadata[] = await getAllDrivesByPrivacyFromDriveTable("private");
-  await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+  let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable("private");
+  await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
     await asyncForEach(privateTxIds, async (privateTxId: string) => {
       await getFileMetaDataFromTx(privateTxId, user); 
@@ -260,7 +260,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   // Get your public files
   console.log('---Getting all your Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable("public");
-  await asyncForEach(drives, async (drive: ArFSDriveMetadata) => {
+  await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
     await asyncForEach(publicTxIds, async (publicTxId: string) => {
       await getFileMetaDataFromTx(publicTxId, user);
