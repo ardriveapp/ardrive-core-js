@@ -264,6 +264,12 @@ export const getLatestFileVersionFromSyncTable = (fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
 
+// returns all of the local files and folders that have the same parent folder id.
+export const getFilesAndFoldersByParentFolderFromSyncTable = (parentFolderId: string) => {
+  return all('SELECT * FROM Sync WHERE isLocal = 1 AND parentFolderId = ?', [parentFolderId]);
+}
+
+// Returns the n-1 version of a file
 export const getPreviousFileVersionFromSyncTable = (fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC LIMIT 1 OFFSET 1`, [fileId]);
 };
@@ -470,6 +476,10 @@ export const getAllLocalFoldersFromSyncTable = () => {
 
 export const getAllLocalFilesFromSyncTable = () => {
   return all(`SELECT * FROM Sync WHERE entityType = 'file' AND isLocal = 1`);
+}
+
+export const getAllLocalFilesAndFoldersFromSyncTable = () => {
+  return all(`SELECT * FROM Sync WHERE entityType = 'file' AND entityType = 'folder' AND isLocal = 1`);
 }
 
 export const getAllUnhashedLocalFilesFromSyncTable = () => {
