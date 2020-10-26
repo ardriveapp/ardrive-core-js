@@ -19,7 +19,8 @@ import {
   updateFolderHashInSyncTable, 
   getRootFolderPathFromSyncTable,
   getAllLatestFileAndFolderVersionsFromSyncTable,
-  setFileToDownload} from './db';
+  setFileToDownload,
+  updateFileSizeInSyncTable} from './db';
 import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
@@ -162,8 +163,8 @@ const setAllFolderHashes = async () => {
     return "Folder hashes set"
   }
   catch (err) {
-    console.log (err)
-    console.log ("The parent folder is not present in the database yet")
+    //console.log (err)
+    //console.log ("The parent folder is not present in the database yet")
     return "Error"
   }
 }
@@ -174,15 +175,36 @@ const setAllFileHashes = async () => {
     const allFiles : ArFSFileMetaData[]= await getAllUnhashedLocalFilesFromSyncTable();
     // Update the hash of the file
     await asyncForEach(allFiles, async (file: ArFSFileMetaData) => {
-      console.log ("File hashing is ", file.filePath);
       let fileHash = await checksumFile(file.filePath);
       await updateFileHashInSyncTable(fileHash, file.id)
     })
     return "All missing file hashes set"
   }
   catch (err) {
-    console.log (err)
-    console.log ("Error getting file hash")
+    //console.log (err)
+    //console.log ("Error getting file hash")
+    return "Error"
+  }
+}
+
+// Sets the has of all folders that are missing it
+const setAllFolderSizes = async () => {
+  try {
+    const allFolders : ArFSFileMetaData[] = await getAllLocalFoldersFromSyncTable()
+    // Update the size of each folder
+    await asyncForEach(allFolders, async (folder: ArFSFileMetaData) => {
+      // Get the stats of the folder to get its inode value.  This differsn on windows/os/linux
+      // This is set into the Size field to determine if the folder has been renamed
+      // Ideally this would be improved upon
+      let stats = fs.statSync(folder.filePath);
+      let folderIno = stats.ino;
+      await updateFileSizeInSyncTable(folderIno, folder.id);
+    })
+    return "All folder sizes set"
+  }
+  catch (err) {
+    //console.log (err)
+    //console.log ("Error getting folder size")
     return "Error"
   }
 }
@@ -202,8 +224,8 @@ const setAllParentFolderIds = async () => {
     return "Folder hashes set"
   }
   catch (err) {
-    console.log (err)
-    console.log ("The parent folder is not present in the database yet")
+    // console.log (err)
+    // console.log ("The parent folder is not present in the database yet")
     return "Error"
   }
 
@@ -234,7 +256,6 @@ async function setNewFilePaths() {
 // Determines the file path based on parent folder ID
 const updateFilePath = async (file: ArFSFileMetaData) : Promise<string> => {
   try {
-
     let rootFolderPath = await getRootFolderPathFromSyncTable(file.driveId)
     rootFolderPath = dirname(rootFolderPath.filePath);
     let parentFolderId = file.parentFolderId;
@@ -359,6 +380,7 @@ export {
   setFolderChildrenPaths,
   setAllFolderHashes,
   setAllFileHashes,
+  setAllFolderSizes,
   checkFolderExistsSync,
   Utf8ArrayToStr,
   createNewPublicDrive,

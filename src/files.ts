@@ -6,6 +6,7 @@ import { checksumFile } from './crypto';
 import {
   addFileToSyncTable,
   getFolderFromSyncTable,
+  getFolderByInodeFromSyncTable,
   getByFileNameAndHashAndParentFolderIdFromSyncTable,
   getByFilePathFromSyncTable,
   getByFileHashAndParentFolderFromSyncTable,
@@ -220,6 +221,9 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     const contentType = 'application/json';
     let fileId = uuidv4();
     const lastModifiedDate = Math.floor(stats.mtimeMs);
+    
+    // Use the inode value instead of file size
+    let fileSize = stats.ino;
     let entityType = 'folder'
     let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
@@ -235,8 +239,16 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     const movedFolder = await getFolderByHashFromSyncTable(folderHash.hash);
     if (movedFolder) {
       // create a new folder with previous folder ID
-      console.log ("Folder was moved!  Using existing previous file Id: %s", movedFolder.fileId);
+      console.log ("Folder was moved!  Using existing previous folder Id: %s", movedFolder.fileId);
       fileId = movedFolder.fileId;
+    }
+
+    // Check to see if this folder was renamed by matching against its inode, aka fileSize
+    const renamedFolder = await getFolderByInodeFromSyncTable(fileSize);
+    if (renamedFolder) {
+      // create a new folder with previous folder ID
+      console.log ("Folder was renamed!  Using previous folder Id: %s", renamedFolder.fileId);
+      fileId = renamedFolder.fileId;
     }
 
     const folderToQueue : ArFSFileMetaData = {
@@ -252,7 +264,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
       filePath: folderPath,
       fileName,
       fileHash: folderHash.hash,
-      fileSize: 0,
+      fileSize,
       lastModifiedDate,
       fileVersion: 0,
       isPublic,
