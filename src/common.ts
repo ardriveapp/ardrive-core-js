@@ -9,14 +9,17 @@ import {
   getAllMissingParentFolderIdsFromSyncTable, 
   getAllMissingPathsFromSyncTable, 
   getAllUnhashedLocalFilesFromSyncTable, 
-  getArDriveSyncFolderPathFromProfile, 
   getFolderFromSyncTable, 
   getFolderNameFromSyncTable, 
   getFolderParentIdFromSyncTable, 
   setFilePath, 
   setParentFolderId, 
-  updateFileHashInSyncTable, 
-  updateFolderHashInSyncTable } from './db';
+  updateFileHashInSyncTable,
+  getFilesAndFoldersByParentFolderFromSyncTable, 
+  updateFolderHashInSyncTable, 
+  getRootFolderPathFromSyncTable,
+  getAllLatestFileAndFolderVersionsFromSyncTable,
+  setFileToDownload} from './db';
 import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
@@ -121,6 +124,18 @@ const checkFileExistsSync = (filePath: string) => {
   return exists;
 };
 
+// Check the latest file versions to ensure they exist locally, if not set them to download
+async function checkForMissingLocalFiles () {
+  const localFiles : ArFSFileMetaData[] = await getAllLatestFileAndFolderVersionsFromSyncTable()
+  await asyncForEach(localFiles, async (localFile: ArFSFileMetaData) => {
+    fs.access(localFile.filePath, async (err) => {
+      if (err) {
+        await setFileToDownload(localFile.metaDataTxId); // The file doesnt exist, so lets download it
+      }
+    })
+  })
+}
+
 const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
   try {
     const backupFileName = "ArDrive_Backup_" + owner + ".json";
@@ -134,6 +149,7 @@ const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: str
   }
 };
 
+// Updates all local folder hashes
 const setAllFolderHashes = async () => {
   try {
     const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
@@ -152,27 +168,29 @@ const setAllFolderHashes = async () => {
   }
 }
 
+// Sets the hash of any file that is missing it
 const setAllFileHashes = async () => {
   try {
     const allFiles : ArFSFileMetaData[]= await getAllUnhashedLocalFilesFromSyncTable();
     // Update the hash of the file
     await asyncForEach(allFiles, async (file: ArFSFileMetaData) => {
+      console.log ("File hashing is ", file.filePath);
       let fileHash = await checksumFile(file.filePath);
       await updateFileHashInSyncTable(fileHash, file.id)
     })
-    return "Folder hashes set"
+    return "All missing file hashes set"
   }
   catch (err) {
     console.log (err)
-    console.log ("The file is not local and cannot be hashed")
+    console.log ("Error getting file hash")
     return "Error"
   }
 }
 
+// This will set the parent folder ID for any file that is missing it
 const setAllParentFolderIds = async () => {
   try {
     const allFilesOrFolders : ArFSFileMetaData[]= await getAllMissingParentFolderIdsFromSyncTable()
-    // Update the hash of the parent folder
     await asyncForEach(allFilesOrFolders, async (fileOrFolder: ArFSFileMetaData) => {
       const parentFolderPath = dirname(fileOrFolder.filePath);
       let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
@@ -191,41 +209,52 @@ const setAllParentFolderIds = async () => {
 
 }
 
+// updates the paths of all children of a given folder.
+async function setFolderChildrenPaths (folder: ArFSFileMetaData) {
+  const childFilesAndFolders : ArFSFileMetaData[] = await getFilesAndFoldersByParentFolderFromSyncTable (folder.fileId);
+  if (childFilesAndFolders !== undefined) {
+    await asyncForEach(childFilesAndFolders, async (fileOrFolder: ArFSFileMetaData) => {
+      await updateFilePath (fileOrFolder);
+      if (fileOrFolder.entityType === 'folder') {
+        await setFolderChildrenPaths (fileOrFolder);
+      }
+    })
+  }
+}
+
 // Fixes all empty file paths
 async function setNewFilePaths() {
-  let syncFolderPath = await getArDriveSyncFolderPathFromProfile()  
-  let filePath = '';
   const filesToFix : ArFSFileMetaData[]= await getAllMissingPathsFromSyncTable()
-  // console.log ("Found %s paths to fix", pathsToFix.length)
   await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
     // console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
-    filePath = await determineFilePath(syncFolderPath.syncFolderPath, fileToFix.parentFolderId, fileToFix.fileName)
-    await setFilePath(filePath, fileToFix.id)
+    await updateFilePath(fileToFix)
   })
 };
 
-// This needs updating
 // Determines the file path based on parent folder ID
-const determineFilePath = async (syncFolderPath: string, parentFolderId: string, fileName: string) : Promise<string> => {
+const updateFilePath = async (file: ArFSFileMetaData) : Promise<string> => {
   try {
-    let filePath = fileName;
+
+    let rootFolderPath = await getRootFolderPathFromSyncTable(file.driveId)
+    rootFolderPath = dirname(rootFolderPath.filePath);
+    let parentFolderId = file.parentFolderId;
+    let filePath = file.fileName;
     let parentFolderName;
     let parentOfParentFolderId;
-    let x = 0;
-    while ((parentFolderId !== '0') && (x < 10)) {
+    while (parentFolderId !== '0'){
       parentFolderName = await getFolderNameFromSyncTable(parentFolderId)
       filePath = path.join(parentFolderName.fileName, filePath)
       parentOfParentFolderId = await getFolderParentIdFromSyncTable(parentFolderId)
       parentFolderId = parentOfParentFolderId.parentFolderId;
-      x += 1;
     }
-    const newFilePath : string = path.join(syncFolderPath, filePath)
-    // console.log ("      Fixed!!!", filePath)
+    const newFilePath : string = path.join(rootFolderPath, filePath)
+    await setFilePath(newFilePath, file.id)
+    console.log ("      Fixed!!!", newFilePath)
     return newFilePath;
   }
   catch (err) {
     console.log (err)
-    console.log ("Error fixing the file path for %s", fileName)
+    console.log ("Error fixing the file path for %s", file.fileName)
     return "Error";
   }
 };
@@ -326,6 +355,8 @@ export {
   checkOrCreateFolder,
   backupWallet,
   checkFileExistsSync,
+  checkForMissingLocalFiles,
+  setFolderChildrenPaths,
   setAllFolderHashes,
   setAllFileHashes,
   checkFolderExistsSync,
@@ -334,5 +365,5 @@ export {
   createNewPrivateDrive,
   setAllParentFolderIds,
   setNewFilePaths,
-  determineFilePath,
+  updateFilePath,
 };

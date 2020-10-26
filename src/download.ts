@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // upload.js
 import * as fs from 'fs';
-import { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, determineFilePath, setNewFilePaths } from './common';
+import path, { dirname } from 'path';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles } from './common';
 import { getAllMyDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
@@ -16,8 +16,6 @@ import {
   setPermaWebFileToCloudOnly,
   getMyFileDownloadConflicts,
   setFilePath,
-  getAllLatestFileAndFolderVersionsFromSyncTable,
-  setFileToDownload,
   getLatestFolderVersionFromSyncTable,
   getAllDrivesByPrivacyFromDriveTable,
   getPreviousFileVersionFromSyncTable,
@@ -30,6 +28,18 @@ async function downloadArDriveFileByTx(
   fileToDownload: ArFSFileMetaData,
 ) {
   try {
+
+    // Get the parent folder's path
+    const parentFolder : ArFSFileMetaData = await getLatestFolderVersionFromSyncTable(fileToDownload.parentFolderId);
+
+    // Check if this file's path has the right path from its parent folder.  This ensures folders moved on the web are properly moved locally
+    if (parentFolder.filePath !== path.dirname(fileToDownload.filePath)) {
+      // Update the file path in the database
+      console.log ("Fixing file path to ", parentFolder.filePath);
+      fileToDownload.filePath = path.join(parentFolder.filePath, fileToDownload.fileName);
+      await setFilePath(fileToDownload.filePath, fileToDownload.id);
+    }
+
     const folderPath = dirname(fileToDownload.filePath);
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
@@ -181,7 +191,7 @@ async function getFileMetaDataFromTx(
         fileToSync.lastModifiedDate = fileToSync.unixTime;
         fileToSync.permaWebLink = gatewayURL.concat(fileToSync.metaDataTxId);
         fileToSync.cloudOnly = 1;
-        //  await addFileToSyncTable(fileToSync);  This must be handled better.
+        await addFileToSyncTable(fileToSync);  // This must be handled better.
         return 'Error Decrypting'
       } else {
         dataJSON = await JSON.parse(decryptedData.toString('ascii'));
@@ -221,7 +231,7 @@ async function getFileMetaDataFromTx(
       if (latestFile !== undefined) {
         if (latestFile.fileDataTx !== fileToSync.dataTxId) {
           fileToSync.fileVersion = +latestFile.fileVersion + 1;
-          console.log ("%s has a new version %s", dataJSON.name, fileToSync.fileVersion)
+          // console.log ("%s has a new version %s", dataJSON.name, fileToSync.fileVersion)
         }
         // If the previous file data tx matches, then we do not increment the version
         else {
@@ -269,22 +279,13 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
   await setNewFilePaths();
+
 };
 
 // Downloads all ardrive files that are not local
 export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
   try {
     console.log('---Downloading any unsynced files---');
-    // Check the latest file versions to ensure they exist locally, if not set them to download
-    const localFiles : ArFSFileMetaData[] = await getAllLatestFileAndFolderVersionsFromSyncTable()
-    await asyncForEach(localFiles, async (localFile: ArFSFileMetaData) => {
-      fs.access(localFile.filePath, async (err) => {
-        if (err) {
-          await setFileToDownload(localFile.metaDataTxId); // The file doesnt exist, so lets download it
-        }
-      })
-    })
-
     // Get the Files and Folders which have isLocal set to 0 that we are not ignoring
     const filesToDownload : ArFSFileMetaData[] = await getFilesToDownload();
     const foldersToCreate : ArFSFileMetaData[] =  await getFoldersToCreate();
@@ -292,6 +293,57 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
     // Get the special batch of File Download Conflicts
     const fileConflictsToDownload : ArFSFileMetaData[] = await getMyFileDownloadConflicts();
 
+    // Process any folders to create
+    if (foldersToCreate.length > 0) {
+      // there are new folders to create
+      await asyncForEach(foldersToCreate, async (folderToCreate: ArFSFileMetaData) => {
+
+        // Establish the folder path first
+        if (folderToCreate.filePath === '') {
+          folderToCreate.filePath = await updateFilePath(folderToCreate)
+        }
+
+        // Get the latest folder version from the DB
+        const latestFolderVersion: ArFSFileMetaData= await getLatestFolderVersionFromSyncTable(folderToCreate.fileId);
+
+        // If this folder is the latest version, then we should create the folder
+        if (latestFolderVersion.filePath === folderToCreate.filePath) {
+
+            // Compare against the previous version for a different file name or parent folder
+            // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
+            const previousFolderVersion : ArFSFileMetaData = await getPreviousFileVersionFromSyncTable(folderToCreate.fileId);
+
+            // If undefined, then there is no previous folder version.
+            if (previousFolderVersion === undefined) {
+              if (!fs.existsSync(folderToCreate.filePath)) {
+                console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
+                fs.mkdirSync(folderToCreate.filePath);
+              }
+            }
+            else if ((+previousFolderVersion.isLocal === 1) && (folderToCreate.fileName !== previousFolderVersion.fileName || folderToCreate.parentFolderId !== previousFolderVersion.parentFolderId)) {
+              // There is a previous folder version, so we must rename/move it to the latest file path
+              // Need error handling here in case file is in use
+              fs.renameSync(previousFolderVersion.filePath, folderToCreate.filePath)
+
+              // All children of the folder need their paths update in the database
+              await setFolderChildrenPaths(folderToCreate)
+
+              // Change the older version to not local/ignored since it has been renamed or moved
+              await updateFileDownloadStatus('0', previousFolderVersion.id); // Mark older version as not local
+              await setPermaWebFileToCloudOnly(previousFolderVersion.id); // Mark older version as ignored
+            }
+          else if (!fs.existsSync(folderToCreate.filePath)) {
+            console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
+            fs.mkdirSync(folderToCreate.filePath);
+          }
+          await updateFileDownloadStatus('1', folderToCreate.id);
+        } else {
+          // This is an older version, and we ignore it for now.
+          await updateFileDownloadStatus('0', folderToCreate.id); // Mark older fodler version as not local and ignored
+          await setPermaWebFileToCloudOnly(folderToCreate.id); // Mark older folder version as ignored
+        }
+      });
+    }
     // Process any files to download
     if (filesToDownload.length > 0) {
       // There are unsynced files to process
@@ -300,8 +352,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         async (fileToDownload: ArFSFileMetaData) => {
           // Establish the file path first
           if (fileToDownload.filePath === '') {
-            fileToDownload.filePath = await determineFilePath(user.syncFolderPath, fileToDownload.parentFolderId, fileToDownload.fileName)
-            await setFilePath (fileToDownload.filePath, fileToDownload.id)
+            fileToDownload.filePath = await updateFilePath(fileToDownload)
           }
 
           // Get the latest file version from the DB
@@ -352,50 +403,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         },
       );
     }
-    // Process any folders to create
-    if (foldersToCreate.length > 0) {
-      // there are new folders to create
-      await asyncForEach(foldersToCreate, async (folderToCreate: { id: any; parentFolderId: string; fileName: string; filePath: any, fileId: string }) => {
-        // Establish the folder path first
-        if (folderToCreate.filePath === '') {
-          folderToCreate.filePath = await determineFilePath(user.syncFolderPath, folderToCreate.parentFolderId, folderToCreate.fileName)
-          await setFilePath (folderToCreate.filePath, folderToCreate.id)
-        }
-        // Get the latest folder version from the DB
-        const latestFolderVersion: ArFSFileMetaData= await getLatestFolderVersionFromSyncTable(folderToCreate.fileId);
-
-        // If this folder is the same name/path then download
-        if (latestFolderVersion.filePath === folderToCreate.filePath) {
-            // Compare against the previous version for a different file name or parent folder
-            // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
-            const previousFolderVersion : ArFSFileMetaData = await getPreviousFileVersionFromSyncTable(folderToCreate.fileId);
-            // If undefined, then there is no previous folder version.
-            if (previousFolderVersion === undefined) {
-              if (!fs.existsSync(folderToCreate.filePath)) {
-                console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
-                fs.mkdirSync(folderToCreate.filePath);
-              }
-            }
-            else if ((+previousFolderVersion.isLocal === 1) && (folderToCreate.fileName !== previousFolderVersion.fileName || folderToCreate.parentFolderId !== previousFolderVersion.parentFolderId)) {
-              // Need error handling here in case file is in use
-              fs.renameSync(previousFolderVersion.filePath, folderToCreate.filePath)
-
-              // Change the older version to not local/ignored since it has been renamed or moved
-              await updateFileDownloadStatus('0', previousFolderVersion.id); // Mark older version as not local
-              await setPermaWebFileToCloudOnly(previousFolderVersion.id); // Mark older version as ignored
-            }
-          else if (!fs.existsSync(folderToCreate.filePath)) {
-            console.log('Creating new folder from permaweb %s', folderToCreate.filePath);
-            fs.mkdirSync(folderToCreate.filePath);
-          }
-          await updateFileDownloadStatus('1', folderToCreate.id);
-        } else {
-          // This is an older version, and we ignore it for now.
-          await updateFileDownloadStatus('0', folderToCreate.id); // Mark older fodler version as not local and ignored
-          await setPermaWebFileToCloudOnly(folderToCreate.id); // Mark older folder version as ignored
-        }
-      });
-    }
     // Process any previously conflicting file downloads
     if (fileConflictsToDownload.length > 0) {
       await asyncForEach(
@@ -410,10 +417,11 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
       );
     }
 
-    // Ensure all of the folder hashes are set properly
+    // Run some other processes to ensure downloaded files are set properly
     await setAllFolderHashes();
     await setAllFileHashes();
     await setAllParentFolderIds();
+    await checkForMissingLocalFiles();
 
     return 'Downloaded all ArDrive files';
   } catch (err) {

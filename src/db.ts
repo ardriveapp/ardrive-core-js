@@ -298,6 +298,11 @@ export const getFoldersToCreate = () => {
   return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "folder"');
 };
 
+// Gets a drive's root folder by selecting the folder with a parent ID of 0
+export const getRootFolderPathFromSyncTable = (driveId: string) => {
+  return get('SELECT filePath from Sync WHERE parentFolderId = "0" and driveId = ?', [driveId])
+}
+
 export const getNewDrivesFromDriveTable = () => {
   return all('SELECT * FROM Drive WHERE metaDataTxId = "0"');
 }
