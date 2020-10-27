@@ -865,6 +865,12 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
       JSON.parse(walletPrivateKey),
     );
 
+    // Tag file with data upload Tipping metadata
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
+    transaction.addTag('Type', 'fee');
+    transaction.addTag('Tip-Type', 'data upload');
+
     // Sign file
     await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
 
