@@ -579,6 +579,8 @@ const createArDrivePublicDataTransaction = async (
       JSON.parse(walletPrivateKey),
     );
     // Tag file
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
     transaction.addTag('Content-Type', contentType);
 
     // Sign file
@@ -733,6 +735,8 @@ const createArDrivePrivateDataTransaction = async (
     const transaction = await arweave.createTransaction({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
 
     // Tag file with Content-Type, Cipher and Cipher-IV
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
     transaction.addTag('Content-Type', 'application/octet-stream');
     transaction.addTag('Cipher', encryptedData.cipher);
     transaction.addTag('Cipher-IV', encryptedData.cipherIV)
