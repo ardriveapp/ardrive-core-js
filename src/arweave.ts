@@ -621,7 +621,6 @@ const createArDrivePublicMetaDataTransaction = async (
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
-    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.fileName, txSize, arPrice);
 
     // Tag file
     transaction.addTag('App-Name', appName);
@@ -784,7 +783,6 @@ const createArDrivePrivateMetaDataTransaction = async (
     const txSize = transaction.get('data_size');
     const winston = await getWinston(txSize);
     const arPrice = +winston * 0.000000000001;
-    console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, txSize, arPrice);
 
     // Tag file with Private metadata
     transaction.addTag('App-Name', appName);

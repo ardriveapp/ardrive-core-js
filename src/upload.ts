@@ -7,7 +7,7 @@ import {
   createPublicDriveTransaction,
   createPrivateDriveTransaction,
   createArDrivePublicDataTransaction,
-  sendArDriveFee,
+  //sendArDriveFee,
   createArDrivePrivateDataTransaction,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync } from './common';
@@ -115,8 +115,9 @@ async function uploadArDriveFileData(
     }
 
     // Send the ArDrive Profit Sharing Community Fee
-    await sendArDriveFee(user.walletPrivateKey, arPrice);
-    
+    // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
+    // await sendArDriveFee(user.walletPrivateKey, arPrice);
+
     return dataTxId;
   } catch (err) {
     console.log(err);
@@ -196,7 +197,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         filesToUpload,
         async (fileToUpload: ArFSFileMetaData) => {
           if (fileToUpload.entityType === 'file') {
-            console.log ("Uploading file - %s", fileToUpload.fileName)
+            // console.log ("Uploading file - %s", fileToUpload.fileName)
             // Check to see if we have to upload the File Data and Metadata
             // If not, we just check to see if we have to update metadata.
             if (+fileToUpload.fileDataSyncStatus === 1) {
@@ -209,7 +210,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
             }
           }
           else if (fileToUpload.entityType === 'folder') {
-            console.log ("Uploading folder - %s", fileToUpload.fileName)
+            //console.log ("Uploading folder - %s", fileToUpload.fileName)
             await uploadArDriveFolderMetaData(user, fileToUpload);
           }
           filesUploaded += 1;
