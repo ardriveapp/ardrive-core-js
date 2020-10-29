@@ -4,11 +4,11 @@ import path from 'path';
 import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
-import { addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getAllDrivesFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
+import { addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // This creates all of the Drives found for the user
-export const setupDrives = async (walletPublicKey: string, syncFolderPath: string) => {
+export const setupDrives = async (login: string, walletPublicKey: string, syncFolderPath: string) => {
   try {
     console.log ("Initializing ArDrives");
     // check if the root sync folder exists, if not create it
@@ -17,7 +17,7 @@ export const setupDrives = async (walletPublicKey: string, syncFolderPath: strin
     }
 
     // get all drives
-    const drives : ArFSDriveMetaData[] = await getAllDrivesFromDriveTable()
+    const drives : ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(login)
 
     // for each drive, check if drive folder exists
     await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
