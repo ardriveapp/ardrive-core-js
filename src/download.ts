@@ -77,6 +77,7 @@ async function getFileMetaDataFromTx(
   try {
     const fileToSync : ArFSFileMetaData = {
       id: 0,
+      login: user.login,
       appName: '',
       appVersion: '',
       unixTime: 0,

@@ -52,6 +52,7 @@ export const setupDrives = async (login: string, walletPublicKey: string, syncFo
         // This folder will require a metadata transaction to arweave
         const driveRootFolderToAdd : ArFSFileMetaData = {
           id: 0,
+          login,
           appName: drive.appName,
           appVersion: drive.appVersion,
           unixTime: drive.unixTime,

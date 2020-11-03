@@ -15,15 +15,17 @@ import {
   setPermaWebFileToOverWrite,
   getFolderByHashFromSyncTable,
   getAllDrivesFromDriveTable,
-  setFilePath
+  setFilePath,
+  getDriveRootFolderFromSyncTable,
+  getAllDrivesByLoginFromDriveTable
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
-import { ArFSDriveMetaData, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 const { hashElement } = require('folder-hash');
 
-const queueFile = async (filePath: string, syncFolderPath: string) => {
+const queueFile = async (filePath: string, driveRootFolderPath: string, login: string) => {
   // Check to see if the file is ready
   let stats = null;
   let extension = extname(filePath).toLowerCase();
@@ -57,7 +59,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     let driveId = '';
     const allDrives: ArFSDriveMetaData[] = await getAllDrivesFromDriveTable();
     allDrives.forEach((drive: ArFSDriveMetaData) => {
-      let pathToCheck : string = syncFolderPath + '\\' + drive.driveName + '\\'
+      let pathToCheck : string = driveRootFolderPath + '\\' + drive.driveName + '\\'
       if (filePath.indexOf(pathToCheck) !== -1) {
         driveId = drive.driveId;
         // determine if drive is public or private
@@ -135,6 +137,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
     const fileSize = stats.size;
     const newFileToQueue : ArFSFileMetaData = {
       id: 0,
+      login,
       appName,
       appVersion,
       unixTime,
@@ -166,7 +169,7 @@ const queueFile = async (filePath: string, syncFolderPath: string) => {
   }
 };
 
-const queueFolder = async (folderPath: string, syncFolderPath: string) => {
+const queueFolder = async (folderPath: string, driveRootFolderPath: string, login: string) => {
 
   let stats = null;
   let fileName = folderPath.split(sep).pop();
@@ -176,7 +179,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
   }
 
   // Check if this is the root sync folder, and if yes then skip
-  if (folderPath === syncFolderPath) {
+  if (folderPath === driveRootFolderPath) {
     return;
   }
 
@@ -204,7 +207,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
     let driveId = ''
     const allDrives: ArFSDriveMetaData[] = await getAllDrivesFromDriveTable();
     allDrives.forEach((drive: ArFSDriveMetaData) => {
-      let pathToCheck : string = syncFolderPath + '\\' + drive.driveName + '\\'
+      let pathToCheck : string = driveRootFolderPath + '\\' + drive.driveName + '\\'
       if (folderPath.indexOf(pathToCheck) !== -1) {
         driveId = drive.driveId;
         // determine if drive is public or private
@@ -253,6 +256,7 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
 
     const folderToQueue : ArFSFileMetaData = {
       id: 0,
+      login,
       appName,
       appVersion,
       unixTime,
@@ -283,9 +287,9 @@ const queueFolder = async (folderPath: string, syncFolderPath: string) => {
   }
 };
 
-const watchFolder = (syncFolderPath: string) => {
+const watchFolder = (login: string, driveRootFolderPath: string) => {
   const log = console.log.bind(console);
-  const watcher = chokidar.watch(syncFolderPath, {
+  const watcher = chokidar.watch(driveRootFolderPath, {
     persistent: true,
     ignoreInitial: false,
     usePolling: true,
@@ -298,14 +302,26 @@ const watchFolder = (syncFolderPath: string) => {
     },
   });
   watcher
-    .on('add', async (path: any) => queueFile(path, syncFolderPath))
-    .on('change', async (path: any) => queueFile(path, syncFolderPath))
+    .on('add', async (path: any) => queueFile(path, driveRootFolderPath, login))
+    .on('change', async (path: any) => queueFile(path, driveRootFolderPath, login))
     .on('unlink', async (path: any) => log(`File ${path} has been removed`))
-    .on('addDir', async (path: any) => queueFolder(path, syncFolderPath))
+    .on('addDir', async (path: any) => queueFolder(path, driveRootFolderPath, login))
     .on('unlinkDir', async (path: any) => log(`Directory ${path} has been removed`))
     .on('error', (error: any) => log(`Watcher error: ${error}`))
   return 'Watched';
 };
+
+const startWatchingFolders = async (user: ArDriveUser) => {
+  const drives : ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(user.login);
+  if (drives !== undefined) {
+    drives.forEach(async (drive: ArFSDriveMetaData) => {
+      let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
+      let status = watchFolder(user.login, rootFolder.filePath);
+      console.log ("%s %s", status, rootFolder.filePath)
+    })
+  }
+
+}
 
 const resolveFileDownloadConflict = async (resolution: string, fileName: string, filePath: string, id: string) => {
   const folderPath = dirname(filePath);
@@ -331,4 +347,4 @@ const resolveFileDownloadConflict = async (resolution: string, fileName: string,
   }
 };
 
-export { watchFolder, resolveFileDownloadConflict };
+export { watchFolder, resolveFileDownloadConflict, startWatchingFolders };

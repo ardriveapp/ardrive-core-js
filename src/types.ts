@@ -42,6 +42,7 @@ export interface ArFSDriveMetaData {
 
 export interface ArFSFileMetaData {
   id: number,
+  login: string,
   appName: string,
   appVersion: string,
   unixTime: number,
