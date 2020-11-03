@@ -354,7 +354,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       });
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
-      console.log ("TX is: ", node.id)
+
       // Download the File's Metadata using the metadata transaction ID
       let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
       const dataBuffer = Buffer.from(data);
