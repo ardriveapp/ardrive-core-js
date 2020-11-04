@@ -109,10 +109,15 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
 };
 
 // Add a Shared Public drive, using a DriveId
-export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) => {
+export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) : Promise<string> => {
   try {
     // Get the drive information from arweave
     const sharedPublicDrive : ArFSDriveMetaData = await getSharedPublicDrive(driveId);
+
+    // If there is no meta data tx id, then the drive id does not exist or has not been mined yet
+    if (sharedPublicDrive.metaDataTxId === '0') {
+      return 'Invalid'
+    }
     sharedPublicDrive.login = user.login;
     // Check if the drive path exists, if not, create it
     const drivePath : string = path.join(user.syncFolderPath, sharedPublicDrive.driveName);
@@ -159,12 +164,11 @@ export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) =
 
     // Add the Root Folder to the Sync Table
     await addFileToSyncTable(driveRootFolderToAdd);
-    return 'Shared Public Drive Added'
+    return sharedPublicDrive.driveName;
   }
   catch (err) {
     console.log (err)
-    console.log ('Error adding Shared Public Drive')
-    return 'Error'
+    return 'Invalid'
   }
 
 }
@@ -194,8 +198,10 @@ export const deleteDrive = async (driveId: string) => {
 export const passwordCheck = async (loginPassword: string, login: string) : Promise<boolean> => {
   try {
     let user: ArDriveUser = await getUserFromProfile(login);
-    user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
     user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
+    if (user.walletPrivateKey === 'ERROR') {
+      return false;
+    }
     return true;
   }
   catch (err) {

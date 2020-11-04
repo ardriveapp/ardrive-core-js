@@ -147,7 +147,7 @@ export const decryptText = async (
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
   } catch (err) {
-    console.log(err);
+    // console.log(err);
     return "ERROR";
   }
 };
