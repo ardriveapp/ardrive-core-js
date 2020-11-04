@@ -74,6 +74,7 @@ const createProfileTable = async () => {
 const createSyncTable = () => {
   const sql = `CREATE TABLE IF NOT EXISTS Sync (
         id integer NOT NULL PRIMARY KEY,
+        login text,
         metaDataTxId text NOT NULL,
         dataTxId text,
         appName text DEFAULT ArDrive,
@@ -128,6 +129,7 @@ const createDriveTable = async () => {
 
 export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   const {
+    login,
     appName,
     appVersion,
     unixTime,
@@ -154,8 +156,9 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
     metaDataCipherIV,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, dataCipherIV, metaDataCipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (login, appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, dataCipherIV, metaDataCipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
+      login,
       appName,
       appVersion,
       unixTime,
