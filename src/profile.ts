@@ -122,6 +122,12 @@ export const deleteUserAndDrives = async (login: string) => {
     await removeFromDriveTable(drive.driveId);
   })
 }
+// Deletes a single drive and its files in the database
+export const deleteDrive = async (driveId: string) => {
+  await removeByDriveIdFromSyncTable(driveId);
+  await removeFromDriveTable(driveId);
+}
+
 // Checks if the user's password is valid
 export const passwordCheck = async (loginPassword: string, login: string) : Promise<boolean> => {
   try {
