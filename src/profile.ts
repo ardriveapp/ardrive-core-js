@@ -122,6 +122,7 @@ export const deleteUserAndDrives = async (login: string) => {
     await removeFromDriveTable(drive.driveId);
   })
 }
+
 // Deletes a single drive and its files in the database
 export const deleteDrive = async (driveId: string) => {
   await removeByDriveIdFromSyncTable(driveId);
@@ -152,6 +153,3 @@ export const getUser = async (loginPassword: string, login: string) => {
   return user;
 };
 
-// TO DO
-// Create an ArDrive password and save to DB
-// export const resetArDrivePassword = async function () {};
