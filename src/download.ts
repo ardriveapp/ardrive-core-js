@@ -260,7 +260,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
-  let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable("private");
+  let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "private");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
     await asyncForEach(privateTxIds, async (privateTxId: string) => {
@@ -270,7 +270,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your public files
   console.log('---Getting all your Public ArDrive files---');
-  drives = await getAllDrivesByPrivacyFromDriveTable("public");
+  drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
     await asyncForEach(publicTxIds, async (publicTxId: string) => {
@@ -287,11 +287,11 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
   console.log('---Downloading any unsynced files---');
   // Get the Files and Folders which have isLocal set to 0 that we are not ignoring
-  const filesToDownload : ArFSFileMetaData[] = await getFilesToDownload();
-  const foldersToCreate : ArFSFileMetaData[] =  await getFoldersToCreate();
+  const filesToDownload : ArFSFileMetaData[] = await getFilesToDownload(user.login);
+  const foldersToCreate : ArFSFileMetaData[] =  await getFoldersToCreate(user.login);
 
   // Get the special batch of File Download Conflicts
-  const fileConflictsToDownload : ArFSFileMetaData[] = await getMyFileDownloadConflicts();
+  const fileConflictsToDownload : ArFSFileMetaData[] = await getMyFileDownloadConflicts(user.login);
 
   // Process any folders to create
   if (foldersToCreate.length > 0) {
