@@ -74,6 +74,7 @@ const createProfileTable = async () => {
 const createSyncTable = () => {
   const sql = `CREATE TABLE IF NOT EXISTS Sync (
         id integer NOT NULL PRIMARY KEY,
+        login text,
         metaDataTxId text NOT NULL,
         dataTxId text,
         appName text DEFAULT ArDrive,
@@ -128,6 +129,7 @@ const createDriveTable = async () => {
 
 export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   const {
+    login,
     appName,
     appVersion,
     unixTime,
@@ -154,8 +156,9 @@ export const addFileToSyncTable = (file: ArFSFileMetaData) => {
     metaDataCipherIV,
   } = file;
   return run(
-    'REPLACE INTO Sync (appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, dataCipherIV, metaDataCipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Sync (login, appName, appVersion, unixTime, contentType, entityType, driveId, parentFolderId, fileId, filePath, fileName, fileHash, fileSize, lastModifiedDate, fileVersion, isPublic, isLocal, metaDataTxId, dataTxId, fileDataSyncStatus, fileMetaDataSyncStatus, permaWebLink, cipher, dataCipherIV, metaDataCipherIV) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
+      login,
       appName,
       appVersion,
       unixTime,
@@ -280,24 +283,24 @@ export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
   return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId])
 }
 
-export const getFilesToUploadFromSyncTable = () => {
-  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1');
+export const getFilesToUploadFromSyncTable = (login: string) => {
+  return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)', [login]);
 };
 
-export const getAllUploadedFilesFromSyncTable = () => {
-  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2');
+export const getAllUploadedFilesFromSyncTable = (login: string) => {
+  return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2)', [login]);
 };
 
 export const getAllUploadedDrivesFromDriveTable = () => {
   return all('SELECT * FROM Drive WHERE metaDataSyncStatus = 2');
 };
 
-export const getFilesToDownload = () => {
-  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "file"');
+export const getFilesToDownload = (login: string) => {
+  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "file" AND login = ?', [login]);
 };
 
-export const getFoldersToCreate = () => {
-  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "folder"');
+export const getFoldersToCreate = (login: string) => {
+  return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "folder" AND login = ?', [login]);
 };
 
 // Gets a drive's root folder by selecting the folder with a parent ID of 0
@@ -466,8 +469,8 @@ export const getByMetaDataTxFromSyncTable = (metaDataTxId: string) => {
   return get(`SELECT * FROM Sync WHERE metaDataTxId = ?`, [metaDataTxId]);
 };
 
-export const getMyFileDownloadConflicts = () => {
-  return all('SELECT * FROM Sync WHERE isLocal = 2 ');
+export const getMyFileDownloadConflicts = (login: string) => {
+  return all('SELECT * FROM Sync WHERE isLocal = 2 AND login = ?', [login]);
 };
 
 export const createArDriveProfile = (user: ArDriveUser) => {
@@ -559,8 +562,8 @@ export const getAllDrivesByLoginFromDriveTable = (login: string) => {
   return all(`SELECT * FROM Drive WHERE login = ?`, [login]);
 };
 
-export const getAllDrivesByPrivacyFromDriveTable = (drivePrivacy: string) => {
-  return all(`SELECT * FROM Drive WHERE drivePrivacy = ?`, [drivePrivacy]);
+export const getAllDrivesByPrivacyFromDriveTable = (login: string, drivePrivacy: string) => {
+  return all(`SELECT * FROM Drive WHERE login = ? AND drivePrivacy = ?`, [login, drivePrivacy]);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {

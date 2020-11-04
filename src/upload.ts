@@ -26,7 +26,7 @@ import {
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
-export const getPriceOfNextUploadBatch = async () => {
+export const getPriceOfNextUploadBatch = async (login: string) => {
   let totalWinstonData = 0;
   let totalArweaveMetadataPrice = 0;
   let totalSize = 0;
@@ -40,7 +40,7 @@ export const getPriceOfNextUploadBatch = async () => {
   }
 
   // Get all files that are ready to be uploaded
-  const filesToUpload = await getFilesToUploadFromSyncTable();
+  const filesToUpload = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
     await asyncForEach(
       filesToUpload,
@@ -190,7 +190,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
   try {
     let filesUploaded = 0;
     console.log('---Uploading All Queued Files and Folders---');
-    const filesToUpload = await getFilesToUploadFromSyncTable();
+    const filesToUpload = await getFilesToUploadFromSyncTable(user.login);
     if (Object.keys(filesToUpload).length > 0) {
       // Ready to upload
       await asyncForEach(
@@ -248,13 +248,13 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
 };
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
-export const checkUploadStatus = async () => {
+export const checkUploadStatus = async (login: string) => {
   try {
     console.log('---Checking Upload Status---');
     let permaWebLink: string;
 
     // Get all files and folders that need to have their transactions checked (metaDataSyncStatus of 2)
-    const unsyncedFiles = await getAllUploadedFilesFromSyncTable();
+    const unsyncedFiles = await getAllUploadedFilesFromSyncTable(login);
     let status: any;
     await asyncForEach(
       unsyncedFiles,

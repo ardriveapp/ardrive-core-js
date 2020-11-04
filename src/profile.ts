@@ -52,6 +52,7 @@ export const setupDrives = async (login: string, walletPublicKey: string, syncFo
         // This folder will require a metadata transaction to arweave
         const driveRootFolderToAdd : ArFSFileMetaData = {
           id: 0,
+          login,
           appName: drive.appName,
           appVersion: drive.appVersion,
           unixTime: drive.unixTime,
@@ -121,6 +122,13 @@ export const deleteUserAndDrives = async (login: string) => {
     await removeFromDriveTable(drive.driveId);
   })
 }
+
+// Deletes a single drive and its files in the database
+export const deleteDrive = async (driveId: string) => {
+  await removeByDriveIdFromSyncTable(driveId);
+  await removeFromDriveTable(driveId);
+}
+
 // Checks if the user's password is valid
 export const passwordCheck = async (loginPassword: string, login: string) : Promise<boolean> => {
   try {
@@ -145,6 +153,3 @@ export const getUser = async (loginPassword: string, login: string) => {
   return user;
 };
 
-// TO DO
-// Create an ArDrive password and save to DB
-// export const resetArDrivePassword = async function () {};

@@ -270,7 +270,7 @@ const updateFilePath = async (file: ArFSFileMetaData) : Promise<string> => {
     }
     const newFilePath : string = path.join(rootFolderPath, filePath)
     await setFilePath(newFilePath, file.id)
-    console.log ("      Fixed!!!", newFilePath)
+    // console.log ("      Fixed!!!", newFilePath)
     return newFilePath;
   }
   catch (err) {
