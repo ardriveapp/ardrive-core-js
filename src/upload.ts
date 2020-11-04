@@ -221,24 +221,24 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
       console.log('Uploaded %s files to your ArDrive!', filesUploaded);
       // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
       // Check for unsynced drive entities and create if necessary
-      const newDrives : ArFSFileMetaData[] = await getNewDrivesFromDriveTable()
+      const newDrives : ArFSFileMetaData[] = await getNewDrivesFromDriveTable(user.login)
       if (newDrives.length > 0)
       {
         console.log ("   Wow that was your first ARDRIVE Transaction!  Congrats!")
         console.log ("   Lets finish setting up your profile by submitting a few more small transactions to the network.")
+        await asyncForEach (newDrives, async (newDrive : ArFSDriveMetaData) => {
+          if (newDrive.drivePrivacy === 'public') {
+            // get the root folder for the drive
+            await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
+          }
+          else if (newDrive.drivePrivacy === 'private') {
+            const driveKey = await deriveDriveKey(user.dataProtectionKey, newDrive.driveId, user.walletPrivateKey);
+            await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
+          }
+          const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
+          await uploadArDriveFolderMetaData(user, driveRootFolder);
+        })
       }
-      await asyncForEach (newDrives, async (newDrive : ArFSDriveMetaData) => {
-        if (newDrive.drivePrivacy === 'public') {
-          // get the root folder for the drive
-          await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
-        }
-        else if (newDrive.drivePrivacy === 'private') {
-          const driveKey = await deriveDriveKey(user.dataProtectionKey, newDrive.driveId, user.walletPrivateKey);
-          await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
-        }
-        const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
-        await uploadArDriveFolderMetaData(user, driveRootFolder);
-      })
     }
     return 'SUCCESS';
   } catch (err) {

@@ -308,8 +308,8 @@ export const getRootFolderPathFromSyncTable = (driveId: string) => {
   return get('SELECT filePath from Sync WHERE parentFolderId = "0" and driveId = ?', [driveId])
 }
 
-export const getNewDrivesFromDriveTable = () => {
-  return all('SELECT * FROM Drive WHERE metaDataTxId = "0"');
+export const getNewDrivesFromDriveTable = (login: string) => {
+  return all('SELECT * FROM Drive WHERE login = ? AND metaDataTxId = "0"', [login]);
 }
 
 export const getDriveRootFolderFromSyncTable = (folderId: string) => {
