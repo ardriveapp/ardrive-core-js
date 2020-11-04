@@ -562,7 +562,11 @@ export const getAllDrivesFromDriveTable = () => {
 };
 
 export const getAllDrivesByLoginFromDriveTable = (login: string) => {
-  return all(`SELECT * FROM Drive WHERE login = ?`, [login]);
+  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = 'personal'`, [login]);
+};
+
+export const getAllPersonalDrivesByLoginFromDriveTable = (login: string) => {
+  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = 'personal'`, [login]);
 };
 
 export const getAllDrivesByPrivacyFromDriveTable = (login: string, drivePrivacy: string) => {

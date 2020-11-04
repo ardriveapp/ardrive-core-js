@@ -16,7 +16,7 @@ import {
   getFolderByHashFromSyncTable,
   setFilePath,
   getDriveRootFolderFromSyncTable,
-  getAllDrivesByLoginFromDriveTable
+  getAllPersonalDrivesByLoginFromDriveTable,
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
@@ -291,7 +291,7 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 };
 
 const startWatchingFolders = async (user: ArDriveUser) => {
-  const drives : ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(user.login);
+  const drives : ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
   if (drives !== undefined) {
     drives.forEach(async (drive: ArFSDriveMetaData) => {
       let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
