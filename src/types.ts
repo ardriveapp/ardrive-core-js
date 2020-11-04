@@ -33,6 +33,7 @@ export interface ArFSDriveMetaData {
   unixTime: number,
   arFS: string,
   driveId: string,
+  driveSharing: string,
   drivePrivacy: string,
   driveAuthMode: string,
   metaDataTxId: string,

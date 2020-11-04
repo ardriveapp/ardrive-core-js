@@ -1,14 +1,14 @@
 // index.js
 import * as fs from 'fs';
 import path from 'path';
-import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './arweave';
+import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
-import { addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
+import { addDriveToDriveTable, addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // This creates all of the Drives found for the user
-export const setupDrives = async (login: string, walletPublicKey: string, syncFolderPath: string) => {
+export const setupDrives = async (login: string, syncFolderPath: string) => {
   try {
     console.log ("Initializing ArDrives");
     // check if the root sync folder exists, if not create it
@@ -42,10 +42,10 @@ export const setupDrives = async (login: string, walletPublicKey: string, syncFo
         }
         if (drive.drivePrivacy === 'private') {
           isPublic = 0;
-          rootFolderMetaData = await getPrivateDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId);
+          rootFolderMetaData = await getPrivateDriveRootFolderTxId(drive.driveId, drive.rootFolderId);
         } else {
           // Get the root folder ID for this drive
-          rootFolderMetaData.metaDataTxId = await getPublicDriveRootFolderTxId(walletPublicKey, drive.driveId, drive.rootFolderId)
+          rootFolderMetaData.metaDataTxId = await getPublicDriveRootFolderTxId(drive.driveId, drive.rootFolderId)
         }
 
         // Prepare a new folder to add to the sync table
@@ -107,6 +107,67 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
     return "Error";
   }
 };
+
+// Add a Shared Public drive, using a DriveId
+export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) => {
+  try {
+    // Get the drive information from arweave
+    const sharedPublicDrive : ArFSDriveMetaData = await getSharedPublicDrive(driveId);
+    sharedPublicDrive.login = user.login;
+    // Check if the drive path exists, if not, create it
+    const drivePath : string = path.join(user.syncFolderPath, sharedPublicDrive.driveName);
+    if (!fs.existsSync(drivePath)) {
+      fs.mkdirSync(drivePath);
+    }
+
+    // Get the root folder ID for this drive
+    const metaDataTxId = await getPublicDriveRootFolderTxId(sharedPublicDrive.driveId, sharedPublicDrive.rootFolderId)
+
+    // Setup Drive Root Folder
+    const driveRootFolderToAdd : ArFSFileMetaData = {
+      id: 0,
+      login: user.login,
+      appName: sharedPublicDrive.appName,
+      appVersion: sharedPublicDrive.appVersion,
+      unixTime: sharedPublicDrive.unixTime,
+      contentType: 'application/json',
+      entityType: 'folder',
+      driveId: sharedPublicDrive.driveId,
+      parentFolderId: '0', // Root folders have no parent folder ID.
+      fileId: sharedPublicDrive.rootFolderId,
+      filePath: drivePath,
+      fileName: sharedPublicDrive.driveName,
+      fileHash: '0',
+      fileSize: 0,
+      lastModifiedDate: sharedPublicDrive.unixTime,
+      fileVersion: 0,
+      isPublic: 1,
+      isLocal: 1,
+      metaDataTxId, 
+      dataTxId: '0',
+      permaWebLink: '',
+      fileDataSyncStatus: 0, // Folders do not require a data tx
+      fileMetaDataSyncStatus: 3,
+      cipher: '',
+      dataCipherIV: '',
+      metaDataCipherIV: '',
+      cloudOnly: 0,
+    };
+
+    // Add Drive to Drive Table
+    await addDriveToDriveTable(sharedPublicDrive);
+
+    // Add the Root Folder to the Sync Table
+    await addFileToSyncTable(driveRootFolderToAdd);
+    return 'Shared Public Drive Added'
+  }
+  catch (err) {
+    console.log (err)
+    console.log ('Error adding Shared Public Drive')
+    return 'Error'
+  }
+
+}
 
 // Deletes a user and all of their associated drives and files in the database
 export const deleteUserAndDrives = async (login: string) => {

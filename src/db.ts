@@ -118,6 +118,7 @@ const createDriveTable = async () => {
       unixTime integer,
       arFS text,
       driveId text UNIQUE,
+      driveSharing text,
       drivePrivacy text,
       driveAuthMode text,
       metaDataTxId text,
@@ -199,6 +200,7 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
     unixTime,
     arFS,
     driveId,
+    driveSharing,
     drivePrivacy,
     driveAuthMode,
     metaDataTxId,
@@ -206,7 +208,7 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
     permaWebLink,
   } = drive;
   return run(
-    'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       login,
       appName,
@@ -218,6 +220,7 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
       unixTime,
       arFS,
       driveId,
+      driveSharing,
       drivePrivacy,
       driveAuthMode,
       metaDataTxId,
