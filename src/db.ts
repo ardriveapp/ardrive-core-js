@@ -283,12 +283,12 @@ export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
   return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId])
 }
 
-export const getFilesToUploadFromSyncTable = () => {
-  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1');
+export const getFilesToUploadFromSyncTable = (login: string) => {
+  return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)', [login]);
 };
 
-export const getAllUploadedFilesFromSyncTable = () => {
-  return all('SELECT * FROM Sync WHERE fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2');
+export const getAllUploadedFilesFromSyncTable = (login: string) => {
+  return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2)', [login]);
 };
 
 export const getAllUploadedDrivesFromDriveTable = () => {
