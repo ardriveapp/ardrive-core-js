@@ -66,7 +66,8 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
     if (exactMatch) {
       // This file's version already exists.  Ensure file path is updated and do nothing
       await setFilePath(filePath, exactMatch.id);
-      console.log ("   Already found a match for %s", filePath);
+      console.log ("  Already found a match for %s", filePath);
+      console.log ("    %s", exactMatch.permaWebLink);
       return;
     }
 
@@ -296,7 +297,7 @@ const startWatchingFolders = async (user: ArDriveUser) => {
     drives.forEach(async (drive: ArFSDriveMetaData) => {
       let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
       let status = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
-      console.log ("%s %s %s", status, rootFolder.filePath, drive.driveId, drive.drivePrivacy)
+      console.log ("%s %s drive: %s driveId: %s", status, drive.drivePrivacy, rootFolder.filePath, drive.driveId)
     })
   }
 
