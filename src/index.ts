@@ -4,4 +4,4 @@ export { sleep, checkOrCreateFolder, checkFileExistsSync, backupWallet, createNe
 export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders } from './files';
 export { checkUploadStatus, uploadArDriveFiles, getPriceOfNextUploadBatch } from './upload';
-export { getUser, addNewUser, deleteUserAndDrives, passwordCheck, setupDrives, deleteDrive } from './profile';
+export { getUser, addNewUser, addSharedPublicDrive, deleteUserAndDrives, passwordCheck, setupDrives, deleteDrive } from './profile';

@@ -339,7 +339,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           await setPermaWebFileToCloudOnly(folderToCreate.id); // Mark older folder version as ignored
         }
       } catch (err) {
-        console.log (err)
+        // console.log (err)
       }
     });
   }

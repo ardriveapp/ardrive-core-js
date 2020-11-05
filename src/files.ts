@@ -16,7 +16,7 @@ import {
   getFolderByHashFromSyncTable,
   setFilePath,
   getDriveRootFolderFromSyncTable,
-  getAllDrivesByLoginFromDriveTable
+  getAllPersonalDrivesByLoginFromDriveTable,
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
@@ -66,7 +66,8 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
     if (exactMatch) {
       // This file's version already exists.  Ensure file path is updated and do nothing
       await setFilePath(filePath, exactMatch.id);
-      console.log ("   Already found a match for %s", filePath);
+      console.log ("  Already found a match for %s", filePath);
+      console.log ("    %s", exactMatch.permaWebLink);
       return;
     }
 
@@ -291,12 +292,12 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 };
 
 const startWatchingFolders = async (user: ArDriveUser) => {
-  const drives : ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(user.login);
+  const drives : ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
   if (drives !== undefined) {
     drives.forEach(async (drive: ArFSDriveMetaData) => {
       let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
       let status = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
-      console.log ("%s %s %s", status, rootFolder.filePath, drive.driveId, drive.drivePrivacy)
+      console.log ("%s %s drive: %s driveId: %s", status, drive.drivePrivacy, rootFolder.filePath, drive.driveId)
     })
   }
 
