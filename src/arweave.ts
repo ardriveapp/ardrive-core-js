@@ -76,7 +76,6 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
         sort: HEIGHT_ASC
         tags: [
           { name: "Drive-Id", values: "${driveId}" }
-          { name: "Drive-Privacy", values: "public"}
         ]
       ) {
         edges {
@@ -98,21 +97,9 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
     const { transactions } = data;
     const { edges } = transactions;
     await asyncForEach(edges, async (edge: any) => {
+      // Iterate through each tag and pull out each drive ID as well the drives privacy status
       const { node } = edge;
       const { tags } = node;
-      drive.metaDataTxId = node.id;
-      drive.metaDataSyncStatus = 3;
-
-      // Download the File's Metadata using the metadata transaction ID
-      let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
-      let dataString = await Utf8ArrayToStr(data);
-      let dataJSON = await JSON.parse(dataString);
-
-      // Get the drive name and root folder id
-      drive.driveName = dataJSON.name;
-      drive.rootFolderId = dataJSON.rootFolderId;
-
-      // Iterate through each tag and pull out each drive ID as well the drives privacy status
       tags.forEach((tag: any) => {
         const key = tag.name;
         const { value } = tag;
@@ -136,6 +123,23 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
             break;
         }
       });
+
+      // We cannot add this drive if it is private
+      if (drive.drivePrivacy === 'private') {
+        return 'Skipped';
+      }
+
+      // Download the File's Metadata using the metadata transaction ID
+      drive.metaDataTxId = node.id;
+      drive.metaDataSyncStatus = 3;
+      let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
+      let dataString = await Utf8ArrayToStr(data);
+      let dataJSON = await JSON.parse(dataString);
+
+      // Get the drive name and root folder id
+      drive.driveName = dataJSON.name;
+      drive.rootFolderId = dataJSON.rootFolderId;
+      return 'Found'
     });
     return drive;
   }
@@ -159,7 +163,6 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"] }
           { name: "Entity-Type", values: "drive" }
-          { name: "Drive-Privacy", values: "public" }
         ]
       ) {
         edges {
@@ -200,7 +203,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
         arFS: '',
         driveId: '',
         driveSharing: 'personal',
-        drivePrivacy: '',
+        drivePrivacy: 'public',
         driveAuthMode: '',
         metaDataTxId: '',
         metaDataSyncStatus: 3,
@@ -233,6 +236,12 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
             break;
         }
       });
+      
+      // If this is a Private Drive, we drop it
+      if (drive.drivePrivacy === 'private') {
+        return "Skip";
+      }
+      
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
 
@@ -245,6 +254,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
       drive.driveName = dataJSON.name;
       drive.rootFolderId = dataJSON.rootFolderId;
       allPublicDrives.push(drive)
+      return "Added"
     });
     return allPublicDrives;
   } catch (err) {
@@ -638,7 +648,6 @@ const createPublicDriveTransaction = async (
     const arPrice = +winston * 0.000000000001;
     console.log('Uploading new Public Drive (name: %s) at %s to the Permaweb', drive.driveName, arPrice);
 
-    console.log ("Drive unix time: %s", drive.unixTime.toString())
     // Tag file
     transaction.addTag('App-Name', appName);
     transaction.addTag('App-Version', appVersion);
