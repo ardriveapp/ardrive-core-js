@@ -356,100 +356,105 @@ const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) 
 // Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
 const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
-  try {
-    let allPrivateDrives : ArFSDriveMetaData[] = [];
-    const query = {
-      query: `query {
-      transactions(
-        first: 1000
-        sort: HEIGHT_ASC
-        owners: ["${user.walletPublicKey}"]
-        tags: [
-          { name: "ArFS", values: "${arFSVersion}" }
-          { name: "Entity-Type", values: "drive" }
-          { name: "Drive-Privacy", values: "private" }
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
+  let allPrivateDrives : ArFSDriveMetaData[] = [];
+  const query = {
+    query: `query {
+    transactions(
+      first: 1000
+      sort: HEIGHT_ASC
+      owners: ["${user.walletPublicKey}"]
+      tags: [
+        { name: "ArFS", values: "${arFSVersion}" }
+        { name: "Entity-Type", values: "drive" }
+        { name: "Drive-Privacy", values: "private" }
+      ]
+    ) {
+      edges {
+        node {
+          id
+          tags {
+            name
+            value
           }
         }
       }
-    }`,
-    };
+    }
+  }`,
+  };
 
-    // Call the Arweave Graphql Endpoint
-    const response = await arweave.api
+  // Call the Arweave Graphql Endpoint
+  let response;
+  try {
+    response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);
-    const { data } = response.data;
-    const { transactions } = data;
-    const { edges } = transactions;
-
-    // Iterate through each returned transaction and pull out the private drive IDs
-    await asyncForEach(edges, async (edge: any) => {
-      const { node } = edge;
-      const { tags } = node;
-      let drive : ArFSDriveMetaData = {
-        id: 0,
-        login: '',
-        appName: '',
-        appVersion: '',
-        driveName: '',
-        rootFolderId: '',
-        cipher: '',
-        cipherIV: '',
-        unixTime: 0,
-        arFS: '',
-        driveId: '',
-        driveSharing: 'personal',
-        drivePrivacy: '',
-        driveAuthMode: '',
-        metaDataTxId: '',
-        metaDataSyncStatus: 3,
-        permaWebLink: '',
+  } catch (err) {
+    return allPrivateDrives;
+  }
+  const { data } = response.data;
+  const { transactions } = data;
+  const { edges } = transactions;
+  
+  // Iterate through each returned transaction and pull out the private drive IDs
+  await asyncForEach(edges, async (edge: any) => {
+    const { node } = edge;
+    const { tags } = node;
+    let drive : ArFSDriveMetaData = {
+      id: 0,
+      login: '',
+      appName: '',
+      appVersion: '',
+      driveName: '',
+      rootFolderId: '',
+      cipher: '',
+      cipherIV: '',
+      unixTime: 0,
+      arFS: '',
+      driveId: '',
+      driveSharing: 'personal',
+      drivePrivacy: '',
+      driveAuthMode: '',
+      metaDataTxId: '',
+      metaDataSyncStatus: 3,
+      permaWebLink: '',
+    }
+    // Iterate through each tag and pull out each drive ID as well the drives privacy status
+    tags.forEach((tag: any) => {
+      const key = tag.name;
+      const { value } = tag;
+      switch (key) {
+        case 'App-Name':
+          drive.appName = value;
+          break;
+        case 'App-Version':
+          drive.appVersion = value;
+          break;
+        case 'Unix-Time':
+          drive.unixTime = value;
+          break;
+        case 'Drive-Id':
+          drive.driveId = value;
+          break;
+        case 'ArFS':
+          drive.arFS = value;
+          break;
+        case 'Drive-Privacy':
+          drive.drivePrivacy = value;
+          break;
+        case 'Drive-Auth-Mode':
+          drive.driveAuthMode = value;
+          break;
+        case 'Cipher':
+          drive.cipher = value;
+          break;
+        case 'Cipher-IV':
+          drive.cipherIV = value;
+          break;
+        default:
+          break;
       }
-      // Iterate through each tag and pull out each drive ID as well the drives privacy status
-      tags.forEach((tag: any) => {
-        const key = tag.name;
-        const { value } = tag;
-        switch (key) {
-          case 'App-Name':
-            drive.appName = value;
-            break;
-          case 'App-Version':
-            drive.appVersion = value;
-            break;
-          case 'Unix-Time':
-            drive.unixTime = value;
-            break;
-          case 'Drive-Id':
-            drive.driveId = value;
-            break;
-          case 'ArFS':
-            drive.arFS = value;
-            break;
-          case 'Drive-Privacy':
-            drive.drivePrivacy = value;
-            break;
-          case 'Drive-Auth-Mode':
-            drive.driveAuthMode = value;
-            break;
-          case 'Cipher':
-            drive.cipher = value;
-            break;
-          case 'Cipher-IV':
-            drive.cipherIV = value;
-            break;
-          default:
-            break;
-        }
-      });
+    });
+    try {
       // Capture the TX of the public drive metadata tx
       drive.metaDataTxId = node.id;
 
@@ -467,11 +472,12 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       drive.driveName = decryptedDriveJSON.name;
       drive.rootFolderId = decryptedDriveJSON.rootFolderId;
       allPrivateDrives.push(drive)
-    });
-    return allPrivateDrives;
-  } catch (err) {
-    return Promise.reject(err);
-  }
+    }
+    catch (err) {
+      console.log ("Password not valid for this private drive ", node.id)
+    }
+  });
+  return allPrivateDrives;
 };
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
