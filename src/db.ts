@@ -569,8 +569,8 @@ export const getAllPersonalDrivesByLoginFromDriveTable = (login: string) => {
   return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = 'personal'`, [login]);
 };
 
-export const getAllDrivesByPrivacyFromDriveTable = (login: string, drivePrivacy: string) => {
-  return all(`SELECT * FROM Drive WHERE login = ? AND drivePrivacy = ?`, [login, drivePrivacy]);
+export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing: string, drivePrivacy: string) => {
+  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = ? AND drivePrivacy = ?`, [login, driveSharing, drivePrivacy]);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {

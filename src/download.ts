@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import path, { dirname } from 'path';
 import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes } from './common';
-import { getAllMyDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
@@ -260,7 +260,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
-  let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "private");
+  let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "private");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
     await asyncForEach(privateTxIds, async (privateTxId: string) => {
@@ -270,9 +270,19 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
   // Get your public files
   console.log('---Getting all your Public ArDrive files---');
-  drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "public");
+  drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    await asyncForEach(publicTxIds, async (publicTxId: string) => {
+      await getFileMetaDataFromTx(publicTxId, user);
+    });
+  });
+
+  // Get your shared public files
+  console.log('---Getting all your Shared Public ArDrive files---');
+  drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "shared", "public");
+  await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
+    const publicTxIds = await getAllMySharedDataFileTxs(drive.driveId);
     await asyncForEach(publicTxIds, async (publicTxId: string) => {
       await getFileMetaDataFromTx(publicTxId, user);
     });
