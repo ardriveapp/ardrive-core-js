@@ -66,7 +66,8 @@ const createProfileTable = async () => {
         dataProtectionKey text,
         walletPrivateKey text,
         walletPublicKey text,
-        syncFolderPath text
+        syncFolderPath text,
+        autoSyncApproval integer DEFAULT 0
      );`;
   return run(sql);
 };
@@ -478,10 +479,14 @@ export const getMyFileDownloadConflicts = (login: string) => {
 
 export const createArDriveProfile = (user: ArDriveUser) => {
   return run(
-    'REPLACE INTO Profile (login, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath) VALUES (?, ?, ?, ?, ?)',
-    [user.login, user.dataProtectionKey, user.walletPrivateKey, user.walletPublicKey, user.syncFolderPath],
+    'REPLACE INTO Profile (login, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath, autoSyncApproval) VALUES (?, ?, ?, ?, ?, ?)',
+    [user.login, user.dataProtectionKey, user.walletPrivateKey, user.walletPublicKey, user.syncFolderPath, user.autoSyncApproval],
   );
 };
+
+export const setProfileAutoSyncApproval = (autoSyncApproval: number, login: string) => {
+  return get(`UPDATE Profile SET autoSyncApproval = ? WHERE login = ?`, [autoSyncApproval, login]);
+}
 
 export const getUserFromProfileById = (id: string) => {
   return get(`SELECT * FROM Profile WHERE id = ?`, [id]);

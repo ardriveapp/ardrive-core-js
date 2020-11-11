@@ -11,6 +11,7 @@ export interface ArDriveUser {
   walletPrivateKey: any,
   walletPublicKey: string,
   syncFolderPath: string,
+  autoSyncApproval: number,
 };
 
 export interface UploadBatch {
