@@ -192,6 +192,9 @@ export const deleteUserAndDrives = async (login: string) => {
 export const deleteDrive = async (driveId: string) => {
   await removeByDriveIdFromSyncTable(driveId);
   await removeFromDriveTable(driveId);
+
+  // This should also stop the Chokidar folder watch if it has started
+  
 }
 
 // Checks if the user's password is valid
