@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, Wallet } from './types';
-import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable } from './db';
+import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable, getDriveFromDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
 import { deriveDriveKey, driveDecrypt, driveEncrypt, fileEncrypt } from './crypto';
@@ -240,7 +240,9 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
       });
       
       // If this is a Private Drive, we drop it
-      if (drive.drivePrivacy === 'private') {
+      // If this drive is already present in the Database, we drop it
+      let exists : ArFSDriveMetaData = await getDriveFromDriveTable(drive.driveId)
+      if ((drive.drivePrivacy === 'private') || (exists !== undefined)) {
         return "Skip";
       }
       
