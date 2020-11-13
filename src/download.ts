@@ -20,7 +20,7 @@ import {
   getAllDrivesByPrivacyFromDriveTable,
   getPreviousFileVersionFromSyncTable,
 } from './db';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
@@ -64,46 +64,47 @@ async function downloadArDriveFileByTx(
     return 'Success';
   } catch (err) {
     console.log(err);
-    // console.log ("FOUND PERMAFILE %s but not ready to be downloaded yet", full_path)
+    console.log ("Error downloading file")
+    console.log (fileToDownload)
     return 'Error downloading file';
   }
 }
 
 // Takes an ArDrive File Data Transaction and writes to the database.
 async function getFileMetaDataFromTx(
-  fileDataTx: any,
+  fileDataTx: GQLEdgeInterface,
   user: ArDriveUser,
 ) {
+  let fileToSync : ArFSFileMetaData = {
+    id: 0,
+    login: user.login,
+    appName: '',
+    appVersion: '',
+    unixTime: 0,
+    contentType: '',
+    entityType: '',
+    driveId: '',
+    parentFolderId: '',
+    fileId: '',
+    fileSize: 0,
+    fileName: '',
+    fileHash: '',
+    filePath: '',
+    fileVersion: 0,
+    lastModifiedDate: 0,
+    isPublic: 0,
+    isLocal: 0,
+    fileDataSyncStatus: 0,
+    fileMetaDataSyncStatus: 0,
+    permaWebLink: '',
+    metaDataTxId: '',
+    dataTxId: '',
+    cipher: '',
+    dataCipherIV: '',
+    metaDataCipherIV: '',
+    cloudOnly: 0,
+  };
   try {
-    const fileToSync : ArFSFileMetaData = {
-      id: 0,
-      login: user.login,
-      appName: '',
-      appVersion: '',
-      unixTime: 0,
-      contentType: '',
-      entityType: '',
-      driveId: '',
-      parentFolderId: '',
-      fileId: '',
-      fileSize: 0,
-      fileName: '',
-      fileHash: '',
-      filePath: '',
-      fileVersion: 0,
-      lastModifiedDate: 0,
-      isPublic: 0,
-      isLocal: 0,
-      fileDataSyncStatus: 0,
-      fileMetaDataSyncStatus: 0,
-      permaWebLink: '',
-      metaDataTxId: '',
-      dataTxId: '',
-      cipher: '',
-      dataCipherIV: '',
-      metaDataCipherIV: '',
-      cloudOnly: 0,
-    };
     const { node } = fileDataTx;
     const { tags } = node;
     fileToSync.metaDataTxId = node.id;
@@ -195,7 +196,8 @@ async function getFileMetaDataFromTx(
         await addFileToSyncTable(fileToSync);  // This must be handled better.
         return 'Error Decrypting'
       } else {
-        dataJSON = await JSON.parse(decryptedData.toString('ascii'));
+        let dataString = await Utf8ArrayToStr(decryptedData);
+        dataJSON = await JSON.parse(dataString);
       }
     } else {
       // the file is public and does not require decryption
@@ -250,7 +252,8 @@ async function getFileMetaDataFromTx(
     return 'Success';
   } catch (err) {
     console.log(err);
-    // console.log ("FOUND PERMAFILE %s but not ready to be downloaded yet", full_path)
+    console.log ("Error syncing file metadata")
+    console.log (fileToSync)
     return 'Error syncing file metadata';
   }
 }
@@ -263,9 +266,11 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "private");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
-    await asyncForEach(privateTxIds, async (privateTxId: string) => {
-      await getFileMetaDataFromTx(privateTxId, user); 
-    });
+    if (privateTxIds !== undefined) {
+      await asyncForEach(privateTxIds, async (privateTxId: GQLEdgeInterface) => {
+        await getFileMetaDataFromTx(privateTxId, user); 
+      });
+    }
   });
 
   // Get your public files
@@ -273,24 +278,27 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
     const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
-    await asyncForEach(publicTxIds, async (publicTxId: string) => {
-      await getFileMetaDataFromTx(publicTxId, user);
-    });
+    if (publicTxIds !== undefined) {
+      await asyncForEach(publicTxIds, async (publicTxId: GQLEdgeInterface) => {
+        await getFileMetaDataFromTx(publicTxId, user);
+      });
+    }
   });
 
   // Get your shared public files
   console.log('---Getting all your Shared Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "shared", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const publicTxIds = await getAllMySharedDataFileTxs(drive.driveId);
-    await asyncForEach(publicTxIds, async (publicTxId: string) => {
-      await getFileMetaDataFromTx(publicTxId, user);
-    });
+    const sharedPublicTxIds = await getAllMySharedDataFileTxs(drive.driveId);
+    if (sharedPublicTxIds !== undefined) {
+      await asyncForEach(sharedPublicTxIds, async (sharedPublicTxId:GQLEdgeInterface) => {
+        await getFileMetaDataFromTx(sharedPublicTxId, user);
+      });
+    }
   });
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
   await setNewFilePaths();
-
 };
 
 // Downloads all ardrive files that are not local

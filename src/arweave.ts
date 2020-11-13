@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
-import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, Wallet } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, GQLEdgeInterface, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable, getDriveFromDriveTable } from './db';
 import Community from 'community-js';
 import Arweave from 'arweave';
@@ -150,6 +150,107 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
     return drive;
   }
 }
+
+// Gets the root folder ID for a Public Drive
+const getPublicDriveRootFolderTxId = async (driveId: string, folderId: string) : Promise<string> => {
+  try {
+    let metaDataTxId = '0';
+    const query = {
+      query: `query {
+      transactions(
+        first: 1
+        sort: HEIGHT_ASC
+        tags: [
+          { name: "ArFS", values: "${arFSVersion}" }
+          { name: "Drive-Id", values: "${driveId}" }
+          { name: "Folder-Id", values: "${folderId}"}
+        ]
+      ) {
+        edges {
+          node {
+            id
+          }
+        }
+      }
+    }`,
+    };
+    const response = await arweave.api
+      .request()
+      .post('https://arweave.net/graphql', query);
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+    await asyncForEach(edges, async (edge: any) => {
+      const { node } = edge;
+      metaDataTxId = node.id;
+    });
+    return metaDataTxId;
+  }
+  catch (err) {
+    console.log (err);
+    return "Error";
+  }
+}
+
+// Gets the root folder ID for a Private Drive and includes the Cipher and IV
+const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) => {
+  let metaDataTxId = '0';
+  let cipher = '';
+  let cipherIV = '';
+  try {
+    const query = {
+      query: `query {
+      transactions(
+        first: 1
+        sort: HEIGHT_ASC
+        tags: [
+          { name: "ArFS", values: "${arFSVersion}" }
+          { name: "Drive-Id", values: "${driveId}" }
+          { name: "Folder-Id", values: "${folderId}"}
+        ]
+      ) {
+        edges {
+          node {
+            id
+            tags {
+              name
+              value
+            }
+          }
+        }
+      }
+    }`,
+    };
+    const response = await arweave.api
+      .request()
+      .post('https://arweave.net/graphql', query);
+    const { data } = response.data;
+    const { transactions } = data;
+    const { edges } = transactions;
+    await asyncForEach(edges, async (edge: any) => {
+      const { node } = edge;
+      const { tags } = node;
+      metaDataTxId = node.id;
+      tags.forEach((tag: any) => {
+        const key = tag.name;
+        const { value } = tag;
+        switch (key) {
+          case 'Cipher':
+            cipher = value;
+            break;
+          case 'Cipher-IV':
+            cipherIV = value;
+            break;
+        }
+      });
+    });
+    return {metaDataTxId, cipher, cipherIV}
+  }
+  catch (err) {
+    console.log (err);
+    return {metaDataTxId, cipher, cipherIV}
+  }
+}
 // Gets all of the ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
 const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
@@ -159,7 +260,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
     const query = {
       query: `query {
       transactions(
-        first: 1000000
+        first: 100
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
@@ -266,107 +367,6 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
   }
 };
 
-// Gets the root folder ID for a Public Drive
-const getPublicDriveRootFolderTxId = async (driveId: string, folderId: string) : Promise<string> => {
-  try {
-    let metaDataTxId = '0';
-    const query = {
-      query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "ArFS", values: "${arFSVersion}" }
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Folder-Id", values: "${folderId}"}
-        ]
-      ) {
-        edges {
-          node {
-            id
-          }
-        }
-      }
-    }`,
-    };
-    const response = await arweave.api
-      .request()
-      .post('https://arweave.net/graphql', query);
-    const { data } = response.data;
-    const { transactions } = data;
-    const { edges } = transactions;
-    await asyncForEach(edges, async (edge: any) => {
-      const { node } = edge;
-      metaDataTxId = node.id;
-    });
-    return metaDataTxId;
-  }
-  catch (err) {
-    console.log (err);
-    return "Error";
-  }
-}
-
-// Gets the root folder ID for a Private Drive and includes the Cipher and IV
-const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) => {
-  let metaDataTxId = '0';
-  let cipher = '';
-  let cipherIV = '';
-  try {
-    const query = {
-      query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "ArFS", values: "${arFSVersion}" }
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Folder-Id", values: "${folderId}"}
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`,
-    };
-    const response = await arweave.api
-      .request()
-      .post('https://arweave.net/graphql', query);
-    const { data } = response.data;
-    const { transactions } = data;
-    const { edges } = transactions;
-    await asyncForEach(edges, async (edge: any) => {
-      const { node } = edge;
-      const { tags } = node;
-      metaDataTxId = node.id;
-      tags.forEach((tag: any) => {
-        const key = tag.name;
-        const { value } = tag;
-        switch (key) {
-          case 'Cipher':
-            cipher = value;
-            break;
-          case 'Cipher-IV':
-            cipherIV = value;
-            break;
-        }
-      });
-    });
-    return {metaDataTxId, cipher, cipherIV}
-  }
-  catch (err) {
-    console.log (err);
-    return {metaDataTxId, cipher, cipherIV}
-  }
-}
-
 // Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
 const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
@@ -374,7 +374,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   const query = {
     query: `query {
     transactions(
-      first: 1000000
+      first: 100
       sort: HEIGHT_ASC
       owners: ["${user.walletPublicKey}"]
       tags: [
@@ -496,11 +496,13 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
 const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
-  try {
+  let hasNextPage = true;
+  let cursor: string = '';
+  let edges: GQLEdgeInterface[] = [];
+  while (hasNextPage) {
     const query = {
       query: `query {
       transactions(
-        first: 1000000
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
@@ -508,15 +510,19 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
           { name: "Drive-Id", values: "${arDriveId}" }
           { name: "Entity-Type", values: ["file", "folder"]}
         ]
+        first: 100
+        after: "${cursor}"
       ) {
+        pageInfo {
+          hasNextPage
+        }
         edges {
+          cursor
           node {
             id
             block {
-              id
               timestamp
               height
-              previous
             }
             tags {
               name
@@ -527,41 +533,56 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
       }
     }`,
     };
-    const response = await arweave.api
+
+    // Call the Arweave gateway
+    let response : any;
+    try {
+      response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);
+    } catch (err) {
+      console.log ("Error getting all data transactions")
+      return;
+    }
     const { data } = response.data;
     const { transactions } = data;
-    const { edges } = transactions;
-    return edges;
-  } catch (err) {
-    // console.log(err);
-    return Promise.reject(err);
+    if(transactions.edges && transactions.edges.length) {
+      edges = edges.concat(transactions.edges);
+      cursor = transactions.edges[transactions.edges.length - 1].cursor;
+    }
+    hasNextPage = transactions.pageInfo.hasNextPage;
   }
+  return edges;
 };
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
 const getAllMySharedDataFileTxs = async (arDriveId: any) => {
-  try {
+  let hasNextPage = true;
+  let cursor: string = '';
+  let edges: GQLEdgeInterface[] = [];
+  while (hasNextPage) {
     const query = {
       query: `query {
       transactions(
-        first: 1000000
         sort: HEIGHT_ASC
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"]}
           { name: "Drive-Id", values: "${arDriveId}" }
           { name: "Entity-Type", values: ["file", "folder"]}
         ]
+        first: 100
+        after: "${cursor}"
       ) {
+        pageInfo {
+          hasNextPage
+        }
         edges {
+          cursor
           node {
             id
             block {
-              id
               timestamp
               height
-              previous
             }
             tags {
               name
@@ -572,19 +593,27 @@ const getAllMySharedDataFileTxs = async (arDriveId: any) => {
       }
     }`,
     };
-    const response = await arweave.api
+
+    // Call the Arweave gateway
+    let response : any;
+    try {
+      response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);
+    } catch (err) {
+      console.log ("Error getting all shared data transactions")
+      return;
+    }
     const { data } = response.data;
     const { transactions } = data;
-    const { edges } = transactions;
-    return edges;
-  } catch (err) {
-    // console.log(err);
-    return Promise.reject(err);
+    if(transactions.edges && transactions.edges.length) {
+      edges = edges.concat(transactions.edges);
+      cursor = transactions.edges[transactions.edges.length - 1].cursor;
+    }
+    hasNextPage = transactions.pageInfo.hasNextPage;
   }
+  return edges;
 };
-
 
 // Gets the CipherIV tag of a private data transaction
 const getPrivateTransactionCipherIV = async (txid: string) : Promise<string> => {
