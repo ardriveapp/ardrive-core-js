@@ -66,6 +66,8 @@ const createProfileTable = async () => {
         dataProtectionKey text,
         walletPrivateKey text,
         walletPublicKey text,
+        walletBalance integer DEFAULT 0,
+        lastBlockHeight integer DEFAULT 0,
         syncFolderPath text,
         autoSyncApproval integer DEFAULT 0
      );`;
@@ -486,6 +488,22 @@ export const createArDriveProfile = (user: ArDriveUser) => {
 
 export const setProfileAutoSyncApproval = (autoSyncApproval: number, login: string) => {
   return get(`UPDATE Profile SET autoSyncApproval = ? WHERE login = ?`, [autoSyncApproval, login]);
+}
+
+export const setProfileWalletBalance = (walletBalance: number, login: string) => {
+  return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [walletBalance, login]);
+}
+
+export const setProfileLastBlockHeight = (lastBlockHeight: number, login: string) => {
+  return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [lastBlockHeight, login]);
+}
+
+export const getProfileWalletBalance = (login: string) : Promise<number> => {
+  return get(`SELECT walletBalance FROM Profile WHERE login = ?`, [login]);
+}
+
+export const getProfileLastBlockHeight = (login: string) : Promise<number> => {
+  return get(`SELECT lastBlockHeight FROM Profile WHERE login = ?`, [login]);
 }
 
 export const getUserFromProfileById = (id: string) => {
