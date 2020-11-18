@@ -118,8 +118,8 @@ export const encryptText = async (text: crypto.BinaryLike, password: any) => {
   try {
     const initVect = crypto.randomBytes(16);
     const CIPHER_KEY = getTextCipherKey(password);
-    const cipher = crypto.createCipheriv('aes256', CIPHER_KEY, initVect);
-    let encryptedText = cipher.update(text);
+    const cipher = crypto.createCipheriv('aes-256-cbc', CIPHER_KEY, initVect);
+    let encryptedText = cipher.update(text.toString());
     encryptedText = Buffer.concat([encryptedText, cipher.final()]);
     return {
       iv: initVect.toString('hex'),
@@ -142,7 +142,7 @@ export const decryptText = async (
     const iv = Buffer.from(text.iv.toString(), 'hex');
     const encryptedText = Buffer.from(text.encryptedText.toString(), 'hex');
     const cipherKey = getTextCipherKey(password);
-    const decipher = crypto.createDecipheriv('aes256', cipherKey, iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
@@ -156,7 +156,7 @@ export const encryptTag = async (text: crypto.BinaryLike, password: any, jwk: an
   try {
     const initVect = crypto.randomBytes(16);
     const CIPHER_KEY = getFileCipherKey(password, jwk);
-    const cipher = crypto.createCipheriv('aes256', CIPHER_KEY, initVect);
+    const cipher = crypto.createCipheriv('aes-256-cbc', CIPHER_KEY, initVect);
     let encryptedText = cipher.update(text);
     encryptedText = Buffer.concat([encryptedText, cipher.final()]);
     return {
@@ -181,7 +181,7 @@ export const decryptTag = async (
     const iv = Buffer.from(text.iv.toString(), 'hex');
     const encryptedText = Buffer.from(text.encryptedText.toString(), 'hex');
     const cipherKey = getFileCipherKey(password, jwk);
-    const decipher = crypto.createDecipheriv('aes256', cipherKey, iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
@@ -201,7 +201,7 @@ export const decryptFileMetaData = async (
     const iv = Buffer.from(fileIv.toString(), 'hex');
     const encryptedText = Buffer.from(fileEncryptedText.toString(), 'hex');
     const cipherKey = getFileCipherKey(password, jwk);
-    const decipher = crypto.createDecipheriv('aes256', cipherKey, iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return JSON.parse(decrypted.toString());
