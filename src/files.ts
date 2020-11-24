@@ -66,8 +66,8 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
     if (exactMatch) {
       // This file's version already exists.  Ensure file path is updated and do nothing
       await setFilePath(filePath, exactMatch.id);
-      console.log ("  Already found a match for %s", filePath);
-      console.log ("    %s", exactMatch.permaWebLink);
+      // console.log ("  Already found a match for %s", filePath);
+      // console.log ("    %s", exactMatch.permaWebLink);
       return;
     }
 
