@@ -20,7 +20,7 @@ const run = (sql: any, params: any[] = []) => {
         console.log(err);
         reject(err);
       }
-      resolve();
+      resolve('Success');
     });
   });
 };
