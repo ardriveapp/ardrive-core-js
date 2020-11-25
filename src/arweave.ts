@@ -494,8 +494,8 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   return allPrivateDrives;
 };
 
-// Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
-const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
+// Gets all of the transactions from a user's wallet, filtered by owner and drive ID
+const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlockHeight: number) => {
   let hasNextPage = true;
   let cursor: string = '';
   let edges: GQLEdgeInterface[] = [];
@@ -503,6 +503,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
     const query = {
       query: `query {
       transactions(
+        block: {min: ${lastBlockHeight}}
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
@@ -537,26 +538,26 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any) => {
     // Call the Arweave gateway
     let response : any;
     try {
+      console.log ("Cursor is: ", cursor)
       response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);
+      const { data } = response.data;
+      const { transactions } = data;
+      if(transactions.edges && transactions.edges.length) {
+        edges = edges.concat(transactions.edges);
+        cursor = transactions.edges[transactions.edges.length - 1].cursor;
+      }
+      hasNextPage = transactions.pageInfo.hasNextPage;
     } catch (err) {
-      console.log ("Error getting all data transactions")
-      return;
+      console.log ("Error querying GQL for personal data transactions, trying again.")
     }
-    const { data } = response.data;
-    const { transactions } = data;
-    if(transactions.edges && transactions.edges.length) {
-      edges = edges.concat(transactions.edges);
-      cursor = transactions.edges[transactions.edges.length - 1].cursor;
-    }
-    hasNextPage = transactions.pageInfo.hasNextPage;
   }
   return edges;
 };
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
-const getAllMySharedDataFileTxs = async (arDriveId: any) => {
+const getAllMySharedDataFileTxs = async (arDriveId: any, lastBlockHeight: number) => {
   let hasNextPage = true;
   let cursor: string = '';
   let edges: GQLEdgeInterface[] = [];
@@ -564,6 +565,7 @@ const getAllMySharedDataFileTxs = async (arDriveId: any) => {
     const query = {
       query: `query {
       transactions(
+        block: {min: ${lastBlockHeight}}
         sort: HEIGHT_ASC
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"]}
@@ -600,17 +602,18 @@ const getAllMySharedDataFileTxs = async (arDriveId: any) => {
       response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);
+    
+      const { data } = response.data;
+      const { transactions } = data;
+      if(transactions.edges && transactions.edges.length) {
+        edges = edges.concat(transactions.edges);
+        cursor = transactions.edges[transactions.edges.length - 1].cursor;
+      }
+      hasNextPage = transactions.pageInfo.hasNextPage;
     } catch (err) {
-      console.log ("Error getting all shared data transactions")
+      console.log ("Error querying GQL for shared data transactions, trying again.")
       return;
     }
-    const { data } = response.data;
-    const { transactions } = data;
-    if(transactions.edges && transactions.edges.length) {
-      edges = edges.concat(transactions.edges);
-      cursor = transactions.edges[transactions.edges.length - 1].cursor;
-    }
-    hasNextPage = transactions.pageInfo.hasNextPage;
   }
   return edges;
 };
@@ -705,6 +708,18 @@ const getWalletBalance = async (walletPublicKey: string) => {
     return 0;
   }
 };
+
+// Get the latest block height
+const getLatestBlockHeight = async () : Promise<number> => {
+  try {
+    const info = await arweave.network.getInfo();
+    return info.height
+  }
+  catch (err) {
+    console.log ("Failed getting latest block height")
+    return 0;
+  }
+}
 
 // Creates an arweave transaction to upload public ardrive metadata
 const createPublicDriveTransaction = async (
@@ -856,6 +871,52 @@ const createArDrivePublicMetaDataTransaction = async (
     return 0;
   }
 };
+
+/* Uses an existing arweave transaction ID and file data to resubmit to Arweave without repayment
+const resubmitArDrivePublicDataTransaction = async (
+  walletPrivateKey: string,
+  filePath: string,
+  contentType: string,
+  id: any,
+  dataTxId: string,
+) : Promise<string> => {
+  try {
+    const fileToUpload = fs.readFileSync(filePath);
+    const transaction = await arweave.createTransaction(
+      { data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+      JSON.parse(walletPrivateKey),
+    );
+    // Tag file
+    transaction.addTag('App-Name', appName);
+    transaction.addTag('App-Version', appVersion);
+    transaction.addTag('Content-Type', contentType);
+
+    // Sign file
+    await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+    const uploader = await arweave.transactions.getUploader(transaction);
+    await setFileUploaderObject(JSON.stringify(uploader), id)
+    const fileToUpdate = {
+      fileDataSyncStatus: '2',
+      dataTxId: transaction.id,
+      dataCipherIV: '',
+      cipher: '',
+      id,
+    };
+    // Update the queue since the file is now being uploaded
+    await updateFileDataSyncStatus(fileToUpdate);
+    while (!uploader.isComplete) {
+      // eslint-disable-next-line no-await-in-loop
+      await uploader.uploadChunk();
+      await setFileUploaderObject(JSON.stringify(uploader), id)
+      console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
+    }
+    console.log('SUCCESS %s was submitted with TX %s', filePath, transaction.id);
+    return transaction.id;
+  } catch (err) {
+    console.log(err);
+    return "Transaction failed";
+  }
+}; */
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
 const createPrivateDriveTransaction = async (
@@ -1080,6 +1141,7 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
 
 export {
   getAddressForWallet,
+  getLatestBlockHeight,
   getWalletSigningKey,
   sendArDriveFee,
   createArDriveWallet,
