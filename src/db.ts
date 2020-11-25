@@ -20,7 +20,7 @@ const run = (sql: any, params: any[] = []) => {
         console.log(err);
         reject(err);
       }
-      resolve();
+      resolve('Success');
     });
   });
 };
@@ -288,6 +288,10 @@ export const getPreviousFileVersionFromSyncTable = (fileId: string) => {
 export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
   return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId])
 }
+
+export const getAllFilesByLoginFromSyncTable = (login: string) => {
+  return all('SELECT * FROM Sync WHERE login = ? ORDER BY unixTime DESC', [login]);
+};
 
 export const getFilesToUploadFromSyncTable = (login: string) => {
   return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)', [login]);
