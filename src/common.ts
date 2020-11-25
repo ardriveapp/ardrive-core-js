@@ -217,7 +217,7 @@ const setAllParentFolderIds = async () => {
       const parentFolderPath = dirname(fileOrFolder.filePath);
       let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
       if (parentFolder !== undefined) {
-        console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
+        // console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
         setParentFolderId(parentFolder.fileId, fileOrFolder.id)
       }
     })
@@ -274,8 +274,8 @@ const updateFilePath = async (file: ArFSFileMetaData) : Promise<string> => {
     return newFilePath;
   }
   catch (err) {
-    console.log (err)
-    console.log ("Error fixing the file path for %s", file.fileName)
+    // console.log (err)
+    console.log ("Error fixing the file path for %s, retrying later", file.fileName)
     return "Error";
   }
 };
