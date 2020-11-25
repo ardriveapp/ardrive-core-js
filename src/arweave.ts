@@ -499,6 +499,12 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
   let hasNextPage = true;
   let cursor: string = '';
   let edges: GQLEdgeInterface[] = [];
+
+  // Search last 2 blocks minimum
+  if (lastBlockHeight > 2) {
+    lastBlockHeight -= 2;
+  }
+  
   while (hasNextPage) {
     const query = {
       query: `query {
@@ -538,7 +544,6 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
     // Call the Arweave gateway
     let response : any;
     try {
-      console.log ("Cursor is: ", cursor)
       response = await arweave.api
       .request()
       .post('https://arweave.net/graphql', query);

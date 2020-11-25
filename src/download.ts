@@ -3,9 +3,9 @@
 // upload.js
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync } from './common';
 import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
-import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
   getFoldersToCreate,
@@ -21,6 +21,7 @@ import {
   getPreviousFileVersionFromSyncTable,
   getProfileLastBlockHeight,
   setProfileLastBlockHeight,
+  updateFileHashInSyncTable,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 
@@ -379,10 +380,10 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           fileToDownload.filePath = await updateFilePath(fileToDownload)
         }
 
-        // Get the latest file version from the DB
+        // Get the latest file version from the DB so we can download them.  Versions that are not the latest will not be downloaded.
         const latestFileVersion : ArFSFileMetaData = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
         try {
-          // Only download if this is the latest version
+          // Check if this file is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
             // Compare against the previous version for a different file name or parent folder
             // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
@@ -390,13 +391,17 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
             // If undefined, then there is no previous file version.
             if (previousFileVersion === undefined) {
-              // Download and decrypt the file if necessary
-              await downloadArDriveFileByTx(user, fileToDownload);
-
-              // Ensure the file downloaded has the same lastModifiedDate as before
-              let currentDate = new Date()
-              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
-              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              // Does this exact file already exist locally?  If not, then we download it
+              if (!checkFileExistsSync(fileToDownload.filePath)) {
+                // File is not local, so we download and decrypt if necessary
+                await downloadArDriveFileByTx(user, fileToDownload);
+                // Ensure the file downloaded has the same lastModifiedDate as before
+                let currentDate = new Date()
+                let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+                fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              } else {
+                  console.log ("%s is already local, skipping download", fileToDownload.filePath)
+              }
             }
             else if ((+previousFileVersion.isLocal === 1) && (fileToDownload.fileName !== previousFileVersion.fileName || fileToDownload.parentFolderId !== previousFileVersion.parentFolderId)) {
               // Need error handling here in case file is in use
@@ -406,6 +411,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               await updateFileDownloadStatus('0', previousFileVersion.id); // Mark older version as not local
               await setPermaWebFileToCloudOnly(previousFileVersion.id); // Mark older version as ignored
             } else {
+
               // Download and decrypt the file if necessary
               await downloadArDriveFileByTx(user, fileToDownload);
 
@@ -415,8 +421,13 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
             }
 
-            // Update the database
+            // Hash the file and update it in the database
+            let fileHash = await checksumFile(fileToDownload.filePath);
+            await updateFileHashInSyncTable(fileHash, fileToDownload.id)
+
+            // Update the file's local status in the database
             await updateFileDownloadStatus('1', fileToDownload.id);
+
             return 'Downloaded';
           } else {
             // This is an older version, and we ignore it for now.
