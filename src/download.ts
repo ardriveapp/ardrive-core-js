@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import path, { dirname } from 'path';
 import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes } from './common';
-import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
@@ -19,6 +19,8 @@ import {
   getLatestFolderVersionFromSyncTable,
   getAllDrivesByPrivacyFromDriveTable,
   getPreviousFileVersionFromSyncTable,
+  getProfileLastBlockHeight,
+  setProfileLastBlockHeight,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 
@@ -260,12 +262,15 @@ async function getFileMetaDataFromTx(
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
 export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
+  // Get the last block height that has been synced
+  let lastBlockHeight = await getProfileLastBlockHeight(user.login)
+  lastBlockHeight = lastBlockHeight.lastBlockHeight
 
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
   let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "private");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
     if (privateTxIds !== undefined) {
       await asyncForEach(privateTxIds, async (privateTxId: GQLEdgeInterface) => {
         await getFileMetaDataFromTx(privateTxId, user); 
@@ -277,7 +282,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   console.log('---Getting all your Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
     if (publicTxIds !== undefined) {
       await asyncForEach(publicTxIds, async (publicTxId: GQLEdgeInterface) => {
         await getFileMetaDataFromTx(publicTxId, user);
@@ -289,13 +294,17 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
   console.log('---Getting all your Shared Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "shared", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const sharedPublicTxIds = await getAllMySharedDataFileTxs(drive.driveId);
+    const sharedPublicTxIds = await getAllMySharedDataFileTxs(drive.driveId, lastBlockHeight);
     if (sharedPublicTxIds !== undefined) {
       await asyncForEach(sharedPublicTxIds, async (sharedPublicTxId:GQLEdgeInterface) => {
         await getFileMetaDataFromTx(sharedPublicTxId, user);
       });
     }
   });
+
+  // Get and set the latest block height in the profile
+  const latestBlockHeight : number = await getLatestBlockHeight()
+  await setProfileLastBlockHeight(latestBlockHeight, user.login)
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
   await setNewFilePaths();
