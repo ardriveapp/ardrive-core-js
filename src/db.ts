@@ -127,7 +127,8 @@ const createDriveTable = async () => {
       driveAuthMode text,
       metaDataTxId text,
       metaDataSyncStatus integer,
-      permaWebLink text
+      permaWebLink text,
+      lastBlockHeight integer DEFAULT 0
     );`;
   return run(sql);
 };
@@ -519,12 +520,20 @@ export const setProfileLastBlockHeight = (lastBlockHeight: number, login: string
   return get(`UPDATE Profile SET lastBlockHeight = ? WHERE login = ?`, [lastBlockHeight, login]);
 }
 
+export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string) => {
+  return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
+}
+
 export const getProfileWalletBalance = (login: string) : Promise<number> => {
   return get(`SELECT walletBalance FROM Profile WHERE login = ?`, [login]);
 }
 
 export const getProfileLastBlockHeight = (login: string) => {
   return get(`SELECT lastBlockHeight FROM Profile WHERE login = ?`, [login]);
+}
+
+export const getDriveLastBlockHeight = (driveId: string) => {
+  return get(`SELECT lastBlockHeight FROM Drive WHERE driveId = ?`, [driveId]);
 }
 
 export const getUserFromProfileById = (id: string) => {
