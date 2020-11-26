@@ -23,6 +23,10 @@ import {
   getDriveRootFolderFromSyncTable, 
   getAllUploadedDrivesFromDriveTable, 
   completeDriveMetaDataFromDriveTable,
+  setFileMetaDataSyncStatus,
+  setFileDataSyncStatus,
+  updateFileUploadTimeInSyncTable,
+  getFileUploadTimeFromSyncTable,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
@@ -39,35 +43,32 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
     totalNumberOfFolderUploads: 0,
   }
 
+  // winston = await getWinston(1024);
+
   // Get all files that are ready to be uploaded
-  const filesToUpload = await getFilesToUploadFromSyncTable(login);
+  const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
     await asyncForEach(
       filesToUpload,
-      async (fileToUpload: {
-        id: string;
-        filePath: string;
-        entityType: string;
-        fileMetaDataSyncStatus: any;
-        fileDataSyncStatus: any;
-        fileSize: string | number;
-      }) => {
+      async (fileToUpload: ArFSFileMetaData) => {
         // If the file doesnt exist, we must remove it from the Sync table and not include it in our upload price
         if (!checkFileExistsSync(fileToUpload.filePath)) {
           console.log('%s is not local anymore.  Removing from the queue.', fileToUpload.filePath);
           await deleteFromSyncTable(fileToUpload.id);
           return 'File not local anymore';
         }
-        if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.entityType === 'folder') {
+        // Calculate folders that are ready to be uploaded, but have no TX already
+        if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'folder') {
           totalArweaveMetadataPrice += 0.0000005;
           uploadBatch.totalNumberOfFolderUploads += 1;
         }
-        if (fileToUpload.fileMetaDataSyncStatus === '1' && fileToUpload.fileDataSyncStatus === '1') {
+        if (+fileToUpload.fileDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
           totalSize += +fileToUpload.fileSize;
           winston = await getWinston(fileToUpload.fileSize);
           totalWinstonData += +winston + 0.0000005;
           uploadBatch.totalNumberOfFileUploads += 1;
-        } else if (fileToUpload.entityType === 'file') {
+        }
+        if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
           totalArweaveMetadataPrice += 0.0000005;
           uploadBatch.totalNumberOfMetaDataUploads += 1;
         }
@@ -96,8 +97,8 @@ async function uploadArDriveFileData(
     const arPrice = +winston * 0.000000000001;
     let dataTxId: string;
 
+    // Public file, do not encrypt
     if (+fileToUpload.isPublic === 1) {
-      // Public file, do not encrypt
       console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
       dataTxId = await createArDrivePublicDataTransaction(
         user.walletPrivateKey,
@@ -111,8 +112,10 @@ async function uploadArDriveFileData(
       const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
       const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
       dataTxId = await createArDrivePrivateDataTransaction(fileKey, fileToUpload, user.walletPrivateKey);
-      console.log ("Uploaded!")
     }
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
 
     // Send the ArDrive Profit Sharing Community Fee
     // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
@@ -150,6 +153,11 @@ async function uploadArDriveFileMetaData(
       const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
       await createArDrivePrivateMetaDataTransaction(fileKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
     }
+
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
+
     return 'Success';
   } catch (err) {
     console.log(err);
@@ -178,6 +186,11 @@ async function uploadArDriveFolderMetaData(
       const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
       await createArDrivePrivateMetaDataTransaction(driveKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
     }
+
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
+
     return 'Success';
   } catch (err) {
     console.log(err);
@@ -254,20 +267,13 @@ export const checkUploadStatus = async (login: string) => {
     let permaWebLink: string;
 
     // Get all files and folders that need to have their transactions checked (metaDataSyncStatus of 2)
-    const unsyncedFiles = await getAllUploadedFilesFromSyncTable(login);
+    const unsyncedFiles : ArFSFileMetaData[] = await getAllUploadedFilesFromSyncTable(login);
     let status: any;
     await asyncForEach(
       unsyncedFiles,
-      async (unsyncedFile: {
-        id: any;
-        filePath: any;
-        fileDataSyncStatus: any;
-        fileMetaDataSyncStatus: any;
-        dataTxId: any;
-        metaDataTxId: any;
-      }) => {
-        // Is the file uploaded on the web?
-        if (unsyncedFile.fileDataSyncStatus === '2') {
+      async (unsyncedFile : ArFSFileMetaData) => {
+        // Is the file data uploaded on the web?
+        if (+unsyncedFile.fileDataSyncStatus === 2) {
           status = await getTransactionStatus(unsyncedFile.dataTxId);
           if (status === 200) {
             permaWebLink = gatewayURL.concat(unsyncedFile.dataTxId);
@@ -279,21 +285,29 @@ export const checkUploadStatus = async (login: string) => {
               id: unsyncedFile.id,
             };
             await completeFileDataFromSyncTable(fileToComplete);
-          }
-        } else if (status === 202) {
+          } else if (status === 202) {
           console.log('%s data is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedFile.filePath);
-        } else if (status === 410) {
-          console.log('%s data failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
-        } else {
-          // CHECK IF FILE EXISTS AND IF NOT REMOVE FROM QUEUE
-          fs.access(unsyncedFile.filePath, async (err) => {
-            if (err) {
-              console.log('%s data was not found locally anymore.  Removing from the queue', unsyncedFile.filePath);
-              await removeFromSyncTable(unsyncedFile.id);
+          } else if (status === 410 || status === 404) {
+            const uploadTime = await getFileUploadTimeFromSyncTable(unsyncedFile.id)
+            const currentTime = Math.round(Date.now() / 1000);
+            if ((currentTime - uploadTime) < 1800000) { // 30 minutes
+              console.log('%s data failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
+              // Retry data transaction
+              await setFileDataSyncStatus ('1', unsyncedFile.id)
             }
-          });
+          } else {
+            // CHECK IF FILE EXISTS AND IF NOT REMOVE FROM QUEUE
+            fs.access(unsyncedFile.filePath, async (err) => {
+              if (err) {
+                console.log('%s data was not found locally anymore.  Removing from the queue', unsyncedFile.filePath);
+                await removeFromSyncTable(unsyncedFile.id);
+              }
+            });
+          }
         }
-        if (unsyncedFile.fileMetaDataSyncStatus === '2') {
+
+        // Is the file metadata uploaded on the web?
+        if (+unsyncedFile.fileMetaDataSyncStatus === 2) {
           status = await getTransactionStatus(unsyncedFile.metaDataTxId);
           if (status === 200) {
             permaWebLink = gatewayURL.concat(unsyncedFile.metaDataTxId);
@@ -308,13 +322,19 @@ export const checkUploadStatus = async (login: string) => {
               id: unsyncedFile.id,
             };
             await completeFileMetaDataFromSyncTable(fileMetaDataToComplete);
-          }
-        } else if (status === 202) {
+          } else if (status === 202) {
           console.log('%s metadata is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedFile.filePath);
-        } else if (status === 410) {
-          console.log('%s metadata failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
+          } else if (status === 410 || status === 404) {
+            const uploadTime = await getFileUploadTimeFromSyncTable(unsyncedFile.id)
+            const currentTime = Math.round(Date.now() / 1000);
+            if ((currentTime - uploadTime) < 1800000) { // 30 minutes
+              console.log('%s metadata failed to be uploaded (TX_FAILED)', unsyncedFile.filePath);
+              // Retry metadata transaction
+              await setFileMetaDataSyncStatus ('1', unsyncedFile.id)
+            }
+          }
         }
-      },
+      }
     );
     
     // Get all drives that need to have their transactions checked (metaDataSyncStatus of 2)
@@ -333,8 +353,10 @@ export const checkUploadStatus = async (login: string) => {
         await completeDriveMetaDataFromDriveTable(metaDataSyncStatus, permaWebLink, unsyncedDrive.driveId);
       } else if (status === 202) {
         console.log('%s Drive metadata is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedDrive.driveName);
-      } else if (status === 410) {
-        console.log('%s metadata failed to be uploaded (TX_FAILED)', unsyncedDrive.driveName);
+      } else if (status === 410 || status === 404) {
+        console.log('%s Drive metadata failed to be uploaded (TX_FAILED)', unsyncedDrive.driveName);
+        // Retry metadata transaction
+        await setFileMetaDataSyncStatus ('1', unsyncedDrive.id)
       }
     })
     return 'Success checking upload file, folder and drive sync status';

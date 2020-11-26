@@ -116,13 +116,29 @@ const checkFolderExistsSync = (folderPath: string) => {
 }
 
 const checkFileExistsSync = (filePath: string) => {
-  let exists = true;
   try {
     fs.accessSync(filePath, fs.constants.F_OK);
   } catch (e) {
-    exists = false;
+    return false;
   }
-  return exists;
+  return true;
+};
+
+const checkExactFileExistsSync = (filePath: string, lastModifiedDate: number) => {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    let stats = fs.statSync(filePath);
+    if (lastModifiedDate === Math.floor(stats.mtimeMs)) {
+      // The files match
+      return true
+    } else {
+      // The local file has a different lastModifiedDate
+      return false
+    }
+  } catch (e) {
+    // File doesnt exist
+    return false;
+  }
 };
 
 // Check the latest file versions to ensure they exist locally, if not set them to download
@@ -217,7 +233,7 @@ const setAllParentFolderIds = async () => {
       const parentFolderPath = dirname(fileOrFolder.filePath);
       let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
       if (parentFolder !== undefined) {
-        console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
+        // console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
         setParentFolderId(parentFolder.fileId, fileOrFolder.id)
       }
     })
@@ -274,8 +290,8 @@ const updateFilePath = async (file: ArFSFileMetaData) : Promise<string> => {
     return newFilePath;
   }
   catch (err) {
-    console.log (err)
-    console.log ("Error fixing the file path for %s", file.fileName)
+    // console.log (err)
+    console.log ("Error fixing the file path for %s, retrying later", file.fileName)
     return "Error";
   }
 };
@@ -384,6 +400,7 @@ export {
   setAllFileHashes,
   setAllFolderSizes,
   checkFolderExistsSync,
+  checkExactFileExistsSync,
   Utf8ArrayToStr,
   createNewPublicDrive,
   createNewPrivateDrive,

@@ -3,9 +3,9 @@
 // upload.js
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes } from './common';
-import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
-import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync, checkExactFileExistsSync } from './common';
+import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
   getFoldersToCreate,
@@ -19,6 +19,9 @@ import {
   getLatestFolderVersionFromSyncTable,
   getAllDrivesByPrivacyFromDriveTable,
   getPreviousFileVersionFromSyncTable,
+  updateFileHashInSyncTable,
+  getDriveLastBlockHeight,
+  setDriveLastBlockHeight,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 
@@ -260,41 +263,58 @@ async function getFileMetaDataFromTx(
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
 export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
-
   // Get your private files
   console.log('---Getting all your Private ArDrive files---');
   let drives : ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "private");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    // Get the last block height that has been synced
+    let lastBlockHeight = await getDriveLastBlockHeight(drive.driveId)
+    lastBlockHeight = lastBlockHeight.lastBlockHeight;
+    const privateTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
     if (privateTxIds !== undefined) {
       await asyncForEach(privateTxIds, async (privateTxId: GQLEdgeInterface) => {
         await getFileMetaDataFromTx(privateTxId, user); 
       });
     }
+    // Get and set the latest block height in the profile
+    const latestBlockHeight : number = await getLatestBlockHeight();
+    await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
 
   // Get your public files
   console.log('---Getting all your Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "personal", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId);
+    // Get the last block height that has been synced
+    let lastBlockHeight = await getDriveLastBlockHeight(drive.driveId)
+    lastBlockHeight = lastBlockHeight.lastBlockHeight;
+    const publicTxIds = await getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
     if (publicTxIds !== undefined) {
       await asyncForEach(publicTxIds, async (publicTxId: GQLEdgeInterface) => {
         await getFileMetaDataFromTx(publicTxId, user);
       });
     }
+    // Get and set the latest block height in the profile
+    const latestBlockHeight : number = await getLatestBlockHeight();
+    await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
 
   // Get your shared public files
   console.log('---Getting all your Shared Public ArDrive files---');
   drives = await getAllDrivesByPrivacyFromDriveTable(user.login, "shared", "public");
   await asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-    const sharedPublicTxIds = await getAllMySharedDataFileTxs(drive.driveId);
+    // Get the last block height that has been synced
+    let lastBlockHeight = await getDriveLastBlockHeight(drive.driveId)
+    lastBlockHeight = lastBlockHeight.lastBlockHeight;
+    const sharedPublicTxIds = await getAllMySharedDataFileTxs(drive.driveId, lastBlockHeight);
     if (sharedPublicTxIds !== undefined) {
       await asyncForEach(sharedPublicTxIds, async (sharedPublicTxId:GQLEdgeInterface) => {
         await getFileMetaDataFromTx(sharedPublicTxId, user);
       });
     }
+    // Get and set the latest block height in the profile
+    const latestBlockHeight : number = await getLatestBlockHeight();
+    await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
 
   // File path is not present by default, so we must generate them for each new file, folder or drive found
@@ -369,11 +389,10 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         if (fileToDownload.filePath === '') {
           fileToDownload.filePath = await updateFilePath(fileToDownload)
         }
-
-        // Get the latest file version from the DB
+        // Get the latest file version from the DB so we can download them.  Versions that are not the latest will not be downloaded.
         const latestFileVersion : ArFSFileMetaData = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
         try {
-          // Only download if this is the latest version
+          // Check if this file is the latest version
           if (fileToDownload.id === latestFileVersion.id) {
             // Compare against the previous version for a different file name or parent folder
             // If it does then this means there was a rename or move, and then we do not download a new file, rather rename/move the old
@@ -381,14 +400,18 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
             // If undefined, then there is no previous file version.
             if (previousFileVersion === undefined) {
-              // Download and decrypt the file if necessary
-              await downloadArDriveFileByTx(user, fileToDownload);
-
-              // Ensure the file downloaded has the same lastModifiedDate as before
-              let currentDate = new Date()
-              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
-              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              // Does this exact file already exist locally?  If not, then we download it
+              if (!checkFileExistsSync(fileToDownload.filePath)) {
+                // File is not local, so we download and decrypt if necessary
+                await downloadArDriveFileByTx(user, fileToDownload);
+                let currentDate = new Date()
+                let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+                fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              } else {
+                  console.log ("%s is already local, skipping download", fileToDownload.filePath)
+              }
             }
+            // Check if this is an older version i.e. same file name/parent folder.
             else if ((+previousFileVersion.isLocal === 1) && (fileToDownload.fileName !== previousFileVersion.fileName || fileToDownload.parentFolderId !== previousFileVersion.parentFolderId)) {
               // Need error handling here in case file is in use
               fs.renameSync(previousFileVersion.filePath, fileToDownload.filePath)
@@ -396,18 +419,27 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               // Change the older version to not local/ignored since it has been renamed or moved
               await updateFileDownloadStatus('0', previousFileVersion.id); // Mark older version as not local
               await setPermaWebFileToCloudOnly(previousFileVersion.id); // Mark older version as ignored
+            // This is a new file version
             } else {
-              // Download and decrypt the file if necessary
-              await downloadArDriveFileByTx(user, fileToDownload);
-
-              // Ensure the file downloaded has the same lastModifiedDate as before
-              let currentDate = new Date()
-              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
-              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              // Does this exact file already exist locally?  If not, then we download it
+              if (!checkExactFileExistsSync(fileToDownload.filePath, fileToDownload.lastModifiedDate)) {
+                // Download and decrypt the file if necessary
+                await downloadArDriveFileByTx(user, fileToDownload);
+                let currentDate = new Date()
+                let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+                fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              } else {
+                console.log ("%s is already local, skipping download", fileToDownload.filePath)
+              }
             }
 
-            // Update the database
+            // Hash the file and update it in the database
+            let fileHash = await checksumFile(fileToDownload.filePath);
+            await updateFileHashInSyncTable(fileHash, fileToDownload.id)
+
+            // Update the file's local status in the database
             await updateFileDownloadStatus('1', fileToDownload.id);
+
             return 'Downloaded';
           } else {
             // This is an older version, and we ignore it for now.
@@ -430,6 +462,10 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         // This file is on the Permaweb, but it is not local or the user wants to overwrite the local file
         console.log('Overwriting local file %s', fileConflictToDownload.filePath);
         await downloadArDriveFileByTx(user, fileConflictToDownload);
+        // Ensure the file downloaded has the same lastModifiedDate as before
+        let currentDate = new Date()
+        let lastModifiedDate = new Date(Number(fileConflictToDownload.lastModifiedDate))
+        fs.utimesSync(fileConflictToDownload.filePath, currentDate, lastModifiedDate)
         await updateFileDownloadStatus('1', fileConflictToDownload.id);
         return 'File Overwritten';
       },

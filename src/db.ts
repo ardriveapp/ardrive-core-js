@@ -103,7 +103,8 @@ const createSyncTable = () => {
         cloudOnly INTEGER DEFAULT 0,
         isPublic text DEFAULT 0,
         isLocal text,
-        uploader text
+        uploader text,
+        uploadTime integer DEFAULT 0
      );`;
   return run(sql);
 };
@@ -126,7 +127,8 @@ const createDriveTable = async () => {
       driveAuthMode text,
       metaDataTxId text,
       metaDataSyncStatus integer,
-      permaWebLink text
+      permaWebLink text,
+      lastBlockHeight integer DEFAULT 0
     );`;
   return run(sql);
 };
@@ -342,6 +344,10 @@ export const getFolderParentIdFromSyncTable = (fileId: string) => {
   return get(`SELECT parentFolderId FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
 
+export const getFileUploadTimeFromSyncTable = (id: number) : Promise<number> => {
+  return get(`SELECT uploadTime FROM Sync WHERE id = ?`, [id]);
+};
+
 export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: string; metaDataTxId: string; metaDataCipherIV: string, cipher: string, id: number }) => {
   const { fileMetaDataSyncStatus, metaDataTxId, metaDataCipherIV, cipher, id } = file;
   return get(`UPDATE Sync SET fileMetaDataSyncStatus = ?, metaDataTxId = ?, metaDataCipherIV = ?, cipher = ? WHERE id = ?`, [
@@ -415,8 +421,20 @@ export const updateFileDownloadStatus = (isLocal: string, id: number) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
 
+export const updateFileUploadTimeInSyncTable = (id: number, uploadTime: number) => {
+  return get(`UPDATE Sync SET uploadTime = ? WHERE id = ?`, [uploadTime, id]);
+};
+
 export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
   return get(`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, cipher, cipherIV, driveId]);
+};
+
+export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: string, id: number) => {
+  return get(`UPDATE Sync SET fileMetaDataSyncStatus = ? WHERE id = ?`, [fileMetaDataSyncStatus, id]);
+};
+
+export const setFileDataSyncStatus = (fileDataSyncStatus: string, id: number) => {
+  return get(`UPDATE Sync SET fileDataSyncStatus = ? WHERE id = ?`, [fileDataSyncStatus, id]);
 };
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {
@@ -451,12 +469,12 @@ export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, 
 }
 
 // Same as remove from sync table.  which to remove?
-export const deleteFromSyncTable = (id: string) => {
+export const deleteFromSyncTable = (id: number) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
 
 // Same as delete from sync table.  which to remove?
-export const removeFromSyncTable = (id: string) => {
+export const removeFromSyncTable = (id: number) => {
   return get(`DELETE FROM Sync WHERE id = ?`, [id]);
 };
 
@@ -499,15 +517,23 @@ export const setProfileWalletBalance = (walletBalance: number, login: string) =>
 }
 
 export const setProfileLastBlockHeight = (lastBlockHeight: number, login: string) => {
-  return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [lastBlockHeight, login]);
+  return get(`UPDATE Profile SET lastBlockHeight = ? WHERE login = ?`, [lastBlockHeight, login]);
+}
+
+export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string) => {
+  return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
 }
 
 export const getProfileWalletBalance = (login: string) : Promise<number> => {
   return get(`SELECT walletBalance FROM Profile WHERE login = ?`, [login]);
 }
 
-export const getProfileLastBlockHeight = (login: string) : Promise<number> => {
+export const getProfileLastBlockHeight = (login: string) => {
   return get(`SELECT lastBlockHeight FROM Profile WHERE login = ?`, [login]);
+}
+
+export const getDriveLastBlockHeight = (driveId: string) => {
+  return get(`SELECT lastBlockHeight FROM Drive WHERE driveId = ?`, [driveId]);
 }
 
 export const getUserFromProfileById = (id: string) => {
