@@ -3,7 +3,7 @@
 // upload.js
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync } from './common';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync, checkExactFileExistsSync } from './common';
 import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
@@ -379,7 +379,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         if (fileToDownload.filePath === '') {
           fileToDownload.filePath = await updateFilePath(fileToDownload)
         }
-
         // Get the latest file version from the DB so we can download them.  Versions that are not the latest will not be downloaded.
         const latestFileVersion : ArFSFileMetaData = await getLatestFileVersionFromSyncTable(fileToDownload.fileId);
         try {
@@ -395,7 +394,6 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               if (!checkFileExistsSync(fileToDownload.filePath)) {
                 // File is not local, so we download and decrypt if necessary
                 await downloadArDriveFileByTx(user, fileToDownload);
-                // Ensure the file downloaded has the same lastModifiedDate as before
                 let currentDate = new Date()
                 let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
                 fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
@@ -403,6 +401,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
                   console.log ("%s is already local, skipping download", fileToDownload.filePath)
               }
             }
+            // Check if this is an older version i.e. same file name/parent folder.
             else if ((+previousFileVersion.isLocal === 1) && (fileToDownload.fileName !== previousFileVersion.fileName || fileToDownload.parentFolderId !== previousFileVersion.parentFolderId)) {
               // Need error handling here in case file is in use
               fs.renameSync(previousFileVersion.filePath, fileToDownload.filePath)
@@ -410,15 +409,18 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               // Change the older version to not local/ignored since it has been renamed or moved
               await updateFileDownloadStatus('0', previousFileVersion.id); // Mark older version as not local
               await setPermaWebFileToCloudOnly(previousFileVersion.id); // Mark older version as ignored
+            // This is a new file version
             } else {
-
-              // Download and decrypt the file if necessary
-              await downloadArDriveFileByTx(user, fileToDownload);
-
-              // Ensure the file downloaded has the same lastModifiedDate as before
-              let currentDate = new Date()
-              let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
-              fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              // Does this exact file already exist locally?  If not, then we download it
+              if (!checkExactFileExistsSync(fileToDownload.filePath, fileToDownload.lastModifiedDate)) {
+                // Download and decrypt the file if necessary
+                await downloadArDriveFileByTx(user, fileToDownload);
+                let currentDate = new Date()
+                let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
+                fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate)
+              } else {
+                console.log ("%s is already local, skipping download", fileToDownload.filePath)
+              }
             }
 
             // Hash the file and update it in the database
@@ -450,6 +452,10 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
         // This file is on the Permaweb, but it is not local or the user wants to overwrite the local file
         console.log('Overwriting local file %s', fileConflictToDownload.filePath);
         await downloadArDriveFileByTx(user, fileConflictToDownload);
+        // Ensure the file downloaded has the same lastModifiedDate as before
+        let currentDate = new Date()
+        let lastModifiedDate = new Date(Number(fileConflictToDownload.lastModifiedDate))
+        fs.utimesSync(fileConflictToDownload.filePath, currentDate, lastModifiedDate)
         await updateFileDownloadStatus('1', fileConflictToDownload.id);
         return 'File Overwritten';
       },

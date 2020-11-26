@@ -116,13 +116,29 @@ const checkFolderExistsSync = (folderPath: string) => {
 }
 
 const checkFileExistsSync = (filePath: string) => {
-  let exists = true;
   try {
     fs.accessSync(filePath, fs.constants.F_OK);
   } catch (e) {
-    exists = false;
+    return false;
   }
-  return exists;
+  return true;
+};
+
+const checkExactFileExistsSync = (filePath: string, lastModifiedDate: number) => {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    let stats = fs.statSync(filePath);
+    if (lastModifiedDate === Math.floor(stats.mtimeMs)) {
+      // The files match
+      return true
+    } else {
+      // The local file has a different lastModifiedDate
+      return false
+    }
+  } catch (e) {
+    // File doesnt exist
+    return false;
+  }
 };
 
 // Check the latest file versions to ensure they exist locally, if not set them to download
@@ -384,6 +400,7 @@ export {
   setAllFileHashes,
   setAllFolderSizes,
   checkFolderExistsSync,
+  checkExactFileExistsSync,
   Utf8ArrayToStr,
   createNewPublicDrive,
   createNewPrivateDrive,
