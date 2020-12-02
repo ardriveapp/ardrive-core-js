@@ -524,7 +524,7 @@ export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string
   return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
 }
 
-export const getProfileWalletBalance = (login: string) : Promise<number> => {
+export const getProfileWalletBalance = (login: string) => {
   return get(`SELECT walletBalance FROM Profile WHERE login = ?`, [login]);
 }
 
