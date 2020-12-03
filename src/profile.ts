@@ -29,7 +29,7 @@ export const setupDrives = async (login: string, syncFolderPath: string) => {
       }
 
       // check if drive folder entity is setup already in sync table
-      const driveFolderEntity : ArFSFileMetaData = await getFolderFromSyncTable(drivePath)
+      const driveFolderEntity : ArFSFileMetaData = await getFolderFromSyncTable(drive.driveId, drivePath)
       if (driveFolderEntity === undefined) {
         // if not, add it to the sync table
         // determine if the files are private or public

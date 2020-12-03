@@ -41,7 +41,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
     // Check if the parent folder has been added to the DB first
     const parentFolderPath = dirname(filePath);
-    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
     let parentFolderId = '';
     if (parentFolder !== undefined) {
       parentFolderId = parentFolder.fileId;
@@ -62,7 +62,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
       isPublic = 0;
     }
     // Check if the exact file already exists in the same location
-    const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(fileName, fileHash, parentFolderId);
+    const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(driveId, fileName, fileHash, parentFolderId);
     if (exactMatch) {
       // This file's version already exists.  Ensure file path is updated and do nothing
       await setFilePath(filePath, exactMatch.id);
@@ -72,7 +72,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
     }
 
     // Check if this is a new version of an existing file path, if yes, reuse the fileid and increment version
-    const newFileVersion = await getByFilePathFromSyncTable(filePath);
+    const newFileVersion = await getByFilePathFromSyncTable(driveId, filePath);
     if (newFileVersion) {
       // Add new version of existing file
       newFileVersion.unixTime = Math.round(Date.now() / 1000);
@@ -90,7 +90,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
  
     // Check if the file has been renamed by looking at its hash and base path
     // The older version of the file must not also be present anymore, or else this is just a copy
-    const renamedFile = await getByFileHashAndParentFolderFromSyncTable(fileHash, parentFolderPath.concat('%'));
+    const renamedFile = await getByFileHashAndParentFolderFromSyncTable(driveId, fileHash, parentFolderPath.concat('%'));
     if (renamedFile && !(checkFileExistsSync(renamedFile.filePath))) {
       // The file has been renamed.  Submit as Metadata.
       console.log('   %s was just renamed', filePath);
@@ -106,7 +106,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
     // Check if the file has been moved by seeing if another file with the same hash and name
     // The older version of the file must also not be present anymore, or else this is just a copy
-    const movedFile = await getByFileHashAndFileNameFromSyncTable(fileHash, fileName);
+    const movedFile = await getByFileHashAndFileNameFromSyncTable(driveId, fileHash, fileName);
     if (movedFile && !(checkFileExistsSync(movedFile.filePath))) {
       console.log('   %s has been moved', filePath);
       movedFile.unixTime = Math.round(Date.now() / 1000)
@@ -173,7 +173,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
   }
 
   // Check if the folder is already in the Sync Table, therefore we do not need to add a new one.
-  const isQueuedOrCompleted = await getFolderFromSyncTable(folderPath);
+  const isQueuedOrCompleted = await getFolderFromSyncTable(driveId, folderPath);
   if (isQueuedOrCompleted || fileName === 'New folder') {
     // The folder is already in the queue, or it is the root and we do not want to process.
     // Or the folder is a "New Folder" and we do not capture this
@@ -213,13 +213,13 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
     // Check if its parent folder has been added.  If not, lets add it first
     let parentFolderId = '';
     const parentFolderPath = dirname(folderPath);
-    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+    let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
     if (parentFolder !== undefined) {
       parentFolderId = parentFolder.fileId;
     } 
 
     // Check to see if this folder was moved by matching against its hash
-    const movedFolder = await getFolderByHashFromSyncTable(folderHash.hash);
+    const movedFolder = await getFolderByHashFromSyncTable(driveId, folderHash.hash);
     if (movedFolder) {
       // create a new folder with previous folder ID
       console.log ("Folder was moved!  Using existing previous folder Id: %s", movedFolder.fileId);
@@ -227,7 +227,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
     }
 
     // Check to see if this folder was renamed by matching against its inode, aka fileSize
-    const renamedFolder = await getFolderByInodeFromSyncTable(fileSize);
+    const renamedFolder = await getFolderByInodeFromSyncTable(driveId, fileSize);
     if (renamedFolder) {
       // create a new folder with previous folder ID
       console.log ("Folder was renamed!  Using previous folder Id: %s", renamedFolder.fileId);
