@@ -48,6 +48,8 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
   // Get all files that are ready to be uploaded
   const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
+    const priceFor1MB = await getWinston(1000000);
+    const pricePerByte = priceFor1MB / (1003210)
     await asyncForEach(
       filesToUpload,
       async (fileToUpload: ArFSFileMetaData) => {
@@ -59,12 +61,13 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
         }
         // Calculate folders that are ready to be uploaded, but have no TX already
         if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'folder') {
-          totalArweaveMetadataPrice += 0.0000005;
+          totalArweaveMetadataPrice += 0.0000005; // Ths is the price we assume it costs for a metadata tx
           uploadBatch.totalNumberOfFolderUploads += 1;
         }
         if (+fileToUpload.fileDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
           totalSize += +fileToUpload.fileSize;
-          winston = await getWinston(fileToUpload.fileSize);
+          //winston = await getWinston(fileToUpload.fileSize);
+          winston = (fileToUpload.fileSize + 3210) * pricePerByte;
           totalWinstonData += +winston + 0.0000005;
           uploadBatch.totalNumberOfFileUploads += 1;
         }
@@ -82,6 +85,7 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
     }
     uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
     uploadBatch.totalSize = formatBytes(totalSize);
+    
     return uploadBatch;
   }
   return uploadBatch;

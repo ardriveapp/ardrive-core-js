@@ -235,42 +235,44 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
   )
 }
 
-export const getFolderFromSyncTable = (filePath: string) => {
-  return get(`SELECT * FROM Sync WHERE filePath = ? AND entityType = 'folder'`, [filePath]);
+export const getFolderFromSyncTable = (driveId: string, filePath: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? AND entityType = 'folder'`, [driveId, filePath]);
 };
 
 export const checkIfExistsInSyncTable = (fileHash: string, fileName: string, fileId: string) => {
   return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileName AND fileId = ?`, [fileHash, fileName, fileId]);
 };
 
-export const getByFileHashAndParentFolderFromSyncTable = (fileHash: string, folderPath: string) => {
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND filePath LIKE ?`, [
+export const getByFileHashAndParentFolderFromSyncTable = (driveId: string, fileHash: string, folderPath: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND fileHash = ? AND filePath LIKE ?`, [
+    driveId,
     fileHash,
     folderPath,
   ]);
 };
 
-export const getFolderByHashFromSyncTable = (fileHash: string) => {
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND entityType = 'folder'`, [fileHash]);
+export const getFolderByHashFromSyncTable = (driveId: string, fileHash: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND fileHash = ? AND entityType = 'folder'`, [driveId, fileHash]);
 };
 
-export const getFolderByInodeFromSyncTable = (fileSize: number) => {
-  return get(`SELECT * FROM Sync WHERE fileSize = ? AND entityType = 'folder' AND isLocal = 1`, [fileSize]);
+export const getFolderByInodeFromSyncTable = (driveId: string, fileSize: number) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND fileSize = ? AND entityType = 'folder' AND isLocal = 1`, [driveId, fileSize]);
 }
 
-export const getByFileHashAndFileNameFromSyncTable = (fileHash: string, fileName: string) => {
-  return get(`SELECT * FROM Sync WHERE fileHash = ? AND fileName = ?`, [
+export const getByFileHashAndFileNameFromSyncTable = (driveId: string, fileHash: string, fileName: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND fileHash = ? AND fileName = ?`, [
+    driveId, 
     fileHash,
     fileName,
   ]);
 };
 
-export const getByFilePathFromSyncTable = (filePath: string) => {
-  return get(`SELECT * FROM Sync WHERE filePath = ? ORDER BY fileVersion DESC`, [filePath]);
+export const getByFilePathFromSyncTable = (driveId: string, filePath: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? ORDER BY fileVersion DESC`, [driveId, filePath]);
 };
 
-export const getByFileNameAndHashAndParentFolderIdFromSyncTable = (fileName: string, fileHash: string, parentFolderId: string) => {
-  return get(`SELECT * FROM Sync WHERE fileName = ? AND fileHash = ? AND parentFolderId = ?`, [fileName, fileHash, parentFolderId]);
+export const getByFileNameAndHashAndParentFolderIdFromSyncTable = (driveId: string, fileName: string, fileHash: string, parentFolderId: string) => {
+  return get(`SELECT * FROM Sync WHERE driveId = ? AND fileName = ? AND fileHash = ? AND parentFolderId = ?`, [driveId, fileName, fileHash, parentFolderId]);
 };
 
 export const getLatestFileVersionFromSyncTable = (fileId: string) => {
@@ -524,7 +526,7 @@ export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string
   return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
 }
 
-export const getProfileWalletBalance = (login: string) : Promise<number> => {
+export const getProfileWalletBalance = (login: string) => {
   return get(`SELECT walletBalance FROM Profile WHERE login = ?`, [login]);
 }
 

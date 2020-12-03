@@ -231,7 +231,7 @@ const setAllParentFolderIds = async () => {
     const allFilesOrFolders : ArFSFileMetaData[]= await getAllMissingParentFolderIdsFromSyncTable()
     await asyncForEach(allFilesOrFolders, async (fileOrFolder: ArFSFileMetaData) => {
       const parentFolderPath = dirname(fileOrFolder.filePath);
-      let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(parentFolderPath);
+      let parentFolder : ArFSFileMetaData = await getFolderFromSyncTable(fileOrFolder.driveId,parentFolderPath);
       if (parentFolder !== undefined) {
         // console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
         setParentFolderId(parentFolder.fileId, fileOrFolder.id)
