@@ -23,7 +23,9 @@ import {
   updateFileSizeInSyncTable} from './db';
 import { checksumFile } from './crypto';
 
-export const gatewayURL = 'https://arweave.net/';
+//export const gatewayURL = 'https://arweave.net/';
+export const gatewayURL = 'https://arweave.dev/';
+export const graphQLURL = gatewayURL.concat('graphql')
 export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';

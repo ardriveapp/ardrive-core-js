@@ -9,6 +9,8 @@ import {
   createArDrivePublicDataTransaction,
   //sendArDriveFee,
   createArDrivePrivateDataTransaction,
+  sendArDriveFee,
+  getArDriveFee,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync } from './common';
 import { deriveDriveKey, deriveFileKey, } from './crypto';
@@ -43,8 +45,6 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
     totalNumberOfFolderUploads: 0,
   }
 
-  // winston = await getWinston(1024);
-
   // Get all files that are ready to be uploaded
   const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
@@ -78,8 +78,9 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
         return 'Calculated price';
       },
     );
+
     const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
-    let arDriveFee = +totalArweaveDataPrice.toFixed(9) * 0.15;
+    let arDriveFee = +totalArweaveDataPrice.toFixed(9) * (await getArDriveFee() / 100);
     if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
       arDriveFee = 0.00001;
     }
@@ -123,7 +124,7 @@ async function uploadArDriveFileData(
 
     // Send the ArDrive Profit Sharing Community Fee
     // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
-    // await sendArDriveFee(user.walletPrivateKey, arPrice);
+    await sendArDriveFee(user.walletPrivateKey, arPrice);
 
     return dataTxId;
   } catch (err) {

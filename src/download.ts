@@ -24,6 +24,10 @@ import {
   setDriveLastBlockHeight,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
+import { createWriteStream } from 'fs';
+
+const Axios = require('axios');
+const ProgressBar = require('progress')
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(
@@ -43,28 +47,86 @@ async function downloadArDriveFileByTx(
       await setFilePath(fileToDownload.filePath, fileToDownload.id);
     }
 
+    // Check if this is a folder.  If it is, we dont need to download anything and we create the folder.
     const folderPath = dirname(fileToDownload.filePath);
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
-      await sleep(250);
+      await sleep(100);
     }
     
-    // Get the transaction data
-    const data = await getTransactionData(fileToDownload.dataTxId);
-
+    // Public files do not need decryption
     if (+fileToDownload.isPublic === 1) {
-      fs.writeFileSync(fileToDownload.filePath, data);
-      console.log('DOWNLOADED %s', fileToDownload.filePath);
-    } else {
-      // Get the transaction IV
-      const dataBuffer = Buffer.from(data);
-      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToDownload.driveId, user.walletPrivateKey);
-      const fileKey : Buffer = await deriveFileKey (fileToDownload.fileId, driveKey);
-      const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
-      fs.writeFileSync(fileToDownload.filePath, decryptedData)
-      console.log('DOWNLOADED AND DECRYPTED %s', fileToDownload.filePath);
+      console.log ("Downloading %s", fileToDownload.filePath)
+      const writer = createWriteStream(fileToDownload.filePath);
+      const response = await Axios({
+        method: 'get',
+        url: fileToDownload.permaWebLink,
+        responseType: 'stream',
+      });
+      const totalLength = response.headers['content-length'];
+      const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+        width: 40,
+        complete: '=',
+        incomplete: ' ',
+        renderThrottle: 1,
+        total: parseInt(totalLength)
+      });
+
+      response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length))
+      response.data.pipe(writer)
+
+      return new Promise((resolve, reject) => {
+        writer.on('error', err => {
+          writer.close();
+          reject(err);
+        });
+        writer.on('close', () => {
+          console.log('   Completed!', fileToDownload.filePath);
+          resolve(true);
+        });
+      });
     }
-    return 'Success';
+    else { // File is private and we must decrypt it
+      console.log ("Downloading and decrypting %s", fileToDownload.filePath)
+      const writer = createWriteStream(fileToDownload.filePath);
+      const response = await Axios({
+        method: 'get',
+        url: fileToDownload.permaWebLink,
+        responseType: 'stream',
+      })
+      const totalLength = response.headers['content-length']
+      const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+        width: 40,
+        complete: '=',
+        incomplete: ' ',
+        renderThrottle: 1,
+        total: parseInt(totalLength)
+      })
+
+      response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length))
+      response.data.pipe(writer)
+
+      return new Promise((resolve, reject) => {
+        writer.on('error', err => {
+          writer.close();
+          console.log (user)
+          reject(err);
+        });
+        writer.on('close', async () => {
+          // Once the file is finished being streamed, we read it and decrypt it.
+          const data = fs.readFileSync(fileToDownload.filePath);
+          const dataBuffer = Buffer.from(data);
+          const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToDownload.driveId, user.walletPrivateKey);
+          const fileKey : Buffer = await deriveFileKey (fileToDownload.fileId, driveKey);
+          const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
+          
+          // Overwrite the file with the decrypted version
+          fs.writeFileSync(fileToDownload.filePath, decryptedData)
+          console.log('   Completed!', fileToDownload.filePath);
+          resolve(true);
+        });
+      });
+    } 
   } catch (err) {
     console.log(err);
     console.log ("Error downloading file")
@@ -194,7 +256,7 @@ async function getFileMetaDataFromTx(
         fileToSync.fileMetaDataSyncStatus = 3;
         fileToSync.dataTxId = '0';
         fileToSync.lastModifiedDate = fileToSync.unixTime;
-        fileToSync.permaWebLink = gatewayURL.concat(fileToSync.metaDataTxId);
+        fileToSync.permaWebLink = gatewayURL.concat(fileToSync.dataTxId);
         fileToSync.cloudOnly = 1;
         await addFileToSyncTable(fileToSync);  // This must be handled better.
         return 'Error Decrypting'
