@@ -2,27 +2,23 @@
 // arweave.js
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName } from './common';
+import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName, graphQLURL, weightedRandom } from './common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, GQLEdgeInterface, Wallet } from './types';
 import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable, getDriveFromDriveTable } from './db';
-import Community from 'community-js';
+import { readContract } from "smartweave";
 import Arweave from 'arweave';
 import { deriveDriveKey, driveDecrypt, driveEncrypt, fileEncrypt } from './crypto';
-
-// var concat = require('concat-stream')
-
-const arweave = Arweave.init({
-  host: 'arweave.net', // Arweave Gateway
-  port: 443,
-  protocol: 'https',
-  timeout: 600000,
-});
 
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
-// eslint-disable-next-line new-cap
-const community = new Community(arweave);
+const arweave = Arweave.init({
+  host: 'arweave.net', // Arweave Gateway
+  //host: 'arweave.dev', // Arweave Dev Gateway
+  port: 443,
+  protocol: 'https',
+  timeout: 600000,
+});
 
 const getAddressForWallet = async (walletPrivateKey: JWKInterface) => {
   return arweave.wallets.jwkToAddress(walletPrivateKey);
@@ -91,7 +87,7 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
       }
     }`,
     };
-    const response = await arweave.api.post('https://arweave.net/graphql', query);
+    const response = await arweave.api.post(graphQLURL, query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -174,7 +170,7 @@ const getPublicDriveRootFolderTxId = async (driveId: string, folderId: string) :
     };
     const response = await arweave.api
       .request()
-      .post('https://arweave.net/graphql', query);
+      .post(graphQLURL, query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -223,7 +219,7 @@ const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) 
       }
     }`,
     };
-    const response = await arweave.api.post('https://arweave.net/graphql', query);
+    const response = await arweave.api.post(graphQLURL, query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -285,7 +281,7 @@ const getAllMyPublicArDriveIds = async (walletPublicKey: any) => {
     };
 
     // Call the Arweave Graphql Endpoint
-    const response = await arweave.api.post('https://arweave.net/graphql', query);  // This must be updated to production when available
+    const response = await arweave.api.post(graphQLURL, query);  // This must be updated to production when available
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -400,7 +396,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
   // Call the Arweave Graphql Endpoint
   let response;
   try {
-    response = await arweave.api.post('https://arweave.net/graphql', query);
+    response = await arweave.api.post(graphQLURL, query);
   } catch (err) {
     return allPrivateDrives;
   }
@@ -487,7 +483,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       allPrivateDrives.push(drive)
     }
     catch (err) {
-      console.log ("Password not valid for this private drive ", node.id)
+      console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
     }
   });
   return allPrivateDrives;
@@ -499,9 +495,9 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
   let cursor: string = '';
   let edges: GQLEdgeInterface[] = [];
 
-  // Search last 2 blocks minimum
-  if (lastBlockHeight > 2) {
-    lastBlockHeight -= 2;
+  // Search last 5 blocks minimum
+  if (lastBlockHeight > 5) {
+    lastBlockHeight -= 5;
   }
   
   while (hasNextPage) {
@@ -509,7 +505,6 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
       query: `query {
       transactions(
         block: {min: ${lastBlockHeight}}
-        sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"]}
@@ -543,7 +538,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
     // Call the Arweave gateway
     let response : any;
     try {
-      response = await arweave.api.post('https://arweave.net/graphql', query);
+      response = await arweave.api.post(graphQLURL, query);
       const { data } = response.data;
       const { transactions } = data;
       if(transactions.edges && transactions.edges.length) {
@@ -601,7 +596,7 @@ const getAllMySharedDataFileTxs = async (arDriveId: any, lastBlockHeight: number
     // Call the Arweave gateway
     let response : any;
     try {
-      response = await arweave.api.post('https://arweave.net/graphql', query);
+      response = await arweave.api.post(graphQLURL, query);
       const { data } = response.data;
       const { transactions } = data;
       if(transactions.edges && transactions.edges.length) {
@@ -639,7 +634,7 @@ const getPrivateTransactionCipherIV = async (txid: string) : Promise<string> => 
     // Call the Arweave Graphql Endpoint
     const response = await arweave.api
     .request()
-    .post('https://arweave.net/graphql', query);
+    .post(graphQLURL, query);
     const { data } = response.data;
     const { transactions } = data;
     const { edges } = transactions;
@@ -1049,19 +1044,67 @@ const createArDriveWallet = async (): Promise<Wallet> => {
   }
 };
 
-// Sends a fee (15% of transaction price) to ArDrive Profit Sharing Community holders
+// Calls the ArDrive Community Smart Contract to pull the fee
+const getArDriveFee = async () : Promise<number> => {
+  try {
+    const contract = await readContract(arweave, communityTxId);
+    const arDriveCommunityFee = (contract.settings.find((setting: (string | number)[]) => setting[0].toString().toLowerCase() === "fee"));
+    return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
+  } catch {
+    return .15 // Default fee of 15% if we cannot pull it from the community contract
+  }
+}
+
+// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
+const selectTokenHolder = async (): Promise<string> => {
+  // Read the ArDrive Smart Contract to get the latest state
+  const state = await readContract(arweave, communityTxId);
+  const balances = state.balances;
+  const vault = state.vault;
+
+  let total = 0;
+  for (const addr of Object.keys(balances)) {
+    total += balances[addr];
+  }
+
+  for (const addr of Object.keys(vault)) {
+    if (!vault[addr].length) continue;
+
+    const vaultBalance = vault[addr]
+      .map((a: { balance: number; start: number; end: number }) => a.balance)
+      .reduce((a: number, b: number) => a + b, 0);
+
+    total += vaultBalance;
+
+    if (addr in balances) {
+      balances[addr] += vaultBalance;
+    } else {
+      balances[addr] = vaultBalance;
+    }
+  }
+
+  const weighted: { [addr: string]: number } = {};
+  for (const addr of Object.keys(balances)) {
+    weighted[addr] = balances[addr] / total;
+  }
+  // Get a random holder based off of the weighted list of holders
+  return weightedRandom(weighted)!;
+};
+
+// Sends a fee to ArDrive Profit Sharing Community holders
 const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
   try {
-    await community.setCommunityTx(communityTxId);
-    // Fee for all data submitted to ArDrive is 15%
-    let fee = arPrice * 0.15;
 
+    // Get the latest ArDrive Community Fee from the Community Smart Contract
+    let fee = arPrice * (await getArDriveFee() / 100);
+
+    // If the fee is too small, we assign a minimum
     if (fee < 0.00001) {
       fee = 0.00001;
     }
 
     // Probabilistically select the PST token holder
-    const holder = await community.selectWeightedHolder();
+    const holder = await selectTokenHolder();
 
     // send a fee. You should inform the user about this fee and amount.
     const transaction = await arweave.createTransaction(
@@ -1081,9 +1124,9 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
     // Submit the transaction
     const response = await arweave.transactions.post(transaction);
     if (response.status === 200 || response.status === 202) {
-      console.log('SUCCESS ArDrive fee of %s was submitted with TX %s', fee.toFixed(9), transaction.id);
+      // console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
     } else {
-      console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
+      // console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
     }
     return transaction.id;
   } catch (err) {
@@ -1118,4 +1161,5 @@ export {
   getAllMyPublicArDriveIds,
   getLocalWallet,
   generateWallet,
+  getArDriveFee,
 };

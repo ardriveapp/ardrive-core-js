@@ -277,8 +277,8 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
     binaryInterval: 5000,
     ignored: '*.enc',
     awaitWriteFinish: {
-      stabilityThreshold: 5000,
-      pollInterval: 5000,
+      stabilityThreshold: 10000,
+      pollInterval: 10000,
     },
   });
   watcher

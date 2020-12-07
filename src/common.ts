@@ -24,6 +24,8 @@ import {
 import { checksumFile } from './crypto';
 
 export const gatewayURL = 'https://arweave.net/';
+//export const gatewayURL = 'https://arweave.dev/';
+export const graphQLURL = gatewayURL.concat('graphql')
 export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';
@@ -385,6 +387,21 @@ async function Utf8ArrayToStr(array: any) : Promise<string> {
   return out;
 }
 
+// Used by the selectWeightedRanom function to determine who receives a tip
+const weightedRandom = (dict: Record<string, number>): string | undefined => {
+  let sum = 0;
+  const r = Math.random();
+
+  for (const addr of Object.keys(dict)) {
+    sum += dict[addr];
+    if (r <= sum && dict[addr] > 0) {
+      return addr;
+    }
+  }
+
+  return;
+};
+
 export {
   sleep,
   asyncForEach,
@@ -407,4 +424,5 @@ export {
   setAllParentFolderIds,
   setNewFilePaths,
   updateFilePath,
+  weightedRandom,
 };

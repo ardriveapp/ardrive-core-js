@@ -9,6 +9,8 @@ import {
   createArDrivePublicDataTransaction,
   //sendArDriveFee,
   createArDrivePrivateDataTransaction,
+  sendArDriveFee,
+  getArDriveFee,
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync } from './common';
 import { deriveDriveKey, deriveFileKey, } from './crypto';
@@ -43,8 +45,6 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
     totalNumberOfFolderUploads: 0,
   }
 
-  // winston = await getWinston(1024);
-
   // Get all files that are ready to be uploaded
   const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
@@ -78,8 +78,9 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
         return 'Calculated price';
       },
     );
+
     const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
-    let arDriveFee = +totalArweaveDataPrice.toFixed(9) * 0.15;
+    let arDriveFee = +totalArweaveDataPrice.toFixed(9) * (await getArDriveFee() / 100);
     if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
       arDriveFee = 0.00001;
     }
@@ -96,10 +97,11 @@ async function uploadArDriveFileData(
   user: ArDriveUser,
   fileToUpload: ArFSFileMetaData,
 ) {
+  let dataTxId = '';
+  let arPrice = 0;
   try {
     const winston = await getWinston(fileToUpload.fileSize);
-    const arPrice = +winston * 0.000000000001;
-    let dataTxId: string;
+    arPrice = +winston * 0.000000000001;
 
     // Public file, do not encrypt
     if (+fileToUpload.isPublic === 1) {
@@ -123,12 +125,11 @@ async function uploadArDriveFileData(
 
     // Send the ArDrive Profit Sharing Community Fee
     // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
-    // await sendArDriveFee(user.walletPrivateKey, arPrice);
 
-    return dataTxId;
+    return {dataTxId, arPrice};
   } catch (err) {
     console.log(err);
-    return 'Error uploading file data';
+    return {dataTxId, arPrice}
   }
 }
 
@@ -206,6 +207,7 @@ async function uploadArDriveFolderMetaData(
 export const uploadArDriveFiles = async (user: ArDriveUser) => {
   try {
     let filesUploaded = 0;
+    let totalPrice = 0;
     console.log('---Uploading All Queued Files and Folders---');
     const filesToUpload = await getFilesToUploadFromSyncTable(user.login);
     if (Object.keys(filesToUpload).length > 0) {
@@ -218,12 +220,12 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
             // Check to see if we have to upload the File Data and Metadata
             // If not, we just check to see if we have to update metadata.
             if (+fileToUpload.fileDataSyncStatus === 1) {
-              const dataTxId = await uploadArDriveFileData(user, fileToUpload);
-              fileToUpload.dataTxId = dataTxId;
+              const uploadedFile = await uploadArDriveFileData(user, fileToUpload);
+              fileToUpload.dataTxId = uploadedFile.dataTxId;
+              totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
               await uploadArDriveFileMetaData(user, fileToUpload);
             } else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
               await uploadArDriveFileMetaData(user, fileToUpload);
-              // console.log('Metadata uploaded!');
             }
           }
           else if (fileToUpload.entityType === 'folder') {
@@ -235,7 +237,10 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
       );
     }
     if (filesUploaded > 0) {
+      // Send the tip to the ArDrive community
+      await sendArDriveFee(user.walletPrivateKey, totalPrice);
       console.log('Uploaded %s files to your ArDrive!', filesUploaded);
+
       // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
       // Check for unsynced drive entities and create if necessary
       const newDrives : ArFSFileMetaData[] = await getNewDrivesFromDriveTable(user.login)
@@ -245,13 +250,16 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         console.log ("   Lets finish setting up your profile by submitting a few more small transactions to the network.")
         await asyncForEach (newDrives, async (newDrive : ArFSDriveMetaData) => {
           if (newDrive.drivePrivacy === 'public') {
-            // get the root folder for the drive
+            // Create a public drive
             await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
           }
           else if (newDrive.drivePrivacy === 'private') {
+            // Create a new drive key
             const driveKey = await deriveDriveKey(user.dataProtectionKey, newDrive.driveId, user.walletPrivateKey);
+            // Create a public drive
             await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
           }
+          // Create the Drive Root folder
           const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
           await uploadArDriveFolderMetaData(user, driveRootFolder);
         })
@@ -314,7 +322,7 @@ export const checkUploadStatus = async (login: string) => {
         if (+unsyncedFile.fileMetaDataSyncStatus === 2) {
           status = await getTransactionStatus(unsyncedFile.metaDataTxId);
           if (status === 200) {
-            permaWebLink = gatewayURL.concat(unsyncedFile.metaDataTxId);
+            permaWebLink = gatewayURL.concat(unsyncedFile.dataTxId);
             console.log(
               'SUCCESS! %s metadata was uploaded with TX of %s',
               unsyncedFile.filePath,
