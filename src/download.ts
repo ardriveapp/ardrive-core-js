@@ -54,13 +54,14 @@ async function downloadArDriveFileByTx(
       await sleep(100);
     }
     
+    let dataTxUrl = gatewayURL.concat(fileToDownload.dataTxId)
     // Public files do not need decryption
     if (+fileToDownload.isPublic === 1) {
       console.log ("Downloading %s", fileToDownload.filePath)
       const writer = createWriteStream(fileToDownload.filePath);
       const response = await Axios({
         method: 'get',
-        url: fileToDownload.permaWebLink,
+        url: dataTxUrl,
         responseType: 'stream',
       });
       const totalLength = response.headers['content-length'];
@@ -91,7 +92,7 @@ async function downloadArDriveFileByTx(
       const writer = createWriteStream(fileToDownload.filePath);
       const response = await Axios({
         method: 'get',
-        url: fileToDownload.permaWebLink,
+        url: dataTxUrl,
         responseType: 'stream',
       })
       const totalLength = response.headers['content-length']

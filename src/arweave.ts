@@ -1087,7 +1087,7 @@ const selectTokenHolder = async (): Promise<string> => {
   for (const addr of Object.keys(balances)) {
     weighted[addr] = balances[addr] / total;
   }
-
+  // Get a random holder based off of the weighted list of holders
   return weightedRandom(weighted)!;
 };
 
@@ -1098,6 +1098,7 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
     // Get the latest ArDrive Community Fee from the Community Smart Contract
     let fee = arPrice * (await getArDriveFee() / 100);
 
+    // If the fee is too small, we assign a minimum
     if (fee < 0.00001) {
       fee = 0.00001;
     }
@@ -1123,9 +1124,9 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
     // Submit the transaction
     const response = await arweave.transactions.post(transaction);
     if (response.status === 200 || response.status === 202) {
-      console.log('SUCCESS ArDrive fee of %s was submitted with TX %s', fee.toFixed(9), transaction.id);
+      // console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
     } else {
-      console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
+      // console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
     }
     return transaction.id;
   } catch (err) {
