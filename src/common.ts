@@ -402,6 +402,23 @@ const weightedRandom = (dict: Record<string, number>): string | undefined => {
   return;
 };
 
+const sanitizePath = async (path: string) : Promise<string> => {
+  path = path.replace(/[\\/:*?"<>|]/g, '')
+  while(path.charAt(path.length-1) == '.') // remove trailing dots
+  {
+    path = path.substr(0, path.length-1);
+  }
+  while(path.charAt(path.length-1) == ' ') // remove trailing spaces
+  {
+    path = path.substr(0, path.length-1);
+  }
+  if (path === '.') {
+    return '';   // Return nothing if only a . is left.  This will then be ignored.
+  } else {
+    return path;
+  }
+}
+
 export {
   sleep,
   asyncForEach,
@@ -425,4 +442,5 @@ export {
   setNewFilePaths,
   updateFilePath,
   weightedRandom,
+  sanitizePath,
 };
