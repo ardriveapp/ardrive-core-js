@@ -404,7 +404,11 @@ const weightedRandom = (dict: Record<string, number>): string | undefined => {
 
 const sanitizePath = async (path: string) : Promise<string> => {
   path = path.replace(/[\\/:*?"<>|]/g, '')
-  while(path.charAt(path.length-1) == '.')
+  while(path.charAt(path.length-1) == '.') // remove trailing dots
+  {
+    path = path.substr(0, path.length-1);
+  }
+  while(path.charAt(path.length-1) == ' ') // remove trailing spaces
   {
     path = path.substr(0, path.length-1);
   }
