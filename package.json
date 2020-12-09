@@ -9,6 +9,7 @@
     "@types/node-fetch": "^2.5.7",
     "@types/uuid": "^8.3.0",
     "arweave": "^1.9.1",
+    "arweave-bundles": "^1.0.0",
     "axios": "^0.21.0",
     "chokidar": "^3.4.3",
     "concat-stream": "^2.0.0",
