@@ -105,13 +105,22 @@ export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffe
 
 }
 
-// gets hash of a file using SHA512, used for ArDriveID
-export const checksumFile = async (path: string | number | Buffer | import('url').URL) => {
+// gets hash of a file using SHA512
+export const checksumFile = async (path: string) : Promise<string> => {
   const hash = crypto.createHash('sha512');
-  const file = fs.readFileSync(path, { encoding: 'base64' });
-  hash.update(file);
-  const fileHash = hash.digest('hex');
-  return fileHash;
+  const file = fs.createReadStream(path, { encoding: 'base64' })
+  return new Promise((resolve, reject) => {
+    file.on('error', err => {
+      file.close();
+      reject(err);
+    });
+    file.on('data', function (chunk) {
+      hash.update(chunk)
+    });
+    file.on('close', () => {
+      resolve(hash.digest('hex'));
+    });
+  })
 };
 
 export const encryptText = async (text: crypto.BinaryLike, password: any) => {
