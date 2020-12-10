@@ -133,6 +133,17 @@ const createDriveTable = async () => {
   return run(sql);
 };
 
+const createDataBundleTable = async () => {
+  const sql = `CREATE TABLE IF NOT EXISTS DataBundle (
+      id integer NOT NULL PRIMARY KEY,
+      bundleTxId text UNIQUE,
+      bundleSyncStatus text DEFAULT 0,
+      uploader text,
+      uploadTime integer,
+    );`;
+  return run(sql);
+};
+
 export const addFileToSyncTable = (file: ArFSFileMetaData) => {
   const {
     login,
@@ -234,6 +245,14 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
     ]
   )
 }
+
+export const addToDataBundleTable = (bundleTxId: string, bundleSyncStatus: string, uploadTime: number ) => {
+  return run('REPLACE INTO DataBundle (bundleTxId, bundleSyncStatus, uploadTime) VALUES (?, ?, ?)', [
+    bundleTxId,
+    bundleSyncStatus,
+    uploadTime,
+  ]);  
+};
 
 export const getFolderFromSyncTable = (driveId: string, filePath: string) => {
   return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? AND entityType = 'folder'`, [driveId, filePath]);
@@ -586,6 +605,10 @@ export const setFileUploaderObject = (uploader: string, id: number) => {
   return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
+export const setDataBundleUploaderObject = (uploader: string, bundleTxId: string) => {
+  return get(`UPDATE DataBundle SET uploader = ? WHERE bundleTxId = ?`, [uploader, bundleTxId]);
+};
+
 export const setFilePath = (filePath: string, id: number) => {
   return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
@@ -648,6 +671,7 @@ const createTablesInDB = async () => {
   await createProfileTable();
   await createSyncTable();
   await createDriveTable();
+  await createDataBundleTable();
 };
 
 // Main entrypoint for database. MUST call this before anything else can happen
