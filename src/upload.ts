@@ -1,14 +1,9 @@
 // upload.js
 import { DataItemJson } from 'arweave-bundles';
-import * as fs from 'fs';
 import {
-  createArDrivePublicMetaDataTransaction,
-  createArDrivePrivateMetaDataTransaction,
   getTransactionStatus,
   createPublicDriveTransaction,
   createPrivateDriveTransaction,
-  createArDrivePublicDataTransaction,
-  createArDrivePrivateDataTransaction,
   sendArDriveFee,
   getArDriveFee,
   createArDrivePublicDataItemTransaction,
@@ -21,21 +16,22 @@ import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync 
 import { deriveDriveKey, deriveFileKey, } from './crypto';
 import {
   getFilesToUploadFromSyncTable,
-  getAllUploadedFilesFromSyncTable,
-  removeFromSyncTable,
-  completeFileDataFromSyncTable,
-  completeFileMetaDataFromSyncTable,
   deleteFromSyncTable,
   getNewDrivesFromDriveTable, 
   getDriveRootFolderFromSyncTable, 
   getAllUploadedDrivesFromDriveTable, 
   completeDriveMetaDataFromDriveTable,
   setFileMetaDataSyncStatus,
-  setFileDataSyncStatus,
   updateFileUploadTimeInSyncTable,
-  getFileUploadTimeFromSyncTable,
+  getAllUploadedBundlesFromBundleTable,
+  completeFileDataItemFromSyncTable,
+  getAllUploadedDataItemsFromSyncTable,
+  updateFileBundleTxId,
+  getBundleUploadTimeFromBundleTable,
+  setFileDataItemSyncStatus,
+  completeBundleFromBundleTable,
 } from './db';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
+import { ArDriveBundle, ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
 export const getPriceOfNextUploadBatch = async (login: string) => {
   let totalWinstonData = 0;
@@ -314,7 +310,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
     let totalPrice = 0;
     let totalSize = 0;
     console.log('---Uploading All Queued Files and Folders---');
-    const filesToUpload = await getFilesToUploadFromSyncTable(user.login);
+    const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(user.login);
     if (Object.keys(filesToUpload).length > 0) {
       await asyncForEach(filesToUpload, async (fileToUpload: ArFSFileMetaData) => {
           // If the total size of the items is greater than 2GB, then we do not add any more files
@@ -356,14 +352,157 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
         },
       );
     }
+
     if (filesUploaded > 0) {
       // Submit the master bundled transaction
-      const bundledDataTxId = await createArDriveBundledDataTransaction(items, user.walletPrivateKey)
+      console.log ("Submitting a bundled TX for %s file(s)", filesUploaded)
+      const bundledDataTxId = await createArDriveBundledDataTransaction(items, user.walletPrivateKey, user.login)
       console.log ("Bundled TX: ", bundledDataTxId)
       
+      // Update all files/folders with the bundled TX ID that were submitted as part of this bundle
+      for (let n = 0; n < filesUploaded; ++n) {
+        await updateFileBundleTxId(bundledDataTxId, filesToUpload[n].id);
+      }
       // Send the tip to the ArDrive community
       await sendArDriveFee(user.walletPrivateKey, totalPrice);
-      console.log('Uploaded %s files (totaling %s AR) to your ArDrive!', filesUploaded, totalPrice);
+      console.log('Uploaded %s file(s) (totaling %s AR) to your ArDrive!', filesUploaded, totalPrice);
+
+      // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
+      // Check for unsynced drive entitcies and create if necessary
+      const newDrives : ArFSFileMetaData[] = await getNewDrivesFromDriveTable(user.login)
+      if (newDrives.length > 0)
+      {
+        console.log ("   Wow that was your first ARDRIVE Transaction!  Congrats!")
+        console.log ("   Lets finish setting up your profile by submitting a few more small transactions to the network.")
+        await asyncForEach (newDrives, async (newDrive : ArFSDriveMetaData) => {
+          if (newDrive.drivePrivacy === 'public') {
+            // Create a public drive
+            await createPublicDriveTransaction(user.walletPrivateKey, newDrive)
+          }
+          else if (newDrive.drivePrivacy === 'private') {
+            // Create a new drive key
+            const driveKey = await deriveDriveKey(user.dataProtectionKey, newDrive.driveId, user.walletPrivateKey);
+            // Create a public drive
+            await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
+          }
+          // Create the Drive Root folder
+          const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
+          await uploadArDriveFolderMetaDataItem(user, driveRootFolder);
+        })
+      }
+    }
+    return 'SUCCESS';
+  } catch (err) {
+    console.log(err);
+    return 'ERROR processing files';
+  }
+};
+
+// Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
+export const checkUploadStatus = async (login: string) => {
+  try {
+    console.log('---Checking Upload Status---');
+    let permaWebLink: string;
+    let status: any;
+
+    // Get all data bundles that need to have their V2 transactions checked (bundleSyncStatus of 2)
+    const unsyncedBundles : ArDriveBundle[] = await getAllUploadedBundlesFromBundleTable(login)
+    await asyncForEach(unsyncedBundles, async (unsyncedBundle : ArDriveBundle) => {
+      status = await getTransactionStatus(unsyncedBundle.bundleTxId);
+      if (status === 200) {
+        console.log('SUCCESS! Data bundle was uploaded with TX of %s', unsyncedBundle.bundleTxId);
+        console.log('...your most recent files can now be accessed on the PermaWeb!');
+        await completeBundleFromBundleTable(unsyncedBundle.id)
+        const dataItemsToComplete : ArFSFileMetaData[] = await getAllUploadedDataItemsFromSyncTable(login, unsyncedBundle.bundleTxId);
+        await asyncForEach(dataItemsToComplete, async (dataItemToComplete : ArFSFileMetaData) => {
+          permaWebLink = gatewayURL.concat(dataItemToComplete.dataTxId);
+          // Complete the files by setting permaWebLink, fileMetaDataSyncStatus and fileDataSyncStatus to 3
+          await completeFileDataItemFromSyncTable(permaWebLink, dataItemToComplete.id); 
+        });
+      } else if (status === 202) {
+        console.log('%s data bundle is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedBundle.bundleTxId);
+      } else if (status === 410 || status === 404) {
+        const uploadTime = await getBundleUploadTimeFromBundleTable(unsyncedBundle.id)
+        const currentTime = Math.round(Date.now() / 1000);
+        if ((currentTime - uploadTime) < 1800000) { // 30 minutes
+          console.log('%s data bundle failed to be uploaded (TX_FAILED)', unsyncedBundle.bundleTxId);
+          // Retry data transaction
+          const dataItemsToRetry : ArFSFileMetaData[] = await getAllUploadedDataItemsFromSyncTable(login, unsyncedBundle.bundleTxId);
+          await asyncForEach(dataItemsToRetry, async (dataItemToRetry : ArFSFileMetaData) => {
+            // Retry the files by setting fileMetaDataSyncStatus and fileDataSyncStatus to 1
+            await setFileDataItemSyncStatus (dataItemToRetry.id)
+          });
+        };
+      };
+    });
+    
+    // Get all drives that need to have their transactions checked (metaDataSyncStatus of 2)
+    const unsyncedDrives : ArFSDriveMetaData[] = await getAllUploadedDrivesFromDriveTable();
+    await asyncForEach(unsyncedDrives, async (unsyncedDrive: ArFSDriveMetaData) => {
+      status = await getTransactionStatus(unsyncedDrive.metaDataTxId);
+      if (status === 200) {
+        permaWebLink = gatewayURL.concat(unsyncedDrive.metaDataTxId);
+        console.log(
+          'SUCCESS! %s Drive metadata was uploaded with TX of %s',
+          unsyncedDrive.driveName,
+          unsyncedDrive.metaDataTxId,
+        );
+        // Update the drive sync status to 3 so it is not checked any more
+        let metaDataSyncStatus = 3;
+        await completeDriveMetaDataFromDriveTable(metaDataSyncStatus, permaWebLink, unsyncedDrive.driveId);
+      } else if (status === 202) {
+        console.log('%s Drive metadata is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedDrive.driveName);
+      } else if (status === 410 || status === 404) {
+        console.log('%s Drive metadata failed to be uploaded (TX_FAILED)', unsyncedDrive.driveName);
+        // Retry metadata transaction
+        await setFileMetaDataSyncStatus ('1', unsyncedDrive.id)
+      }
+    })
+    return 'Success checking upload file, folder and drive sync status';
+  } catch (err) {
+    console.log(err);
+    return 'Error checking upload file status';
+  }
+};
+
+// Old Upload File and Check Status
+// Uses V2 TXs and no data bundles
+/*export const uploadArDriveFiles = async (user: ArDriveUser) => {
+  try {
+    let filesUploaded = 0;
+    let totalPrice = 0;
+    console.log('---Uploading All Queued Files and Folders---');
+    const filesToUpload = await getFilesToUploadFromSyncTable(user.login);
+    if (Object.keys(filesToUpload).length > 0) {
+      // Ready to upload
+      await asyncForEach(
+        filesToUpload,
+        async (fileToUpload: ArFSFileMetaData) => {
+          if (fileToUpload.entityType === 'file') {
+            // console.log ("Uploading file - %s", fileToUpload.fileName)
+            // Check to see if we have to upload the File Data and Metadata
+            // If not, we just check to see if we have to update metadata.
+            if (+fileToUpload.fileDataSyncStatus === 1) {
+              const uploadedFile = await uploadArDriveFileData(user, fileToUpload);
+              fileToUpload.dataTxId = uploadedFile.dataTxId;
+              totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
+              await uploadArDriveFileMetaData(user, fileToUpload);
+            } else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
+              await uploadArDriveFileMetaData(user, fileToUpload);
+            }
+          }
+          else if (fileToUpload.entityType === 'folder') {
+            //console.log ("Uploading folder - %s", fileToUpload.fileName)
+            await uploadArDriveFolderMetaData(user, fileToUpload);
+          }
+          filesUploaded += 1;
+        },
+      );
+    }
+    if (filesUploaded > 0) {
+      // Send the tip to the ArDrive community
+      await sendArDriveFee(user.walletPrivateKey, totalPrice);
+      console.log('Uploaded %s files to your ArDrive!', filesUploaded);
 
       // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
       // Check for unsynced drive entities and create if necessary
@@ -385,7 +524,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser) => {
           }
           // Create the Drive Root folder
           const driveRootFolder : ArFSFileMetaData = await getDriveRootFolderFromSyncTable(newDrive.rootFolderId);
-          await uploadArDriveFolderMetaDataItem(user, driveRootFolder);
+          await uploadArDriveFolderMetaData(user, driveRootFolder);
         })
       }
     }
@@ -500,4 +639,4 @@ export const checkUploadStatus = async (login: string) => {
     console.log(err);
     return 'Error checking upload file status';
   }
-};
+};*/

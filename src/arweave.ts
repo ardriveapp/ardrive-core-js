@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { getWinston, appName, appVersion, asyncForEach, arFSVersion, Utf8ArrayToStr, webAppName, graphQLURL, weightedRandom } from './common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData, GQLEdgeInterface, Wallet } from './types';
-import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable, getDriveFromDriveTable, addToDataBundleTable, setDataBundleUploaderObject } from './db';
+import { updateFileMetaDataSyncStatus, updateFileDataSyncStatus, setFileUploaderObject, updateDriveInDriveTable, getDriveFromDriveTable, addToBundleTable, setBundleUploaderObject } from './db';
 import { readContract } from "smartweave";
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
@@ -935,12 +935,11 @@ const createArDrivePublicMetaDataTransaction = async (
 };
 
 // Creates a bundled data transaction
-const createArDriveBundledDataTransaction = async (items: DataItemJson[], walletPrivateKey: string) : Promise<string> => {
+const createArDriveBundledDataTransaction = async (items: DataItemJson[], walletPrivateKey: string, login: string) : Promise<string> => {
   try {
-
     // Bundle up all individual items into a single data bundle
     const dataBundle = await arBundles.bundleData(items);
-    const dataBuffer : Buffer = Buffer.from(dataBundle);
+    const dataBuffer : Buffer = Buffer.from(JSON.stringify(dataBundle));
 
     // Create the transaction for the entire data bundle
     const transaction = await arweave.createTransaction({ data: dataBuffer }, JSON.parse(walletPrivateKey));
@@ -957,11 +956,11 @@ const createArDriveBundledDataTransaction = async (items: DataItemJson[], wallet
     const uploader = await arweave.transactions.getUploader(transaction);
 
     const currentTime = Math.round(Date.now() / 1000)
-    await addToDataBundleTable(transaction.id, '2', currentTime) 
+    await addToBundleTable(login, transaction.id, '2', currentTime) 
     while (!uploader.isComplete) {
       // eslint-disable-next-line no-await-in-loop
       await uploader.uploadChunk();
-      await setDataBundleUploaderObject(JSON.stringify(uploader), transaction.id)
+      await setBundleUploaderObject(JSON.stringify(uploader), transaction.id)
       console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
     }
     console.log('SUCCESS data bundle was submitted with TX %s', transaction.id);
