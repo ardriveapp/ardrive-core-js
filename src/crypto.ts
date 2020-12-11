@@ -1,11 +1,11 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
-// import * as constants from 'constants'
 import { getWalletSigningKey } from './arweave';
 import { ArFSEncryptedData } from './types';
 const hkdf = require('futoin-hkdf');
 const utf8 = require('utf8');
+
 // const jwkToPem = require('jwk-to-pem')
 const authTagLength = 16;
 const keyByteLength = 32;
@@ -31,7 +31,7 @@ function getTextCipherKey(password: crypto.BinaryLike) {
 
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
 export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string) => {
-  const driveIdBytes : Buffer = Buffer.from(parse(driveId));
+  const driveIdBytes : Buffer = Buffer.from(parse(driveId) as Uint8Array);
   const driveBuffer : Buffer = Buffer.from(utf8.encode('drive'))
   const signingKey : Buffer = Buffer.concat([driveBuffer, driveIdBytes])
   const walletSignature : Uint8Array = await getWalletSigningKey(JSON.parse(walletPrivateKey), signingKey)
@@ -42,7 +42,7 @@ export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, drive
 
 // Derive a key from the user's Drive Key and the File Id
 export const deriveFileKey = async (fileId: string, driveKey: Buffer) => {
-  const info : Buffer = Buffer.from(parse(fileId));
+  const info : Buffer = Buffer.from(parse(fileId) as Uint8Array);
   const fileKey : Buffer = hkdf(driveKey, keyByteLength, {info, keyHash});
   return fileKey;
 }
@@ -194,26 +194,6 @@ export const decryptTag = async (
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-};
-
-export const decryptFileMetaData = async (
-  fileIv: { toString: () => string },
-  fileEncryptedText: { toString: () => string },
-  password: any,
-  jwk: any,
-) => {
-  try {
-    const iv = Buffer.from(fileIv.toString(), 'hex');
-    const encryptedText = Buffer.from(fileEncryptedText.toString(), 'hex');
-    const cipherKey = getFileCipherKey(password, jwk);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return JSON.parse(decrypted.toString());
   } catch (err) {
     console.log(err);
     return 0;
