@@ -80,6 +80,7 @@ const createSyncTable = () => {
         login text,
         metaDataTxId text NOT NULL,
         dataTxId text,
+        bundleTxId text,
         appName text DEFAULT ArDrive,
         appVersion text,
         unixTime integer,
@@ -129,6 +130,18 @@ const createDriveTable = async () => {
       metaDataSyncStatus integer,
       permaWebLink text,
       lastBlockHeight integer DEFAULT 0
+    );`;
+  return run(sql);
+};
+
+const createBundleTable = async () => {
+  const sql = `CREATE TABLE IF NOT EXISTS Bundle (
+      id integer NOT NULL PRIMARY KEY,
+      login text,
+      bundleTxId text UNIQUE,
+      bundleSyncStatus integer DEFAULT 0,
+      uploader text,
+      uploadTime integer
     );`;
   return run(sql);
 };
@@ -235,6 +248,15 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
   )
 }
 
+export const addToBundleTable = (login: string, bundleTxId: string, bundleSyncStatus: string, uploadTime: number ) => {
+  return run('REPLACE INTO Bundle (login, bundleTxId, bundleSyncStatus, uploadTime) VALUES (?, ?, ?, ?)', [
+    login,
+    bundleTxId,
+    bundleSyncStatus,
+    uploadTime,
+  ]);  
+};
+
 export const getFolderFromSyncTable = (driveId: string, filePath: string) => {
   return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? AND entityType = 'folder'`, [driveId, filePath]);
 };
@@ -301,6 +323,14 @@ export const getFilesToUploadFromSyncTable = (login: string) => {
   return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)', [login]);
 };
 
+export const getAllUploadedBundlesFromBundleTable = (login: string) => {
+  return all('SELECT * FROM Bundle WHERE (login = ?) AND (bundleSyncStatus = 2)', [login]);
+};
+
+export const getAllUploadedDataItemsFromSyncTable = (login: string, bundleTxId: string) => {
+  return all('SELECT * FROM Sync WHERE login = ? AND bundleTxId = ?', [login, bundleTxId]);
+};
+
 export const getAllUploadedFilesFromSyncTable = (login: string) => {
   return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2)', [login]);
 };
@@ -348,6 +378,10 @@ export const getFolderParentIdFromSyncTable = (fileId: string) => {
 
 export const getFileUploadTimeFromSyncTable = (id: number) : Promise<number> => {
   return get(`SELECT uploadTime FROM Sync WHERE id = ?`, [id]);
+};
+
+export const getBundleUploadTimeFromBundleTable = (id: number) : Promise<number> => {
+  return get(`SELECT uploadTime FROM Bundle WHERE id = ?`, [id]);
 };
 
 export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: string; metaDataTxId: string; metaDataCipherIV: string, cipher: string, id: number }) => {
@@ -423,6 +457,10 @@ export const updateFileDownloadStatus = (isLocal: string, id: number) => {
   return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
 
+export const updateFileBundleTxId = (bundleTxId: string, id: number) => {
+  return get(`UPDATE Sync SET bundleTxId = ? WHERE id = ?`, [bundleTxId, id]);
+};
+
 export const updateFileUploadTimeInSyncTable = (id: number, uploadTime: number) => {
   return get(`UPDATE Sync SET uploadTime = ? WHERE id = ?`, [uploadTime, id]);
 };
@@ -438,6 +476,23 @@ export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: string, id: nu
 export const setFileDataSyncStatus = (fileDataSyncStatus: string, id: number) => {
   return get(`UPDATE Sync SET fileDataSyncStatus = ? WHERE id = ?`, [fileDataSyncStatus, id]);
 };
+
+// Sets a files sync statuses to 1, requiring a reupload
+export const setFileDataItemSyncStatus = (id: number) => {
+  return get(`UPDATE Sync SET fileDataSyncStatus = 1, fileMetaDataSyncStatus = 1 WHERE id = ?`, [id]);
+};
+
+// Sets the data bundle tx id for a file or folder and marks it as synchronized
+export const completeFileDataItemFromSyncTable = (permaWebLink: string, id: number) => {
+  return get('UPDATE Sync Set fileDataSyncStatus = 3, fileMetaDataSyncStatus = 3, permaWebLink = ? WHERE id = ?', [
+    permaWebLink,
+    id,
+  ]);
+}
+
+export const completeBundleFromBundleTable = (id: number) => {
+  return get('UPDATE Bundle Set bundleSyncStatus = 3 WHERE id = ?', [id])
+}
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {
   const { fileDataSyncStatus, permaWebLink, id } = file;
@@ -586,6 +641,10 @@ export const setFileUploaderObject = (uploader: string, id: number) => {
   return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
+export const setBundleUploaderObject = (uploader: string, bundleTxId: string) => {
+  return get(`UPDATE Bundle SET uploader = ? WHERE bundleTxId = ?`, [uploader, bundleTxId]);
+};
+
 export const setFilePath = (filePath: string, id: number) => {
   return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
@@ -648,6 +707,7 @@ const createTablesInDB = async () => {
   await createProfileTable();
   await createSyncTable();
   await createDriveTable();
+  await createBundleTable();
 };
 
 // Main entrypoint for database. MUST call this before anything else can happen

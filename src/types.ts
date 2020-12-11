@@ -22,6 +22,14 @@ export interface UploadBatch {
   totalNumberOfFolderUploads: number
 };
 
+export interface ArDriveBundle {
+  id: number,
+  login: string,
+  bundleTxId: string,
+  bundleSyncStatus: number,
+  uploadTime: number,
+}
+
 export interface ArFSDriveMetaData {
   id: number,
   login: string,

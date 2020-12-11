@@ -1,37 +1,20 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
-// import * as constants from 'constants'
 import { getWalletSigningKey } from './arweave';
 import { ArFSEncryptedData } from './types';
 const hkdf = require('futoin-hkdf');
 const utf8 = require('utf8');
+
 // const jwkToPem = require('jwk-to-pem')
 const authTagLength = 16;
 const keyByteLength = 32;
 const algo = 'aes-256-gcm';
 const keyHash = 'SHA-256';
 
-// may not need this anymore
-function getFileCipherKey(password: crypto.BinaryLike, jwk: { toString: () => crypto.BinaryLike }) {
-  const hash = crypto.createHash('sha256');
-  hash.update(password);
-  hash.update(jwk.toString());
-  const KEY = hash.digest();
-  return KEY;
-}
-
-// Used to encrypt data stored in SQLite DB
-function getTextCipherKey(password: crypto.BinaryLike) {
-  const hash = crypto.createHash('sha256');
-  hash.update(password);
-  const KEY = hash.digest();
-  return KEY;
-}
-
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
-export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string) => {
-  const driveIdBytes : Buffer = Buffer.from(parse(driveId));
+export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string) : Promise<Buffer> => {
+  const driveIdBytes : Buffer = Buffer.from(parse(driveId) as Uint8Array);
   const driveBuffer : Buffer = Buffer.from(utf8.encode('drive'))
   const signingKey : Buffer = Buffer.concat([driveBuffer, driveIdBytes])
   const walletSignature : Uint8Array = await getWalletSigningKey(JSON.parse(walletPrivateKey), signingKey)
@@ -41,8 +24,8 @@ export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, drive
 }
 
 // Derive a key from the user's Drive Key and the File Id
-export const deriveFileKey = async (fileId: string, driveKey: Buffer) => {
-  const info : Buffer = Buffer.from(parse(fileId));
+export const deriveFileKey = async (fileId: string, driveKey: Buffer) : Promise<Buffer> => {
+  const info : Buffer = Buffer.from(parse(fileId) as Uint8Array);
   const fileKey : Buffer = hkdf(driveKey, keyByteLength, {info, keyHash});
   return fileKey;
 }
@@ -61,7 +44,6 @@ export const driveEncrypt = async (driveKey: Buffer, data: Buffer) : Promise<ArF
 }
 
 // New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
-// THIS MUST BE UPDATED TO SUPPORT STREAMS AND FILES LARGER THAN 1 GB
 export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSEncryptedData> => {
   const iv : Buffer = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
@@ -75,7 +57,7 @@ export const fileEncrypt = async (fileKey: Buffer, data: Buffer) : Promise<ArFSE
 }
 
 // New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
-export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) => {
+export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer) : Promise<Buffer> => {
   const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
   const encryptedDataSlice : Buffer = data.slice(0, (data.byteLength - authTagLength))
   const iv : Buffer = Buffer.from(cipherIV, 'base64');
@@ -86,8 +68,7 @@ export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buf
 }
 
 // New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
-// THIS MUST BE UPDATED TO SUPPORT STREAMS AND FILES LARGER THAN 1 GB
-export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffer) => {
+export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffer) : Promise<Buffer> => {
   try {
     const authTag : Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
     const encryptedDataSlice : Buffer = data.slice(0, (data.byteLength - authTagLength))
@@ -102,18 +83,27 @@ export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffe
     console.log ("Error decrypting file data");
     return Buffer.from('Error', 'ascii');
   }
-
 }
 
-// gets hash of a file using SHA512, used for ArDriveID
-export const checksumFile = async (path: string | number | Buffer | import('url').URL) => {
+// gets hash of a file using SHA512
+export const checksumFile = async (path: string) : Promise<string> => {
   const hash = crypto.createHash('sha512');
-  const file = fs.readFileSync(path, { encoding: 'base64' });
-  hash.update(file);
-  const fileHash = hash.digest('hex');
-  return fileHash;
+  const file = fs.createReadStream(path, { encoding: 'base64' })
+  return new Promise((resolve, reject) => {
+    file.on('error', err => {
+      file.close();
+      reject(err);
+    });
+    file.on('data', function (chunk) {
+      hash.update(chunk)
+    });
+    file.on('close', () => {
+      resolve(hash.digest('hex'));
+    });
+  })
 };
 
+// Used to encrypt data going into sqlitedb, like arweave private key
 export const encryptText = async (text: crypto.BinaryLike, password: any) => {
   try {
     const initVect = crypto.randomBytes(16);
@@ -131,13 +121,14 @@ export const encryptText = async (text: crypto.BinaryLike, password: any) => {
   }
 };
 
+// Used to decrypt data going into sqlitedb, like arweave private key
 export const decryptText = async (
   text: {
     iv: { toString: () => string };
     encryptedText: { toString: () => string };
   },
   password: any,
-) => {
+) : Promise<string> => {
   try {
     const iv = Buffer.from(text.iv.toString(), 'hex');
     const encryptedText = Buffer.from(text.encryptedText.toString(), 'hex');
@@ -152,61 +143,10 @@ export const decryptText = async (
   }
 };
 
-export const encryptTag = async (text: crypto.BinaryLike, password: any, jwk: any) => {
-  try {
-    const initVect = crypto.randomBytes(16);
-    const CIPHER_KEY = getFileCipherKey(password, jwk);
-    const cipher = crypto.createCipheriv('aes-256-cbc', CIPHER_KEY, initVect);
-    let encryptedText = cipher.update(text);
-    encryptedText = Buffer.concat([encryptedText, cipher.final()]);
-    return {
-      iv: initVect.toString('hex'),
-      encryptedText: encryptedText.toString('hex'),
-    };
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-};
-
-export const decryptTag = async (
-  text: {
-    iv: { toString: () => string };
-    encryptedText: { toString: () => string };
-  },
-  password: any,
-  jwk: any,
-) => {
-  try {
-    const iv = Buffer.from(text.iv.toString(), 'hex');
-    const encryptedText = Buffer.from(text.encryptedText.toString(), 'hex');
-    const cipherKey = getFileCipherKey(password, jwk);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-};
-
-export const decryptFileMetaData = async (
-  fileIv: { toString: () => string },
-  fileEncryptedText: { toString: () => string },
-  password: any,
-  jwk: any,
-) => {
-  try {
-    const iv = Buffer.from(fileIv.toString(), 'hex');
-    const encryptedText = Buffer.from(fileEncryptedText.toString(), 'hex');
-    const cipherKey = getFileCipherKey(password, jwk);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return JSON.parse(decrypted.toString());
-  } catch (err) {
-    console.log(err);
-    return 0;
-  }
-};
+// Used to encrypt data stored in SQLite DB
+function getTextCipherKey(password: crypto.BinaryLike) : Buffer {
+  const hash = crypto.createHash('sha256');
+  hash.update(password);
+  const KEY = hash.digest();
+  return KEY;
+}
