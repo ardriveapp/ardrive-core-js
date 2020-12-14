@@ -287,21 +287,26 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
     .on('unlink', async (path: any) => log(`File ${path} has been removed`))
     .on('addDir', async (path: any) => queueFolder(path, driveRootFolderPath, login, driveId, drivePrivacy))
     .on('unlinkDir', async (path: any) => log(`Directory ${path} has been removed`))
-    .on('error', (error: any) => log(`Watcher error: ${error}`))
-  return 'Watched';
+    .on('error', (error: any) => log(`Watcher error: ${error}`));
+  return {
+    status: 'Watched',
+    stop: watcher.close,
+  };
 };
 
 const startWatchingFolders = async (user: ArDriveUser) => {
-  const drives : ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
+  const drives: ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
+  const stoppers: Array<() => Promise<void>> = [];
   if (drives !== undefined) {
     drives.forEach(async (drive: ArFSDriveMetaData) => {
       let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
-      let status = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
-      console.log ("%s %s drive: %s driveId: %s", status, drive.drivePrivacy, rootFolder.filePath, drive.driveId)
-    })
+      let { status, stop } = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
+      stoppers.push(stop);
+      console.log('%s %s drive: %s driveId: %s', status, drive.drivePrivacy, rootFolder.filePath, drive.driveId);
+    });
   }
-
-}
+  return stoppers;
+};
 
 const resolveFileDownloadConflict = async (resolution: string, fileName: string, filePath: string, id: string) => {
   const folderPath = dirname(filePath);
