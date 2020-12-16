@@ -305,7 +305,7 @@ const startWatchingFolders = async (user: ArDriveUser) => {
       console.log('%s %s drive: %s driveId: %s', status, drive.drivePrivacy, rootFolder.filePath, drive.driveId);
     });
   }
-  return stoppers;
+  return () => Promise.all(stoppers);
 };
 
 const resolveFileDownloadConflict = async (resolution: string, fileName: string, filePath: string, id: string) => {
