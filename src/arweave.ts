@@ -505,6 +505,9 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
   let hasNextPage = true;
   let cursor: string = '';
   let edges: GQLEdgeInterface[] = [];
+  let primaryGraphQLURL = graphQLURL;
+  let backupGraphQLURL = graphQLURL.replace(".net",".dev");
+  let tries = 0;
 
   // Search last 5 blocks minimum
   if (lastBlockHeight > 5) {
@@ -549,7 +552,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
     // Call the Arweave gateway
     let response : any;
     try {
-      response = await arweave.api.post(graphQLURL, query);
+      response = await arweave.api.post(primaryGraphQLURL, query);
       const { data } = response.data;
       const { transactions } = data;
       if(transactions.edges && transactions.edges.length) {
@@ -558,7 +561,20 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
       }
       hasNextPage = transactions.pageInfo.hasNextPage;
     } catch (err) {
-      console.log ("Error querying GQL for personal data transactions, trying again.")
+      console.log (err)
+      if (tries < 5) {
+        tries += 1;
+        console.log ("Error querying GQL for personal data transactions for %s starting at block height %s, trying again.", arDriveId, lastBlockHeight);
+      } else {
+        tries = 0;
+        if (primaryGraphQLURL.includes(".dev")) {
+          console.log ("Backup gateway is having issues, switching to primary.")
+          primaryGraphQLURL = graphQLURL // Set back to primary and try 5 times
+        } else {
+          console.log ("Primary gateway is having issues, switching to backup.")
+          primaryGraphQLURL = backupGraphQLURL // Change to the backup URL and try 5 times
+        }
+      }
     }
   }
   return edges;
@@ -665,6 +681,7 @@ const getPrivateTransactionCipherIV = async (txid: string) : Promise<string> => 
     return dataCipherIV;
   }
   catch (err) {
+    console.log ("Error getting private transaction cipherIV for txid %s", txid)
     console.log (err)
     return "Error"
   }
@@ -686,6 +703,7 @@ const getTransactionData = async (txid: string) => {
     const data = await arweave.transactions.getData(txid, { decode: true });
     return data;
   } catch (err) {
+    console.log ("Error getting transaction data for Txid %s", txid)
     console.log(err);
     return Promise.reject(err);
   }
