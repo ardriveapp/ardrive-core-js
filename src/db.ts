@@ -67,7 +67,6 @@ const createProfileTable = async () => {
         walletPrivateKey text,
         walletPublicKey text,
         walletBalance integer DEFAULT 0,
-        lastBlockHeight integer DEFAULT 0,
         syncFolderPath text,
         autoSyncApproval integer DEFAULT 0
      );`;
@@ -571,10 +570,6 @@ export const setProfileAutoSyncApproval = (autoSyncApproval: number, login: stri
 
 export const setProfileWalletBalance = (walletBalance: number, login: string) => {
   return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [walletBalance, login]);
-}
-
-export const setProfileLastBlockHeight = (lastBlockHeight: number, login: string) => {
-  return get(`UPDATE Profile SET lastBlockHeight = ? WHERE login = ?`, [lastBlockHeight, login]);
 }
 
 export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string) => {
