@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import path, { dirname } from 'path';
 import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync, checkExactFileExistsSync } from './common';
-import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { getAllMyDataFileTxs, getAllMyPrivateArDriveIds, getAllMyPublicArDriveIds, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
@@ -22,6 +22,8 @@ import {
   updateFileHashInSyncTable,
   getDriveLastBlockHeight,
   setDriveLastBlockHeight,
+  addDriveToDriveTable,
+  getDriveFromDriveTable,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 import { createWriteStream } from 'fs';
@@ -375,7 +377,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
         await getFileMetaDataFromTx(sharedPublicTxId, user);
       });
     }
-    // Get and set the latest block height in the profile
+    // Get and set the latest block height for this drive
     const latestBlockHeight : number = await getLatestBlockHeight();
     await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
@@ -544,3 +546,32 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
   return 'Downloaded all ArDrive files';
 };
+
+// Gets all Private and Public Drives associated with a user profile and adds to the database
+export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
+  try {
+    const privateDrives = await getAllMyPrivateArDriveIds(user);
+    if (privateDrives.length > 0) {
+      await asyncForEach(privateDrives, async (privateDrive: ArFSDriveMetaData) => {
+        const isDriveMetaDataSynced = await getDriveFromDriveTable(privateDrive.driveId);
+        if (!isDriveMetaDataSynced) {
+          await addDriveToDriveTable(privateDrive);
+        }
+      })
+    }
+    const publicDrives = await getAllMyPublicArDriveIds(user.login, user.walletPublicKey);
+    if (publicDrives.length > 0) {
+      await asyncForEach(publicDrives, async (publicDrive: ArFSDriveMetaData) => {
+        const isDriveMetaDataSynced = await getDriveFromDriveTable(publicDrive.driveId);
+        if (!isDriveMetaDataSynced) {
+          await addDriveToDriveTable(publicDrive);
+        }
+      })
+    }
+    return "Success"
+  }
+  catch (err) {
+    console.log (err)
+    return "Error"
+  }
+}

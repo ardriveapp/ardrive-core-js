@@ -455,7 +455,7 @@ export const checkUploadStatus = async (login: string) => {
       } else if (status === 410 || status === 404) {
         console.log('%s Drive metadata failed to be uploaded (TX_FAILED)', unsyncedDrive.driveName);
         // Retry metadata transaction
-        await setFileMetaDataSyncStatus ('1', unsyncedDrive.id)
+        await setFileMetaDataSyncStatus (1, unsyncedDrive.id)
       }
     })
     return 'Success checking upload file, folder and drive sync status';

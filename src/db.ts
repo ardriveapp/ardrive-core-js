@@ -576,6 +576,10 @@ export const setProfileWalletBalance = (walletBalance: number, login: string) =>
   return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [walletBalance, login]);
 }
 
+// Sets a Drive to be synchronized
+export const setDriveToSync = (driveId: string) => {
+  return get(`UPDATE Drive SET isLocal = 1 WHERE driveId = ?`, [driveId]);
+}
 export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string) => {
   return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
 }
@@ -679,15 +683,19 @@ export const getDriveFromDriveTable = (driveId: string) => {
 }
 
 export const getAllDrivesByLoginFromDriveTable = (login: string) => {
-  return all(`SELECT * FROM Drive WHERE login = ?`, [login]);
+  return all(`SELECT * FROM Drive WHERE login = ? AND isLocal = 1`, [login]);
+};
+
+export const getAllUnSyncedPersonalDrivesByLoginFromDriveTable = (login: string, drivePrivacy: string) => {
+  return all(`SELECT * FROM Drive WHERE login = ? AND drivePrivacy = ? AND driveSharing = 'personal' AND isLocal = 0 AND driveName != 'Invalid Drive Password'`, [login, drivePrivacy]);
 };
 
 export const getAllPersonalDrivesByLoginFromDriveTable = (login: string) => {
-  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = 'personal'`, [login]);
+  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = 'personal' AND isLocal = 1`, [login]);
 };
 
 export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing: string, drivePrivacy: string) => {
-  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = ? AND drivePrivacy = ?`, [login, driveSharing, drivePrivacy]);
+  return all(`SELECT * FROM Drive WHERE login = ? AND driveSharing = ? AND drivePrivacy = ? AND isLocal = 1`, [login, driveSharing, drivePrivacy]);
 };
 
 const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {
