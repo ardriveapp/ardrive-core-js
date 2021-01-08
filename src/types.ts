@@ -47,7 +47,6 @@ export interface ArFSDriveMetaData {
   driveAuthMode: string,
   metaDataTxId: string,
   metaDataSyncStatus: number,
-  permaWebLink: string,
 };
 
 export interface ArFSFileMetaData {

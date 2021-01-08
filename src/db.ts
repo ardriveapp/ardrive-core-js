@@ -59,6 +59,46 @@ const all = (sql: any, params: any[] = []): Promise<any[]> => {
   });
 };
 
+// This table stores bundled transaction metadata for status tracking. 
+// This table is not required to be synchronized, and is only used for new data uploads.
+const createBundleTable = async () => {
+  const sql = `CREATE TABLE IF NOT EXISTS Bundle (
+      id integer NOT NULL PRIMARY KEY,
+      login text,
+      bundleTxId text UNIQUE,
+      bundleSyncStatus integer DEFAULT 0,
+      uploader text,
+      uploadTime integer
+    );`;
+  return run(sql);
+};
+
+// This table stores each attached personal or shared Drive for each user.
+const createDriveTable = async () => {
+  const sql = `CREATE TABLE IF NOT EXISTS Drive (
+      id integer NOT NULL PRIMARY KEY,
+      login text,
+      appName text,
+      appVersion text,
+      driveName text,
+      rootFolderId text,
+      cipher text,
+      cipherIV text,
+      unixTime integer,
+      arFS text,
+      driveId text UNIQUE,
+      driveSharing text,
+      drivePrivacy text,
+      driveAuthMode text,
+      metaDataTxId text,
+      metaDataSyncStatus integer DEFAULT 0,
+      lastBlockHeight integer DEFAULT 0,
+      isLocal integer DEFAULT 0
+    );`;
+  return run(sql);
+};
+
+// This table stores the encrypted Arweave Wallet JWK, local wallet balance, sync folder path and other personalized application settings
 const createProfileTable = async () => {
   const sql = `CREATE TABLE IF NOT EXISTS Profile (
         id integer NOT NULL PRIMARY KEY,
@@ -73,6 +113,8 @@ const createProfileTable = async () => {
   return run(sql);
 };
 
+// This is the primary data table for all Arweave File System metadata for drive root folders, folders and files.  
+// It also contains other metadata to support the application, such as file hashes, paths, transaction data as well as synchronization status
 const createSyncTable = () => {
   const sql = `CREATE TABLE IF NOT EXISTS Sync (
         id integer NOT NULL PRIMARY KEY,
@@ -91,57 +133,21 @@ const createSyncTable = () => {
         filePath text,
         fileName text,
         fileHash text,
-        fileSize integer,
-        lastModifiedDate integer,
+        fileSize integer DEFAULT 0,
+        lastModifiedDate integer DEFAULT 0,
         fileVersion integer DEFAULT 0,
         cipher text,
         dataCipherIV text,
         metaDataCipherIV text,
         permaWebLink text,
-        fileDataSyncStatus text,
-        fileMetaDataSyncStatus text,
-        cloudOnly INTEGER DEFAULT 0,
-        isPublic text DEFAULT 0,
-        isLocal text,
+        fileDataSyncStatus integer DEFAULT 0,
+        fileMetaDataSyncStatus integer DEFAULT 0,
+        cloudOnly integer DEFAULT 0,
+        isPublic integer DEFAULT 0,
+        isLocal integer DEFAULT 0,
         uploader text,
         uploadTime integer DEFAULT 0
      );`;
-  return run(sql);
-};
-
-const createDriveTable = async () => {
-  const sql = `CREATE TABLE IF NOT EXISTS Drive (
-      id integer NOT NULL PRIMARY KEY,
-      login text,
-      appName text,
-      appVersion text,
-      driveName text,
-      rootFolderId text,
-      cipher text,
-      cipherIV text,
-      unixTime integer,
-      arFS text,
-      driveId text UNIQUE,
-      driveSharing text,
-      drivePrivacy text,
-      driveAuthMode text,
-      metaDataTxId text,
-      metaDataSyncStatus integer,
-      permaWebLink text,
-      lastBlockHeight integer DEFAULT 0
-    );`;
-  return run(sql);
-};
-
-const createBundleTable = async () => {
-  const sql = `CREATE TABLE IF NOT EXISTS Bundle (
-      id integer NOT NULL PRIMARY KEY,
-      login text,
-      bundleTxId text UNIQUE,
-      bundleSyncStatus integer DEFAULT 0,
-      uploader text,
-      uploadTime integer
-    );`;
   return run(sql);
 };
 
@@ -222,10 +228,9 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
     driveAuthMode,
     metaDataTxId,
     metaDataSyncStatus,
-    permaWebLink,
   } = drive;
   return run(
-    'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, permaWebLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       login,
       appName,
@@ -242,12 +247,11 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
       driveAuthMode,
       metaDataTxId,
       metaDataSyncStatus,
-      permaWebLink,
     ]
   )
 }
 
-export const addToBundleTable = (login: string, bundleTxId: string, bundleSyncStatus: string, uploadTime: number ) => {
+export const addToBundleTable = (login: string, bundleTxId: string, bundleSyncStatus: number, uploadTime: number ) => {
   return run('REPLACE INTO Bundle (login, bundleTxId, bundleSyncStatus, uploadTime) VALUES (?, ?, ?, ?)', [
     login,
     bundleTxId,
@@ -383,7 +387,7 @@ export const getBundleUploadTimeFromBundleTable = (id: number) : Promise<number>
   return get(`SELECT uploadTime FROM Bundle WHERE id = ?`, [id]);
 };
 
-export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: string; metaDataTxId: string; metaDataCipherIV: string, cipher: string, id: number }) => {
+export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: number; metaDataTxId: string; metaDataCipherIV: string, cipher: string, id: number }) => {
   const { fileMetaDataSyncStatus, metaDataTxId, metaDataCipherIV, cipher, id } = file;
   return get(`UPDATE Sync SET fileMetaDataSyncStatus = ?, metaDataTxId = ?, metaDataCipherIV = ?, cipher = ? WHERE id = ?`, [
     fileMetaDataSyncStatus,
@@ -394,7 +398,7 @@ export const updateFileMetaDataSyncStatus = (file: { fileMetaDataSyncStatus: str
   ]);
 };
 
-export const updateFileDataSyncStatus = (file: { fileDataSyncStatus: string, dataTxId: string, dataCipherIV: string, cipher: string, id: number }) => {
+export const updateFileDataSyncStatus = (file: { fileDataSyncStatus: number, dataTxId: string, dataCipherIV: string, cipher: string, id: number }) => {
   const { fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id } = file;
   return get(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ?, dataCipherIV = ?, cipher = ? WHERE id = ?`, [fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id]);
 };
@@ -406,8 +410,8 @@ export const updateFileInSyncTable = (file: {
   fileVersion: any;
   metaDataTxId: any;
   dataTxId: any;
-  fileDataSyncStatus: any;
-  fileMetaDataSyncStatus: any;
+  fileDataSyncStatus: number;
+  fileMetaDataSyncStatus: number;
   permaWebLink: any;
   id: any;
 }) => {
@@ -468,11 +472,11 @@ export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, ci
   return get(`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, cipher, cipherIV, driveId]);
 };
 
-export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: string, id: number) => {
+export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: number, id: number) => {
   return get(`UPDATE Sync SET fileMetaDataSyncStatus = ? WHERE id = ?`, [fileMetaDataSyncStatus, id]);
 };
 
-export const setFileDataSyncStatus = (fileDataSyncStatus: string, id: number) => {
+export const setFileDataSyncStatus = (fileDataSyncStatus: number, id: number) => {
   return get(`UPDATE Sync SET fileDataSyncStatus = ? WHERE id = ?`, [fileDataSyncStatus, id]);
 };
 
@@ -493,7 +497,7 @@ export const completeBundleFromBundleTable = (id: number) => {
   return get('UPDATE Bundle Set bundleSyncStatus = 3 WHERE id = ?', [id])
 }
 
-export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; permaWebLink: any; id: any }) => {
+export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: number; permaWebLink: any; id: any }) => {
   const { fileDataSyncStatus, permaWebLink, id } = file;
   return get(`UPDATE Sync SET fileDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
     fileDataSyncStatus,
@@ -503,7 +507,7 @@ export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: any; p
 };
 
 export const completeFileMetaDataFromSyncTable = (file: {
-  fileMetaDataSyncStatus: any;
+  fileMetaDataSyncStatus: number;
   permaWebLink: any;
   id: any;
 }) => {
