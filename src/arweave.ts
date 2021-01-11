@@ -151,6 +151,7 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
   }
   catch (err) {
     console.log (err);
+    console.log ("Error getting Shared Public Drive")
     return drive;
   }
 }
@@ -262,13 +263,20 @@ const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) 
 
 // Gets all of the ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
-const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string) => {
+const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, lastBlockHeight: number) => {
   try {
     let allPublicDrives : ArFSDriveMetaData[] = [];
+
+    // Search last 5 blocks minimum
+    if (lastBlockHeight > 5) {
+      lastBlockHeight -= 5;
+    }
+
     // Create the Graphql Query to search for all drives relating to the User wallet
     const query = {
       query: `query {
       transactions(
+        block: {min: ${lastBlockHeight}}
         first: 100
         sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
@@ -375,11 +383,18 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string) 
 
 // Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
-const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
+const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: number) => {
   let allPrivateDrives : ArFSDriveMetaData[] = [];
+
+  // Search last 5 blocks minimum
+  if (lastBlockHeight > 5) {
+    lastBlockHeight -= 5;
+  }
+
   const query = {
     query: `query {
     transactions(
+      block: {min: ${lastBlockHeight}}
       first: 100
       sort: HEIGHT_ASC
       owners: ["${user.walletPublicKey}"]
@@ -491,7 +506,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       allPrivateDrives.push(drive)
     }
     catch (err) {
-      // console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
+      console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
       drive.driveName = "Invalid Drive Password";
       drive.rootFolderId = "";
       allPrivateDrives.push(drive)

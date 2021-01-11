@@ -94,117 +94,6 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
   return uploadBatch;
 };
 
-// Tags and Uploads a single file to your ArDrive
-/*async function uploadArDriveFileData(
-  user: ArDriveUser,
-  fileToUpload: ArFSFileMetaData,
-) {
-  let dataTxId = '';
-  let arPrice = 0;
-  try {
-    const winston = await getWinston(fileToUpload.fileSize);
-    arPrice = +winston * 0.000000000001;
-
-    // Public file, do not encrypt
-    if (+fileToUpload.isPublic === 1) {
-      console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
-      dataTxId = await createArDrivePublicDataTransaction(
-        user.walletPrivateKey,
-        fileToUpload.filePath,
-        fileToUpload.contentType,
-        fileToUpload.id,
-      );
-    } else {
-      // Private file, so it must be encrypted
-      console.log('Encrypting and Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
-      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
-      const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
-      dataTxId = await createArDrivePrivateDataTransaction(fileKey, fileToUpload, user.walletPrivateKey);
-    }
-    // Update the uploadTime of the file so we can track the status
-    const currentTime = Math.round(Date.now() / 1000)
-    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
-
-    // Send the ArDrive Profit Sharing Community Fee
-    // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
-
-    return {dataTxId, arPrice};
-  } catch (err) {
-    console.log(err);
-    return {dataTxId, arPrice}
-  }
-} */
-
-// Tags and Uploads a single file/folder metadata to your ArDrive
-/* async function uploadArDriveFileMetaData(
-  user: ArDriveUser,
-  fileToUpload: ArFSFileMetaData 
-) {
-  try {
-    // create secondary metadata, used to further ID the file (with encryption if necessary)
-    const secondaryFileMetaDataTags = {
-      name: fileToUpload.fileName,
-      size: fileToUpload.fileSize,
-      lastModifiedDate: fileToUpload.lastModifiedDate,
-      dataTxId: fileToUpload.dataTxId,
-      dataContentType: fileToUpload.contentType,
-    };
-    // Convert to JSON string
-    const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
-    if (+fileToUpload.isPublic === 1) {
-      // Public file, do not encrypt
-      await createArDrivePublicMetaDataTransaction(user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
-    } else {
-      // Private file, so it must be encrypted
-      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
-      const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
-      await createArDrivePrivateMetaDataTransaction(fileKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
-    }
-
-    // Update the uploadTime of the file so we can track the status
-    const currentTime = Math.round(Date.now() / 1000)
-    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
-
-    return 'Success';
-  } catch (err) {
-    console.log(err);
-    return 'Error uploading file metadata';
-  }
-} */
-
-// Tags and Uploads a single file/folder metadata to your ArDrive
-/*async function uploadArDriveFolderMetaData(
-  user: ArDriveUser,
-  fileToUpload: ArFSFileMetaData 
-) {
-  try {
-    // create secondary metadata, used to further ID the file (with encryption if necessary)
-    const secondaryFileMetaDataTags = {
-      name: fileToUpload.fileName,
-    };
-    // Convert to JSON string
-    const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
-    if (+fileToUpload.isPublic === 1) {
-      // Public file, do not encrypt
-      // console.log ("Getting ready to upload public metadata for %s", fileToUpload.fileName)
-      await createArDrivePublicMetaDataTransaction(user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
-    } else {
-      // Private file, so it must be encrypted using the Drive Key
-      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
-      await createArDrivePrivateMetaDataTransaction(driveKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
-    }
-
-    // Update the uploadTime of the file so we can track the status
-    const currentTime = Math.round(Date.now() / 1000)
-    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
-
-    return 'Success';
-  } catch (err) {
-    console.log(err);
-    return 'Error uploading file metadata';
-  }
-} */
-
 // Tags and creates a new data item (ANS-102) to be bundled
 async function uploadArDriveFileDataItem(user: ArDriveUser, fileToUpload: ArFSFileMetaData) : Promise<DataItemJson | null> {
   let dataItem : DataItemJson | null;
@@ -533,10 +422,10 @@ export const checkUploadStatus = async (login: string) => {
     console.log(err);
     return 'ERROR processing files';
   }
-};
+}; */
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
-export const checkUploadStatus = async (login: string) => {
+/*export const checkUploadStatus = async (login: string) => {
   try {
     console.log('---Checking Upload Status---');
     let permaWebLink: string;
@@ -640,3 +529,114 @@ export const checkUploadStatus = async (login: string) => {
     return 'Error checking upload file status';
   }
 };*/
+
+// Tags and Uploads a single file to your ArDrive
+/*async function uploadArDriveFileData(
+  user: ArDriveUser,
+  fileToUpload: ArFSFileMetaData,
+) {
+  let dataTxId = '';
+  let arPrice = 0;
+  try {
+    const winston = await getWinston(fileToUpload.fileSize);
+    arPrice = +winston * 0.000000000001;
+
+    // Public file, do not encrypt
+    if (+fileToUpload.isPublic === 1) {
+      console.log('Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
+      dataTxId = await createArDrivePublicDataTransaction(
+        user.walletPrivateKey,
+        fileToUpload.filePath,
+        fileToUpload.contentType,
+        fileToUpload.id,
+      );
+    } else {
+      // Private file, so it must be encrypted
+      console.log('Encrypting and Uploading %s (%d bytes) at %s to the Permaweb', fileToUpload.filePath, fileToUpload.fileSize, arPrice);
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
+      dataTxId = await createArDrivePrivateDataTransaction(fileKey, fileToUpload, user.walletPrivateKey);
+    }
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
+
+    // Send the ArDrive Profit Sharing Community Fee
+    // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
+
+    return {dataTxId, arPrice};
+  } catch (err) {
+    console.log(err);
+    return {dataTxId, arPrice}
+  }
+} */
+
+// Tags and Uploads a single file/folder metadata to your ArDrive
+/* async function uploadArDriveFileMetaData(
+  user: ArDriveUser,
+  fileToUpload: ArFSFileMetaData 
+) {
+  try {
+    // create secondary metadata, used to further ID the file (with encryption if necessary)
+    const secondaryFileMetaDataTags = {
+      name: fileToUpload.fileName,
+      size: fileToUpload.fileSize,
+      lastModifiedDate: fileToUpload.lastModifiedDate,
+      dataTxId: fileToUpload.dataTxId,
+      dataContentType: fileToUpload.contentType,
+    };
+    // Convert to JSON string
+    const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
+    if (+fileToUpload.isPublic === 1) {
+      // Public file, do not encrypt
+      await createArDrivePublicMetaDataTransaction(user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
+    } else {
+      // Private file, so it must be encrypted
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey (fileToUpload.fileId, driveKey);
+      await createArDrivePrivateMetaDataTransaction(fileKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
+    }
+
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
+
+    return 'Success';
+  } catch (err) {
+    console.log(err);
+    return 'Error uploading file metadata';
+  }
+} */
+
+// Tags and Uploads a single file/folder metadata to your ArDrive
+/*async function uploadArDriveFolderMetaData(
+  user: ArDriveUser,
+  fileToUpload: ArFSFileMetaData 
+) {
+  try {
+    // create secondary metadata, used to further ID the file (with encryption if necessary)
+    const secondaryFileMetaDataTags = {
+      name: fileToUpload.fileName,
+    };
+    // Convert to JSON string
+    const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
+    if (+fileToUpload.isPublic === 1) {
+      // Public file, do not encrypt
+      // console.log ("Getting ready to upload public metadata for %s", fileToUpload.fileName)
+      await createArDrivePublicMetaDataTransaction(user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
+    } else {
+      // Private file, so it must be encrypted using the Drive Key
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToUpload.driveId, user.walletPrivateKey);
+      await createArDrivePrivateMetaDataTransaction(driveKey, user.walletPrivateKey, fileToUpload, secondaryFileMetaDataJSON);
+    }
+
+    // Update the uploadTime of the file so we can track the status
+    const currentTime = Math.round(Date.now() / 1000)
+    await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
+
+    return 'Success';
+  } catch (err) {
+    console.log(err);
+    return 'Error uploading file metadata';
+  }
+} */
