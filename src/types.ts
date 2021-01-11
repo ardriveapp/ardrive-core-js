@@ -42,12 +42,12 @@ export interface ArFSDriveMetaData {
   unixTime: number,
   arFS: string,
   driveId: string,
-  driveSharing: string,
+  driveSharing?: string,
   drivePrivacy: string,
   driveAuthMode: string,
   metaDataTxId: string,
   metaDataSyncStatus: number,
-  permaWebLink: string,
+  isLocal?: number,
 };
 
 export interface ArFSFileMetaData {

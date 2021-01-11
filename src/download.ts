@@ -3,8 +3,8 @@
 // upload.js
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync, checkExactFileExistsSync } from './common';
-import { getAllMyDataFileTxs, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
+import { sleep, asyncForEach, gatewayURL, extToMime, setAllFolderHashes, Utf8ArrayToStr, setAllFileHashes, setAllParentFolderIds, setNewFilePaths, setFolderChildrenPaths, updateFilePath, checkForMissingLocalFiles, setAllFolderSizes, checkFileExistsSync, checkExactFileExistsSync} from './common';
+import { getAllMyDataFileTxs, getAllMyPrivateArDriveIds, getAllMyPublicArDriveIds, getAllMySharedDataFileTxs, getLatestBlockHeight, getPrivateTransactionCipherIV, getTransactionData } from './arweave';
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import {
   getFilesToDownload,
@@ -22,6 +22,10 @@ import {
   updateFileHashInSyncTable,
   getDriveLastBlockHeight,
   setDriveLastBlockHeight,
+  addDriveToDriveTable,
+  getDriveFromDriveTable,
+  getProfileLastBlockHeight,
+  setProfileLastBlockHeight,
 } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
 import { createWriteStream } from 'fs';
@@ -128,10 +132,10 @@ async function downloadArDriveFileByTx(
         });
       });
     } 
+
   } catch (err) {
-    console.log(err);
-    console.log ("Error downloading file")
-    console.log (fileToDownload)
+    //console.log(err);
+    console.log ("Error downloading file data %s to %s", fileToDownload.fileName, fileToDownload.filePath)
     return 'Error downloading file';
   }
 }
@@ -339,7 +343,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
         await getFileMetaDataFromTx(privateTxId, user); 
       });
     }
-    // Get and set the latest block height in the profile
+    // Get and set the latest block height for each drive synced
     const latestBlockHeight : number = await getLatestBlockHeight();
     await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
@@ -357,7 +361,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
         await getFileMetaDataFromTx(publicTxId, user);
       });
     }
-    // Get and set the latest block height in the profile
+    // Get and set the latest block height for each drive synced
     const latestBlockHeight : number = await getLatestBlockHeight();
     await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
@@ -375,7 +379,7 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
         await getFileMetaDataFromTx(sharedPublicTxId, user);
       });
     }
-    // Get and set the latest block height in the profile
+    // Get and set the latest block height for each drive synced
     const latestBlockHeight : number = await getLatestBlockHeight();
     await setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
   });
@@ -466,6 +470,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
               // Does this exact file already exist locally?  If not, then we download it
               if (!checkFileExistsSync(fileToDownload.filePath)) {
                 // File is not local, so we download and decrypt if necessary
+                // UPDATE THIS TO NOT TRY TO SET LOCAL TIME
                 await downloadArDriveFileByTx(user, fileToDownload);
                 let currentDate = new Date()
                 let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate))
@@ -511,7 +516,8 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
           }
           return 'Checked file';
         } catch (err) {
-          console.log (err)
+          // console.log (err)
+          console.log ("Error downloading file %s to %s", fileToDownload.fileName, fileToDownload.filePath)
           return 'Error downloading file'
         }
       },
@@ -544,3 +550,48 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 
   return 'Downloaded all ArDrive files';
 };
+
+// Gets all Private and Public Drives associated with a user profile and adds to the database
+export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
+  console.log('---Getting all your Personal Drives---');
+  // Get the last block height that has been synced
+  let lastBlockHeight = await getProfileLastBlockHeight(user.login)
+
+  // If undefined, by default we sync from block 0
+  if (lastBlockHeight === undefined) {
+    lastBlockHeight = 0;
+  } else {
+    lastBlockHeight = lastBlockHeight.lastBlockHeight;
+  }
+
+  // Get all private and public drives since last block height
+  try {
+    const privateDrives = await getAllMyPrivateArDriveIds(user, lastBlockHeight);
+    if (privateDrives.length > 0) {
+      await asyncForEach(privateDrives, async (privateDrive: ArFSDriveMetaData) => {
+        const isDriveMetaDataSynced = await getDriveFromDriveTable(privateDrive.driveId);
+        if (!isDriveMetaDataSynced) {
+          await addDriveToDriveTable(privateDrive);
+        }
+      })
+    }
+    const publicDrives = await getAllMyPublicArDriveIds(user.login, user.walletPublicKey, lastBlockHeight);
+    if (publicDrives.length > 0) {
+      await asyncForEach(publicDrives, async (publicDrive: ArFSDriveMetaData) => {
+        const isDriveMetaDataSynced = await getDriveFromDriveTable(publicDrive.driveId);
+        if (!isDriveMetaDataSynced) {
+          await addDriveToDriveTable(publicDrive);
+        }
+      })
+    }
+    // Get and set the latest block height for the profile that has been synced
+    const latestBlockHeight : number = await getLatestBlockHeight();
+    await setProfileLastBlockHeight(latestBlockHeight, user.login);
+    return "Success"
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("Error getting all Personal Drives")
+    return "Error"
+  }
+}
