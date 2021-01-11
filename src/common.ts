@@ -3,7 +3,7 @@ import * as mime from 'mime-types';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import path, { dirname } from 'path';
-import { Wallet, ArFSDriveMetaData, ArFSFileMetaData } from './types';
+import { Wallet, ArFSDriveMetaData, ArFSFileMetaData, ArDriveUser } from './types';
 import { 
   getAllLocalFoldersFromSyncTable, 
   getAllMissingParentFolderIdsFromSyncTable, 
@@ -21,8 +21,10 @@ import {
   getAllLatestFileAndFolderVersionsFromSyncTable,
   setFileToDownload,
   updateFileSizeInSyncTable} from './db';
-import { checksumFile } from './crypto';
+import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
 
+export const prodAppUrl = 'https://app.ardrive.io'
+export const stagingAppUrl = 'https://staging.ardrive.io'
 export const gatewayURL = 'https://arweave.net/';
 //export const gatewayURL = 'https://arweave.dev/';
 export const graphQLURL = gatewayURL.concat('graphql')
@@ -320,7 +322,7 @@ const createNewPublicDrive = async (login: string, driveName: string) : Promise<
     driveAuthMode: '',
     metaDataTxId: '0',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
-    permaWebLink: '',
+    isLocal: 1,
   };
   console.log ("Creating a new public drive for %s, %s | %s", login, driveName, driveId)
   return drive;
@@ -348,12 +350,31 @@ const createNewPrivateDrive = async (login: string, driveName: string) : Promise
     driveAuthMode: 'password',
     metaDataTxId: '0',
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
-    permaWebLink: '',
+    isLocal: 1,
   };
   console.log ("Creating a new private drive for %s, %s | %s", login, driveName, driveId)
   return drive;
 }
 
+// Derives a file key from the drive key and formats it into a sharing link
+const createFileSharingLink = async (user: ArDriveUser, fileToShare: ArFSFileMetaData) : Promise<string> => {
+  let fileSharingUrl = ''
+  if (fileToShare.isPublic === 0) {
+    try {
+      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToShare.driveId, user.walletPrivateKey);
+      const fileKey : Buffer = await deriveFileKey(fileToShare.fileId, driveKey);
+      fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view?fileKey=", fileKey.toString('base64'))
+    }
+    catch (err) {
+      console.log (err)
+      console.log ("Cannot generate Private File Sharing Link");
+      fileSharingUrl = "Error";
+    }
+  } else {
+    fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view")
+  }
+  return fileSharingUrl
+}
 async function Utf8ArrayToStr(array: any) : Promise<string> {
   var out, i, len, c;
   var char2, char3;
@@ -398,7 +419,6 @@ const weightedRandom = (dict: Record<string, number>): string | undefined => {
       return addr;
     }
   }
-
   return;
 };
 
@@ -443,4 +463,5 @@ export {
   updateFilePath,
   weightedRandom,
   sanitizePath,
+  createFileSharingLink,
 };

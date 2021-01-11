@@ -491,7 +491,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser) => {
       allPrivateDrives.push(drive)
     }
     catch (err) {
-      console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
+      // console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
       drive.driveName = "Invalid Drive Password";
       drive.rootFolderId = "";
       allPrivateDrives.push(drive)
