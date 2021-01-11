@@ -356,25 +356,50 @@ const createNewPrivateDrive = async (login: string, driveName: string) : Promise
   return drive;
 }
 
-// Derives a file key from the drive key and formats it into a sharing link
-const createFileSharingLink = async (user: ArDriveUser, fileToShare: ArFSFileMetaData) : Promise<string> => {
+// Derives a file key from the drive key and formats it into a Private file sharing link using the file id
+const createPrivateFileSharingLink = async (user: ArDriveUser, fileToShare: ArFSFileMetaData) : Promise<string> => {
   let fileSharingUrl = ''
-  if (fileToShare.isPublic === 0) {
-    try {
-      const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToShare.driveId, user.walletPrivateKey);
-      const fileKey : Buffer = await deriveFileKey(fileToShare.fileId, driveKey);
-      fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view?fileKey=", fileKey.toString('base64'))
-    }
-    catch (err) {
-      console.log (err)
-      console.log ("Cannot generate Private File Sharing Link");
-      fileSharingUrl = "Error";
-    }
-  } else {
-    fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view")
+  try {
+    const driveKey : Buffer = await deriveDriveKey (user.dataProtectionKey, fileToShare.driveId, user.walletPrivateKey);
+    const fileKey : Buffer = await deriveFileKey(fileToShare.fileId, driveKey);
+    fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view?fileKey=", fileKey.toString('base64'))
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("Cannot generate Private File Sharing Link");
+    fileSharingUrl = "Error";
   }
   return fileSharingUrl
 }
+
+// Creates a Public file sharing link using the File Id.
+const createPublicFileSharingLink = async (fileToShare: ArFSFileMetaData) : Promise<string> => {
+  let fileSharingUrl = ''
+  try {
+    fileSharingUrl = stagingAppUrl.concat("/#/file/", fileToShare.fileId, "/view")
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("Cannot generate Public File Sharing Link");
+    fileSharingUrl = "Error";
+  }
+  return fileSharingUrl
+}
+
+// Creates a Public drive sharing link using the Drive Id
+const createPublicDriveSharingLink = async (driveToShare: ArFSDriveMetaData) : Promise<string> => {
+  let driveSharingUrl = ''
+  try {
+    driveSharingUrl = stagingAppUrl.concat("/#/drives/", driveToShare.driveId)
+  }
+  catch (err) {
+    console.log (err)
+    console.log ("Cannot generate Public Drive Sharing Link");
+    driveSharingUrl = "Error";
+  }
+  return driveSharingUrl
+}
+
 async function Utf8ArrayToStr(array: any) : Promise<string> {
   var out, i, len, c;
   var char2, char3;
@@ -463,5 +488,7 @@ export {
   updateFilePath,
   weightedRandom,
   sanitizePath,
-  createFileSharingLink,
+  createPublicFileSharingLink,
+  createPrivateFileSharingLink,
+  createPublicDriveSharingLink,
 };
