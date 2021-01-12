@@ -35,7 +35,6 @@ export const appVersion = '0.1.0';
 export const arFSVersion = '0.11';
 export const cipher = "AES256-GCM"
 
-const limestoneApi = require('@limestone/api');
 const { v4: uuidv4 } = require('uuid');
 const { hashElement } = require('folder-hash');
 
@@ -468,17 +467,19 @@ const sanitizePath = async (path: string) : Promise<string> => {
 }
 
 const getArUSDPrice = async () : Promise<number> => {
-  let usdPrice = 1;
+  let usdPrice = 0;
   let arDriveCommunityFee = await getArDriveFee()
   try {
-    usdPrice = 1 / (await limestoneApi.getPrice("AR")).price;
-  } catch {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd"
     );
-    usdPrice = 1 / (await res.clone().json()).arweave.usd;
+    usdPrice = (await res.clone().json()).arweave.usd;
+    return parseFloat((usdPrice * arDriveCommunityFee).toFixed(4));
   }
-  return parseFloat((usdPrice * arDriveCommunityFee).toFixed(4));
+  catch (err) {
+    console.log ("Error getting AR/USD price from Coingecko")
+    return 0;
+  }
 };
 
 export {
