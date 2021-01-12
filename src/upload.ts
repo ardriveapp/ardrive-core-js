@@ -16,7 +16,7 @@ import {
   createArDrivePublicDataTransaction,
   createArDrivePublicMetaDataTransaction,
 } from './arweave';
-import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync } from './common';
+import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync, getArUSDPrice } from './common';
 import { deriveDriveKey, deriveFileKey, } from './crypto';
 import {
   getFilesToUploadFromSyncTable,
@@ -49,6 +49,7 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
   let winston = 0;
   let uploadBatch: UploadBatch = {
     totalArDrivePrice: 0,
+    totalUSDPrice: 0,
     totalSize: '0',
     totalNumberOfFileUploads: 0,
     totalNumberOfMetaDataUploads: 0,
@@ -96,6 +97,7 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
       arDriveFee = 0.00001;
     }
     uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
+    uploadBatch.totalUSDPrice = uploadBatch.totalArDrivePrice * await getArUSDPrice();
     uploadBatch.totalSize = formatBytes(totalSize);
     
     return uploadBatch;
@@ -206,7 +208,7 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
     let items : DataItemJson[] = [];
     let filesUploaded = 0;
     let bundledFilesUploaded = 0;
-    let totalPrice = 0;
+    let totalARPrice = 0;
     let totalSize = 0;
     let moreItems = 0;
     console.log('---Uploading All Queued Files and Folders---');
@@ -221,7 +223,7 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
           console.log ("Preparing large file - %s", filesToUpload[n].fileName)
           const uploadedFile = await uploadArDriveFileData(user, filesToUpload[n]);
           filesToUpload[n].dataTxId = uploadedFile.dataTxId;
-          totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
+          totalARPrice += uploadedFile.arPrice; // Sum up all of the fees paid
           await uploadArDriveFileMetaData(user, filesToUpload[n]);
           filesUploaded += 1;
         } 
@@ -233,7 +235,7 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
             // Get the price of this upload
             const winston = await getWinston(filesToUpload[n].fileSize);
             totalSize += filesToUpload[n].fileSize
-            totalPrice += +winston * 0.000000000001; // Sum up all of the fees paid
+            totalARPrice += +winston * 0.000000000001; // Sum up all of the fees paid
             filesToUpload[n].dataTxId = fileDataItem.id;
             items.push(fileDataItem);
             bundledFilesUploaded += 1;
@@ -282,8 +284,9 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
     // If any bundles or large files have been uploaded, we send the ArDrive Profit Sharing Tip and create drive transaction if necessary
     if (bundledFilesUploaded > 0 || filesUploaded > 0) {
       // Send the tip to a random ArDrive community member
-      await sendArDriveFee(user.walletPrivateKey, totalPrice);
-      console.log('Uploaded %s file(s) (totaling %s AR) to your ArDrive!', (filesUploaded + bundledFilesUploaded), totalPrice);
+      await sendArDriveFee(user.walletPrivateKey, totalARPrice);
+      let totalUSDPrice = totalARPrice * await getArUSDPrice()
+      console.log('Uploaded %s file(s) (totaling %s AR, %s USD) to your ArDrive!', (filesUploaded + bundledFilesUploaded), totalARPrice, totalUSDPrice);
 
       // Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
       // Check for unsynced drive entities and create if necessary

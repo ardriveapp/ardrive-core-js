@@ -887,7 +887,7 @@ const createArDrivePublicDataTransaction = async (
   try {
     const fileToUpload = fs.readFileSync(filePath);
     const transaction = await arweave.createTransaction(
-      { data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+      { data: fileToUpload }, // How to replace this?
       JSON.parse(walletPrivateKey),
     );
     // Tag file
@@ -1024,7 +1024,7 @@ const createArDrivePublicDataItemTransaction = async (
 ) : Promise<DataItemJson | null> => {
   try {
     const fileToUpload = fs.readFileSync(filePath);
-    const item = await arBundles.createData({ data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+    const item = await arBundles.createData({ data: fileToUpload }, // How to replace this?
       JSON.parse(walletPrivateKey),
     );
 
