@@ -22,6 +22,7 @@ import {
   setFileToDownload,
   updateFileSizeInSyncTable} from './db';
 import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
+import { getArDriveFee } from './arweave';
 
 export const prodAppUrl = 'https://app.ardrive.io'
 export const stagingAppUrl = 'https://staging.ardrive.io'
@@ -34,6 +35,7 @@ export const appVersion = '0.1.0';
 export const arFSVersion = '0.11';
 export const cipher = "AES256-GCM"
 
+const limestoneApi = require('@limestone/api');
 const { v4: uuidv4 } = require('uuid');
 const { hashElement } = require('folder-hash');
 
@@ -447,6 +449,7 @@ const weightedRandom = (dict: Record<string, number>): string | undefined => {
   return;
 };
 
+// Ensures a file path does not contain invalid characters
 const sanitizePath = async (path: string) : Promise<string> => {
   path = path.replace(/[\\/:*?"<>|]/g, '')
   while(path.charAt(path.length-1) == '.') // remove trailing dots
@@ -463,6 +466,20 @@ const sanitizePath = async (path: string) : Promise<string> => {
     return path;
   }
 }
+
+const getArUSDPrice = async () : Promise<number> => {
+  let usdPrice = 1;
+  let arDriveCommunityFee = await getArDriveFee()
+  try {
+    usdPrice = 1 / (await limestoneApi.getPrice("AR")).price;
+  } catch {
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd"
+    );
+    usdPrice = 1 / (await res.clone().json()).arweave.usd;
+  }
+  return parseFloat((usdPrice * arDriveCommunityFee).toFixed(4));
+};
 
 export {
   sleep,
@@ -491,4 +508,5 @@ export {
   createPublicFileSharingLink,
   createPrivateFileSharingLink,
   createPublicDriveSharingLink,
+  getArUSDPrice,
 };

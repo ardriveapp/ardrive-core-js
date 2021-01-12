@@ -16,6 +16,7 @@ export interface ArDriveUser {
 
 export interface UploadBatch {
   totalArDrivePrice: number,
+  totalUSDPrice: number,
   totalSize: string,
   totalNumberOfFileUploads: number,
   totalNumberOfMetaDataUploads: number,

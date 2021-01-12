@@ -78,7 +78,7 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
     const query = {
       query: `query {
       transactions(
-        first: 1000000
+        first: 100
         sort: HEIGHT_ASC
         tags: [
           { name: "Drive-Id", values: "${driveId}" }
@@ -278,7 +278,6 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, 
       transactions(
         block: {min: ${lastBlockHeight}}
         first: 100
-        sort: HEIGHT_ASC
         owners: ["${walletPublicKey}"]
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"] }
@@ -396,7 +395,6 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
     transactions(
       block: {min: ${lastBlockHeight}}
       first: 100
-      sort: HEIGHT_ASC
       owners: ["${user.walletPublicKey}"]
       tags: [
         { name: "ArFS", values: "${arFSVersion}" }
@@ -605,7 +603,6 @@ const getAllMySharedDataFileTxs = async (arDriveId: any, lastBlockHeight: number
       query: `query {
       transactions(
         block: {min: ${lastBlockHeight}}
-        sort: HEIGHT_ASC
         tags: [
           { name: "App-Name", values: ["${appName}", "${webAppName}"]}
           { name: "Drive-Id", values: "${arDriveId}" }
@@ -890,7 +887,7 @@ const createArDrivePublicDataTransaction = async (
   try {
     const fileToUpload = fs.readFileSync(filePath);
     const transaction = await arweave.createTransaction(
-      { data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+      { data: fileToUpload }, // How to replace this?
       JSON.parse(walletPrivateKey),
     );
     // Tag file
@@ -1027,7 +1024,7 @@ const createArDrivePublicDataItemTransaction = async (
 ) : Promise<DataItemJson | null> => {
   try {
     const fileToUpload = fs.readFileSync(filePath);
-    const item = await arBundles.createData({ data: arweave.utils.concatBuffers([fileToUpload]) }, // How to replace this?
+    const item = await arBundles.createData({ data: fileToUpload }, // How to replace this?
       JSON.parse(walletPrivateKey),
     );
 
