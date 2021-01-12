@@ -481,7 +481,7 @@ async function uploadArDriveFileData(
     await updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime)
 
     // Send the ArDrive Profit Sharing Community Fee
-    // THIS IS COMMENTED OUT FOR THE ARDRIVE COMMUNITY DISTRIBUTION
+    await sendArDriveFee(user.walletPrivateKey, arPrice);
 
     return {dataTxId, arPrice};
   } catch (err) {
