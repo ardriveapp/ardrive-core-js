@@ -521,10 +521,9 @@ export const completeFileMetaDataFromSyncTable = (file: {
 };
 
 // Set a drive record to completely synchronized
-export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, permaWebLink: string, driveId: string) => {
-  return get(`UPDATE Drive SET metaDataSyncStatus = ?, permaWebLink = ? WHERE driveId = ?`, [
+export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, driveId: string) => {
+  return get(`UPDATE Drive SET metaDataSyncStatus = ? WHERE driveId = ?`, [
     metaDataSyncStatus,
-    permaWebLink,
     driveId,
   ]);
 }
