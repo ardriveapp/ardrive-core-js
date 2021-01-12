@@ -22,7 +22,6 @@ import {
   setFileToDownload,
   updateFileSizeInSyncTable} from './db';
 import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
-import { getArDriveFee } from './arweave';
 
 export const prodAppUrl = 'https://app.ardrive.io'
 export const stagingAppUrl = 'https://staging.ardrive.io'
@@ -468,13 +467,12 @@ const sanitizePath = async (path: string) : Promise<string> => {
 
 const getArUSDPrice = async () : Promise<number> => {
   let usdPrice = 0;
-  let arDriveCommunityFee = await getArDriveFee()
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd"
     );
     usdPrice = (await res.clone().json()).arweave.usd;
-    return parseFloat((usdPrice * arDriveCommunityFee).toFixed(4));
+    return usdPrice;
   }
   catch (err) {
     console.log ("Error getting AR/USD price from Coingecko")
