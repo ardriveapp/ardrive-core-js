@@ -118,7 +118,13 @@ export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) :
     if (sharedPublicDrive.metaDataTxId === '0') {
       return 'Invalid'
     }
+
+    // Set the drives login
     sharedPublicDrive.login = user.login;
+
+    // Set the drive to sync locally
+    sharedPublicDrive.isLocal = 1;
+    
     // Check if the drive path exists, if not, create it
     const drivePath : string = path.join(user.syncFolderPath, sharedPublicDrive.driveName);
     if (!fs.existsSync(drivePath)) {
