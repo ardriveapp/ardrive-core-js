@@ -235,7 +235,6 @@ async function getFileMetaDataFromTx(
 
     let dataJSON;
     let decryptedData = Buffer.from('');
-
     // If it is a private file or folder, the data will need decryption.
     if (fileToSync.cipher === 'AES256-GCM') {
       fileToSync.isPublic = 0;
@@ -556,6 +555,8 @@ export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
   console.log('---Getting all your Personal Drives---');
   // Get the last block height that has been synced
   let lastBlockHeight = await getProfileLastBlockHeight(user.login)
+  let privateDrives : ArFSDriveMetaData[] = [];
+  let publicDrives : ArFSDriveMetaData[] = [];
 
   // If undefined, by default we sync from block 0
   if (lastBlockHeight === undefined) {
@@ -566,7 +567,7 @@ export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
 
   // Get all private and public drives since last block height
   try {
-    const privateDrives = await getAllMyPrivateArDriveIds(user, lastBlockHeight);
+    privateDrives = await getAllMyPrivateArDriveIds(user, lastBlockHeight);
     if (privateDrives.length > 0) {
       await asyncForEach(privateDrives, async (privateDrive: ArFSDriveMetaData) => {
         const isDriveMetaDataSynced = await getDriveFromDriveTable(privateDrive.driveId);
@@ -575,7 +576,7 @@ export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
         }
       })
     }
-    const publicDrives = await getAllMyPublicArDriveIds(user.login, user.walletPublicKey, lastBlockHeight);
+    publicDrives = await getAllMyPublicArDriveIds(user.login, user.walletPublicKey, lastBlockHeight);
     if (publicDrives.length > 0) {
       await asyncForEach(publicDrives, async (publicDrive: ArFSDriveMetaData) => {
         const isDriveMetaDataSynced = await getDriveFromDriveTable(publicDrive.driveId);
@@ -587,11 +588,12 @@ export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
     // Get and set the latest block height for the profile that has been synced
     const latestBlockHeight : number = await getLatestBlockHeight();
     await setProfileLastBlockHeight(latestBlockHeight, user.login);
-    return "Success"
+
+    return publicDrives.concat(privateDrives)
   }
   catch (err) {
     console.log (err)
     console.log ("Error getting all Personal Drives")
-    return "Error"
+    return publicDrives;
   }
 }
