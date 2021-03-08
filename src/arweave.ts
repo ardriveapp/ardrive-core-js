@@ -42,11 +42,6 @@ const generateWallet = async (): Promise<Wallet> => {
   return { walletPrivateKey, walletPublicKey };
 };
 
-// Gets a signing key based off a user's JWK
-async function getWalletSigningKey (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
-  return await arweave.crypto.sign(jwk, data);
-}
-
 // Imports an existing wallet on a local drive
 const getLocalWallet = async (existingWalletPath: string) => {
   const walletPrivateKey : JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
@@ -422,6 +417,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
   } catch (err) {
     return allPrivateDrives;
   }
+
   const { data } = response.data;
   const { transactions } = data;
   const { edges } = transactions;
@@ -491,7 +487,6 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
       // Download the File's Metadata using the metadata transaction ID
       let data : string | Uint8Array = await getTransactionData(drive.metaDataTxId);
       const dataBuffer = Buffer.from(data);
-
       // Since this is a private drive, we must decrypt the JSON data
       const driveKey : Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
       const decryptedDriveBuffer : Buffer = await driveDecrypt(drive.cipherIV, driveKey, dataBuffer);
@@ -504,7 +499,8 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
       allPrivateDrives.push(drive)
     }
     catch (err) {
-      console.log ("Password not valid for this private drive TX %S | ID %s", node.id, drive.driveId)
+      console.log ("Error: ", err)
+      console.log ("Password not valid for this private drive TX %s | ID %s", node.id, drive.driveId)
       drive.driveName = "Invalid Drive Password";
       drive.rootFolderId = "";
       allPrivateDrives.push(drive)
@@ -1413,7 +1409,6 @@ const sendArDriveFee = async (walletPrivateKey: string, arPrice: number) => {
 export {
   getAddressForWallet,
   getLatestBlockHeight,
-  getWalletSigningKey,
   sendArDriveFee,
   createArDriveWallet,
   createArDrivePublicMetaDataTransaction,
