@@ -42,6 +42,7 @@ import {
 } from './db';
 import { ArDriveBundle, ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
+// Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
 export const getPriceOfNextUploadBatch = async (login: string) => {
   let totalWinstonData = 0;
   let totalArweaveMetadataPrice = 0;
@@ -59,8 +60,11 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
   // Get all files that are ready to be uploaded
   const filesToUpload : ArFSFileMetaData[] = await getFilesToUploadFromSyncTable(login);
   if (Object.keys(filesToUpload).length > 0) {
+    // Estimate the size by getting the size of 1MB
     const priceFor1MB = await getWinston(1000000);
     const pricePerByte = priceFor1MB / (1003210)
+
+    // Calculate the size/price for each file/folder
     await asyncForEach(
       filesToUpload,
       async (fileToUpload: ArFSFileMetaData) => {
@@ -91,11 +95,16 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
       },
     );
 
+    // Calculate the total price for all files/folders
     const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
+
+    // Add the ArDrive fee
     let arDriveFee = +totalArweaveDataPrice.toFixed(9) * (await getArDriveFee() / 100);
     if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
       arDriveFee = 0.00001;
     }
+
+    // Prepare the upload batch
     uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
     uploadBatch.totalUSDPrice = uploadBatch.totalArDrivePrice * await getArUSDPrice();
     uploadBatch.totalSize = formatBytes(totalSize);
@@ -105,7 +114,7 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
   return uploadBatch;
 };
 
-// Tags and creates a new data item (ANS-102) to be bundled
+// Tags and creates a new data item (ANS-102) to be bundled and uploaded
 async function uploadArDriveFileDataItem(user: ArDriveUser, fileToUpload: ArFSFileMetaData) : Promise<DataItemJson | null> {
   let dataItem : DataItemJson | null;
   try {
@@ -336,6 +345,7 @@ export const checkUploadStatus = async (login: string) => {
     const unsyncedBundles : ArDriveBundle[] = await getAllUploadedBundlesFromBundleTable(login)
     await asyncForEach(unsyncedBundles, async (unsyncedBundle : ArDriveBundle) => {
       status = await getTransactionStatus(unsyncedBundle.bundleTxId);
+      // Status 200 means the file has been mined
       if (status === 200) {
         console.log('SUCCESS! Data bundle was uploaded with TX of %s', unsyncedBundle.bundleTxId);
         console.log('...your most recent files can now be accessed on the PermaWeb!');
@@ -346,14 +356,17 @@ export const checkUploadStatus = async (login: string) => {
           // Complete the files by setting permaWebLink, fileMetaDataSyncStatus and fileDataSyncStatus to 3
           await completeFileDataItemFromSyncTable(permaWebLink, dataItemToComplete.id); 
         });
+      // Status 202 means the file is being mined
       } else if (status === 202) {
         console.log('%s data bundle is still being uploaded to the PermaWeb (TX_PENDING)', unsyncedBundle.bundleTxId);
+      // Status 410 or 404 means the file is still being processed.  If 410/404 occurs after 30 minutes, then the transaction has been orphaned/failed
       } else if (status === 410 || status === 404) {
         const uploadTime = await getBundleUploadTimeFromBundleTable(unsyncedBundle.id)
         const currentTime = Math.round(Date.now() / 1000);
         if ((currentTime - uploadTime) < 1800000) { // 30 minutes
           console.log('%s data bundle failed to be uploaded (TX_FAILED)', unsyncedBundle.bundleTxId);
-          // Retry data transaction
+
+          // Since it failed, lets retry data transaction by flipping the sync status to 1
           const dataItemsToRetry : ArFSFileMetaData[] = await getAllUploadedDataItemsFromSyncTable(login, unsyncedBundle.bundleTxId);
           await asyncForEach(dataItemsToRetry, async (dataItemToRetry : ArFSFileMetaData) => {
             // Retry the files by setting fileMetaDataSyncStatus and fileDataSyncStatus to 1
