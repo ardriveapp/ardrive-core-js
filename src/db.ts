@@ -445,6 +445,11 @@ export const updateFileInSyncTable = (file: {
   );
 };
 
+// Modifies the file path of a given file/folder
+export const updateFilePathInSyncTable = (filePath: string, id: number) => {
+  return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
+};
+
 export const updateFolderHashInSyncTable = (folderHash: string, id: number) => {
   return get(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [folderHash, id]);
 };
@@ -471,6 +476,11 @@ export const updateFileUploadTimeInSyncTable = (id: number, uploadTime: number) 
 
 export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
   return get(`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`, [metaDataTxId, cipher, cipherIV, driveId]);
+};
+
+// Updates the sync folder (where all the users ardrive data is stored) path for a given user in the profile table
+export const updateUserSyncFolderPathInProfileTable = (login: string, syncFolderPath: string) => {
+  return get(`UPDATE Profile SET syncFolderPath = ? WHERE login = ?`, [login, syncFolderPath]);
 };
 
 export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: number, id: number) => {

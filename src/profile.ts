@@ -1,10 +1,10 @@
 // index.js
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import path from 'path';
 import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './arweave';
 import { asyncForEach } from './common';
 import { encryptText, decryptText } from './crypto';
-import { addDriveToDriveTable, addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db';
+import { addDriveToDriveTable, addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getAllFilesByLoginFromSyncTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // This creates all of the Drives found for the user
@@ -108,6 +108,26 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   }
 };
 
+export const updateUserSyncFolderPath = async (user: ArDriveUser, newSyncFolderPath: string) => {
+  // Get the current sync folder path for the user
+  const currentSyncFolderPath = user.syncFolderPath;
+
+  // Update the user profile to use the new sync folder path
+  await updateUserSyncFolderPathInProfileTable (user.login, newSyncFolderPath);
+
+  // Move files and folders from old location
+  fs.move(currentSyncFolderPath, newSyncFolderPath)
+  
+  // Get and Update each file's path in the sync table
+  const filesToMove : ArFSFileMetaData[] = await getAllFilesByLoginFromSyncTable (user.login);
+  await asyncForEach(filesToMove, async (fileToMove: ArFSFileMetaData) => {
+    const newFilePath = fileToMove.filePath.replace(currentSyncFolderPath, newSyncFolderPath)
+    await updateFilePathInSyncTable(newFilePath, fileToMove.id)
+  })
+
+
+
+}
 // Add a Shared Public drive, using a DriveId
 export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) : Promise<string> => {
   try {

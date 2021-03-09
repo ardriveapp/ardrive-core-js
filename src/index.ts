@@ -23,4 +23,4 @@ export {
 export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders } from './files';
 export { checkUploadStatus, uploadArDriveFilesAndBundles, getPriceOfNextUploadBatch } from './upload';
-export { getUser, addNewUser, addSharedPublicDrive, deleteUserAndDrives, passwordCheck, setupDrives, deleteDrive } from './profile';
+export { getUser, addNewUser, addSharedPublicDrive, deleteUserAndDrives, passwordCheck, setupDrives, deleteDrive, updateUserSyncFolderPath } from './profile';
