@@ -87,6 +87,51 @@ const getWinston = async (bytes: any) => {
   return winston;
 };
 
+/* Copies one folder to another folder location
+const copyFolder = (oldFolderPath: string, newFolderPath: string) : string => {
+  const readStream = fs.createReadStream(oldFolderPath);
+  const writeStream = fs.createWriteStream(newFolderPath);
+
+  readStream.on('error', err => {
+    console.log ("Error copying folder");
+    console.log (err);
+    return 'Error';
+  });
+
+  writeStream.on('error', err => {
+    console.log ("Error copying folder");
+    console.log (err);
+    return 'Error';
+  });
+
+  readStream.on('close', function () {
+      fs.unlink(oldFolderPath, err => {
+        if (err) {
+          console.log ("Error finishing folder copy");
+          console.log (err);
+          return 'Error';
+        } 
+        return 'Success';
+      });
+  });
+
+  // Write the file
+  readStream.pipe(writeStream);
+  return 'Success'
+} */
+
+// Will try to move the folder and revert to a copy if it fails
+const moveFolder = (oldFolderPath: string, newFolderPath: string) : string => {
+  try {
+    fs.renameSync(oldFolderPath, newFolderPath);
+    return 'Success';
+  } catch (err) {
+    console.log ("Error moving folder");
+    console.log (err);
+    return 'Error';
+  }
+}
+
 // Checks path if it exists, and creates if not creates it
 const checkOrCreateFolder = (folderPath: string) : string => {
   try {
@@ -157,6 +202,7 @@ async function checkForMissingLocalFiles () {
   })
 }
 
+// Takes the ArDrive User's JWK Private Key file and backs it up as a JSON to a folder specified by the user.
 const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: string) => {
   try {
     const backupFileName = "ArDrive_Backup_" + owner + ".json";
@@ -487,6 +533,7 @@ export {
   extToMime,
   getWinston,
   checkOrCreateFolder,
+  moveFolder,
   backupWallet,
   checkFileExistsSync,
   checkForMissingLocalFiles,
