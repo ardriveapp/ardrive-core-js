@@ -1,10 +1,11 @@
 // index.js
-import * as fs from 'fs-extra';
+import * as fs from 'fs';
 import path from 'path';
+import { Path } from 'typescript';
 import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './arweave';
-import { asyncForEach } from './common';
+import { asyncForEach, moveFolder } from './common';
 import { encryptText, decryptText } from './crypto';
-import { addDriveToDriveTable, addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getAllFilesByLoginFromSyncTable, getFolderFromSyncTable, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from './db';
+import { addDriveToDriveTable, addFileToSyncTable, createArDriveProfile, getAllDrivesByLoginFromDriveTable, getAllFilesByLoginFromSyncTable, getFolderFromSyncTable, getSyncFolderPathFromProfile, getUserFromProfile, removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from './db';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // This creates all of the Drives found for the user
@@ -108,25 +109,37 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser) => {
   }
 };
 
-export const updateUserSyncFolderPath = async (user: ArDriveUser, newSyncFolderPath: string) => {
-  // Get the current sync folder path for the user
-  const currentSyncFolderPath = user.syncFolderPath;
+// Changes the sync folder path for a user, and updates every file for that user in the sync database and moves every file to the new location
+// The sync folder contains all downloaded drives, folders and files
+export const updateUserSyncFolderPath = async (login: string, newSyncFolderPath: string) => {
+  try {
 
-  // Update the user profile to use the new sync folder path
-  await updateUserSyncFolderPathInProfileTable (user.login, newSyncFolderPath);
+    // Get the current sync folder path for the user
+    const profile = await getSyncFolderPathFromProfile(login);
+    const currentSyncFolderPath : Path = profile.syncFolderPath;
+ 
+    // Move files and folders from old location
+    const result : string = moveFolder(currentSyncFolderPath, newSyncFolderPath);
+    if (result === 'Error') {
+      console.log ("Please ensure your Sync Folder is not in use, and try again")
+      return 'Error';
+    }
 
-  // Move files and folders from old location
-  fs.move(currentSyncFolderPath, newSyncFolderPath)
-  
-  // Get and Update each file's path in the sync table
-  const filesToMove : ArFSFileMetaData[] = await getAllFilesByLoginFromSyncTable (user.login);
-  await asyncForEach(filesToMove, async (fileToMove: ArFSFileMetaData) => {
-    const newFilePath = fileToMove.filePath.replace(currentSyncFolderPath, newSyncFolderPath)
-    await updateFilePathInSyncTable(newFilePath, fileToMove.id)
-  })
-
-
-
+    // Update the user profile to use the new sync folder path
+    await updateUserSyncFolderPathInProfileTable (login, newSyncFolderPath);
+    
+    // Get and Update each file's path in the sync table
+    const filesToMove : ArFSFileMetaData[] = await getAllFilesByLoginFromSyncTable (login);
+    await asyncForEach(filesToMove, async (fileToMove: ArFSFileMetaData) => {
+      const newFilePath = fileToMove.filePath.replace(currentSyncFolderPath, newSyncFolderPath);
+      await updateFilePathInSyncTable(newFilePath, fileToMove.id);
+    });
+    return 'Success';
+  } catch (err) {
+    console.log (err);
+    console.log ("Error updating sync folder to %s", newSyncFolderPath);
+    return 'Error';
+  }
 }
 // Add a Shared Public drive, using a DriveId
 export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string) : Promise<string> => {

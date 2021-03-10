@@ -480,7 +480,7 @@ export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, ci
 
 // Updates the sync folder (where all the users ardrive data is stored) path for a given user in the profile table
 export const updateUserSyncFolderPathInProfileTable = (login: string, syncFolderPath: string) => {
-  return get(`UPDATE Profile SET syncFolderPath = ? WHERE login = ?`, [login, syncFolderPath]);
+  return get(`UPDATE Profile SET syncFolderPath = ? WHERE login = ?`, [syncFolderPath, login]);
 };
 
 export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: number, id: number) => {
@@ -678,8 +678,8 @@ export const updateArDriveRootDirectoryTx = (arDriveMetaDataTxId: string, permaW
   return get(`UPDATE Sync SET metaDataTxId = ?, permaWebLink = ?, fileId = ?, fileMetaDataSyncStatus = 3 WHERE fileName = ? AND filePath = ?`, [arDriveMetaDataTxId, permaWebLink, fileId, fileName, filePath]);
 };
 
-export const getArDriveSyncFolderPathFromProfile = () => {
-  return get(`SELECT syncFolderPath FROM Profile WHERE id = 1`); // THIS ONLY WORKS WITH 1 PROFILE
+export const getSyncFolderPathFromProfile = (login: string) => {
+  return get(`SELECT syncFolderPath FROM Profile WHERE login = ?`, [login]); 
 }
 
 // Gets all files that are not Cloud Only so they can be validated they still exist locally
