@@ -31,25 +31,26 @@ const deps = {
 }
 const arBundles = ArweaveBundles(deps);
 
+// Gets a public key for a given JWK
 const getAddressForWallet = async (walletPrivateKey: JWKInterface) => {
   return arweave.wallets.jwkToAddress(walletPrivateKey);
 };
 
-// Creates a new Arweave wallet
+// Creates a new Arweave wallet JWK comprised of a private key and public key
 const generateWallet = async (): Promise<Wallet> => {
   const walletPrivateKey = await arweave.wallets.generate();
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
 };
 
-// Imports an existing wallet on a local drive
+// Imports an existing wallet as a JWK from a user's local harddrive
 const getLocalWallet = async (existingWalletPath: string) => {
   const walletPrivateKey : JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
   const walletPublicKey = await getAddressForWallet(walletPrivateKey);
   return { walletPrivateKey, walletPublicKey };
 };
 
-// Uses GraphQl to pull necessary drive information
+// Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
 const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData> => {
   let drive : ArFSDriveMetaData = {
     id: 0,
@@ -70,6 +71,7 @@ const getSharedPublicDrive = async (driveId: string) : Promise<ArFSDriveMetaData
     metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
   };
   try {
+    // GraphQL Query
     const query = {
       query: `query {
       transactions(
@@ -1333,11 +1335,13 @@ const selectTokenHolder = async (): Promise<string> => {
   const balances = state.balances;
   const vault = state.vault;
 
+  // Get the total number of token holders
   let total = 0;
   for (const addr of Object.keys(balances)) {
     total += balances[addr];
   }
 
+  // Check for how many tokens the user has staked/vaulted
   for (const addr of Object.keys(vault)) {
     if (!vault[addr].length) continue;
 
@@ -1354,6 +1358,7 @@ const selectTokenHolder = async (): Promise<string> => {
     }
   }
 
+  // Create a weighted list of token holders
   const weighted: { [addr: string]: number } = {};
   for (const addr of Object.keys(balances)) {
     weighted[addr] = balances[addr] / total;
