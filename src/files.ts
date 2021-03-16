@@ -27,7 +27,7 @@ const { hashElement } = require('folder-hash');
 const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
 	// Check to see if the file is ready
 	let stats = null;
-	let extension = extname(filePath).toLowerCase();
+	const extension = extname(filePath).toLowerCase();
 	const fileName = basename(filePath);
 	try {
 		stats = fs.statSync(filePath);
@@ -40,7 +40,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 	if (extension !== '.enc' && stats.size !== 0 && !fileName.startsWith('~$')) {
 		// Check if the parent folder has been added to the DB first
 		const parentFolderPath = dirname(filePath);
-		let parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
+		const parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
 		let parentFolderId = '';
 		if (parentFolder !== undefined) {
 			parentFolderId = parentFolder.fileId;
@@ -218,14 +218,14 @@ const queueFolder = async (
 		const lastModifiedDate = Math.floor(stats.mtimeMs);
 
 		// Use the inode value instead of file size
-		let fileSize = stats.ino;
-		let entityType = 'folder';
-		let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
+		const fileSize = stats.ino;
+		const entityType = 'folder';
+		const fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
 		// Check if its parent folder has been added.  If not, lets add it first
 		let parentFolderId = '';
 		const parentFolderPath = dirname(folderPath);
-		let parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
+		const parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
 		if (parentFolder !== undefined) {
 			parentFolderId = parentFolder.fileId;
 		}
@@ -311,8 +311,8 @@ const startWatchingFolders = async (user: ArDriveUser) => {
 	const stoppers: Array<() => Promise<void>> = [];
 	if (drives !== undefined) {
 		drives.forEach(async (drive: ArFSDriveMetaData) => {
-			let rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
-			let { status, stop } = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
+			const rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
+			const { status, stop } = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
 			stoppers.push(stop);
 			console.log('%s %s drive: %s driveId: %s', status, drive.drivePrivacy, rootFolder.filePath, drive.driveId);
 		});

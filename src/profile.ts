@@ -252,7 +252,7 @@ export const deleteDrive = async (driveId: string) => {
 // Checks if the user's password is valid
 export const passwordCheck = async (loginPassword: string, login: string): Promise<boolean> => {
 	try {
-		let user: ArDriveUser = await getUserFromProfile(login);
+		const user: ArDriveUser = await getUserFromProfile(login);
 		user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
 		if (user.walletPrivateKey === 'ERROR') {
 			return false;
@@ -265,7 +265,7 @@ export const passwordCheck = async (loginPassword: string, login: string): Promi
 
 // Decrypts user's private key information and unlocks their ArDrive
 export const getUser = async (loginPassword: string, login: string) => {
-	let user: ArDriveUser = await getUserFromProfile(login);
+	const user: ArDriveUser = await getUserFromProfile(login);
 	user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
 	user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
 	console.log('');

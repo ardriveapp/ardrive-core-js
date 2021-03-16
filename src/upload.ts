@@ -48,7 +48,7 @@ export const getPriceOfNextUploadBatch = async (login: string) => {
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
 	let winston = 0;
-	let uploadBatch: UploadBatch = {
+	const uploadBatch: UploadBatch = {
 		totalArDrivePrice: 0,
 		totalUSDPrice: 0,
 		totalSize: '0',
@@ -258,7 +258,7 @@ async function uploadArDriveFolderMetaDataItem(
 // Uploads all queued files
 export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
 	try {
-		let items: DataItemJson[] = [];
+		const items: DataItemJson[] = [];
 		let filesUploaded = 0;
 		let bundledFilesUploaded = 0;
 		let totalARPrice = 0;
@@ -338,7 +338,7 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
 		if (bundledFilesUploaded > 0 || filesUploaded > 0) {
 			// Send the tip to a random ArDrive community member
 			await sendArDriveFee(user.walletPrivateKey, totalARPrice);
-			let totalUSDPrice = totalARPrice * (await getArUSDPrice());
+			const totalUSDPrice = totalARPrice * (await getArUSDPrice());
 			console.log(
 				'Uploaded %s file(s) (totaling %s AR, %s USD) to your ArDrive!',
 				filesUploaded + bundledFilesUploaded,
@@ -520,7 +520,7 @@ export const checkUploadStatus = async (login: string) => {
 					unsyncedDrive.metaDataTxId
 				);
 				// Update the drive sync status to 3 so it is not checked any more
-				let metaDataSyncStatus = 3;
+				const metaDataSyncStatus = 3;
 				await completeDriveMetaDataFromDriveTable(metaDataSyncStatus, unsyncedDrive.driveId);
 			} else if (status === 202) {
 				console.log(

@@ -174,7 +174,7 @@ const checkFileExistsSync = (filePath: string) => {
 const checkExactFileExistsSync = (filePath: string, lastModifiedDate: number) => {
 	try {
 		fs.accessSync(filePath, fs.constants.F_OK);
-		let stats = fs.statSync(filePath);
+		const stats = fs.statSync(filePath);
 		if (lastModifiedDate === Math.floor(stats.mtimeMs)) {
 			// The files match
 			return true;
@@ -238,7 +238,7 @@ const setAllFileHashes = async () => {
 		const allFiles: ArFSFileMetaData[] = await getAllUnhashedLocalFilesFromSyncTable();
 		// Update the hash of the file
 		await asyncForEach(allFiles, async (file: ArFSFileMetaData) => {
-			let fileHash = await checksumFile(file.filePath);
+			const fileHash = await checksumFile(file.filePath);
 			await updateFileHashInSyncTable(fileHash, file.id);
 		});
 		return 'All missing file hashes set';
@@ -258,8 +258,8 @@ const setAllFolderSizes = async () => {
 			// Get the stats of the folder to get its inode value.  This differsn on windows/os/linux
 			// This is set into the Size field to determine if the folder has been renamed
 			// Ideally this would be improved upon
-			let stats = fs.statSync(folder.filePath);
-			let folderIno = stats.ino;
+			const stats = fs.statSync(folder.filePath);
+			const folderIno = stats.ino;
 			await updateFileSizeInSyncTable(folderIno, folder.id);
 		});
 		return 'All folder sizes set';
@@ -276,7 +276,7 @@ const setAllParentFolderIds = async () => {
 		const allFilesOrFolders: ArFSFileMetaData[] = await getAllMissingParentFolderIdsFromSyncTable();
 		await asyncForEach(allFilesOrFolders, async (fileOrFolder: ArFSFileMetaData) => {
 			const parentFolderPath = dirname(fileOrFolder.filePath);
-			let parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(fileOrFolder.driveId, parentFolderPath);
+			const parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(fileOrFolder.driveId, parentFolderPath);
 			if (parentFolder !== undefined) {
 				// console.log ("The parent folder for %s is missing.  Lets update it.", fileOrFolder.filePath)
 				setParentFolderId(parentFolder.fileId, fileOrFolder.id);
@@ -340,10 +340,10 @@ const updateFilePath = async (file: ArFSFileMetaData): Promise<string> => {
 
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
 const createNewPublicDrive = async (login: string, driveName: string): Promise<ArFSDriveMetaData> => {
-	let driveId = uuidv4();
-	let rootFolderId = uuidv4();
-	let unixTime = Math.round(Date.now() / 1000);
-	let drive: ArFSDriveMetaData = {
+	const driveId = uuidv4();
+	const rootFolderId = uuidv4();
+	const unixTime = Math.round(Date.now() / 1000);
+	const drive: ArFSDriveMetaData = {
 		id: 0,
 		login,
 		appName: appName,
@@ -368,10 +368,10 @@ const createNewPublicDrive = async (login: string, driveName: string): Promise<A
 
 // Creates a new drive, using the standard private privacy settings and adds to the Drive table
 const createNewPrivateDrive = async (login: string, driveName: string): Promise<ArFSDriveMetaData> => {
-	let driveId = uuidv4();
-	let rootFolderId = uuidv4();
-	let unixTime = Math.round(Date.now() / 1000);
-	let drive: ArFSDriveMetaData = {
+	const driveId = uuidv4();
+	const rootFolderId = uuidv4();
+	const unixTime = Math.round(Date.now() / 1000);
+	const drive: ArFSDriveMetaData = {
 		id: 0,
 		login,
 		appName: appName,
@@ -445,8 +445,8 @@ const createPublicDriveSharingLink = async (driveToShare: ArFSDriveMetaData): Pr
 };
 
 async function Utf8ArrayToStr(array: any): Promise<string> {
-	var out, i, len, c;
-	var char2, char3;
+	let out, i, len, c;
+	let char2, char3;
 
 	out = '';
 	len = array.length;

@@ -70,7 +70,7 @@ const getLocalWallet = async (existingWalletPath: string) => {
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
 const getSharedPublicDrive = async (driveId: string): Promise<ArFSDriveMetaData> => {
-	let drive: ArFSDriveMetaData = {
+	const drive: ArFSDriveMetaData = {
 		id: 0,
 		login: '',
 		appName: appName,
@@ -153,9 +153,9 @@ const getSharedPublicDrive = async (driveId: string): Promise<ArFSDriveMetaData>
 			drive.metaDataTxId = node.id;
 			console.log('Shared Drive Metadata tx id: ', drive.metaDataTxId);
 			drive.metaDataSyncStatus = 3;
-			let data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
-			let dataString = await Utf8ArrayToStr(data);
-			let dataJSON = await JSON.parse(dataString);
+			const data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
+			const dataString = await Utf8ArrayToStr(data);
+			const dataJSON = await JSON.parse(dataString);
 
 			// Get the drive name and root folder id
 			drive.driveName = dataJSON.name;
@@ -275,7 +275,7 @@ const getPrivateDriveRootFolderTxId = async (driveId: string, folderId: string) 
 // Uses the Entity type to only search for Drive tags
 const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, lastBlockHeight: number) => {
 	try {
-		let allPublicDrives: ArFSDriveMetaData[] = [];
+		const allPublicDrives: ArFSDriveMetaData[] = [];
 
 		// Search last 5 blocks minimum
 		if (lastBlockHeight > 5) {
@@ -317,7 +317,7 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, 
 		await asyncForEach(edges, async (edge: any) => {
 			const { node } = edge;
 			const { tags } = node;
-			let drive: ArFSDriveMetaData = {
+			const drive: ArFSDriveMetaData = {
 				id: 0,
 				login: login,
 				appName: '',
@@ -365,7 +365,7 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, 
 
 			// If this is a Private Drive, we drop it
 			// If this drive is already present in the Database, we drop it
-			let exists: ArFSDriveMetaData = await getDriveFromDriveTable(drive.driveId);
+			const exists: ArFSDriveMetaData = await getDriveFromDriveTable(drive.driveId);
 			if (drive.drivePrivacy === 'private' || exists !== undefined) {
 				return 'Skip';
 			}
@@ -374,9 +374,9 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, 
 			drive.metaDataTxId = node.id;
 
 			// Download the File's Metadata using the metadata transaction ID
-			let data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
-			let dataString = await Utf8ArrayToStr(data);
-			let dataJSON = await JSON.parse(dataString);
+			const data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
+			const dataString = await Utf8ArrayToStr(data);
+			const dataJSON = await JSON.parse(dataString);
 
 			// Get the drive name and root folder id
 			drive.driveName = dataJSON.name;
@@ -393,7 +393,7 @@ const getAllMyPublicArDriveIds = async (login: string, walletPublicKey: string, 
 // Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
 const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: number) => {
-	let allPrivateDrives: ArFSDriveMetaData[] = [];
+	const allPrivateDrives: ArFSDriveMetaData[] = [];
 
 	// Search last 5 blocks minimum
 	if (lastBlockHeight > 5) {
@@ -441,7 +441,7 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
 	await asyncForEach(edges, async (edge: any) => {
 		const { node } = edge;
 		const { tags } = node;
-		let drive: ArFSDriveMetaData = {
+		const drive: ArFSDriveMetaData = {
 			id: 0,
 			login: user.login,
 			appName: '',
@@ -500,13 +500,13 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
 			drive.metaDataTxId = node.id;
 
 			// Download the File's Metadata using the metadata transaction ID
-			let data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
+			const data: string | Uint8Array = await getTransactionData(drive.metaDataTxId);
 			const dataBuffer = Buffer.from(data);
 			// Since this is a private drive, we must decrypt the JSON data
 			const driveKey: Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
 			const decryptedDriveBuffer: Buffer = await driveDecrypt(drive.cipherIV, driveKey, dataBuffer);
 			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
-			let decryptedDriveJSON = await JSON.parse(decryptedDriveString);
+			const decryptedDriveJSON = await JSON.parse(decryptedDriveString);
 
 			// Get the drive name and root folder id
 			drive.driveName = decryptedDriveJSON.name;
@@ -526,10 +526,10 @@ const getAllMyPrivateArDriveIds = async (user: ArDriveUser, lastBlockHeight: num
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID
 const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlockHeight: number) => {
 	let hasNextPage = true;
-	let cursor: string = '';
+	let cursor = '';
 	let edges: GQLEdgeInterface[] = [];
 	let primaryGraphQLURL = graphQLURL;
-	let backupGraphQLURL = graphQLURL.replace('.net', '.dev');
+	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
 	let tries = 0;
 
 	// Search last 5 blocks minimum
@@ -610,7 +610,7 @@ const getAllMyDataFileTxs = async (walletPublicKey: any, arDriveId: any, lastBlo
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
 const getAllMySharedDataFileTxs = async (arDriveId: any, lastBlockHeight: number) => {
 	let hasNextPage = true;
-	let cursor: string = '';
+	let cursor = '';
 	let edges: GQLEdgeInterface[] = [];
 	while (hasNextPage) {
 		const query = {
@@ -668,7 +668,7 @@ const getAllMySharedDataFileTxs = async (arDriveId: any, lastBlockHeight: number
 // Gets the CipherIV tag of a private data transaction
 const getPrivateTransactionCipherIV = async (txid: string): Promise<string> => {
 	let primaryGraphQLURL = graphQLURL;
-	let backupGraphQLURL = graphQLURL.replace('.net', '.dev');
+	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
 	let tries = 0;
 	let dataCipherIV = '';
 	const query = {
@@ -1054,7 +1054,7 @@ const createArDrivePublicDataItemTransaction = async (
 		arBundles.addTag(item, 'Content-Type', contentType);
 
 		// Sign the data, ready to be added to a bundle
-		let dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
+		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
 
 		const fileToUpdate = {
 			fileDataSyncStatus: 2,
@@ -1102,7 +1102,7 @@ const createArDrivePublicMetaDataItemTransaction = async (
 		}
 
 		// Sign file
-		let dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
+		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
 		const fileMetaDataToUpdate = {
 			id: fileToUpload.id,
 			fileMetaDataSyncStatus: 2,
@@ -1141,7 +1141,7 @@ const createArDrivePrivateDataItemTransaction = async (
 
 		// Sign file
 		// Sign the data, ready to be added to a bundle
-		let dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
+		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
 
 		const fileToUpdate = {
 			id: fileToUpload.id,
@@ -1198,7 +1198,7 @@ const createArDrivePrivateMetaDataItemTransaction = async (
 		}
 
 		// Sign file
-		let dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
+		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
 		const fileMetaDataToUpdate = {
 			id: fileToUpload.id,
 			fileMetaDataSyncStatus: 2,

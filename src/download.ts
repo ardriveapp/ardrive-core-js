@@ -78,7 +78,7 @@ async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFi
 			await sleep(100);
 		}
 
-		let dataTxUrl = gatewayURL.concat(fileToDownload.dataTxId);
+		const dataTxUrl = gatewayURL.concat(fileToDownload.dataTxId);
 		// Public files do not need decryption
 		if (+fileToDownload.isPublic === 1) {
 			console.log('Downloading %s', fileToDownload.filePath);
@@ -165,7 +165,7 @@ async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFi
 
 // Takes an ArDrive File Data Transaction and writes to the database.
 async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDriveUser) {
-	let fileToSync: ArFSFileMetaData = {
+	const fileToSync: ArFSFileMetaData = {
 		id: 0,
 		login: user.login,
 		appName: '',
@@ -293,12 +293,12 @@ async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDrive
 				await addFileToSyncTable(fileToSync); // This must be handled better.
 				return 'Error Decrypting';
 			} else {
-				let dataString = await Utf8ArrayToStr(decryptedData);
+				const dataString = await Utf8ArrayToStr(decryptedData);
 				dataJSON = await JSON.parse(dataString);
 			}
 		} else {
 			// the file is public and does not require decryption
-			let dataString = await Utf8ArrayToStr(data);
+			const dataString = await Utf8ArrayToStr(data);
 			dataJSON = await JSON.parse(dataString);
 			fileToSync.isPublic = 1;
 		}
@@ -512,8 +512,8 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 							// File is not local, so we download and decrypt if necessary
 							// UPDATE THIS TO NOT TRY TO SET LOCAL TIME
 							await downloadArDriveFileByTx(user, fileToDownload);
-							let currentDate = new Date();
-							let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate));
+							const currentDate = new Date();
+							const lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate));
 							fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate);
 						} else {
 							console.log('%s is already local, skipping download', fileToDownload.filePath);
@@ -537,8 +537,8 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 						if (!checkExactFileExistsSync(fileToDownload.filePath, fileToDownload.lastModifiedDate)) {
 							// Download and decrypt the file if necessary
 							await downloadArDriveFileByTx(user, fileToDownload);
-							let currentDate = new Date();
-							let lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate));
+							const currentDate = new Date();
+							const lastModifiedDate = new Date(Number(fileToDownload.lastModifiedDate));
 							fs.utimesSync(fileToDownload.filePath, currentDate, lastModifiedDate);
 						} else {
 							console.log('%s is already local, skipping download', fileToDownload.filePath);
@@ -546,7 +546,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 					}
 
 					// Hash the file and update it in the database
-					let fileHash = await checksumFile(fileToDownload.filePath);
+					const fileHash = await checksumFile(fileToDownload.filePath);
 					await updateFileHashInSyncTable(fileHash, fileToDownload.id);
 
 					// Update the file's local status in the database
@@ -573,8 +573,8 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 			console.log('Overwriting local file %s', fileConflictToDownload.filePath);
 			await downloadArDriveFileByTx(user, fileConflictToDownload);
 			// Ensure the file downloaded has the same lastModifiedDate as before
-			let currentDate = new Date();
-			let lastModifiedDate = new Date(Number(fileConflictToDownload.lastModifiedDate));
+			const currentDate = new Date();
+			const lastModifiedDate = new Date(Number(fileConflictToDownload.lastModifiedDate));
 			fs.utimesSync(fileConflictToDownload.filePath, currentDate, lastModifiedDate);
 			await updateFileDownloadStatus('1', fileConflictToDownload.id);
 			return 'File Overwritten';
