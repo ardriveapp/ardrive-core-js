@@ -8,6 +8,14 @@ We use Yarn 2.x please follow the guidelines [here](https://yarnpkg.com/getting-
 
 On repo main folder run: `yarn`
 
+Remember to use
+
+```
+yarn install --check-cache
+````
+
+for external PR
+
 ## Package:
 
 Npm package:
