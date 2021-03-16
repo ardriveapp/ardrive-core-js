@@ -61,6 +61,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],
             ["folder-hash", "npm:4.0.1"],
             ["futoin-hkdf", "npm:1.3.3"],
+            ["husky", "npm:5.1.3"],
             ["jwk-to-pem", "npm:2.0.4"],
             ["md5-file", "npm:5.0.0"],
             ["mime-types", "npm:2.1.29"],
@@ -992,6 +993,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],
             ["folder-hash", "npm:4.0.1"],
             ["futoin-hkdf", "npm:1.3.3"],
+            ["husky", "npm:5.1.3"],
             ["jwk-to-pem", "npm:2.0.4"],
             ["md5-file", "npm:5.0.0"],
             ["mime-types", "npm:2.1.29"],
@@ -2828,6 +2830,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["assert-plus", "npm:1.0.0"],
             ["jsprim", "npm:1.4.1"],
             ["sshpk", "npm:1.16.1"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["husky", [
+        ["npm:5.1.3", {
+          "packageLocation": "./.yarn/cache/husky-npm-5.1.3-62d158903e-99baafebe7.zip/node_modules/husky/",
+          "packageDependencies": [
+            ["husky", "npm:5.1.3"]
           ],
           "linkType": "HARD",
         }]
