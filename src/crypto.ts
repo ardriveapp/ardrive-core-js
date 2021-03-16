@@ -6,7 +6,7 @@ import { ArFSEncryptedData } from './types';
 const hkdf = require('futoin-hkdf');
 const utf8 = require('utf8');
 
-const jwkToPem = require('jwk-to-pem')
+const jwkToPem = require('jwk-to-pem');
 const authTagLength = 16;
 const keyByteLength = 32;
 const algo = 'aes-256-gcm';
@@ -16,104 +16,107 @@ const keyHash = 'SHA-256';
 export const getArweaveWalletSigningKey = async (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> => {
 	const sign = crypto.createSign('sha256');
 	sign.update(data);
-	const pem: string = jwkToPem(jwk, { private: true })
+	const pem: string = jwkToPem(jwk, { private: true });
 	const signature = sign.sign({
 		key: pem,
 		padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-		saltLength: 0, // We do not need to salt the signature since we combine with a random UUID
-	})
+		saltLength: 0 // We do not need to salt the signature since we combine with a random UUID
+	});
 	return signature;
-}
+};
 
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
-export const deriveDriveKey = async (dataEncryptionKey: crypto.BinaryLike, driveId: string, walletPrivateKey: string): Promise<Buffer> => {
+export const deriveDriveKey = async (
+	dataEncryptionKey: crypto.BinaryLike,
+	driveId: string,
+	walletPrivateKey: string
+): Promise<Buffer> => {
 	const driveIdBytes: Buffer = Buffer.from(parse(driveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
-	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'))
-	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes])
-	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey)
+	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'));
+	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
+	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey);
 	const info: string = utf8.encode(dataEncryptionKey);
 	const driveKey: Buffer = hkdf(walletSignature, keyByteLength, { info, keyHash });
 	return driveKey;
-}
+};
 
 // Derive a key from the user's Drive Key and the File Id
 export const deriveFileKey = async (fileId: string, driveKey: Buffer): Promise<Buffer> => {
 	const info: Buffer = Buffer.from(parse(fileId) as Uint8Array);
 	const fileKey: Buffer = hkdf(driveKey, keyByteLength, { info, keyHash });
 	return fileKey;
-}
+};
 
 // New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
 export const driveEncrypt = async (driveKey: Buffer, data: Buffer): Promise<ArFSEncryptedData> => {
 	const iv: Buffer = crypto.randomBytes(12);
 	const cipher = crypto.createCipheriv(algo, driveKey, iv, { authTagLength });
-	const encryptedDriveBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
+	const encryptedDriveBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()]);
 	const encryptedDrive: ArFSEncryptedData = {
 		cipher: 'AES256-GCM',
 		cipherIV: iv.toString('base64'),
-		data: encryptedDriveBuffer,
-	}
+		data: encryptedDriveBuffer
+	};
 	return encryptedDrive;
-}
+};
 
 // New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
 export const fileEncrypt = async (fileKey: Buffer, data: Buffer): Promise<ArFSEncryptedData> => {
 	const iv: Buffer = crypto.randomBytes(12);
 	const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
-	const encryptedBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()])
+	const encryptedBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()]);
 	const encryptedFile: ArFSEncryptedData = {
 		cipher: 'AES256-GCM',
 		cipherIV: iv.toString('base64'),
-		data: encryptedBuffer,
-	}
+		data: encryptedBuffer
+	};
 	return encryptedFile;
-}
+};
 
 // New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
 export const driveDecrypt = async (cipherIV: string, driveKey: Buffer, data: Buffer): Promise<Buffer> => {
-	const authTag: Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
-	const encryptedDataSlice: Buffer = data.slice(0, (data.byteLength - authTagLength))
+	const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
+	const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
 	const iv: Buffer = Buffer.from(cipherIV, 'base64');
-	const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength })
+	const decipher = crypto.createDecipheriv(algo, driveKey, iv, { authTagLength });
 	decipher.setAuthTag(authTag);
 	const decryptedDrive: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
 	return decryptedDrive;
-}
+};
 
 // New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
 export const fileDecrypt = async (cipherIV: string, fileKey: Buffer, data: Buffer): Promise<Buffer> => {
 	try {
-		const authTag: Buffer = data.slice((data.byteLength - authTagLength), data.byteLength);
-		const encryptedDataSlice: Buffer = data.slice(0, (data.byteLength - authTagLength))
+		const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
+		const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
 		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		const decipher = crypto.createDecipheriv(algo, fileKey, iv, { authTagLength })
+		const decipher = crypto.createDecipheriv(algo, fileKey, iv, { authTagLength });
 		decipher.setAuthTag(authTag);
 		const decryptedFile: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
 		return decryptedFile;
-	}
-	catch (err) {
+	} catch (err) {
 		// console.log (err);
-		console.log("Error decrypting file data");
+		console.log('Error decrypting file data');
 		return Buffer.from('Error', 'ascii');
 	}
-}
+};
 
 // gets hash of a file using SHA512
 export const checksumFile = async (path: string): Promise<string> => {
 	const hash = crypto.createHash('sha512');
-	const file = fs.createReadStream(path, { encoding: 'base64' })
+	const file = fs.createReadStream(path, { encoding: 'base64' });
 	return new Promise((resolve, reject) => {
-		file.on('error', err => {
+		file.on('error', (err) => {
 			file.close();
 			reject(err);
 		});
 		file.on('data', function (chunk) {
-			hash.update(chunk)
+			hash.update(chunk);
 		});
 		file.on('close', () => {
 			resolve(hash.digest('hex'));
 		});
-	})
+	});
 };
 
 // Used to encrypt data going into sqlitedb, like arweave private key
@@ -126,7 +129,7 @@ export const encryptText = async (text: crypto.BinaryLike, password: any) => {
 		encryptedText = Buffer.concat([encryptedText, cipher.final()]);
 		return {
 			iv: initVect.toString('hex'),
-			encryptedText: encryptedText.toString('hex'),
+			encryptedText: encryptedText.toString('hex')
 		};
 	} catch (err) {
 		console.log(err);
@@ -140,7 +143,7 @@ export const decryptText = async (
 		iv: { toString: () => string };
 		encryptedText: { toString: () => string };
 	},
-	password: any,
+	password: any
 ): Promise<string> => {
 	try {
 		const iv = Buffer.from(text.iv.toString(), 'hex');
@@ -152,7 +155,7 @@ export const decryptText = async (
 		return decrypted.toString();
 	} catch (err) {
 		// console.log(err);
-		return "ERROR";
+		return 'ERROR';
 	}
 };
 

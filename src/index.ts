@@ -1,4 +1,10 @@
-export { getWalletBalance, getLocalWallet, createArDriveWallet, getAllMyPrivateArDriveIds, getAllMyPublicArDriveIds } from './arweave';
+export {
+	getWalletBalance,
+	getLocalWallet,
+	createArDriveWallet,
+	getAllMyPrivateArDriveIds,
+	getAllMyPublicArDriveIds
+} from './arweave';
 export {
 	setupDatabase,
 	getUserFromProfileById,
@@ -24,4 +30,13 @@ export {
 export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders } from './files';
 export { checkUploadStatus, uploadArDriveFilesAndBundles, getPriceOfNextUploadBatch } from './upload';
-export { getUser, addNewUser, addSharedPublicDrive, deleteUserAndDrives, passwordCheck, setupDrives, deleteDrive, updateUserSyncFolderPath } from './profile';
+export {
+	getUser,
+	addNewUser,
+	addSharedPublicDrive,
+	deleteUserAndDrives,
+	passwordCheck,
+	setupDrives,
+	deleteDrive,
+	updateUserSyncFolderPath
+} from './profile';

@@ -16,7 +16,7 @@ import {
 	getFolderByHashFromSyncTable,
 	setFilePath,
 	getDriveRootFolderFromSyncTable,
-	getAllPersonalDrivesByLoginFromDriveTable,
+	getAllPersonalDrivesByLoginFromDriveTable
 } from './db';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
@@ -38,7 +38,6 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
 	// Skip if file is encrypted or size is 0
 	if (extension !== '.enc' && stats.size !== 0 && !fileName.startsWith('~$')) {
-
 		// Check if the parent folder has been added to the DB first
 		const parentFolderPath = dirname(filePath);
 		let parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
@@ -62,7 +61,12 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 			isPublic = 0;
 		}
 		// Check if the exact file already exists in the same location
-		const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(driveId, fileName, fileHash, parentFolderId);
+		const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(
+			driveId,
+			fileName,
+			fileHash,
+			parentFolderId
+		);
 		if (exactMatch) {
 			// This file's version already exists.  Ensure file path is updated and do nothing
 			await setFilePath(filePath, exactMatch.id);
@@ -90,11 +94,15 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
 		// Check if the file has been renamed by looking at its hash and base path
 		// The older version of the file must not also be present anymore, or else this is just a copy
-		const renamedFile = await getByFileHashAndParentFolderFromSyncTable(driveId, fileHash, parentFolderPath.concat('%'));
-		if (renamedFile && !(checkFileExistsSync(renamedFile.filePath))) {
+		const renamedFile = await getByFileHashAndParentFolderFromSyncTable(
+			driveId,
+			fileHash,
+			parentFolderPath.concat('%')
+		);
+		if (renamedFile && !checkFileExistsSync(renamedFile.filePath)) {
 			// The file has been renamed.  Submit as Metadata.
 			console.log('   %s was just renamed', filePath);
-			renamedFile.unixTime = Math.round(Date.now() / 1000)
+			renamedFile.unixTime = Math.round(Date.now() / 1000);
 			renamedFile.metaDataTxId = '0';
 			renamedFile.fileName = fileName;
 			renamedFile.filePath = filePath;
@@ -107,9 +115,9 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 		// Check if the file has been moved by seeing if another file with the same hash and name
 		// The older version of the file must also not be present anymore, or else this is just a copy
 		const movedFile = await getByFileHashAndFileNameFromSyncTable(driveId, fileHash, fileName);
-		if (movedFile && !(checkFileExistsSync(movedFile.filePath))) {
+		if (movedFile && !checkFileExistsSync(movedFile.filePath)) {
 			console.log('   %s has been moved', filePath);
-			movedFile.unixTime = Math.round(Date.now() / 1000)
+			movedFile.unixTime = Math.round(Date.now() / 1000);
 			movedFile.metaDataTxId = '0';
 			movedFile.fileName = fileName;
 			movedFile.filePath = filePath;
@@ -121,7 +129,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
 		// No match, so queue a new file
 		console.log('   Queuing a new file for upload %s', filePath);
-		const unixTime = Math.round(Date.now() / 1000)
+		const unixTime = Math.round(Date.now() / 1000);
 		const contentType = extToMime(filePath);
 		const fileId = uuidv4();
 		const fileSize = stats.size;
@@ -152,18 +160,24 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 			cipher: '',
 			dataCipherIV: '',
 			metaDataCipherIV: '',
-			cloudOnly: 0,
+			cloudOnly: 0
 		};
 		addFileToSyncTable(newFileToQueue);
 		return;
 	}
 };
 
-const queueFolder = async (folderPath: string, driveRootFolderPath: string, login: string, driveId: string, drivePrivacy: string) => {
+const queueFolder = async (
+	folderPath: string,
+	driveRootFolderPath: string,
+	login: string,
+	driveId: string,
+	drivePrivacy: string
+) => {
 	let stats = null;
 	let fileName = folderPath.split(sep).pop();
 	if (fileName === undefined) {
-		fileName = "";
+		fileName = '';
 	}
 
 	// Check if this is the root sync folder, and if yes then skip
@@ -177,7 +191,6 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 		// The folder is already in the queue, or it is the root and we do not want to process.
 		// Or the folder is a "New Folder" and we do not capture this
 	} else {
-
 		console.log('Queueing folder for upload %s', folderPath);
 		try {
 			stats = fs.statSync(folderPath);
@@ -188,7 +201,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 
 		// Generate a hash of all of the contents in this folder
 		const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
-		const folderHash = await hashElement(folderPath, options)
+		const folderHash = await hashElement(folderPath, options);
 
 		// Get the Drive ID and Privacy status
 		let isPublic = 0;
@@ -199,14 +212,14 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 			isPublic = 0;
 		}
 
-		const unixTime = Math.round(Date.now() / 1000)
+		const unixTime = Math.round(Date.now() / 1000);
 		const contentType = 'application/json';
 		let fileId = uuidv4();
 		const lastModifiedDate = Math.floor(stats.mtimeMs);
 
 		// Use the inode value instead of file size
 		let fileSize = stats.ino;
-		let entityType = 'folder'
+		let entityType = 'folder';
 		let fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
 		// Check if its parent folder has been added.  If not, lets add it first
@@ -221,7 +234,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 		const movedFolder = await getFolderByHashFromSyncTable(driveId, folderHash.hash);
 		if (movedFolder) {
 			// create a new folder with previous folder ID
-			console.log("Folder was moved!  Using existing previous folder Id: %s", movedFolder.fileId);
+			console.log('Folder was moved!  Using existing previous folder Id: %s', movedFolder.fileId);
 			fileId = movedFolder.fileId;
 		}
 
@@ -229,7 +242,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 		const renamedFolder = await getFolderByInodeFromSyncTable(driveId, fileSize);
 		if (renamedFolder) {
 			// create a new folder with previous folder ID
-			console.log("Folder was renamed!  Using previous folder Id: %s", renamedFolder.fileId);
+			console.log('Folder was renamed!  Using previous folder Id: %s', renamedFolder.fileId);
 			fileId = renamedFolder.fileId;
 		}
 
@@ -260,7 +273,7 @@ const queueFolder = async (folderPath: string, driveRootFolderPath: string, logi
 			cipher: '',
 			dataCipherIV: '',
 			metaDataCipherIV: '',
-			cloudOnly: 0,
+			cloudOnly: 0
 		};
 		await addFileToSyncTable(folderToQueue);
 	}
@@ -277,8 +290,8 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 		ignored: '*.enc',
 		awaitWriteFinish: {
 			stabilityThreshold: 10000,
-			pollInterval: 10000,
-		},
+			pollInterval: 10000
+		}
 	});
 	watcher
 		.on('add', async (path: any) => queueFile(path, login, driveId, drivePrivacy))
@@ -289,7 +302,7 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 		.on('error', (error: any) => log(`Watcher error: ${error}`));
 	return {
 		status: 'Watched',
-		stop: watcher.close,
+		stop: watcher.close
 	};
 };
 
