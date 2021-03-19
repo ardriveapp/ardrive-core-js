@@ -43,7 +43,7 @@ import {
 import { ArDriveBundle, ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
 // Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
-export const getPriceOfNextUploadBatch = async (login: string) => {
+export const getPriceOfNextUploadBatch = async (login: string): Promise<UploadBatch> => {
 	let totalWinstonData = 0;
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
@@ -256,7 +256,7 @@ async function uploadArDriveFolderMetaDataItem(
 }
 
 // Uploads all queued files
-export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
+export const uploadArDriveFilesAndBundles = async (user: ArDriveUser): Promise<string> => {
 	try {
 		const items: DataItemJson[] = [];
 		let filesUploaded = 0;
@@ -390,11 +390,11 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser) => {
 };
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
-export const checkUploadStatus = async (login: string) => {
+export const checkUploadStatus = async (login: string): Promise<string> => {
 	try {
 		console.log('---Checking Upload Status---');
 		let permaWebLink: string;
-		let status: any;
+		let status: number;
 
 		// Get all data bundles that need to have their V2 transactions checked (bundleSyncStatus of 2)
 		const unsyncedBundles: ArDriveBundle[] = await getAllUploadedBundlesFromBundleTable(login);
@@ -542,7 +542,10 @@ export const checkUploadStatus = async (login: string) => {
 };
 
 // Tags and Uploads a single file to your ArDrive
-async function uploadArDriveFileData(user: ArDriveUser, fileToUpload: ArFSFileMetaData) {
+async function uploadArDriveFileData(
+	user: ArDriveUser,
+	fileToUpload: ArFSFileMetaData
+): Promise<{ dataTxId: string; arPrice: number }> {
 	let dataTxId = '';
 	let arPrice = 0;
 	try {
