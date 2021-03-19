@@ -3,10 +3,14 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
 import { ArFSEncryptedData } from './types';
+
+// import { hkdf } from 'futoin-hkdf';
+// import { utf8 } from 'utf8';
+// import { jwkToPem } from 'jwk-to-pem';
 const hkdf = require('futoin-hkdf');
 const utf8 = require('utf8');
-
 const jwkToPem = require('jwk-to-pem');
+
 const authTagLength = 16;
 const keyByteLength = 32;
 const algo = 'aes-256-gcm';
@@ -120,7 +124,10 @@ export const checksumFile = async (path: string): Promise<string> => {
 };
 
 // Used to encrypt data going into sqlitedb, like arweave private key
-export const encryptText = async (text: crypto.BinaryLike, password: any) => {
+export const encryptText = async (
+	text: crypto.BinaryLike,
+	password: string
+): Promise<{ iv: string; encryptedText: string }> => {
 	try {
 		const initVect = crypto.randomBytes(16);
 		const CIPHER_KEY = getTextCipherKey(password);
@@ -133,7 +140,10 @@ export const encryptText = async (text: crypto.BinaryLike, password: any) => {
 		};
 	} catch (err) {
 		console.log(err);
-		return 0;
+		return {
+			iv: 'Error',
+			encryptedText: 'Error'
+		};
 	}
 };
 
@@ -143,7 +153,7 @@ export const decryptText = async (
 		iv: { toString: () => string };
 		encryptedText: { toString: () => string };
 	},
-	password: any
+	password: string
 ): Promise<string> => {
 	try {
 		const iv = Buffer.from(text.iv.toString(), 'hex');

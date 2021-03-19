@@ -312,7 +312,7 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser): Promise<s
 				const folderMetaDataItem = await uploadArDriveFolderMetaDataItem(user, filesToUpload[n]);
 				if (folderMetaDataItem !== null) {
 					items.push(folderMetaDataItem);
-					filesUploaded += 1;
+					bundledFilesUploaded += 1;
 				}
 			}
 			// If we have exceeded the total size of the bundle, we stop processing items and submit the bundle

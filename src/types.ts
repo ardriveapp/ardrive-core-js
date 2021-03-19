@@ -8,7 +8,7 @@ export interface Wallet {
 export interface ArDriveUser {
 	login: string;
 	dataProtectionKey: string;
-	walletPrivateKey: any;
+	walletPrivateKey: string;
 	walletPublicKey: string;
 	syncFolderPath: string;
 	autoSyncApproval: number;
@@ -21,6 +21,12 @@ export interface UploadBatch {
 	totalNumberOfFileUploads: number;
 	totalNumberOfMetaDataUploads: number;
 	totalNumberOfFolderUploads: number;
+}
+
+export interface ArFSRootFolderMetaData {
+	metaDataTxId: string;
+	cipher: string;
+	cipherIV: string;
 }
 
 export interface ArDriveBundle {

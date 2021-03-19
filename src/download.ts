@@ -51,9 +51,11 @@ import {
 	getProfileLastBlockHeight,
 	setProfileLastBlockHeight
 } from './db';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface, GQLTagInterface } from './types';
 import { createWriteStream } from 'fs';
 
+// import { Axios } from 'axios';
+// import { ProgressBar } from 'progress';
 const Axios = require('axios');
 const ProgressBar = require('progress');
 
@@ -211,7 +213,7 @@ async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDrive
 		const data: string | Uint8Array = await getTransactionData(fileToSync.metaDataTxId);
 
 		// Enumerate through each tag to pull the data
-		tags.forEach((tag: any) => {
+		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;
 			const { value } = tag;
 			switch (key) {
@@ -222,7 +224,7 @@ async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDrive
 					fileToSync.appVersion = value;
 					break;
 				case 'Unix-Time':
-					fileToSync.unixTime = value;
+					fileToSync.unixTime = +value; // Convert to number
 					break;
 				case 'Content-Type':
 					fileToSync.contentType = value;
@@ -361,7 +363,7 @@ async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDrive
 }
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
-export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
+export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser): Promise<string> => {
 	// Get your private files
 	console.log('---Getting all your Private ArDrive files---');
 	let drives: ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, 'personal', 'private');
@@ -418,10 +420,11 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser) => {
 
 	// File path is not present by default, so we must generate them for each new file, folder or drive found
 	await setNewFilePaths();
+	return 'Success';
 };
 
 // Downloads all ardrive files that are not local
-export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
+export const downloadMyArDriveFiles = async (user: ArDriveUser): Promise<string> => {
 	console.log('---Downloading any unsynced files---');
 	// Get the Files and Folders which have isLocal set to 0 that we are not ignoring
 	const filesToDownload: ArFSFileMetaData[] = await getFilesToDownload(user.login);
@@ -592,7 +595,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser) => {
 };
 
 // Gets all Private and Public Drives associated with a user profile and adds to the database
-export const getAllMyPersonalDrives = async (user: ArDriveUser) => {
+export const getAllMyPersonalDrives = async (user: ArDriveUser): Promise<ArFSDriveMetaData[]> => {
 	console.log('---Getting all your Personal Drives---');
 	// Get the last block height that has been synced
 	let lastBlockHeight = await getProfileLastBlockHeight(user.login);

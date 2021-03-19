@@ -17,10 +17,11 @@ import {
 	removeByDriveIdFromSyncTable,
 	removeFromDriveTable,
 	removeFromProfileTable,
+	setDriveToSync,
 	updateFilePathInSyncTable,
 	updateUserSyncFolderPathInProfileTable
 } from './db';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types';
 
 // This creates all of the Drives found for the user
 export const setupDrives = async (login: string, syncFolderPath: string): Promise<string> => {
@@ -49,7 +50,7 @@ export const setupDrives = async (login: string, syncFolderPath: string): Promis
 				// determine if the files are private or public
 				// this should be refactored, and isPublic should change to drivePrivacy
 				let isPublic = 1;
-				let rootFolderMetaData = {
+				let rootFolderMetaData: ArFSRootFolderMetaData = {
 					metaDataTxId: '',
 					cipher: '',
 					cipherIV: ''
@@ -216,6 +217,7 @@ export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string): 
 
 		// Add Drive to Drive Table
 		await addDriveToDriveTable(sharedPublicDrive);
+		await setDriveToSync(sharedPublicDrive.driveId);
 
 		// Add the Root Folder to the Sync Table
 		await addFileToSyncTable(driveRootFolderToAdd);

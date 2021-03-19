@@ -22,6 +22,7 @@ import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
+// import hashElement from 'folder-hash';
 const { hashElement } = require('folder-hash');
 
 const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
@@ -294,12 +295,12 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 		}
 	});
 	watcher
-		.on('add', async (path: any) => queueFile(path, login, driveId, drivePrivacy))
-		.on('change', async (path: any) => queueFile(path, login, driveId, drivePrivacy))
-		.on('unlink', async (path: any) => log(`File ${path} has been removed`))
-		.on('addDir', async (path: any) => queueFolder(path, driveRootFolderPath, login, driveId, drivePrivacy))
-		.on('unlinkDir', async (path: any) => log(`Directory ${path} has been removed`))
-		.on('error', (error: any) => log(`Watcher error: ${error}`));
+		.on('add', async (path: string) => queueFile(path, login, driveId, drivePrivacy))
+		.on('change', async (path: string) => queueFile(path, login, driveId, drivePrivacy))
+		.on('unlink', async (path: string) => log(`File ${path} has been removed`))
+		.on('addDir', async (path: string) => queueFolder(path, driveRootFolderPath, login, driveId, drivePrivacy))
+		.on('unlinkDir', async (path: string) => log(`Directory ${path} has been removed`))
+		.on('error', (error: string) => log(`Watcher error: ${error}`));
 	return {
 		status: 'Watched',
 		stop: watcher.close
@@ -320,7 +321,12 @@ const startWatchingFolders = async (user: ArDriveUser) => {
 	return () => Promise.all(stoppers);
 };
 
-const resolveFileDownloadConflict = async (resolution: string, fileName: string, filePath: string, id: string) => {
+const resolveFileDownloadConflict = async (
+	resolution: string,
+	fileName: string,
+	filePath: string,
+	id: string
+): Promise<string> => {
 	const folderPath = dirname(filePath);
 	switch (resolution) {
 		case 'R': {
@@ -342,6 +348,7 @@ const resolveFileDownloadConflict = async (resolution: string, fileName: string,
 			// Skipping this time
 			break;
 	}
+	return 'Success';
 };
 
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders };
