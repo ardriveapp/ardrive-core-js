@@ -1,7 +1,24 @@
 # ardrive-core-js
+
 ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.
 
-Want to install?
+## Dev-install
+
+We use Yarn 2.x please follow the guidelines [here](https://yarnpkg.com/getting-started/install)
+
+On repo main folder run: `yarn`
+
+Remember to use
+
+```
+yarn install --check-cache
+````
+
+for external PR
+
+## Package:
+
+Npm package:
 
 npm add ardrive-core-js
 

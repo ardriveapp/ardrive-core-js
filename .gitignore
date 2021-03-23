@@ -1,6 +1,7 @@
 # Logs
 logs
 *.log
+npm-debug.log.*
 
 # Runtime data
 pids
@@ -31,9 +32,23 @@ node_modules
 # OSX
 .DS_Store
 
-.idea
-npm-debug.log.*
+#Compiled CSS
 *.css.d.ts
 *.sass.d.ts
 *.scss.d.ts
+
+#Yarn
+#https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
+#zero installs
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+#Misc
+.idea
 *.db
+*.code-workspace
