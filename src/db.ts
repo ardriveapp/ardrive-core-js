@@ -13,44 +13,44 @@ let db: Database.Database | null;
 
 const run = (sql: any, params: any[] = []): any => {
 	if (db === null) {
-		console.log ('DB not created yet - run setupDatabase() before using these methods.')
-		return "Error";
+		console.log('DB not created yet - run setupDatabase() before using these methods.');
+		return 'Error';
 	} else {
 		try {
 			const statement = db.prepare(sql);
-			return statement.run(params) 
+			return statement.run(params);
 		} catch (err) {
 			console.log(`Error running sql: ${sql}`);
 			console.log(err);
-			return "Error";
+			return 'Error';
 		}
 	}
 };
 
 const get = (sql: any, params: any[] = []): any => {
 	if (db === null) {
-		console.log ('DB not created yet - run setupDatabase() before using these methods.')
-		return "Error";
-	} else {	
+		console.log('DB not created yet - run setupDatabase() before using these methods.');
+		return 'Error';
+	} else {
 		try {
 			const statement = db.prepare(sql);
 			return statement.get(params);
 		} catch (err) {
 			console.log(`Error running sql: ${sql}`);
 			console.log(err);
-			return "Error";
+			return 'Error';
 		}
 	}
 };
 
 const all = (sql: any, params: any[] = []): any[] => {
 	if (db === null) {
-		console.log ('DB not created yet - run setupDatabase() before using these methods.')
+		console.log('DB not created yet - run setupDatabase() before using these methods.');
 		return [];
 	} else {
 		try {
 			const statement = db.prepare(sql);
-			return statement.all(params) 
+			return statement.all(params);
 		} catch (err) {
 			console.log(`Error running sql: ${sql}`);
 			console.log(err);
@@ -316,7 +316,7 @@ export const getLatestFileVersionFromSyncTable = (fileId: string) => {
 
 // returns all of the local files and folders that have the same parent folder id.
 export const getFilesAndFoldersByParentFolderFromSyncTable = (parentFolderId: string) => {
-	return all('SELECT * FROM Sync WHERE isLocal = 1 AND parentFolderId = ?', [parentFolderId]);
+	return all(`SELECT * FROM Sync WHERE isLocal = 1 AND parentFolderId = ?`, [parentFolderId]);
 };
 
 // Returns the n-1 version of a file
@@ -325,58 +325,58 @@ export const getPreviousFileVersionFromSyncTable = (fileId: string) => {
 };
 
 export const getLatestFolderVersionFromSyncTable = (folderId: string) => {
-	return get('SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC', [folderId]);
+	return get(`SELECT * FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [folderId]);
 };
 
 export const getAllFilesByLoginFromSyncTable = (login: string) => {
-	return all('SELECT * FROM Sync WHERE login = ? ORDER BY unixTime DESC', [login]);
+	return all(`SELECT * FROM Sync WHERE login = ? ORDER BY unixTime DESC`, [login]);
 };
 
 export const getFilesToUploadFromSyncTable = (login: string) => {
-	return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)', [
+	return all(`SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 1 OR fileMetaDataSyncStatus = 1)`, [
 		login
 	]);
 };
 
 export const getAllUploadedBundlesFromBundleTable = (login: string) => {
-	return all('SELECT * FROM Bundle WHERE (login = ?) AND (bundleSyncStatus = 2)', [login]);
+	return all(`SELECT * FROM Bundle WHERE (login = ?) AND (bundleSyncStatus = 2)`, [login]);
 };
 
 export const getAllUploadedDataItemsFromSyncTable = (login: string, bundleTxId: string) => {
-	return all('SELECT * FROM Sync WHERE login = ? AND bundleTxId = ?', [login, bundleTxId]);
+	return all(`SELECT * FROM Sync WHERE login = ? AND bundleTxId = ?`, [login, bundleTxId]);
 };
 
 export const getAllUploadedFilesFromSyncTable = (login: string) => {
-	return all('SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2)', [
+	return all(`SELECT * FROM Sync WHERE (login = ?) AND (fileDataSyncStatus = 2 OR fileMetaDataSyncStatus = 2)`, [
 		login
 	]);
 };
 
 export const getAllUploadedDrivesFromDriveTable = () => {
-	return all('SELECT * FROM Drive WHERE metaDataSyncStatus = 2');
+	return all(`SELECT * FROM Drive WHERE metaDataSyncStatus = 2`);
 };
 
 export const getFilesToDownload = (login: string) => {
-	return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "file" AND login = ?', [login]);
+	return all(`SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = 'file' AND login = ?`, [login]);
 };
 
 export const getFoldersToCreate = (login: string) => {
-	return all('SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = "folder" AND login = ?', [
+	return all(`SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 0 AND entityType = 'folder' AND login = ?`, [
 		login
 	]);
 };
 
 // Gets a drive's root folder by selecting the folder with a parent ID of 0
 export const getRootFolderPathFromSyncTable = (driveId: string) => {
-	return get('SELECT filePath from Sync WHERE parentFolderId = "0" and driveId = ?', [driveId]);
+	return get(`SELECT filePath from Sync WHERE parentFolderId = '0' and driveId = ?`, [driveId]);
 };
 
 export const getNewDrivesFromDriveTable = (login: string) => {
-	return all('SELECT * FROM Drive WHERE login = ? AND metaDataTxId = "0"', [login]);
+	return all(`SELECT * FROM Drive WHERE login = ? AND metaDataTxId = '0'`, [login]);
 };
 
 export const getDriveRootFolderFromSyncTable = (folderId: string) => {
-	return get('SELECT * FROM Sync WHERE fileId = ? AND entityType = "folder"', [folderId]);
+	return get(`SELECT * FROM Sync WHERE fileId = ? AND entityType = 'folder'`, [folderId]);
 };
 
 export const getDriveInfoFromSyncTable = (id: string) => {
@@ -459,7 +459,7 @@ export const updateFileInSyncTable = (file: {
 		id
 	} = file;
 	return run(
-		'UPDATE Sync SET driveId = ?, parentFolderId = ?, fileId = ?, fileVersion = ?, metaDataTxId = ?, dataTxId = ?, fileDataSyncStatus = ?, fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?',
+		`UPDATE Sync SET driveId = ?, parentFolderId = ?, fileId = ?, fileVersion = ?, metaDataTxId = ?, dataTxId = ?, fileDataSyncStatus = ?, fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`,
 		[
 			driveId,
 			parentFolderId,
@@ -531,14 +531,14 @@ export const setFileDataItemSyncStatus = (id: number) => {
 
 // Sets the data bundle tx id for a file or folder and marks it as synchronized
 export const completeFileDataItemFromSyncTable = (permaWebLink: string, id: number) => {
-	return get('UPDATE Sync Set fileDataSyncStatus = 3, fileMetaDataSyncStatus = 3, permaWebLink = ? WHERE id = ?', [
+	return get(`UPDATE Sync Set fileDataSyncStatus = 3, fileMetaDataSyncStatus = 3, permaWebLink = ? WHERE id = ?`, [
 		permaWebLink,
 		id
 	]);
 };
 
 export const completeBundleFromBundleTable = (id: number) => {
-	return get('UPDATE Bundle Set bundleSyncStatus = 3 WHERE id = ?', [id]);
+	return get(`UPDATE Bundle Set bundleSyncStatus = 3 WHERE id = ?`, [id]);
 };
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: number; permaWebLink: any; id: any }) => {
@@ -598,12 +598,12 @@ export const getByMetaDataTxFromSyncTable = (metaDataTxId: string) => {
 };
 
 export const getMyFileDownloadConflicts = (login: string) => {
-	return all('SELECT * FROM Sync WHERE isLocal = 2 AND login = ?', [login]);
+	return all(`SELECT * FROM Sync WHERE isLocal = 2 AND login = ?`, [login]);
 };
 
 export const createArDriveProfile = (user: ArDriveUser) => {
 	return run(
-		'REPLACE INTO Profile (login, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath, autoSyncApproval) VALUES (?, ?, ?, ?, ?, ?)',
+		`REPLACE INTO Profile (login, dataProtectionKey, walletPrivateKey, walletPublicKey, syncFolderPath, autoSyncApproval) VALUES (?, ?, ?, ?, ?, ?)`,
 		[
 			user.login,
 			user.dataProtectionKey,
@@ -734,7 +734,7 @@ export const getAllLatestFileAndFolderVersionsFromSyncTable = () => {
 };
 
 export const getAllFromProfile = () => {
-	return all('SELECT * FROM Profile');
+	return all(`SELECT * FROM Profile`);
 };
 
 export const getAllDrivesFromDriveTable = () => {
@@ -770,11 +770,11 @@ export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing:
 
 const createOrOpenDb = async (dbFilePath: string): Promise<any> => {
 	try {
-		const database: any = new Database(dbFilePath)
-		return database
+		const database: any = new Database(dbFilePath);
+		return database;
 	} catch (err) {
 		console.error('Could not connect to database: '.concat(err.message));
-		return "Error";
+		return 'Error';
 	}
 };
 
