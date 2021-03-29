@@ -1,20 +1,22 @@
-import * as sqlite3 from 'sqlite3';
+// import * as sqlite3 from 'sqlite3';
+import * as Database from 'better-sqlite3';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
 // Use verbose mode in development
-let sql3 = sqlite3;
-if (process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true') {
-	sql3 = sqlite3.verbose();
-}
+// let sql3 = sqlite3;
+// if (process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true') {
+// 	sql3 = sqlite3.verbose();
+//}
 
-let db: sqlite3.Database | null;
+let db: Database | null;
 
 const run = (sql: any, params: any[] = []) => {
 	return new Promise((resolve, reject) => {
 		if (db === null) {
 			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
 		}
-		return db.run(sql, params, (err: string) => {
+		const statement = db.prepare(sql);
+		return statement.run(sql, params, (err: string) => {
 			if (err) {
 				console.log(`Error running sql ${sql}`);
 				console.log(err);
@@ -30,7 +32,8 @@ const get = (sql: any, params: any[] = []): Promise<any> => {
 		if (db === null) {
 			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
 		}
-		return db.get(sql, params, (err: any, result: any) => {
+		const statement = db.prepare(sql);
+		return statement.get(sql, params, (err: any, result: any) => {
 			if (err) {
 				console.log(`Error running sql: ${sql}`);
 				console.log(err);
@@ -47,7 +50,8 @@ const all = (sql: any, params: any[] = []): Promise<any[]> => {
 		if (db === null) {
 			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
 		}
-		return db.all(sql, params, (err: any, rows: any[]) => {
+		const statement = db.prepare(sql);
+		return statement.all(sql, params, (err: any, rows: any[]) => {
 			if (err) {
 				console.error(`Error running sql: ${sql}`);
 				console.error(err);
@@ -768,9 +772,9 @@ export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing:
 	]);
 };
 
-const createOrOpenDb = (dbFilePath: string): Promise<sqlite3.Database> => {
+const createOrOpenDb = (dbFilePath: string): Promise<Database> => {
 	return new Promise((resolve, reject) => {
-		const database: sqlite3.Database = new sql3.Database(dbFilePath, (err: any) => {
+		const database: Database = new Database(dbFilePath, (err: any) => {
 			if (err) {
 				console.error('Could not connect to database: '.concat(err.message));
 				return reject(err);
