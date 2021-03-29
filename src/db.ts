@@ -9,59 +9,54 @@ import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 // 	sql3 = sqlite3.verbose();
 //}
 
-let db: Database | null;
+let db: Database.Database | null;
 
-const run = (sql: any, params: any[] = []) => {
-	return new Promise((resolve, reject) => {
-		if (db === null) {
-			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
+const run = (sql: any, params: any[] = []): any => {
+	if (db === null) {
+		console.log ('DB not created yet - run setupDatabase() before using these methods.')
+		return "Error";
+	} else {
+		try {
+			const statement = db.prepare(sql);
+			return statement.run(params) 
+		} catch (err) {
+			console.log(`Error running sql: ${sql}`);
+			console.log(err);
+			return "Error";
 		}
-		const statement = db.prepare(sql);
-		return statement.run(sql, params, (err: string) => {
-			if (err) {
-				console.log(`Error running sql ${sql}`);
-				console.log(err);
-				reject(err);
-			}
-			resolve('Success');
-		});
-	});
+	}
 };
 
-const get = (sql: any, params: any[] = []): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		if (db === null) {
-			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
+const get = (sql: any, params: any[] = []): any => {
+	if (db === null) {
+		console.log ('DB not created yet - run setupDatabase() before using these methods.')
+		return "Error";
+	} else {	
+		try {
+			const statement = db.prepare(sql);
+			return statement.get(params);
+		} catch (err) {
+			console.log(`Error running sql: ${sql}`);
+			console.log(err);
+			return "Error";
 		}
-		const statement = db.prepare(sql);
-		return statement.get(sql, params, (err: any, result: any) => {
-			if (err) {
-				console.log(`Error running sql: ${sql}`);
-				console.log(err);
-				reject(err);
-			} else {
-				resolve(result);
-			}
-		});
-	});
+	}
 };
 
-const all = (sql: any, params: any[] = []): Promise<any[]> => {
-	return new Promise((resolve, reject) => {
-		if (db === null) {
-			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
+const all = (sql: any, params: any[] = []): any[] => {
+	if (db === null) {
+		console.log ('DB not created yet - run setupDatabase() before using these methods.')
+		return [];
+	} else {
+		try {
+			const statement = db.prepare(sql);
+			return statement.all(params) 
+		} catch (err) {
+			console.log(`Error running sql: ${sql}`);
+			console.log(err);
+			return [];
 		}
-		const statement = db.prepare(sql);
-		return statement.all(sql, params, (err: any, rows: any[]) => {
-			if (err) {
-				console.error(`Error running sql: ${sql}`);
-				console.error(err);
-				reject(err);
-			} else {
-				resolve(rows);
-			}
-		});
-	});
+	}
 };
 
 // This table stores bundled transaction metadata for status tracking.
@@ -116,7 +111,7 @@ const createProfileTable = async () => {
         autoSyncApproval integer DEFAULT 0,
         lastBlockHeight integer DEFAULT 0
      );`;
-	return run(sql);
+	return await run(sql);
 };
 
 // This is the primary data table for all Arweave File System metadata for drive root folders, folders and files.
@@ -430,7 +425,7 @@ export const updateFileDataSyncStatus = (file: {
 	id: number;
 }) => {
 	const { fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id } = file;
-	return get(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ?, dataCipherIV = ?, cipher = ? WHERE id = ?`, [
+	return run(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ?, dataCipherIV = ?, cipher = ? WHERE id = ?`, [
 		fileDataSyncStatus,
 		dataTxId,
 		dataCipherIV,
@@ -482,31 +477,31 @@ export const updateFileInSyncTable = (file: {
 
 // Modifies the file path of a given file/folder
 export const updateFilePathInSyncTable = (filePath: string, id: number) => {
-	return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
+	return run(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
 
 export const updateFolderHashInSyncTable = (folderHash: string, id: number) => {
-	return get(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [folderHash, id]);
+	return run(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [folderHash, id]);
 };
 
 export const updateFileSizeInSyncTable = (fileSize: number, id: number) => {
-	return get(`UPDATE Sync SET fileSize = ? WHERE id = ?`, [fileSize, id]);
+	return run(`UPDATE Sync SET fileSize = ? WHERE id = ?`, [fileSize, id]);
 };
 
 export const updateFileHashInSyncTable = (fileHash: string, id: number) => {
-	return get(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [fileHash, id]);
+	return run(`UPDATE Sync SET fileHash = ? WHERE id = ?`, [fileHash, id]);
 };
 
 export const updateFileDownloadStatus = (isLocal: string, id: number) => {
-	return get(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
+	return run(`UPDATE Sync SET isLocal = ? WHERE id = ?`, [isLocal, id]);
 };
 
 export const updateFileBundleTxId = (bundleTxId: string, id: number) => {
-	return get(`UPDATE Sync SET bundleTxId = ? WHERE id = ?`, [bundleTxId, id]);
+	return run(`UPDATE Sync SET bundleTxId = ? WHERE id = ?`, [bundleTxId, id]);
 };
 
 export const updateFileUploadTimeInSyncTable = (id: number, uploadTime: number) => {
-	return get(`UPDATE Sync SET uploadTime = ? WHERE id = ?`, [uploadTime, id]);
+	return run(`UPDATE Sync SET uploadTime = ? WHERE id = ?`, [uploadTime, id]);
 };
 
 export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
@@ -518,20 +513,20 @@ export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, ci
 
 // Updates the sync folder (where all the users ardrive data is stored) path for a given user in the profile table
 export const updateUserSyncFolderPathInProfileTable = (login: string, syncFolderPath: string) => {
-	return get(`UPDATE Profile SET syncFolderPath = ? WHERE login = ?`, [syncFolderPath, login]);
+	return run(`UPDATE Profile SET syncFolderPath = ? WHERE login = ?`, [syncFolderPath, login]);
 };
 
 export const setFileMetaDataSyncStatus = (fileMetaDataSyncStatus: number, id: number) => {
-	return get(`UPDATE Sync SET fileMetaDataSyncStatus = ? WHERE id = ?`, [fileMetaDataSyncStatus, id]);
+	return run(`UPDATE Sync SET fileMetaDataSyncStatus = ? WHERE id = ?`, [fileMetaDataSyncStatus, id]);
 };
 
 export const setFileDataSyncStatus = (fileDataSyncStatus: number, id: number) => {
-	return get(`UPDATE Sync SET fileDataSyncStatus = ? WHERE id = ?`, [fileDataSyncStatus, id]);
+	return run(`UPDATE Sync SET fileDataSyncStatus = ? WHERE id = ?`, [fileDataSyncStatus, id]);
 };
 
 // Sets a files sync statuses to 1, requiring a reupload
 export const setFileDataItemSyncStatus = (id: number) => {
-	return get(`UPDATE Sync SET fileDataSyncStatus = 1, fileMetaDataSyncStatus = 1 WHERE id = ?`, [id]);
+	return run(`UPDATE Sync SET fileDataSyncStatus = 1, fileMetaDataSyncStatus = 1 WHERE id = ?`, [id]);
 };
 
 // Sets the data bundle tx id for a file or folder and marks it as synchronized
@@ -548,7 +543,7 @@ export const completeBundleFromBundleTable = (id: number) => {
 
 export const completeFileDataFromSyncTable = (file: { fileDataSyncStatus: number; permaWebLink: any; id: any }) => {
 	const { fileDataSyncStatus, permaWebLink, id } = file;
-	return get(`UPDATE Sync SET fileDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
+	return run(`UPDATE Sync SET fileDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
 		fileDataSyncStatus,
 		permaWebLink,
 		id
@@ -561,7 +556,7 @@ export const completeFileMetaDataFromSyncTable = (file: {
 	id: any;
 }) => {
 	const { fileMetaDataSyncStatus, permaWebLink, id } = file;
-	return get(`UPDATE Sync SET fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
+	return run(`UPDATE Sync SET fileMetaDataSyncStatus = ?, permaWebLink = ? WHERE id = ?`, [
 		fileMetaDataSyncStatus,
 		permaWebLink,
 		id
@@ -570,7 +565,7 @@ export const completeFileMetaDataFromSyncTable = (file: {
 
 // Set a drive record to completely synchronized
 export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, driveId: string) => {
-	return get(`UPDATE Drive SET metaDataSyncStatus = ? WHERE driveId = ?`, [metaDataSyncStatus, driveId]);
+	return run(`UPDATE Drive SET metaDataSyncStatus = ? WHERE driveId = ?`, [metaDataSyncStatus, driveId]);
 };
 
 // Same as remove from sync table.  which to remove?
@@ -621,21 +616,21 @@ export const createArDriveProfile = (user: ArDriveUser) => {
 };
 
 export const setProfileAutoSyncApproval = (autoSyncApproval: number, login: string) => {
-	return get(`UPDATE Profile SET autoSyncApproval = ? WHERE login = ?`, [autoSyncApproval, login]);
+	return run(`UPDATE Profile SET autoSyncApproval = ? WHERE login = ?`, [autoSyncApproval, login]);
 };
 
 export const setProfileWalletBalance = (walletBalance: number, login: string) => {
-	return get(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [walletBalance, login]);
+	return run(`UPDATE Profile SET walletBalance = ? WHERE login = ?`, [walletBalance, login]);
 };
 
 // Sets a Drive to be synchronized
 export const setDriveToSync = (driveId: string) => {
-	return get(`UPDATE Drive SET isLocal = 1 WHERE driveId = ?`, [driveId]);
+	return run(`UPDATE Drive SET isLocal = 1 WHERE driveId = ?`, [driveId]);
 };
 
 // Sets the last block height for a given drive
 export const setDriveLastBlockHeight = (lastBlockHeight: number, driveId: string) => {
-	return get(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
+	return run(`UPDATE Drive SET lastBlockHeight = ? WHERE driveId = ?`, [lastBlockHeight, driveId]);
 };
 
 export const getProfileWalletBalance = (login: string) => {
@@ -644,7 +639,7 @@ export const getProfileWalletBalance = (login: string) => {
 
 // Sets the last block height for an entire profile
 export const setProfileLastBlockHeight = (lastBlockHeight: number, login: string) => {
-	return get(`UPDATE Profile SET lastBlockHeight = ? WHERE login = ?`, [lastBlockHeight, login]);
+	return run(`UPDATE Profile SET lastBlockHeight = ? WHERE login = ?`, [lastBlockHeight, login]);
 };
 
 export const getProfileLastBlockHeight = (login: string) => {
@@ -688,32 +683,32 @@ export const getAllUnhashedLocalFilesFromSyncTable = () => {
 };
 
 export const setParentFolderId = (parentFolderId: string, id: number) => {
-	return get(`UPDATE Sync SET parentFolderId = ? WHERE id = ?`, [parentFolderId, id]);
+	return run(`UPDATE Sync SET parentFolderId = ? WHERE id = ?`, [parentFolderId, id]);
 };
 
 export const setPermaWebFileToCloudOnly = (id: number) => {
-	return get(`UPDATE Sync SET cloudOnly = 1 WHERE id = ?`, [id]);
+	return run(`UPDATE Sync SET cloudOnly = 1 WHERE id = ?`, [id]);
 };
 
 export const setPermaWebFileToOverWrite = (id: string) => {
-	return get(`UPDATE Sync SET isLocal = 2 WHERE id = ?`, [id]);
+	return run(`UPDATE Sync SET isLocal = 2 WHERE id = ?`, [id]);
 };
 
 export const setFileUploaderObject = (uploader: string, id: number) => {
-	return get(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
+	return run(`UPDATE Sync SET uploader = ? WHERE id = ?`, [uploader, id]);
 };
 
 export const setBundleUploaderObject = (uploader: string, bundleTxId: string) => {
-	return get(`UPDATE Bundle SET uploader = ? WHERE bundleTxId = ?`, [uploader, bundleTxId]);
+	return run(`UPDATE Bundle SET uploader = ? WHERE bundleTxId = ?`, [uploader, bundleTxId]);
 };
 
 export const setFilePath = (filePath: string, id: number) => {
-	return get(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
+	return run(`UPDATE Sync SET filePath = ? WHERE id = ?`, [filePath, id]);
 };
 
 // Sets a file isLocal to 0, which will prompt a download
 export const setFileToDownload = (metaDataTxId: string) => {
-	return get(`UPDATE Sync SET isLocal = 0 WHERE metaDataTxId = ?`, [metaDataTxId]);
+	return run(`UPDATE Sync SET isLocal = 0 WHERE metaDataTxId = ?`, [metaDataTxId]);
 };
 
 export const updateArDriveRootDirectoryTx = (
@@ -738,7 +733,7 @@ export const getAllLatestFileAndFolderVersionsFromSyncTable = () => {
 	return all(`SELECT * FROM Sync WHERE cloudOnly = 0 AND isLocal = 1`);
 };
 
-export const getAllFromProfile = (): Promise<any[]> => {
+export const getAllFromProfile = () => {
 	return all('SELECT * FROM Profile');
 };
 
@@ -773,30 +768,28 @@ export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing:
 	]);
 };
 
-const createOrOpenDb = (dbFilePath: string): Promise<Database> => {
-	return new Promise((resolve, reject) => {
-		const database = new SqliteDatabase(dbFilePath, (err: any) => {
-			if (err) {
-				console.error('Could not connect to database: '.concat(err.message));
-				return reject(err);
-			}
-			return resolve(database);
-		});
-	});
+const createOrOpenDb = async (dbFilePath: string): Promise<any> => {
+	try {
+		const database: any = new Database(dbFilePath)
+		return database
+	} catch (err) {
+		console.error('Could not connect to database: '.concat(err.message));
+		return "Error";
+	}
 };
 
-const createTablesInDB = async () => {
-	await createProfileTable();
-	await createSyncTable();
-	await createDriveTable();
-	await createBundleTable();
+const createTablesInDB = () => {
+	createProfileTable();
+	createSyncTable();
+	createDriveTable();
+	createBundleTable();
 };
 
 // Main entrypoint for database. MUST call this before anything else can happen
 export const setupDatabase = async (dbFilePath: string): Promise<Error | null> => {
 	try {
 		db = await createOrOpenDb(dbFilePath);
-		await createTablesInDB();
+		createTablesInDB();
 	} catch (err) {
 		return err;
 	}
