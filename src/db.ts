@@ -1,6 +1,7 @@
 // import * as sqlite3 from 'sqlite3';
-import * as Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
+// const Database = require('better-sqlite3');
 
 // Use verbose mode in development
 // let sql3 = sqlite3;
@@ -774,7 +775,7 @@ export const getAllDrivesByPrivacyFromDriveTable = (login: string, driveSharing:
 
 const createOrOpenDb = (dbFilePath: string): Promise<Database> => {
 	return new Promise((resolve, reject) => {
-		const database: Database = new Database(dbFilePath, (err: any) => {
+		const database = new SqliteDatabase(dbFilePath, (err: any) => {
 			if (err) {
 				console.error('Could not connect to database: '.concat(err.message));
 				return reject(err);
