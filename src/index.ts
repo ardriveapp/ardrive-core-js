@@ -9,9 +9,12 @@ export {
 	getUserFromProfileById,
 	getUserFromProfile,
 	getMyFileDownloadConflicts,
-	getDriveFromDriveTable
+	getDriveFromDriveTable,
+	getAllDrivesByLoginFromDriveTable,
+	getAllUnSyncedPersonalDrivesByLoginFromDriveTable,
+	getProfileWalletBalance
 } from './db_get';
-export { setProfileWalletBalance, setProfileAutoSyncApproval, addDriveToDriveTable } from './db_update';
+export { setProfileWalletBalance, setProfileAutoSyncApproval, addDriveToDriveTable, setDriveToSync } from './db_update';
 export { setupDatabase } from './db';
 export {
 	sleep,
@@ -25,7 +28,7 @@ export {
 	createPrivateFileSharingLink,
 	createPublicDriveSharingLink
 } from './common';
-export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
+export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles, getAllMyPersonalDrives } from './download';
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders } from './files';
 export { checkUploadStatus, uploadArDriveFilesAndBundles, getPriceOfNextUploadBatch } from './upload';
 export {
@@ -38,3 +41,4 @@ export {
 	deleteDrive,
 	updateUserSyncFolderPath
 } from './profile';
+export { ArDriveUser, UploadBatch, ArFSDriveMetaData, ArFSFileMetaData } from './types';
