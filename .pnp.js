@@ -45,6 +45,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
             ["@types/node-fetch", "npm:2.5.8"],
+            ["@types/progress", "npm:2.0.3"],
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
@@ -291,6 +292,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-parse-json-npm-4.0.0-298522afa6-4a8f720afa.zip/node_modules/@types/parse-json/",
           "packageDependencies": [
             ["@types/parse-json", "npm:4.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/progress", [
+        ["npm:2.0.3", {
+          "packageLocation": "./.yarn/cache/@types-progress-npm-2.0.3-8223f090c8-b221d95b40.zip/node_modules/@types/progress/",
+          "packageDependencies": [
+            ["@types/progress", "npm:2.0.3"],
+            ["@types/node", "npm:14.14.35"]
           ],
           "linkType": "HARD",
         }]
@@ -1016,6 +1027,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
             ["@types/node-fetch", "npm:2.5.8"],
+            ["@types/progress", "npm:2.0.3"],
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
