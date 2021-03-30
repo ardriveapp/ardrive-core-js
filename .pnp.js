@@ -49,6 +49,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
+            ["@types/utf8", "npm:2.1.6"],
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
@@ -340,6 +341,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["@types/through", "npm:0.0.30"],
             ["@types/node", "npm:14.14.35"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/utf8", [
+        ["npm:2.1.6", {
+          "packageLocation": "./.yarn/cache/@types-utf8-npm-2.1.6-f775dc749e-aa03477b68.zip/node_modules/@types/utf8/",
+          "packageDependencies": [
+            ["@types/utf8", "npm:2.1.6"]
           ],
           "linkType": "HARD",
         }]
@@ -1031,6 +1041,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
+            ["@types/utf8", "npm:2.1.6"],
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
