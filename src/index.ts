@@ -6,14 +6,18 @@ export {
 	getAllMyPublicArDriveIds
 } from './arweave';
 export {
-	setupDatabase,
 	getUserFromProfileById,
-	setProfileWalletBalance,
 	getUserFromProfile,
 	getMyFileDownloadConflicts,
-	setProfileAutoSyncApproval,
 	getDriveFromDriveTable,
-	addDriveToDriveTable
+	getAllDrivesByLoginFromDriveTable,
+	getAllUnSyncedPersonalDrivesByLoginFromDriveTable,
+	getProfileWalletBalance,
+	setupDatabase,
+	setProfileWalletBalance,
+	setProfileAutoSyncApproval,
+	addDriveToDriveTable,
+	setDriveToSync
 } from './db';
 export {
 	sleep,
@@ -27,7 +31,7 @@ export {
 	createPrivateFileSharingLink,
 	createPublicDriveSharingLink
 } from './common';
-export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles } from './download';
+export { getMyArDriveFilesFromPermaWeb, downloadMyArDriveFiles, getAllMyPersonalDrives } from './download';
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders } from './files';
 export { checkUploadStatus, uploadArDriveFilesAndBundles, getPriceOfNextUploadBatch } from './upload';
 export {
@@ -40,3 +44,4 @@ export {
 	deleteDrive,
 	updateUserSyncFolderPath
 } from './profile';
+export { ArDriveUser, UploadBatch, ArFSDriveMetaData, ArFSFileMetaData } from './types';

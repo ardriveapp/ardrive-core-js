@@ -38,15 +38,18 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",
           "packageDependencies": [
             ["@types/chai", "npm:4.2.15"],
+            ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
             ["@types/node-fetch", "npm:2.5.8"],
+            ["@types/progress", "npm:2.0.3"],
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
+            ["@types/utf8", "npm:2.1.6"],
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
@@ -199,6 +202,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["@types/folder-hash", [
+        ["npm:4.0.0", {
+          "packageLocation": "./.yarn/cache/@types-folder-hash-npm-4.0.0-fe341be583-73699eb5ca.zip/node_modules/@types/folder-hash/",
+          "packageDependencies": [
+            ["@types/folder-hash", "npm:4.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["@types/fs-extra", [
         ["npm:9.0.8", {
           "packageLocation": "./.yarn/cache/@types-fs-extra-npm-9.0.8-330686f6fb-3e02e99fc5.zip/node_modules/@types/fs-extra/",
@@ -285,6 +297,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["@types/progress", [
+        ["npm:2.0.3", {
+          "packageLocation": "./.yarn/cache/@types-progress-npm-2.0.3-8223f090c8-b221d95b40.zip/node_modules/@types/progress/",
+          "packageDependencies": [
+            ["@types/progress", "npm:2.0.3"],
+            ["@types/node", "npm:14.14.35"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["@types/prompt-sync", [
         ["npm:4.1.0", {
           "packageLocation": "./.yarn/cache/@types-prompt-sync-npm-4.1.0-5d6d03c0bb-21bc6832fb.zip/node_modules/@types/prompt-sync/",
@@ -319,6 +341,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["@types/through", "npm:0.0.30"],
             ["@types/node", "npm:14.14.35"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/utf8", [
+        ["npm:2.1.6", {
+          "packageLocation": "./.yarn/cache/@types-utf8-npm-2.1.6-f775dc749e-aa03477b68.zip/node_modules/@types/utf8/",
+          "packageDependencies": [
+            ["@types/utf8", "npm:2.1.6"]
           ],
           "linkType": "HARD",
         }]
@@ -999,15 +1030,18 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["ardrive-core-js", "workspace:."],
             ["@types/chai", "npm:4.2.15"],
+            ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
             ["@types/node-fetch", "npm:2.5.8"],
+            ["@types/progress", "npm:2.0.3"],
             ["@types/prompt-sync", "npm:4.1.0"],
             ["@types/prompts", "npm:2.4.0"],
             ["@types/sqlite3", "npm:3.1.7"],
+            ["@types/utf8", "npm:2.1.6"],
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
