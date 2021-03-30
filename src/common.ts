@@ -25,8 +25,9 @@ import {
 import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 
-// import hashElement from 'folder-hash';
-const { hashElement } = require('folder-hash');
+import hashElement from 'folder-hash';
+
+//const { hashElement } = require('folder-hash');
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';

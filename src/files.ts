@@ -22,8 +22,9 @@ import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
-// import hashElement from 'folder-hash';
-const { hashElement } = require('folder-hash');
+import hashElement from 'folder-hash';
+
+//const { hashElement } = require('folder-hash');
 
 const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
 	// Check to see if the file is ready

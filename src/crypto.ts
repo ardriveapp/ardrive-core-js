@@ -4,12 +4,13 @@ import * as fs from 'fs';
 import { parse } from 'uuid';
 import { ArFSEncryptedData } from './types';
 
-// import { hkdf } from 'futoin-hkdf';
-// import { utf8 } from 'utf8';
-// import { jwkToPem } from 'jwk-to-pem';
-const hkdf = require('futoin-hkdf');
-const utf8 = require('utf8');
-const jwkToPem = require('jwk-to-pem');
+import hkdf from 'futoin-hkdf';
+import utf8 from 'utf8';
+import jwkToPem from 'jwk-to-pem';
+
+//const hkdf = require('futoin-hkdf');
+//const utf8 = require('utf8');
+//const jwkToPem = require('jwk-to-pem');
 
 const authTagLength = 16;
 const keyByteLength = 32;
