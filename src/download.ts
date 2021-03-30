@@ -55,7 +55,8 @@ import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface, GQL
 import { createWriteStream } from 'fs';
 
 import Axios from 'axios';
-import * as ProgressBar from 'progress';
+import ProgressBar from 'progress';
+
 //import { ProgressBar } from 'progress';
 
 //const Axios = require('axios');
