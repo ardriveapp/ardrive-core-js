@@ -6,7 +6,7 @@ import { ArFSEncryptedData } from './types';
 import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
 import jwkToPem from 'jwk-to-pem';
-import { RSA } from 'jwk-to-pem';
+import { JWK } from 'jwk-to-pem';
 
 const authTagLength = 16;
 const keyByteLength = 32;
@@ -14,7 +14,7 @@ const algo = 'aes-256-gcm';
 const keyHash = 'SHA-256';
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file
-export const getArweaveWalletSigningKey = async (jwk: RSA, data: Uint8Array): Promise<Uint8Array> => {
+export const getArweaveWalletSigningKey = async (jwk: JWK, data: Uint8Array): Promise<Uint8Array> => {
 	const sign = crypto.createSign('sha256');
 	sign.update(data);
 	const pem: string = jwkToPem(jwk, { private: true });
