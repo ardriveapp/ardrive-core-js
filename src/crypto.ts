@@ -5,8 +5,7 @@ import { ArFSEncryptedData } from './types';
 
 import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
-import jwkToPem from 'jwk-to-pem';
-import { JWK } from 'jwk-to-pem';
+import jwkToPem, { JWK } from 'jwk-to-pem';
 
 const authTagLength = 16;
 const keyByteLength = 32;
