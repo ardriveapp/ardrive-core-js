@@ -51,4 +51,3 @@ node_modules
 #Misc
 .idea
 *.db
-*.code-workspace
