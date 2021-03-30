@@ -12,16 +12,18 @@ import {
 	getFolderFromSyncTable,
 	getFolderNameFromSyncTable,
 	getFolderParentIdFromSyncTable,
+	getFilesAndFoldersByParentFolderFromSyncTable,
+	getRootFolderPathFromSyncTable,
+	getAllLatestFileAndFolderVersionsFromSyncTable
+} from './db_get';
+import {
 	setFilePath,
 	setParentFolderId,
 	updateFileHashInSyncTable,
-	getFilesAndFoldersByParentFolderFromSyncTable,
 	updateFolderHashInSyncTable,
-	getRootFolderPathFromSyncTable,
-	getAllLatestFileAndFolderVersionsFromSyncTable,
 	setFileToDownload,
 	updateFileSizeInSyncTable
-} from './db';
+} from './db_update';
 import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 

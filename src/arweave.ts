@@ -26,10 +26,10 @@ import {
 	updateFileDataSyncStatus,
 	setFileUploaderObject,
 	updateDriveInDriveTable,
-	getDriveFromDriveTable,
 	addToBundleTable,
 	setBundleUploaderObject
-} from './db';
+} from './db_update';
+import { getDriveFromDriveTable } from './db_get';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';

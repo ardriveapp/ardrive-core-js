@@ -6,15 +6,13 @@ export {
 	getAllMyPublicArDriveIds
 } from './arweave';
 export {
-	setupDatabase,
 	getUserFromProfileById,
-	setProfileWalletBalance,
 	getUserFromProfile,
 	getMyFileDownloadConflicts,
-	setProfileAutoSyncApproval,
-	getDriveFromDriveTable,
-	addDriveToDriveTable
-} from './db';
+	getDriveFromDriveTable
+} from './db_get';
+export { setProfileWalletBalance, setProfileAutoSyncApproval, addDriveToDriveTable } from './db_update';
+export { setupDatabase } from './db';
 export {
 	sleep,
 	checkOrCreateFolder,

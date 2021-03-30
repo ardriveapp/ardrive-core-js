@@ -4,20 +4,17 @@ import * as fs from 'fs';
 import { extToMime, appName, appVersion, checkFileExistsSync } from './common';
 import { checksumFile } from './crypto';
 import {
-	addFileToSyncTable,
 	getFolderFromSyncTable,
 	getFolderByInodeFromSyncTable,
 	getByFileNameAndHashAndParentFolderIdFromSyncTable,
 	getByFilePathFromSyncTable,
 	getByFileHashAndParentFolderFromSyncTable,
 	getByFileHashAndFileNameFromSyncTable,
-	setPermaWebFileToCloudOnly,
-	setPermaWebFileToOverWrite,
 	getFolderByHashFromSyncTable,
-	setFilePath,
 	getDriveRootFolderFromSyncTable,
 	getAllPersonalDrivesByLoginFromDriveTable
-} from './db';
+} from './db_get';
+import { setFilePath, setPermaWebFileToCloudOnly, setPermaWebFileToOverWrite, addFileToSyncTable } from './db_update';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
