@@ -108,6 +108,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/folder-hash@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@types/folder-hash@npm:4.0.0"
+  checksum: 73699eb5ca78eef667e5c87693f7d50ba4a36ee3a9a114eea461713bc9cd8deff8e5b14537abb207f4905c60301eba0c450d434a7ceed3b0157359f9c1ec08a3
+  languageName: node
+  linkType: hard
+
 "@types/fs-extra@npm:^9.0.8":
   version: 9.0.8
   resolution: "@types/fs-extra@npm:9.0.8"
@@ -760,6 +767,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@types/chai": ^4.2.15
+    "@types/folder-hash": ^4.0.0
     "@types/fs-extra": ^9.0.8
     "@types/jwk-to-pem": ^2.0.0
     "@types/mime-types": ^2.1.0

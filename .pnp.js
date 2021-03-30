@@ -38,6 +38,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",
           "packageDependencies": [
             ["@types/chai", "npm:4.2.15"],
+            ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/mime-types", "npm:2.1.0"],
@@ -195,6 +196,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["@types/clui", "npm:0.3.0"],
             ["@types/cli-color", "npm:2.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/folder-hash", [
+        ["npm:4.0.0", {
+          "packageLocation": "./.yarn/cache/@types-folder-hash-npm-4.0.0-fe341be583-73699eb5ca.zip/node_modules/@types/folder-hash/",
+          "packageDependencies": [
+            ["@types/folder-hash", "npm:4.0.0"]
           ],
           "linkType": "HARD",
         }]
@@ -999,6 +1009,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["ardrive-core-js", "workspace:."],
             ["@types/chai", "npm:4.2.15"],
+            ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/mime-types", "npm:2.1.0"],
