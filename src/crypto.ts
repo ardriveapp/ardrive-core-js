@@ -36,7 +36,7 @@ export const deriveDriveKey = async (
 	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
 	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey);
 	const info: string = utf8.encode(dataEncryptionKey as string);
-	const driveKey: Buffer = hkdf(walletSignature.toString(), keyByteLength, { info, hash: keyHash });
+	const driveKey: Buffer = hkdf(Buffer.from(walletSignature), keyByteLength, { info, hash: keyHash });
 	return driveKey;
 };
 
