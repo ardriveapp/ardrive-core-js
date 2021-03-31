@@ -25,7 +25,7 @@ const run = (sql: any, params: any[] = []) => {
 	});
 };
 
-const get = (sql: any, params: any[] = []): Promise<any> => {
+function get(sql: any, params: any[] = []): Promise<any> {
 	return new Promise((resolve, reject) => {
 		if (db === null) {
 			return reject(new Error('DB not created yet - run setupDatabase() before using these methods.'));
@@ -40,7 +40,7 @@ const get = (sql: any, params: any[] = []): Promise<any> => {
 			}
 		});
 	});
-};
+}
 
 const all = (sql: any, params: any[] = []): Promise<any[]> => {
 	return new Promise((resolve, reject) => {
@@ -395,13 +395,13 @@ export const getFolderParentIdFromSyncTable = (fileId: string) => {
 	return get(`SELECT parentFolderId FROM Sync WHERE fileId = ? ORDER BY unixTime DESC`, [fileId]);
 };
 
-export const getFileUploadTimeFromSyncTable = (id: number): Promise<number> => {
+export function getFileUploadTimeFromSyncTable(id: number): Promise<number> {
 	return get(`SELECT uploadTime FROM Sync WHERE id = ?`, [id]);
-};
+}
 
-export const getBundleUploadTimeFromBundleTable = (id: number): Promise<number> => {
+export function getBundleUploadTimeFromBundleTable(id: number): Promise<number> {
 	return get(`SELECT uploadTime FROM Bundle WHERE id = ?`, [id]);
-};
+}
 
 export const updateFileMetaDataSyncStatus = (file: {
 	fileMetaDataSyncStatus: number;
