@@ -1,15 +1,11 @@
-import { JWKInterface } from 'arweave/node/lib/wallet';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
 import { ArFSEncryptedData } from './types';
 
-// import { hkdf } from 'futoin-hkdf';
-// import { utf8 } from 'utf8';
-// import { jwkToPem } from 'jwk-to-pem';
-const hkdf = require('futoin-hkdf');
-const utf8 = require('utf8');
-const jwkToPem = require('jwk-to-pem');
+import hkdf from 'futoin-hkdf';
+import utf8 from 'utf8';
+import jwkToPem, { JWK } from 'jwk-to-pem';
 
 const authTagLength = 16;
 const keyByteLength = 32;
@@ -17,7 +13,7 @@ const algo = 'aes-256-gcm';
 const keyHash = 'SHA-256';
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file
-export const getArweaveWalletSigningKey = async (jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> => {
+export const getArweaveWalletSigningKey = async (jwk: JWK, data: Uint8Array): Promise<Uint8Array> => {
 	const sign = crypto.createSign('sha256');
 	sign.update(data);
 	const pem: string = jwkToPem(jwk, { private: true });
@@ -39,15 +35,15 @@ export const deriveDriveKey = async (
 	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'));
 	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
 	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey);
-	const info: string = utf8.encode(dataEncryptionKey);
-	const driveKey: Buffer = hkdf(walletSignature, keyByteLength, { info, keyHash });
+	const info: string = utf8.encode(dataEncryptionKey as string);
+	const driveKey: Buffer = hkdf(Buffer.from(walletSignature), keyByteLength, { info, hash: keyHash });
 	return driveKey;
 };
 
 // Derive a key from the user's Drive Key and the File Id
 export const deriveFileKey = async (fileId: string, driveKey: Buffer): Promise<Buffer> => {
 	const info: Buffer = Buffer.from(parse(fileId) as Uint8Array);
-	const fileKey: Buffer = hkdf(driveKey, keyByteLength, { info, keyHash });
+	const fileKey: Buffer = hkdf(driveKey, keyByteLength, { info, hash: keyHash });
 	return fileKey;
 };
 

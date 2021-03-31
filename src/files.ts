@@ -22,8 +22,9 @@ import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 
-// import hashElement from 'folder-hash';
-const { hashElement } = require('folder-hash');
+import { hashElement, HashElementOptions } from 'folder-hash';
+
+//const { hashElement } = require('folder-hash');
 
 const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
 	// Check to see if the file is ready
@@ -201,7 +202,7 @@ const queueFolder = async (
 		}
 
 		// Generate a hash of all of the contents in this folder
-		const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
+		const options: HashElementOptions = { encoding: 'hex', folders: { exclude: ['.*'] } };
 		const folderHash = await hashElement(folderPath, options);
 
 		// Get the Drive ID and Privacy status

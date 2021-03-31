@@ -54,10 +54,13 @@ import {
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface, GQLTagInterface } from './types';
 import { createWriteStream } from 'fs';
 
-// import { Axios } from 'axios';
-// import { ProgressBar } from 'progress';
-const Axios = require('axios');
-const ProgressBar = require('progress');
+import Axios from 'axios';
+import ProgressBar from 'progress';
+
+//import { ProgressBar } from 'progress';
+
+//const Axios = require('axios');
+//const ProgressBar = require('progress');
 
 // Downloads a single file from ArDrive by transaction
 async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFileMetaData) {
