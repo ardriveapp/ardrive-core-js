@@ -27,8 +27,7 @@ import {
 import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 
-// import hashElement from 'folder-hash';
-const { hashElement } = require('folder-hash');
+import { hashElement, HashElementOptions } from 'folder-hash';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -222,7 +221,7 @@ const backupWallet = async (backupWalletPath: string, wallet: Wallet, owner: str
 // Updates all local folder hashes
 const setAllFolderHashes = async (): Promise<string> => {
 	try {
-		const options = { encoding: 'hex', folders: { exclude: ['.*'] } };
+		const options: HashElementOptions = { encoding: 'hex', folders: { exclude: ['.*'] } };
 		const allFolders: ArFSFileMetaData[] = await getAllLocalFoldersFromSyncTable();
 		// Update the hash of the parent folder
 		await asyncForEach(allFolders, async (folder: ArFSFileMetaData) => {

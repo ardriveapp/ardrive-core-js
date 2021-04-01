@@ -12,10 +12,13 @@ export {
 	getDriveFromDriveTable,
 	getAllDrivesByLoginFromDriveTable,
 	getAllUnSyncedPersonalDrivesByLoginFromDriveTable,
-	getProfileWalletBalance
-} from './db_get';
-export { setProfileWalletBalance, setProfileAutoSyncApproval, addDriveToDriveTable, setDriveToSync } from './db_update';
-export { setupDatabase } from './db';
+	getProfileWalletBalance,
+	setupDatabase,
+	setProfileWalletBalance,
+	setProfileAutoSyncApproval,
+	addDriveToDriveTable,
+	setDriveToSync
+} from './db';
 export {
 	sleep,
 	checkOrCreateFolder,
