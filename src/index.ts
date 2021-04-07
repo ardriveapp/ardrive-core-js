@@ -5,6 +5,7 @@ export {
 	getAllMyPrivateArDriveIds,
 	getAllMyPublicArDriveIds
 } from './arweave';
+export { setupDatabase } from './db';
 export {
 	getUserFromProfileById,
 	getUserFromProfile,
@@ -12,13 +13,9 @@ export {
 	getDriveFromDriveTable,
 	getAllDrivesByLoginFromDriveTable,
 	getAllUnSyncedPersonalDrivesByLoginFromDriveTable,
-	getProfileWalletBalance,
-	setupDatabase,
-	setProfileWalletBalance,
-	setProfileAutoSyncApproval,
-	addDriveToDriveTable,
-	setDriveToSync
-} from './db';
+	getProfileWalletBalance
+} from './db_get';
+export { setProfileWalletBalance, setDriveToSync, addDriveToDriveTable, setProfileAutoSyncApproval } from './db_update';
 export {
 	sleep,
 	checkOrCreateFolder,

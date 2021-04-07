@@ -9,18 +9,18 @@ import {
 	addDriveToDriveTable,
 	addFileToSyncTable,
 	createArDriveProfile,
+	setDriveToSync,
+	updateFilePathInSyncTable,
+	updateUserSyncFolderPathInProfileTable
+} from './db_update';
+import {
 	getAllDrivesByLoginFromDriveTable,
 	getAllFilesByLoginFromSyncTable,
 	getFolderFromSyncTable,
 	getSyncFolderPathFromProfile,
-	getUserFromProfile,
-	removeByDriveIdFromSyncTable,
-	removeFromDriveTable,
-	removeFromProfileTable,
-	setDriveToSync,
-	updateFilePathInSyncTable,
-	updateUserSyncFolderPathInProfileTable
-} from './db';
+	getUserFromProfile
+} from './db_get';
+import { removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db_delete';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types';
 
 // This creates all of the Drives found for the user

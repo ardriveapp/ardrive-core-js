@@ -33,24 +33,26 @@ import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './cryp
 import {
 	getFilesToDownload,
 	getFoldersToCreate,
-	updateFileDownloadStatus,
-	addFileToSyncTable,
 	getByMetaDataTxFromSyncTable,
 	getLatestFileVersionFromSyncTable,
-	setPermaWebFileToCloudOnly,
 	getMyFileDownloadConflicts,
-	setFilePath,
 	getLatestFolderVersionFromSyncTable,
 	getAllDrivesByPrivacyFromDriveTable,
 	getPreviousFileVersionFromSyncTable,
-	updateFileHashInSyncTable,
 	getDriveLastBlockHeight,
+	getDriveFromDriveTable,
+	getProfileLastBlockHeight
+} from './db_get';
+import {
 	setDriveLastBlockHeight,
 	addDriveToDriveTable,
-	getDriveFromDriveTable,
-	getProfileLastBlockHeight,
-	setProfileLastBlockHeight
-} from './db';
+	setProfileLastBlockHeight,
+	updateFileHashInSyncTable,
+	setFilePath,
+	setPermaWebFileToCloudOnly,
+	updateFileDownloadStatus,
+	addFileToSyncTable
+} from './db_update';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface, GQLTagInterface } from './types';
 import { createWriteStream } from 'fs';
 
