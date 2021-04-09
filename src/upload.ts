@@ -19,27 +19,30 @@ import {
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync, getArUSDPrice } from './common';
 import { deriveDriveKey, deriveFileKey } from './crypto';
 import {
-	getFilesToUploadFromSyncTable,
-	deleteFromSyncTable,
-	getNewDrivesFromDriveTable,
-	getDriveRootFolderFromSyncTable,
-	getAllUploadedDrivesFromDriveTable,
 	completeDriveMetaDataFromDriveTable,
 	setFileMetaDataSyncStatus,
 	updateFileUploadTimeInSyncTable,
-	getAllUploadedBundlesFromBundleTable,
 	completeFileDataItemFromSyncTable,
-	getAllUploadedDataItemsFromSyncTable,
 	updateFileBundleTxId,
-	getBundleUploadTimeFromBundleTable,
 	setFileDataItemSyncStatus,
 	completeBundleFromBundleTable,
-	getAllUploadedFilesFromSyncTable,
 	completeFileDataFromSyncTable,
 	completeFileMetaDataFromSyncTable,
-	getFileUploadTimeFromSyncTable,
 	setFileDataSyncStatus
-} from './db';
+} from './db_update';
+import {
+	getFilesToUploadFromSyncTable,
+	getNewDrivesFromDriveTable,
+	getDriveRootFolderFromSyncTable,
+	getAllUploadedDrivesFromDriveTable,
+	getAllUploadedBundlesFromBundleTable,
+	getAllUploadedDataItemsFromSyncTable,
+	getBundleUploadTimeFromBundleTable,
+	getAllUploadedFilesFromSyncTable,
+	getFileUploadTimeFromSyncTable
+} from './db_get';
+import { deleteFromSyncTable } from './db_delete';
+
 import { ArDriveBundle, ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
 // Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
