@@ -368,7 +368,7 @@ async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDrive
 }
 
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
-export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser): Promise<string> => {
+export async function getMyArDriveFilesFromPermaWeb(user: ArDriveUser): Promise<string> {
 	// Get your private files
 	console.log('---Getting all your Private ArDrive files---');
 	let drives: ArFSDriveMetaData[] = await getAllDrivesByPrivacyFromDriveTable(user.login, 'personal', 'private');
@@ -426,10 +426,10 @@ export const getMyArDriveFilesFromPermaWeb = async (user: ArDriveUser): Promise<
 	// File path is not present by default, so we must generate them for each new file, folder or drive found
 	await setNewFilePaths();
 	return 'Success';
-};
+}
 
 // Downloads all ardrive files that are not local
-export const downloadMyArDriveFiles = async (user: ArDriveUser): Promise<string> => {
+export async function downloadMyArDriveFiles(user: ArDriveUser): Promise<string> {
 	console.log('---Downloading any unsynced files---');
 	// Get the Files and Folders which have isLocal set to 0 that we are not ignoring
 	const filesToDownload: ArFSFileMetaData[] = await getFilesToDownload(user.login);
@@ -597,7 +597,7 @@ export const downloadMyArDriveFiles = async (user: ArDriveUser): Promise<string>
 	await checkForMissingLocalFiles();
 
 	return 'Downloaded all ArDrive files';
-};
+}
 
 // Gets all Private and Public Drives associated with a user profile and adds to the database
 export const getAllMyPersonalDrives = async (user: ArDriveUser): Promise<ArFSDriveMetaData[]> => {

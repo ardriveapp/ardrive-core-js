@@ -20,10 +20,9 @@ export const run = (sql: any, params: any[] = []): any => {
 };
 
 // Executes a get query on the database that returns a single item
-export const get = (sql: any, params: any[] = []): any => {
+export function get(sql: any, params: any[] = []): any {
 	if (db === null) {
-		console.log('DB not created yet - run setupDatabase() before using these methods.');
-		return 'Error';
+		throw new Error('DB not created yet - run setupDatabase() before using these methods.');
 	} else {
 		try {
 			const statement = db.prepare(sql);
@@ -31,10 +30,10 @@ export const get = (sql: any, params: any[] = []): any => {
 		} catch (err) {
 			console.log(`Error running sql: ${sql}`);
 			console.log(err);
-			return 'Error';
+			throw new Error('Error');
 		}
 	}
-};
+}
 
 // Exectues a get query on the database that returns many items in an array
 export const all = (sql: any, params: any[] = []): any[] => {

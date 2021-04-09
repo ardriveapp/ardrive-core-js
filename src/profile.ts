@@ -24,7 +24,7 @@ import { removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTa
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types';
 
 // This creates all of the Drives found for the user
-export const setupDrives = async (login: string, syncFolderPath: string): Promise<string> => {
+export async function setupDrives(login: string, syncFolderPath: string): Promise<string> {
 	try {
 		console.log('Initializing ArDrives');
 		// check if the root sync folder exists, if not create it
@@ -106,10 +106,10 @@ export const setupDrives = async (login: string, syncFolderPath: string): Promis
 		console.log(err);
 		return 'Error';
 	}
-};
+}
 
 // Encrypts the user's keys and adds a user to the database
-export const addNewUser = async (loginPassword: string, user: ArDriveUser): Promise<string> => {
+export async function addNewUser(loginPassword: string, user: ArDriveUser): Promise<string> {
 	try {
 		const encryptedWalletPrivateKey = await encryptText(user.walletPrivateKey, loginPassword);
 		const encryptedDataProtectionKey = await encryptText(user.dataProtectionKey, loginPassword);
@@ -122,11 +122,11 @@ export const addNewUser = async (loginPassword: string, user: ArDriveUser): Prom
 		console.log(err);
 		return 'Error';
 	}
-};
+}
 
 // Changes the sync folder path for a user, and updates every file for that user in the sync database and moves every file to the new location
 // The sync folder contains all downloaded drives, folders and files
-export const updateUserSyncFolderPath = async (login: string, newSyncFolderPath: string): Promise<string> => {
+export async function updateUserSyncFolderPath(login: string, newSyncFolderPath: string): Promise<string> {
 	try {
 		// Get the current sync folder path for the user
 		const profile = await getSyncFolderPathFromProfile(login);
@@ -154,9 +154,9 @@ export const updateUserSyncFolderPath = async (login: string, newSyncFolderPath:
 		console.log('Error updating sync folder to %s', newSyncFolderPath);
 		return 'Error';
 	}
-};
+}
 // Add a Shared Public drive, using a DriveId
-export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string): Promise<string> => {
+export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): Promise<string> {
 	try {
 		// Get the drive information from arweave
 		const sharedPublicDrive: ArFSDriveMetaData = await getSharedPublicDrive(driveId);
@@ -226,10 +226,10 @@ export const addSharedPublicDrive = async (user: ArDriveUser, driveId: string): 
 		console.log(err);
 		return 'Invalid';
 	}
-};
+}
 
 // Deletes a user and all of their associated drives and files in the database
-export const deleteUserAndDrives = async (login: string): Promise<string> => {
+export async function deleteUserAndDrives(login: string): Promise<string> {
 	// Delete profile matching login
 	await removeFromProfileTable(login);
 	// Get DriveIDs for login
@@ -242,19 +242,19 @@ export const deleteUserAndDrives = async (login: string): Promise<string> => {
 		await removeFromDriveTable(drive.driveId);
 	});
 	return 'Success';
-};
+}
 
 // Deletes a single drive and its files in the database
-export const deleteDrive = async (driveId: string): Promise<string> => {
+export async function deleteDrive(driveId: string): Promise<string> {
 	await removeByDriveIdFromSyncTable(driveId);
 	await removeFromDriveTable(driveId);
 
 	// This should also stop the Chokidar folder watch if it has started
 	return 'Success';
-};
+}
 
 // Checks if the user's password is valid
-export const passwordCheck = async (loginPassword: string, login: string): Promise<boolean> => {
+export async function passwordCheck(loginPassword: string, login: string): Promise<boolean> {
 	try {
 		const user: ArDriveUser = await getUserFromProfile(login);
 		user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
@@ -265,10 +265,10 @@ export const passwordCheck = async (loginPassword: string, login: string): Promi
 	} catch (err) {
 		return false;
 	}
-};
+}
 
 // Decrypts user's private key information and unlocks their ArDrive
-export const getUser = async (loginPassword: string, login: string): Promise<ArDriveUser> => {
+export async function getUser(loginPassword: string, login: string): Promise<ArDriveUser> {
 	const user: ArDriveUser = await getUserFromProfile(login);
 	user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
 	user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
@@ -276,4 +276,4 @@ export const getUser = async (loginPassword: string, login: string): Promise<ArD
 	console.log('ArDrive unlocked!!');
 	console.log('');
 	return user;
-};
+}
