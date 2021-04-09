@@ -57,19 +57,19 @@ const deps = {
 const arBundles = ArweaveBundles(deps);
 
 // Gets a public key for a given JWK
-async function getAddressForWallet(walletPrivateKey: JWKInterface): Promise<string> {
+export async function getAddressForWallet(walletPrivateKey: JWKInterface): Promise<string> {
 	return arweave.wallets.jwkToAddress(walletPrivateKey);
 }
 
 // Creates a new Arweave wallet JWK comprised of a private key and public key
-async function generateWallet(): Promise<Wallet> {
+export async function generateWallet(): Promise<Wallet> {
 	const walletPrivateKey = await arweave.wallets.generate();
 	const walletPublicKey = await getAddressForWallet(walletPrivateKey);
 	return { walletPrivateKey, walletPublicKey };
 }
 
 // Imports an existing wallet as a JWK from a user's local harddrive
-async function getLocalWallet(
+export async function getLocalWallet(
 	existingWalletPath: string
 ): Promise<{ walletPrivateKey: JWKInterface; walletPublicKey: string }> {
 	const walletPrivateKey: JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
@@ -78,7 +78,7 @@ async function getLocalWallet(
 }
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
-async function getSharedPublicDrive(driveId: string): Promise<ArFSDriveMetaData> {
+export async function getSharedPublicDrive(driveId: string): Promise<ArFSDriveMetaData> {
 	const drive: ArFSDriveMetaData = {
 		id: 0,
 		login: '',
@@ -180,7 +180,7 @@ async function getSharedPublicDrive(driveId: string): Promise<ArFSDriveMetaData>
 }
 
 // Gets the root folder ID for a Public Drive
-async function getPublicDriveRootFolderTxId(driveId: string, folderId: string): Promise<string> {
+export async function getPublicDriveRootFolderTxId(driveId: string, folderId: string): Promise<string> {
 	let metaDataTxId = '0';
 	try {
 		const query = {
@@ -220,7 +220,10 @@ async function getPublicDriveRootFolderTxId(driveId: string, folderId: string): 
 }
 
 // Gets the root folder ID for a Private Drive and includes the Cipher and IV
-async function getPrivateDriveRootFolderTxId(driveId: string, folderId: string): Promise<ArFSRootFolderMetaData> {
+export async function getPrivateDriveRootFolderTxId(
+	driveId: string,
+	folderId: string
+): Promise<ArFSRootFolderMetaData> {
 	let rootFolderMetaData: ArFSRootFolderMetaData = {
 		metaDataTxId: '0',
 		cipher: '',
@@ -282,7 +285,7 @@ async function getPrivateDriveRootFolderTxId(driveId: string, folderId: string):
 
 // Gets all of the ardrive IDs from a user's wallet
 // Uses the Entity type to only search for Drive tags
-async function getAllMyPublicArDriveIds(
+export async function getAllMyPublicArDriveIds(
 	login: string,
 	walletPublicKey: string,
 	lastBlockHeight: number
@@ -406,7 +409,10 @@ async function getAllMyPublicArDriveIds(
 
 // Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
 // Only returns Private drives from graphql
-async function getAllMyPrivateArDriveIds(user: ArDriveUser, lastBlockHeight: number): Promise<ArFSDriveMetaData[]> {
+export async function getAllMyPrivateArDriveIds(
+	user: ArDriveUser,
+	lastBlockHeight: number
+): Promise<ArFSDriveMetaData[]> {
 	const allPrivateDrives: ArFSDriveMetaData[] = [];
 
 	// Search last 5 blocks minimum
@@ -538,7 +544,7 @@ async function getAllMyPrivateArDriveIds(user: ArDriveUser, lastBlockHeight: num
 }
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID
-async function getAllMyDataFileTxs(
+export async function getAllMyDataFileTxs(
 	walletPublicKey: string,
 	driveId: string,
 	lastBlockHeight: number
@@ -625,7 +631,7 @@ async function getAllMyDataFileTxs(
 }
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
-async function getAllMySharedDataFileTxs(driveId: string, lastBlockHeight: number): Promise<GQLEdgeInterface[]> {
+export async function getAllMySharedDataFileTxs(driveId: string, lastBlockHeight: number): Promise<GQLEdgeInterface[]> {
 	let hasNextPage = true;
 	let cursor = '';
 	let edges: GQLEdgeInterface[] = [];
@@ -707,7 +713,7 @@ async function getAllMySharedDataFileTxs(driveId: string, lastBlockHeight: numbe
 }
 
 // Gets the CipherIV tag of a private data transaction
-async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
+export async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
 	let primaryGraphQLURL = graphQLURL;
 	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
 	let tries = 0;
@@ -765,7 +771,7 @@ async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
 }
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
-async function getTransactionData(txid: string): Promise<any> {
+export async function getTransactionData(txid: string): Promise<any> {
 	try {
 		const data = await arweave.transactions.getData(txid, { decode: true });
 		return data;
@@ -777,7 +783,7 @@ async function getTransactionData(txid: string): Promise<any> {
 }
 
 // Get the latest status of a transaction
-async function getTransactionStatus(txid: string): Promise<number> {
+export async function getTransactionStatus(txid: string): Promise<number> {
 	try {
 		const response = await arweave.transactions.getStatus(txid);
 		return response.status;
@@ -788,7 +794,7 @@ async function getTransactionStatus(txid: string): Promise<number> {
 }
 
 // Get the balance of an Arweave wallet
-async function getWalletBalance(walletPublicKey: string): Promise<number> {
+export async function getWalletBalance(walletPublicKey: string): Promise<number> {
 	try {
 		let balance = await arweave.wallets.getBalance(walletPublicKey);
 		balance = await arweave.ar.winstonToAr(balance);
@@ -800,7 +806,7 @@ async function getWalletBalance(walletPublicKey: string): Promise<number> {
 }
 
 // Get the latest block height
-async function getLatestBlockHeight(): Promise<number> {
+export async function getLatestBlockHeight(): Promise<number> {
 	try {
 		const info = await arweave.network.getInfo();
 		return info.height;
@@ -811,7 +817,10 @@ async function getLatestBlockHeight(): Promise<number> {
 }
 
 // Creates an arweave transaction to upload public ardrive metadata
-async function createPublicDriveTransaction(walletPrivateKey: string, drive: ArFSDriveMetaData): Promise<string> {
+export async function createPublicDriveTransaction(
+	walletPrivateKey: string,
+	drive: ArFSDriveMetaData
+): Promise<string> {
 	try {
 		// Create a JSON file, containing necessary drive metadata
 		const arDriveMetadataJSON = {
@@ -854,7 +863,7 @@ async function createPublicDriveTransaction(walletPrivateKey: string, drive: ArF
 }
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
-async function createPrivateDriveTransaction(
+export async function createPrivateDriveTransaction(
 	driveKey: Buffer,
 	walletPrivateKey: string,
 	drive: ArFSDriveMetaData
@@ -916,7 +925,7 @@ async function createPrivateDriveTransaction(
 
 // Creates an arweave transaction to upload file data (and no metadata) to arweave
 // Saves the upload chunk of the object in case the upload has to be restarted
-async function createArDrivePublicDataTransaction(
+export async function createArDrivePublicDataTransaction(
 	walletPrivateKey: string,
 	filePath: string,
 	contentType: string,
@@ -961,7 +970,7 @@ async function createArDrivePublicDataTransaction(
 }
 
 // Creates an arweave transaction to upload only file metadata to arweave
-async function createArDrivePublicMetaDataTransaction(
+export async function createArDrivePublicMetaDataTransaction(
 	walletPrivateKey: string,
 	fileToUpload: ArFSFileMetaData,
 	secondaryFileMetaDataJSON: string
@@ -1015,7 +1024,7 @@ async function createArDrivePublicMetaDataTransaction(
 }
 
 // Creates a bundled data transaction
-async function createArDriveBundledDataTransaction(
+export async function createArDriveBundledDataTransaction(
 	items: DataItemJson[],
 	walletPrivateKey: string,
 	login: string
@@ -1057,7 +1066,7 @@ async function createArDriveBundledDataTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) to upload file data (and no metadata) to arweave
-async function createArDrivePublicDataItemTransaction(
+export async function createArDrivePublicDataItemTransaction(
 	walletPrivateKey: string,
 	filePath: string,
 	contentType: string,
@@ -1097,7 +1106,7 @@ async function createArDrivePublicDataItemTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) to upload only file metadata to arweave
-async function createArDrivePublicMetaDataItemTransaction(
+export async function createArDrivePublicMetaDataItemTransaction(
 	walletPrivateKey: string,
 	fileToUpload: ArFSFileMetaData,
 	secondaryFileMetaDataJSON: string
@@ -1144,7 +1153,7 @@ async function createArDrivePublicMetaDataItemTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) to encrypt and upload file data (and no metadata) to arweave
-async function createArDrivePrivateDataItemTransaction(
+export async function createArDrivePrivateDataItemTransaction(
 	fileKey: Buffer,
 	fileToUpload: ArFSFileMetaData,
 	walletPrivateKey: string
@@ -1185,7 +1194,7 @@ async function createArDrivePrivateDataItemTransaction(
 }
 
 // Creates an arweave transaction to encrypt and upload only file metadata to arweave
-async function createArDrivePrivateMetaDataItemTransaction(
+export async function createArDrivePrivateMetaDataItemTransaction(
 	fileKey: Buffer,
 	walletPrivateKey: string,
 	fileToUpload: ArFSFileMetaData,
@@ -1240,7 +1249,7 @@ async function createArDrivePrivateMetaDataItemTransaction(
 }
 
 // Creates an arweave transaction to encrypt and upload file data (and no metadata) to arweave
-async function createArDrivePrivateDataTransaction(
+export async function createArDrivePrivateDataTransaction(
 	fileKey: Buffer,
 	fileToUpload: ArFSFileMetaData,
 	walletPrivateKey: string
@@ -1284,7 +1293,7 @@ async function createArDrivePrivateDataTransaction(
 }
 
 // Creates an arweave transaction to encrypt and upload only file metadata to arweave
-async function createArDrivePrivateMetaDataTransaction(
+export async function createArDrivePrivateMetaDataTransaction(
 	fileKey: Buffer,
 	walletPrivateKey: string,
 	fileToUpload: ArFSFileMetaData,
@@ -1343,7 +1352,7 @@ async function createArDrivePrivateMetaDataTransaction(
 }
 
 // Create a wallet and return the key and address
-async function createArDriveWallet(): Promise<Wallet> {
+export async function createArDriveWallet(): Promise<Wallet> {
 	try {
 		const wallet = await generateWallet();
 		// TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
@@ -1357,7 +1366,7 @@ async function createArDriveWallet(): Promise<Wallet> {
 }
 
 // Calls the ArDrive Community Smart Contract to pull the fee
-async function getArDriveFee(): Promise<number> {
+export async function getArDriveFee(): Promise<number> {
 	try {
 		const contract = await readContract(arweave, communityTxId);
 		const arDriveCommunityFee = contract.settings.find(
@@ -1370,7 +1379,7 @@ async function getArDriveFee(): Promise<number> {
 }
 
 // Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
-const selectTokenHolder = async (): Promise<string | undefined> => {
+async function selectTokenHolder(): Promise<string | undefined> {
 	// Read the ArDrive Smart Contract to get the latest state
 	const state = await readContract(arweave, communityTxId);
 	const balances = state.balances;
@@ -1407,10 +1416,10 @@ const selectTokenHolder = async (): Promise<string | undefined> => {
 	// Get a random holder based off of the weighted list of holders
 	const randomHolder = weightedRandom(weighted);
 	return randomHolder;
-};
+}
 
 // Sends a fee to ArDrive Profit Sharing Community holders
-async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
+export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
 		let fee = arPrice * ((await getArDriveFee()) / 100);
@@ -1451,35 +1460,3 @@ async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promis
 		return 'ERROR sending ArDrive fee';
 	}
 }
-
-export {
-	getAddressForWallet,
-	getLatestBlockHeight,
-	sendArDriveFee,
-	createArDriveWallet,
-	createArDrivePublicMetaDataTransaction,
-	createArDrivePrivateMetaDataTransaction,
-	getSharedPublicDrive,
-	getPublicDriveRootFolderTxId,
-	getPrivateDriveRootFolderTxId,
-	createArDrivePrivateDataTransaction,
-	createArDrivePublicDataTransaction,
-	createPublicDriveTransaction,
-	createPrivateDriveTransaction,
-	getWalletBalance,
-	getPrivateTransactionCipherIV,
-	getTransactionStatus,
-	getTransactionData,
-	getAllMyDataFileTxs,
-	getAllMySharedDataFileTxs,
-	getAllMyPrivateArDriveIds,
-	getAllMyPublicArDriveIds,
-	getLocalWallet,
-	generateWallet,
-	getArDriveFee,
-	createArDriveBundledDataTransaction,
-	createArDrivePrivateDataItemTransaction,
-	createArDrivePrivateMetaDataItemTransaction,
-	createArDrivePublicDataItemTransaction,
-	createArDrivePublicMetaDataItemTransaction
-};

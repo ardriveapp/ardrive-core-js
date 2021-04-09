@@ -39,7 +39,7 @@ export const arFSVersion = '0.11';
 export const cipher = 'AES256-GCM';
 
 // Pauses application
-async function sleep(ms: number): Promise<number> {
+export async function sleep(ms: number): Promise<number> {
 	return new Promise((resolve) => {
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		setTimeout(resolve, ms);
@@ -47,7 +47,7 @@ async function sleep(ms: number): Promise<number> {
 }
 
 // Asyncronous ForEach function
-async function asyncForEach(array: any[], callback: any): Promise<string> {
+export async function asyncForEach(array: any[], callback: any): Promise<string> {
 	for (let index = 0; index < array.length; index += 1) {
 		// eslint-disable-next-line no-await-in-loop
 		await callback(array[index], index, array);
@@ -56,7 +56,7 @@ async function asyncForEach(array: any[], callback: any): Promise<string> {
 }
 
 // Format byte size to something nicer.  This is minified...
-function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number): string {
 	const marker = 1024; // Change to 1000 if required
 	const decimal = 3; // Change as required
 	const kiloBytes = marker; // One Kilobyte is 1024 bytes
@@ -74,7 +74,7 @@ function formatBytes(bytes: number): string {
 	return `${(bytes / gigaBytes).toFixed(decimal)} GB`;
 }
 
-function extToMime(fullPath: string): string {
+export function extToMime(fullPath: string): string {
 	let extension = fullPath.substring(fullPath.lastIndexOf('.') + 1);
 	extension = extension.toLowerCase();
 	const m = mime.lookup(extension);
@@ -82,7 +82,7 @@ function extToMime(fullPath: string): string {
 }
 
 // Gets the price of AR based on amount of data
-async function getWinston(bytes: number): Promise<number> {
+export async function getWinston(bytes: number): Promise<number> {
 	const response = await fetch(`https://arweave.net/price/${bytes}`);
 	// const response = await fetch(`https://perma.online/price/${bytes}`);
 	const winston = await response.json();
@@ -123,7 +123,7 @@ const copyFolder = (oldFolderPath: string, newFolderPath: string) : string => {
 } */
 
 // Will try to move the folder and revert to a copy if it fails
-function moveFolder(oldFolderPath: string, newFolderPath: string): string {
+export function moveFolder(oldFolderPath: string, newFolderPath: string): string {
 	try {
 		fs.renameSync(oldFolderPath, newFolderPath);
 		return 'Success';
@@ -135,7 +135,7 @@ function moveFolder(oldFolderPath: string, newFolderPath: string): string {
 }
 
 // Checks path if it exists, and creates if not creates it
-function checkOrCreateFolder(folderPath: string): string {
+export function checkOrCreateFolder(folderPath: string): string {
 	try {
 		const stats = fs.statSync(folderPath);
 		if (stats.isDirectory()) {
@@ -150,7 +150,7 @@ function checkOrCreateFolder(folderPath: string): string {
 	}
 }
 
-function checkFolderExistsSync(folderPath: string): boolean {
+export function checkFolderExistsSync(folderPath: string): boolean {
 	try {
 		const stats = fs.statSync(folderPath);
 		if (stats.isDirectory()) {
@@ -163,7 +163,7 @@ function checkFolderExistsSync(folderPath: string): boolean {
 	}
 }
 
-function checkFileExistsSync(filePath: string): boolean {
+export function checkFileExistsSync(filePath: string): boolean {
 	try {
 		fs.accessSync(filePath, fs.constants.F_OK);
 	} catch (e) {
@@ -172,7 +172,7 @@ function checkFileExistsSync(filePath: string): boolean {
 	return true;
 }
 
-function checkExactFileExistsSync(filePath: string, lastModifiedDate: number): boolean {
+export function checkExactFileExistsSync(filePath: string, lastModifiedDate: number): boolean {
 	try {
 		fs.accessSync(filePath, fs.constants.F_OK);
 		const stats = fs.statSync(filePath);
@@ -190,7 +190,7 @@ function checkExactFileExistsSync(filePath: string, lastModifiedDate: number): b
 }
 
 // Check the latest file versions to ensure they exist locally, if not set them to download
-async function checkForMissingLocalFiles(): Promise<string> {
+export async function checkForMissingLocalFiles(): Promise<string> {
 	const localFiles: ArFSFileMetaData[] = await getAllLatestFileAndFolderVersionsFromSyncTable();
 	await asyncForEach(localFiles, async (localFile: ArFSFileMetaData) => {
 		fs.access(localFile.filePath, async (err) => {
@@ -203,7 +203,7 @@ async function checkForMissingLocalFiles(): Promise<string> {
 }
 
 // Takes the ArDrive User's JWK Private Key file and backs it up as a JSON to a folder specified by the user.
-async function backupWallet(backupWalletPath: string, wallet: Wallet, owner: string): Promise<string> {
+export async function backupWallet(backupWalletPath: string, wallet: Wallet, owner: string): Promise<string> {
 	try {
 		const backupFileName = 'ArDrive_Backup_' + owner + '.json';
 		const backupWalletFile = path.join(backupWalletPath, backupFileName);
@@ -217,7 +217,7 @@ async function backupWallet(backupWalletPath: string, wallet: Wallet, owner: str
 }
 
 // Updates all local folder hashes
-async function setAllFolderHashes(): Promise<string> {
+export async function setAllFolderHashes(): Promise<string> {
 	try {
 		const options: HashElementOptions = { encoding: 'hex', folders: { exclude: ['.*'] } };
 		const allFolders: ArFSFileMetaData[] = await getAllLocalFoldersFromSyncTable();
@@ -235,7 +235,7 @@ async function setAllFolderHashes(): Promise<string> {
 }
 
 // Sets the hash of any file that is missing it
-async function setAllFileHashes(): Promise<string> {
+export async function setAllFileHashes(): Promise<string> {
 	try {
 		const allFiles: ArFSFileMetaData[] = await getAllUnhashedLocalFilesFromSyncTable();
 		// Update the hash of the file
@@ -252,7 +252,7 @@ async function setAllFileHashes(): Promise<string> {
 }
 
 // Sets the has of all folders that are missing it
-async function setAllFolderSizes(): Promise<string> {
+export async function setAllFolderSizes(): Promise<string> {
 	try {
 		const allFolders: ArFSFileMetaData[] = await getAllLocalFoldersFromSyncTable();
 		// Update the size of each folder
@@ -273,7 +273,7 @@ async function setAllFolderSizes(): Promise<string> {
 }
 
 // This will set the parent folder ID for any file that is missing it
-async function setAllParentFolderIds(): Promise<string> {
+export async function setAllParentFolderIds(): Promise<string> {
 	try {
 		const allFilesOrFolders: ArFSFileMetaData[] = await getAllMissingParentFolderIdsFromSyncTable();
 		await asyncForEach(allFilesOrFolders, async (fileOrFolder: ArFSFileMetaData) => {
@@ -293,7 +293,7 @@ async function setAllParentFolderIds(): Promise<string> {
 }
 
 // updates the paths of all children of a given folder.
-async function setFolderChildrenPaths(folder: ArFSFileMetaData): Promise<string> {
+export async function setFolderChildrenPaths(folder: ArFSFileMetaData): Promise<string> {
 	const childFilesAndFolders: ArFSFileMetaData[] = await getFilesAndFoldersByParentFolderFromSyncTable(folder.fileId);
 	if (childFilesAndFolders !== undefined) {
 		await asyncForEach(childFilesAndFolders, async (fileOrFolder: ArFSFileMetaData) => {
@@ -307,7 +307,7 @@ async function setFolderChildrenPaths(folder: ArFSFileMetaData): Promise<string>
 }
 
 // Fixes all empty file paths
-async function setNewFilePaths(): Promise<string> {
+export async function setNewFilePaths(): Promise<string> {
 	const filesToFix: ArFSFileMetaData[] = await getAllMissingPathsFromSyncTable();
 	await asyncForEach(filesToFix, async (fileToFix: ArFSFileMetaData) => {
 		// console.log ("   Fixing file path for %s | %s)", fileToFix.fileName, fileToFix.parentFolderId);
@@ -317,7 +317,7 @@ async function setNewFilePaths(): Promise<string> {
 }
 
 // Determines the file path based on parent folder ID
-async function updateFilePath(file: ArFSFileMetaData): Promise<string> {
+export async function updateFilePath(file: ArFSFileMetaData): Promise<string> {
 	try {
 		let rootFolderPath = await getRootFolderPathFromSyncTable(file.driveId);
 		rootFolderPath = dirname(rootFolderPath.filePath);
@@ -343,7 +343,7 @@ async function updateFilePath(file: ArFSFileMetaData): Promise<string> {
 }
 
 // Creates a new drive, using the standard public privacy settings and adds to the Drive table
-async function createNewPublicDrive(login: string, driveName: string): Promise<ArFSDriveMetaData> {
+export async function createNewPublicDrive(login: string, driveName: string): Promise<ArFSDriveMetaData> {
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
@@ -371,7 +371,7 @@ async function createNewPublicDrive(login: string, driveName: string): Promise<A
 }
 
 // Creates a new drive, using the standard private privacy settings and adds to the Drive table
-async function createNewPrivateDrive(login: string, driveName: string): Promise<ArFSDriveMetaData> {
+export async function createNewPrivateDrive(login: string, driveName: string): Promise<ArFSDriveMetaData> {
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
@@ -399,7 +399,7 @@ async function createNewPrivateDrive(login: string, driveName: string): Promise<
 }
 
 // Derives a file key from the drive key and formats it into a Private file sharing link using the file id
-async function createPrivateFileSharingLink(user: ArDriveUser, fileToShare: ArFSFileMetaData): Promise<string> {
+export async function createPrivateFileSharingLink(user: ArDriveUser, fileToShare: ArFSFileMetaData): Promise<string> {
 	let fileSharingUrl = '';
 	try {
 		const driveKey: Buffer = await deriveDriveKey(
@@ -423,7 +423,7 @@ async function createPrivateFileSharingLink(user: ArDriveUser, fileToShare: ArFS
 }
 
 // Creates a Public file sharing link using the File Id.
-async function createPublicFileSharingLink(fileToShare: ArFSFileMetaData): Promise<string> {
+export async function createPublicFileSharingLink(fileToShare: ArFSFileMetaData): Promise<string> {
 	let fileSharingUrl = '';
 	try {
 		fileSharingUrl = stagingAppUrl.concat('/#/file/', fileToShare.fileId, '/view');
@@ -436,7 +436,7 @@ async function createPublicFileSharingLink(fileToShare: ArFSFileMetaData): Promi
 }
 
 // Creates a Public drive sharing link using the Drive Id
-async function createPublicDriveSharingLink(driveToShare: ArFSDriveMetaData): Promise<string> {
+export async function createPublicDriveSharingLink(driveToShare: ArFSDriveMetaData): Promise<string> {
 	let driveSharingUrl = '';
 	try {
 		driveSharingUrl = stagingAppUrl.concat('/#/drives/', driveToShare.driveId);
@@ -448,7 +448,7 @@ async function createPublicDriveSharingLink(driveToShare: ArFSDriveMetaData): Pr
 	return driveSharingUrl;
 }
 
-async function Utf8ArrayToStr(array: any): Promise<string> {
+export async function Utf8ArrayToStr(array: any): Promise<string> {
 	let out, i, c;
 	let char2, char3;
 
@@ -487,7 +487,7 @@ async function Utf8ArrayToStr(array: any): Promise<string> {
 }
 
 // Used by the selectWeightedRanom function to determine who receives a tip
-function weightedRandom(dict: Record<string, number>): string | undefined {
+export function weightedRandom(dict: Record<string, number>): string | undefined {
 	let sum = 0;
 	const r = Math.random();
 
@@ -501,7 +501,7 @@ function weightedRandom(dict: Record<string, number>): string | undefined {
 }
 
 // Ensures a file path does not contain invalid characters
-async function sanitizePath(path: string): Promise<string> {
+export async function sanitizePath(path: string): Promise<string> {
 	path = path.replace(/[\\/:*?"<>|]/g, '');
 	while (path.charAt(path.length - 1) == '.') {
 		// remove trailing dots
@@ -518,7 +518,7 @@ async function sanitizePath(path: string): Promise<string> {
 	}
 }
 
-async function getArUSDPrice(): Promise<number> {
+export async function getArUSDPrice(): Promise<number> {
 	let usdPrice = 0;
 	try {
 		const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd');
@@ -529,34 +529,3 @@ async function getArUSDPrice(): Promise<number> {
 		return 0;
 	}
 }
-
-export {
-	sleep,
-	asyncForEach,
-	formatBytes,
-	extToMime,
-	getWinston,
-	checkOrCreateFolder,
-	moveFolder,
-	backupWallet,
-	checkFileExistsSync,
-	checkForMissingLocalFiles,
-	setFolderChildrenPaths,
-	setAllFolderHashes,
-	setAllFileHashes,
-	setAllFolderSizes,
-	checkFolderExistsSync,
-	checkExactFileExistsSync,
-	Utf8ArrayToStr,
-	createNewPublicDrive,
-	createNewPrivateDrive,
-	setAllParentFolderIds,
-	setNewFilePaths,
-	updateFilePath,
-	weightedRandom,
-	sanitizePath,
-	createPublicFileSharingLink,
-	createPrivateFileSharingLink,
-	createPublicDriveSharingLink,
-	getArUSDPrice
-};

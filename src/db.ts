@@ -788,7 +788,7 @@ const createTablesInDB = async () => {
 };
 
 // Main entrypoint for database. MUST call this before anything else can happen
-export const setupDatabase = async (dbFilePath: string): Promise<Error | null> => {
+export async function setupDatabase(dbFilePath: string): Promise<Error | null> {
 	try {
 		db = await createOrOpenDb(dbFilePath);
 		await createTablesInDB();
@@ -796,4 +796,4 @@ export const setupDatabase = async (dbFilePath: string): Promise<Error | null> =
 		return err;
 	}
 	return null;
-};
+}
