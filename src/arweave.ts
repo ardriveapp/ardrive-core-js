@@ -20,7 +20,6 @@ import {
 	GQLTagInterface,
 	Wallet
 } from './types';
-import { addToBundleTable, setBundleUploaderObject } from './db_update';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
@@ -47,6 +46,8 @@ const deps = {
 	crypto: Arweave.crypto,
 	deepHash: deepHash
 };
+
+// Arweave Bundles are used for ANS102 Transactions
 const arBundles = ArweaveBundles(deps);
 
 // Gets a public key for a given JWK
@@ -769,7 +770,7 @@ export async function getPrivateTransactionCipherIV(txid: string): Promise<strin
 }
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
-export async function getTransactionData(txid: string): Promise<any> {
+export async function getTransactionData(txid: string): Promise<string | Uint8Array> {
 	try {
 		const data = await arweave.transactions.getData(txid, { decode: true });
 		return data;
@@ -994,6 +995,36 @@ export async function prepareArDriveMetaDataItemTransaction(
 	}
 }
 
+// Creates a bundled data transaction
+export async function prepareArDriveBundledDataTransaction(
+	user: ArDriveUser,
+	items: DataItemJson[]
+): Promise<Transaction | null> {
+	try {
+		// Bundle up all individual items into a single data bundle
+		const dataBundle = await arBundles.bundleData(items);
+		const dataBuffer: Buffer = Buffer.from(JSON.stringify(dataBundle));
+
+		// Create the transaction for the entire data bundle
+		const transaction = await arweave.createTransaction({ data: dataBuffer }, JSON.parse(user.walletPrivateKey));
+
+		// Tag file
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Bundle-Format', 'json');
+		transaction.addTag('Bundle-Version', '1.0.0');
+		transaction.addTag('Content-Type', 'application/json');
+
+		// Sign the bundle
+		await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+		return transaction;
+	} catch (err) {
+		console.log('Error creating data bundle');
+		console.log(err);
+		return null;
+	}
+}
+
 // Creates a Transaction uploader object for a given arweave transaction
 export async function createDataUploader(transaction: Transaction): Promise<TransactionUploader> {
 	// Create an uploader object
@@ -1011,48 +1042,6 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 		console.log('Uploading this chunk has failed');
 		console.log(err);
 		return null;
-	}
-}
-
-// Creates a bundled data transaction
-export async function createArDriveBundledDataTransaction(
-	items: DataItemJson[],
-	walletPrivateKey: string,
-	login: string
-): Promise<string> {
-	try {
-		// Bundle up all individual items into a single data bundle
-		const dataBundle = await arBundles.bundleData(items);
-		const dataBuffer: Buffer = Buffer.from(JSON.stringify(dataBundle));
-
-		// Create the transaction for the entire data bundle
-		const transaction = await arweave.createTransaction({ data: dataBuffer }, JSON.parse(walletPrivateKey));
-
-		// Tag file
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Bundle-Format', 'json');
-		transaction.addTag('Bundle-Version', '1.0.0');
-		transaction.addTag('Content-Type', 'application/json');
-
-		// Sign the bundle
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-
-		const currentTime = Math.round(Date.now() / 1000);
-		await addToBundleTable(login, transaction.id, 2, currentTime);
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-			await setBundleUploaderObject(JSON.stringify(uploader), transaction.id);
-			console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
-		}
-		console.log('SUCCESS data bundle was submitted with TX %s', transaction.id);
-		return transaction.id;
-	} catch (err) {
-		console.log('Error sending data bundle');
-		console.log(err);
-		return 'Error';
 	}
 }
 
