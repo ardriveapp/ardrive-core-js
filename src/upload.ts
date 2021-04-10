@@ -13,10 +13,11 @@ import {
 	prepareArDriveDataTransaction,
 	prepareArDriveDataItemTransaction,
 	prepareArDriveMetaDataTransaction,
-	prepareArDriveMetaDataItemTransaction
+	prepareArDriveMetaDataItemTransaction,
+	prepareArDriveDriveTransaction
 } from './arweave';
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync, getArUSDPrice } from './common';
-import { deriveDriveKey, deriveFileKey, fileEncrypt, getFileAndEncrypt } from './crypto';
+import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from './crypto';
 import {
 	completeDriveMetaDataFromDriveTable,
 	setFileMetaDataSyncStatus,
@@ -30,7 +31,8 @@ import {
 	setFileDataSyncStatus,
 	updateFileDataSyncStatus,
 	setFileUploaderObject,
-	updateFileMetaDataSyncStatus
+	updateFileMetaDataSyncStatus,
+	updateDriveInDriveTable
 } from './db_update';
 import {
 	getFilesToUploadFromSyncTable,
@@ -57,10 +59,7 @@ import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
-async function createArDriveFileDataItem(
-	user: ArDriveUser,
-	fileToUpload: ArFSFileMetaData
-): Promise<DataItemJson | null> {
+async function createArFSFileDataItem(user: ArDriveUser, fileToUpload: ArFSFileMetaData): Promise<DataItemJson | null> {
 	let dataItem: DataItemJson | null;
 	try {
 		if (fileToUpload.isPublic === 0) {
@@ -122,7 +121,7 @@ async function createArDriveFileDataItem(
 }
 
 // Tags and creates a single file metadata item (ANS-102) to your ArDrive
-async function createArDriveFileMetaDataItem(
+async function createArFSFileMetaDataItem(
 	user: ArDriveUser,
 	fileToUpload: ArFSFileMetaData
 ): Promise<DataItemJson | null> {
@@ -190,7 +189,7 @@ async function createArDriveFileMetaDataItem(
 }
 
 // Tags and Uploads a single file from the local disk to your ArDrive using Arweave V2 Transactions
-async function uploadArDriveFileData(
+async function uploadArFSFileData(
 	user: ArDriveUser,
 	fileToUpload: ArFSFileMetaData
 ): Promise<{ dataTxId: string; arPrice: number }> {
@@ -286,7 +285,7 @@ async function uploadArDriveFileData(
 }
 
 // Tags and Uploads a single file/folder metadata to your ArDrive using Arweave V2 Transactions
-async function uploadArDriveFileMetaData(user: ArDriveUser, fileToUpload: ArFSFileMetaData) {
+async function uploadArFSFileMetaData(user: ArDriveUser, fileToUpload: ArFSFileMetaData) {
 	let transaction: Transaction;
 	let secondaryFileMetaDataTags = {};
 	try {
@@ -332,7 +331,7 @@ async function uploadArDriveFileMetaData(user: ArDriveUser, fileToUpload: ArFSFi
 		fileToUpload.metaDataTxId = transaction.id;
 
 		// Create the File Uploader object
-		let uploader: TransactionUploader = await createDataUploader(transaction);
+		const uploader: TransactionUploader = await createDataUploader(transaction);
 
 		// Set the file metadata to indicate it s being synchronized and update its record in the database
 		fileToUpload.fileMetaDataSyncStatus = 2;
@@ -344,14 +343,9 @@ async function uploadArDriveFileMetaData(user: ArDriveUser, fileToUpload: ArFSFi
 			fileToUpload.id
 		);
 
-		// Begin to upload chunks and upload the database as needed
+		// Begin to upload chunks
 		while (!uploader.isComplete) {
-			const nextChunk = await uploadDataChunk(uploader);
-			if (nextChunk === null) {
-				break;
-			} else {
-				uploader = nextChunk;
-			}
+			uploader.uploadChunk();
 		}
 
 		// If the uploaded is completed successfully, update the uploadTime of the file so we can track the status
@@ -372,7 +366,64 @@ async function uploadArDriveFileMetaData(user: ArDriveUser, fileToUpload: ArFSFi
 	}
 }
 
-// Uploads all queued files
+async function uploadArFSDriveMetadata(user: ArDriveUser, drive: ArFSDriveMetaData): Promise<boolean> {
+	try {
+		let transaction: Transaction;
+		console.log('Creating a new Private Drive (name: %s) on the Permaweb', drive.driveName);
+		// Create a JSON file, containing necessary drive metadata
+		const driveMetaDataTags = {
+			name: drive.driveName,
+			rootFolderId: drive.rootFolderId
+		};
+
+		// Convert to JSON string
+		const driveMetaDataJSON = JSON.stringify(driveMetaDataTags);
+		if (drive.drivePrivacy === 'private') {
+			const driveKey: Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
+			const encryptedDriveMetaData: ArFSEncryptedData = await driveEncrypt(
+				driveKey,
+				Buffer.from(driveMetaDataJSON)
+			);
+			drive.cipher = encryptedDriveMetaData.cipher;
+			drive.cipherIV = encryptedDriveMetaData.cipherIV;
+			transaction = await prepareArDriveDriveTransaction(user, encryptedDriveMetaData.data, drive);
+		} else {
+			// The drive is public
+			transaction = await prepareArDriveDriveTransaction(user, driveMetaDataJSON, drive);
+		}
+		// Update the file's data transaction ID
+		drive.metaDataTxId = transaction.id;
+
+		// Create the File Uploader object
+		const uploader: TransactionUploader = await createDataUploader(transaction);
+
+		// Update the Drive table to include this transaction information
+		drive.metaDataSyncStatus = 2;
+
+		await updateDriveInDriveTable(
+			drive.metaDataSyncStatus,
+			drive.metaDataTxId,
+			drive.cipher,
+			drive.cipherIV,
+			drive.driveId
+		);
+
+		// Begin to upload chunks
+		while (!uploader.isComplete) {
+			uploader.uploadChunk();
+		}
+
+		if (uploader.isComplete) {
+			console.log('SUCCESS Drive Name %s was submitted with TX %s', drive.driveName, drive.metaDataTxId);
+		}
+		return true;
+	} catch (err) {
+		console.log(err);
+		console.log('Error uploading new Drive metadata %s', drive.driveName);
+		return false;
+	}
+}
+// Uploads all queued files as v2 transactions (files bigger than 50mb) and data bundles (capped at 50mb)
 export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<string> {
 	try {
 		const items: DataItemJson[] = [];
@@ -391,16 +442,16 @@ export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<s
 				// If the total size of the item is greater than 50MB, then we send standard V2 transactions for data and metadata
 				if (+filesToUpload[n].fileDataSyncStatus === 1 && filesToUpload[n].fileSize >= 50000000) {
 					console.log('Preparing large file - %s', filesToUpload[n].fileName);
-					const uploadedFile = await uploadArDriveFileData(user, filesToUpload[n]);
+					const uploadedFile = await uploadArFSFileData(user, filesToUpload[n]);
 					filesToUpload[n].dataTxId = uploadedFile.dataTxId;
 					totalARPrice += uploadedFile.arPrice; // Sum up all of the fees paid
-					await uploadArDriveFileMetaData(user, filesToUpload[n]);
+					await uploadArFSFileMetaData(user, filesToUpload[n]);
 					filesUploaded += 1;
 				}
 				// If fileDataSync is 1 and we have not exceeded our 50MB max bundle size, then we submit file data and metadata as a bundle
 				else if (+filesToUpload[n].fileDataSyncStatus === 1 && totalSize < 50000000) {
 					console.log('Preparing smaller file - %s', filesToUpload[n].fileName);
-					const fileDataItem: DataItemJson | null = await createArDriveFileDataItem(user, filesToUpload[n]);
+					const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, filesToUpload[n]);
 					if (fileDataItem !== null) {
 						// Get the price of this upload
 						const winston = await getWinston(filesToUpload[n].fileSize);
@@ -410,14 +461,14 @@ export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<s
 						items.push(fileDataItem);
 						bundledFilesUploaded += 1;
 					}
-					const fileMetaDataItem = await createArDriveFileMetaDataItem(user, filesToUpload[n]);
+					const fileMetaDataItem = await createArFSFileMetaDataItem(user, filesToUpload[n]);
 					if (fileMetaDataItem !== null) {
 						items.push(fileMetaDataItem);
 					}
 					// If only metaDataSync is 1, then we only submit file metadata
 				} else if (+filesToUpload[n].fileMetaDataSyncStatus === 1) {
 					console.log('Preparing file metadata only - %s', filesToUpload[n].fileName);
-					const fileMetaDataItem = await createArDriveFileMetaDataItem(user, filesToUpload[n]);
+					const fileMetaDataItem = await createArFSFileMetaDataItem(user, filesToUpload[n]);
 					if (fileMetaDataItem !== null) {
 						items.push(fileMetaDataItem);
 						bundledFilesUploaded += 1;
@@ -426,7 +477,7 @@ export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<s
 			}
 			// If this is a folder, we create folder metadata as a bundle
 			else if (filesToUpload[n].entityType === 'folder') {
-				const folderMetaDataItem = await createArDriveFileMetaDataItem(user, filesToUpload[n]);
+				const folderMetaDataItem = await createArFSFileMetaDataItem(user, filesToUpload[n]);
 				if (folderMetaDataItem !== null) {
 					items.push(folderMetaDataItem);
 					bundledFilesUploaded += 1;
@@ -472,24 +523,15 @@ export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<s
 					'   Lets finish setting up your profile by submitting a few more small transactions to the network.'
 				);
 				await asyncForEach(newDrives, async (newDrive: ArFSDriveMetaData) => {
-					if (newDrive.drivePrivacy === 'public') {
-						// Create a public drive
-						await createPublicDriveTransaction(user.walletPrivateKey, newDrive);
-					} else if (newDrive.drivePrivacy === 'private') {
-						// Create a new drive key
-						const driveKey = await deriveDriveKey(
-							user.dataProtectionKey,
-							newDrive.driveId,
-							user.walletPrivateKey
+					// Create the Drive metadata transaction as submit as V2
+					const success = await uploadArFSDriveMetadata(user, newDrive);
+					if (success) {
+						// Create the Drive Root folder and submit as V2 transaction
+						const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
+							newDrive.rootFolderId
 						);
-						// Create a public drive
-						await createPrivateDriveTransaction(driveKey, user.walletPrivateKey, newDrive);
+						await uploadArFSFileMetaData(user, driveRootFolder);
 					}
-					// Create the Drive Root folder and submit as V2 transaction
-					const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
-						newDrive.rootFolderId
-					);
-					await uploadArDriveFileMetaData(user, driveRootFolder);
 				});
 			}
 		}
@@ -731,7 +773,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<UploadBa
 	return uploadBatch;
 }
 
-// Uploads all queued files as data bundles
+// Uploads all queued files as data bundles ONLY with no v2 transactions
 export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> => {
 	try {
 		const items: DataItemJson[] = [];
@@ -747,7 +789,7 @@ export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> =
 					console.log('Preparing file - %s', fileToUpload.fileName);
 					// If fileDataSync is 1 and we have not exceeded our 2GB max bundle size, then we submit file data AND metadata
 					if (+fileToUpload.fileDataSyncStatus === 1 && totalSize <= 2000000000) {
-						const fileDataItem: DataItemJson | null = await createArDriveFileDataItem(user, fileToUpload);
+						const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, fileToUpload);
 						if (fileDataItem !== null) {
 							// Get the price of this upload
 							const winston = await getWinston(fileToUpload.fileSize);
@@ -757,13 +799,13 @@ export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> =
 							items.push(fileDataItem);
 							filesUploaded += 1;
 						}
-						const fileMetaDataItem = await createArDriveFileMetaDataItem(user, fileToUpload);
+						const fileMetaDataItem = await createArFSFileMetaDataItem(user, fileToUpload);
 						if (fileMetaDataItem !== null) {
 							items.push(fileMetaDataItem);
 						}
 						// If only metaDataSync is 1, then we only submit file metadata
 					} else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
-						const fileMetaDataItem = await createArDriveFileMetaDataItem(user, fileToUpload);
+						const fileMetaDataItem = await createArFSFileMetaDataItem(user, fileToUpload);
 						if (fileMetaDataItem !== null) {
 							items.push(fileMetaDataItem);
 							filesUploaded += 1;
@@ -772,7 +814,7 @@ export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> =
 				}
 				// If this is a folder, we create folder metadata
 				else if (fileToUpload.entityType === 'folder') {
-					const folderMetaDataItem = await createArDriveFileMetaDataItem(user, fileToUpload);
+					const folderMetaDataItem = await createArFSFileMetaDataItem(user, fileToUpload);
 					if (folderMetaDataItem !== null) {
 						items.push(folderMetaDataItem);
 						filesUploaded += 1;
@@ -821,7 +863,7 @@ export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> =
 					const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
 						newDrive.rootFolderId
 					);
-					await createArDriveFileMetaDataItem(user, driveRootFolder);
+					await createArFSFileMetaDataItem(user, driveRootFolder);
 				});
 			}
 		}
@@ -832,7 +874,7 @@ export const uploadArDriveBundles = async (user: ArDriveUser): Promise<string> =
 	}
 };
 
-// Uploads all queued files as V2 transactions with no data bundles
+// Uploads all queued files as V2 transactions ONLY with no data bundles
 export const uploadArDriveFiles = async (user: ArDriveUser): Promise<string> => {
 	try {
 		let filesUploaded = 0;
@@ -847,16 +889,16 @@ export const uploadArDriveFiles = async (user: ArDriveUser): Promise<string> => 
 					// Check to see if we have to upload the File Data and Metadata
 					// If not, we just check to see if we have to update metadata.
 					if (+fileToUpload.fileDataSyncStatus === 1) {
-						const uploadedFile = await uploadArDriveFileData(user, fileToUpload);
+						const uploadedFile = await uploadArFSFileData(user, fileToUpload);
 						fileToUpload.dataTxId = uploadedFile.dataTxId;
 						totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
-						await uploadArDriveFileMetaData(user, fileToUpload);
+						await uploadArFSFileMetaData(user, fileToUpload);
 					} else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
-						await uploadArDriveFileMetaData(user, fileToUpload);
+						await uploadArFSFileMetaData(user, fileToUpload);
 					}
 				} else if (fileToUpload.entityType === 'folder') {
 					//console.log ("Uploading folder - %s", fileToUpload.fileName)
-					await uploadArDriveFileMetaData(user, fileToUpload);
+					await uploadArFSFileMetaData(user, fileToUpload);
 				}
 				filesUploaded += 1;
 			});
@@ -892,7 +934,7 @@ export const uploadArDriveFiles = async (user: ArDriveUser): Promise<string> => 
 					const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
 						newDrive.rootFolderId
 					);
-					await uploadArDriveFileMetaData(user, driveRootFolder);
+					await uploadArFSFileMetaData(user, driveRootFolder);
 				});
 			}
 		}

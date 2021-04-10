@@ -14,21 +14,19 @@ import {
 import {
 	ArDriveUser,
 	ArFSDriveMetaData,
-	ArFSEncryptedData,
 	ArFSFileMetaData,
 	ArFSRootFolderMetaData,
 	GQLEdgeInterface,
 	GQLTagInterface,
 	Wallet
 } from './types';
-import { updateDriveInDriveTable, addToBundleTable, setBundleUploaderObject } from './db_update';
-import { getDriveFromDriveTable } from './db_get';
+import { addToBundleTable, setBundleUploaderObject } from './db_update';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
 import { DataItemJson } from 'arweave-bundles';
-import { deriveDriveKey, driveDecrypt, driveEncrypt } from './crypto';
+import { deriveDriveKey, driveDecrypt } from './crypto';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
 
@@ -313,7 +311,8 @@ export async function getAllMyPublicArDriveIds(
 				owners: ["${walletPublicKey}"]
 				tags: [
 					{ name: "App-Name", values: ["${appName}", "${webAppName}"] }
-					{ name: "Entity-Type", values: "drive" }]) 
+					{ name: "Entity-Type", values: "drive" }
+					{ name: "Drive-Privacy", values: "public" }]) 
 				{
 					edges {
 						node {
@@ -383,13 +382,6 @@ export async function getAllMyPublicArDriveIds(
 						break;
 				}
 			});
-
-			// If this is a Private Drive, we drop it
-			// If this drive is already present in the Database, we drop it
-			const exists: ArFSDriveMetaData = await getDriveFromDriveTable(drive.driveId);
-			if (drive.drivePrivacy === 'private' || exists !== undefined) {
-				return 'Skip';
-			}
 
 			// Capture the TX of the public drive metadata tx
 			drive.metaDataTxId = node.id;
@@ -810,111 +802,38 @@ export async function getLatestBlockHeight(): Promise<number> {
 	}
 }
 
-// Creates an arweave transaction to upload public ardrive metadata
-export async function createPublicDriveTransaction(
-	walletPrivateKey: string,
-	drive: ArFSDriveMetaData
-): Promise<string> {
-	try {
-		// Create a JSON file, containing necessary drive metadata
-		const arDriveMetadataJSON = {
-			name: drive.driveName,
-			rootFolderId: drive.rootFolderId
-		};
-		const arDriveMetaData = JSON.stringify(arDriveMetadataJSON);
-
-		// Create transaction
-		console.log('Creating a new Public Drive (name: %s) on the Permaweb', drive.driveName);
-		const transaction = await arweave.createTransaction({ data: arDriveMetaData }, JSON.parse(walletPrivateKey));
-
-		// Tag file
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Unix-Time', drive.unixTime.toString());
-		transaction.addTag('Content-Type', 'application/json');
-		transaction.addTag('ArFS', arFSVersion);
-		transaction.addTag('Entity-Type', 'drive');
-		transaction.addTag('Drive-Id', drive.driveId);
-		transaction.addTag('Drive-Privacy', 'public');
-
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-
-		// Update the Profile table to include the default /Public/ ArDrive
-		await updateDriveInDriveTable(transaction.id, drive.cipher, drive.cipherIV, drive.driveId);
-
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-		}
-		console.log('SUCCESS Public Drive was submitted with TX %s', transaction.id);
-		return 'Success';
-	} catch (err) {
-		console.log(err);
-		return 'Error';
-	}
-}
-
 // Creates an arweave transaction to upload encrypted private ardrive metadata
-export async function createPrivateDriveTransaction(
-	driveKey: Buffer,
-	walletPrivateKey: string,
-	drive: ArFSDriveMetaData
-): Promise<string> {
-	try {
-		// Create a JSON file, containing necessary drive metadata
-		const driveMetadataJSON = {
-			name: drive.driveName,
-			rootFolderId: drive.rootFolderId
-		};
+export async function prepareArDriveDriveTransaction(
+	user: ArDriveUser,
+	driveJSON: string | Buffer,
+	driveMetaData: ArFSDriveMetaData
+): Promise<Transaction> {
+	// Create transaction
+	const transaction = await arweave.createTransaction({ data: driveJSON }, JSON.parse(user.walletPrivateKey));
 
-		// Turn the JSON into a string, and then encrypt it
-		const driveMetaData: Buffer = Buffer.from(JSON.stringify(driveMetadataJSON));
-		const encryptedDriveMetaData: ArFSEncryptedData = await driveEncrypt(driveKey, driveMetaData);
-
-		// Create transaction
-		console.log('Creating a new Private Drive (name: %s) on the Permaweb', drive.driveName);
-		const transaction = await arweave.createTransaction(
-			{ data: encryptedDriveMetaData.data },
-			JSON.parse(walletPrivateKey)
-		);
-
-		// Tag file
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Unix-Time', drive.unixTime.toString());
+	// Tag file with ArFS Tags
+	transaction.addTag('App-Name', appName);
+	transaction.addTag('App-Version', appVersion);
+	transaction.addTag('Unix-Time', driveMetaData.unixTime.toString());
+	transaction.addTag('Drive-Id', driveMetaData.driveId);
+	transaction.addTag('Drive-Privacy', driveMetaData.drivePrivacy);
+	if (driveMetaData.drivePrivacy === 'private') {
+		// If the file is private, we use extra tags
+		// Tag file with Content-Type, Cipher and Cipher-IV and Drive-Auth-Mode
 		transaction.addTag('Content-Type', 'application/octet-stream');
-		transaction.addTag('ArFS', arFSVersion);
-		transaction.addTag('Entity-Type', 'drive');
-		transaction.addTag('Drive-Id', drive.driveId);
-		transaction.addTag('Drive-Privacy', drive.drivePrivacy);
-		transaction.addTag('Drive-Auth-Mode', drive.driveAuthMode);
-		transaction.addTag('Cipher', encryptedDriveMetaData.cipher);
-		transaction.addTag('Cipher-IV', encryptedDriveMetaData.cipherIV);
-
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-
-		// Update the Drive table to include this transaction information
-		await updateDriveInDriveTable(
-			transaction.id,
-			encryptedDriveMetaData.cipher,
-			encryptedDriveMetaData.cipherIV,
-			drive.driveId
-		);
-
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-		}
-		console.log('SUCCESS Private Drive was submitted with TX %s', transaction.id);
-		return 'Success';
-	} catch (err) {
-		console.log(err);
-		return 'Error';
+		transaction.addTag('Cipher', driveMetaData.cipher);
+		transaction.addTag('Cipher-IV', driveMetaData.cipherIV);
+		transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('Content-Type', 'application/json');
 	}
+	transaction.addTag('ArFS', arFSVersion);
+	transaction.addTag('Entity-Type', 'drive');
+
+	// Sign file
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
 }
 
 // This will prepare and sign v2 data transaction using ArFS File Data Tags

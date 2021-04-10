@@ -286,10 +286,16 @@ export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, 
 	return run(`UPDATE Drive SET metaDataSyncStatus = ? WHERE driveId = ?`, [metaDataSyncStatus, driveId]);
 };
 
-export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
+export const updateDriveInDriveTable = (
+	metaDataSyncStatus: number,
+	metaDataTxId: string,
+	cipher: string,
+	cipherIV: string,
+	driveId: string
+) => {
 	return run(
-		`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`,
-		[metaDataTxId, cipher, cipherIV, driveId]
+		`UPDATE Drive SET metaDataSyncStatus = ?, metaDataTxId = ?, cipher = ?, cipherIV = ? WHERE driveId = ?`,
+		[metaDataSyncStatus, metaDataTxId, cipher, cipherIV, driveId]
 	);
 };
 
