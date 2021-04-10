@@ -21,21 +21,16 @@ import {
 	GQLTagInterface,
 	Wallet
 } from './types';
-import {
-	updateFileMetaDataSyncStatus,
-	updateFileDataSyncStatus,
-	setFileUploaderObject,
-	updateDriveInDriveTable,
-	addToBundleTable,
-	setBundleUploaderObject
-} from './db_update';
+import { updateDriveInDriveTable, addToBundleTable, setBundleUploaderObject } from './db_update';
 import { getDriveFromDriveTable } from './db_get';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
 import { DataItemJson } from 'arweave-bundles';
-import { deriveDriveKey, driveDecrypt, driveEncrypt, fileEncrypt } from './crypto';
+import { deriveDriveKey, driveDecrypt, driveEncrypt } from './crypto';
+import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
+import Transaction from 'arweave/node/lib/transaction';
 
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
@@ -75,6 +70,18 @@ export async function getLocalWallet(
 	const walletPrivateKey: JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
 	const walletPublicKey = await getAddressForWallet(walletPrivateKey);
 	return { walletPrivateKey, walletPublicKey };
+}
+
+// Get the balance of an Arweave wallet
+export async function getWalletBalance(walletPublicKey: string): Promise<number> {
+	try {
+		let balance = await arweave.wallets.getBalance(walletPublicKey);
+		balance = await arweave.ar.winstonToAr(balance);
+		return +balance;
+	} catch (err) {
+		console.log(err);
+		return 0;
+	}
 }
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
@@ -300,26 +307,25 @@ export async function getAllMyPublicArDriveIds(
 		// Create the Graphql Query to search for all drives relating to the User wallet
 		const query = {
 			query: `query {
-      transactions(
-        block: {min: ${lastBlockHeight}}
-        first: 100
-        owners: ["${walletPublicKey}"]
-        tags: [
-          { name: "App-Name", values: ["${appName}", "${webAppName}"] }
-          { name: "Entity-Type", values: "drive" }
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
+      			transactions(
+				block: {min: ${lastBlockHeight}}
+				first: 100
+				owners: ["${walletPublicKey}"]
+				tags: [
+					{ name: "App-Name", values: ["${appName}", "${webAppName}"] }
+					{ name: "Entity-Type", values: "drive" }]) 
+				{
+					edges {
+						node {
+							id
+							tags {
+								name
+								value
+							}
+						}
+					}
+      			}
+    		}`
 		};
 
 		// Call the Arweave Graphql Endpoint
@@ -793,18 +799,6 @@ export async function getTransactionStatus(txid: string): Promise<number> {
 	}
 }
 
-// Get the balance of an Arweave wallet
-export async function getWalletBalance(walletPublicKey: string): Promise<number> {
-	try {
-		let balance = await arweave.wallets.getBalance(walletPublicKey);
-		balance = await arweave.ar.winstonToAr(balance);
-		return +balance;
-	} catch (err) {
-		console.log(err);
-		return 0;
-	}
-}
-
 // Get the latest block height
 export async function getLatestBlockHeight(): Promise<number> {
 	try {
@@ -923,103 +917,181 @@ export async function createPrivateDriveTransaction(
 	}
 }
 
-// Creates an arweave transaction to upload file data (and no metadata) to arweave
-// Saves the upload chunk of the object in case the upload has to be restarted
-export async function createArDrivePublicDataTransaction(
-	walletPrivateKey: string,
-	filePath: string,
-	contentType: string,
-	id: number
-): Promise<string> {
-	try {
-		const fileToUpload = fs.readFileSync(filePath);
-		const transaction = await arweave.createTransaction(
-			{ data: fileToUpload }, // How to replace this?
-			JSON.parse(walletPrivateKey)
-		);
-		// Tag file
+// This will prepare and sign v2 data transaction using ArFS File Data Tags
+export async function prepareArDriveDataTransaction(
+	user: ArDriveUser,
+	fileData: Buffer,
+	fileMetaData: ArFSFileMetaData
+): Promise<Transaction> {
+	// Create the arweave transaction using the file data and private key
+	const transaction = await arweave.createTransaction({ data: fileData }, JSON.parse(user.walletPrivateKey));
+
+	// If the file is not public, we must encrypt it
+	if (fileMetaData.isPublic === 0) {
+		// Tag file with Content-Type, Cipher and Cipher-IV
 		transaction.addTag('App-Name', appName);
 		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Content-Type', contentType);
+		transaction.addTag('Content-Type', 'application/octet-stream');
+		transaction.addTag('Cipher', fileMetaData.cipher);
+		transaction.addTag('Cipher-IV', fileMetaData.dataCipherIV);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Content-Type', fileMetaData.contentType);
+	}
 
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-		await setFileUploaderObject(JSON.stringify(uploader), id);
-		const fileToUpdate = {
-			fileDataSyncStatus: 2,
-			dataTxId: transaction.id,
-			dataCipherIV: '',
-			cipher: '',
-			id
-		};
-		// Update the queue since the file is now being uploaded
-		await updateFileDataSyncStatus(fileToUpdate);
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-			await setFileUploaderObject(JSON.stringify(uploader), id);
-			console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
+	// Sign file
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
+}
+
+// This will prepare and sign v2 data transaction using ArFS File Metadata Tags
+export async function prepareArDriveMetaDataTransaction(
+	user: ArDriveUser,
+	fileMetaData: ArFSFileMetaData,
+	secondaryFileMetaData: string | Buffer
+): Promise<Transaction> {
+	// Create the arweave transaction using the file data and private key
+	const transaction = await arweave.createTransaction(
+		{ data: secondaryFileMetaData },
+		JSON.parse(user.walletPrivateKey)
+	);
+
+	// Tag file with ArFS Tags
+	transaction.addTag('App-Name', appName);
+	transaction.addTag('App-Version', appVersion);
+	transaction.addTag('Unix-Time', fileMetaData.unixTime.toString());
+	if (fileMetaData.isPublic === 0) {
+		// If the file is private, we use extra tags
+		// Tag file with Content-Type, Cipher and Cipher-IV
+		transaction.addTag('Content-Type', 'application/octet-stream');
+		transaction.addTag('Cipher', fileMetaData.cipher);
+		transaction.addTag('Cipher-IV', fileMetaData.dataCipherIV);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('Content-Type', fileMetaData.contentType);
+	}
+	transaction.addTag('ArFS', arFSVersion);
+	transaction.addTag('Entity-Type', fileMetaData.entityType);
+	transaction.addTag('Drive-Id', fileMetaData.driveId);
+
+	// Add file or folder specific tags
+	if (fileMetaData.entityType === 'file') {
+		transaction.addTag('File-Id', fileMetaData.fileId);
+		transaction.addTag('Parent-Folder-Id', fileMetaData.parentFolderId);
+	} else {
+		transaction.addTag('Folder-Id', fileMetaData.fileId);
+		if (fileMetaData.parentFolderId !== '0') {
+			// Root folder transactions do not have Parent-Folder-Id
+			transaction.addTag('Parent-Folder-Id', fileMetaData.parentFolderId);
 		}
-		console.log('SUCCESS %s was submitted with TX %s', filePath, transaction.id);
-		return transaction.id;
+	}
+
+	// Sign transaction
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
+}
+
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+export async function prepareArDriveDataItemTransaction(
+	user: ArDriveUser,
+	fileData: Buffer,
+	fileMetaData: ArFSFileMetaData
+): Promise<DataItemJson | null> {
+	try {
+		// Create the item using the data buffer
+		const item = await arBundles.createData({ data: fileData }, JSON.parse(user.walletPrivateKey));
+
+		// Tag file with common tags
+		arBundles.addTag(item, 'App-Name', appName);
+		arBundles.addTag(item, 'App-Version', appVersion);
+		if (fileMetaData.isPublic === 0) {
+			// If the file is private, we use extra tags
+			// Tag file with Privacy tags, Content-Type, Cipher and Cipher-IV
+			arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
+			arBundles.addTag(item, 'Cipher', fileMetaData.cipher);
+			arBundles.addTag(item, 'Cipher-IV', fileMetaData.dataCipherIV);
+		} else {
+			// Only tag the file with public tags
+			arBundles.addTag(item, 'Content-Type', fileMetaData.contentType);
+		}
+
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, JSON.parse(user.walletPrivateKey));
+		return signedItem;
 	} catch (err) {
+		console.log('Error creating data item');
 		console.log(err);
-		return 'Transaction failed';
+		return null;
 	}
 }
 
-// Creates an arweave transaction to upload only file metadata to arweave
-export async function createArDrivePublicMetaDataTransaction(
-	walletPrivateKey: string,
-	fileToUpload: ArFSFileMetaData,
-	secondaryFileMetaDataJSON: string
-): Promise<string> {
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+export async function prepareArDriveMetaDataItemTransaction(
+	user: ArDriveUser,
+	fileMetaData: ArFSFileMetaData,
+	secondaryFileMetaData: string | Buffer
+): Promise<DataItemJson | null> {
 	try {
-		const transaction = await arweave.createTransaction(
-			{ data: secondaryFileMetaDataJSON },
-			JSON.parse(walletPrivateKey)
-		);
+		// Create the item using the data buffer or string
+		const item = await arBundles.createData({ data: secondaryFileMetaData }, JSON.parse(user.walletPrivateKey));
 
 		// Tag file
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Unix-Time', fileToUpload.unixTime.toString());
-		transaction.addTag('Content-Type', 'application/json');
-		transaction.addTag('ArFS', arFSVersion);
-		transaction.addTag('Entity-Type', fileToUpload.entityType);
-		transaction.addTag('Drive-Id', fileToUpload.driveId);
-		if (fileToUpload.entityType === 'file') {
-			transaction.addTag('File-Id', fileToUpload.fileId);
-			transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
+		arBundles.addTag(item, 'App-Name', appName);
+		arBundles.addTag(item, 'App-Version', appVersion);
+		arBundles.addTag(item, 'Unix-Time', fileMetaData.unixTime.toString());
+		if (fileMetaData.isPublic === 0) {
+			// If the file is private, we use extra tags
+			// Tag file with Content-Type, Cipher and Cipher-IV
+			arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
+			arBundles.addTag(item, 'Cipher', fileMetaData.cipher);
+			arBundles.addTag(item, 'Cipher-IV', fileMetaData.metaDataCipherIV);
 		} else {
-			transaction.addTag('Folder-Id', fileToUpload.fileId);
-			if (fileToUpload.parentFolderId !== '0') {
-				transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
+			arBundles.addTag(item, 'Content-Type', 'application/json');
+		}
+		arBundles.addTag(item, 'ArFS', arFSVersion);
+		arBundles.addTag(item, 'Entity-Type', fileMetaData.entityType);
+		arBundles.addTag(item, 'Drive-Id', fileMetaData.driveId);
+
+		// Add file or folder specific tags
+		if (fileMetaData.entityType === 'file') {
+			arBundles.addTag(item, 'File-Id', fileMetaData.fileId);
+			arBundles.addTag(item, 'Parent-Folder-Id', fileMetaData.parentFolderId);
+		} else {
+			arBundles.addTag(item, 'Folder-Id', fileMetaData.fileId);
+			if (fileMetaData.parentFolderId !== '0') {
+				arBundles.addTag(item, 'Parent-Folder-Id', fileMetaData.parentFolderId);
 			}
 		}
 
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-		const fileMetaDataToUpdate = {
-			id: fileToUpload.id,
-			fileMetaDataSyncStatus: 2,
-			metaDataCipherIV: '',
-			cipher: '',
-			metaDataTxId: transaction.id
-		};
-		// Update the queue since the file metadata is now being uploaded
-		await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-		}
-		console.log('SUCCESS %s metadata was submitted with TX %s', fileToUpload.filePath, transaction.id);
-		return transaction.id;
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, JSON.parse(user.walletPrivateKey));
+		return signedItem;
 	} catch (err) {
+		console.log('Error creating data item');
 		console.log(err);
-		return 'Transaction failed';
+		return null;
+	}
+}
+
+// Creates a Transaction uploader object for a given arweave transaction
+export async function createDataUploader(transaction: Transaction): Promise<TransactionUploader> {
+	// Create an uploader object
+	const uploader = await arweave.transactions.getUploader(transaction);
+	return uploader;
+}
+
+// Creates an arweave transaction to upload file data (and no metadata) to arweave
+// Saves the upload chunk of the object in case the upload has to be restarted
+export async function uploadDataChunk(uploader: TransactionUploader): Promise<TransactionUploader | null> {
+	try {
+		await uploader.uploadChunk();
+		return uploader;
+	} catch (err) {
+		console.log('Uploading this chunk has failed');
+		console.log(err);
+		return null;
 	}
 }
 
@@ -1060,292 +1132,6 @@ export async function createArDriveBundledDataTransaction(
 		return transaction.id;
 	} catch (err) {
 		console.log('Error sending data bundle');
-		console.log(err);
-		return 'Error';
-	}
-}
-
-// Creates an arweave data item transaction (ANS-102) to upload file data (and no metadata) to arweave
-export async function createArDrivePublicDataItemTransaction(
-	walletPrivateKey: string,
-	filePath: string,
-	contentType: string,
-	id: number
-): Promise<DataItemJson | null> {
-	try {
-		const fileToUpload = fs.readFileSync(filePath);
-		const item = await arBundles.createData(
-			{ data: fileToUpload }, // How to replace this?
-			JSON.parse(walletPrivateKey)
-		);
-
-		// Tag file
-		arBundles.addTag(item, 'App-Name', appName);
-		arBundles.addTag(item, 'App-Version', appVersion);
-		arBundles.addTag(item, 'Content-Type', contentType);
-
-		// Sign the data, ready to be added to a bundle
-		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
-
-		const fileToUpdate = {
-			fileDataSyncStatus: 2,
-			dataTxId: item.id,
-			dataCipherIV: '',
-			cipher: '',
-			id
-		};
-		// Update the queue since the file is now being uploaded
-		await updateFileDataSyncStatus(fileToUpdate);
-		console.log('SUCCESS %s public data item was created with TX %s', filePath, item.id);
-		return dataItem;
-	} catch (err) {
-		console.log('Error creating public data item');
-		console.log(err);
-		return null;
-	}
-}
-
-// Creates an arweave data item transaction (ANS-102) to upload only file metadata to arweave
-export async function createArDrivePublicMetaDataItemTransaction(
-	walletPrivateKey: string,
-	fileToUpload: ArFSFileMetaData,
-	secondaryFileMetaDataJSON: string
-): Promise<DataItemJson | null> {
-	try {
-		const item = await arBundles.createData({ data: secondaryFileMetaDataJSON }, JSON.parse(walletPrivateKey));
-
-		// Tag file
-		arBundles.addTag(item, 'App-Name', appName);
-		arBundles.addTag(item, 'App-Version', appVersion);
-		arBundles.addTag(item, 'Unix-Time', fileToUpload.unixTime.toString());
-		arBundles.addTag(item, 'Content-Type', 'application/json');
-		arBundles.addTag(item, 'ArFS', arFSVersion);
-		arBundles.addTag(item, 'Entity-Type', fileToUpload.entityType);
-		arBundles.addTag(item, 'Drive-Id', fileToUpload.driveId);
-		if (fileToUpload.entityType === 'file') {
-			arBundles.addTag(item, 'File-Id', fileToUpload.fileId);
-			arBundles.addTag(item, 'Parent-Folder-Id', fileToUpload.parentFolderId);
-		} else {
-			arBundles.addTag(item, 'Folder-Id', fileToUpload.fileId);
-			if (fileToUpload.parentFolderId !== '0') {
-				arBundles.addTag(item, 'Parent-Folder-Id', fileToUpload.parentFolderId);
-			}
-		}
-
-		// Sign file
-		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
-		const fileMetaDataToUpdate = {
-			id: fileToUpload.id,
-			fileMetaDataSyncStatus: 2,
-			metaDataCipherIV: '',
-			cipher: '',
-			metaDataTxId: dataItem.id
-		};
-		// Update the queue since the file metadata is now being uploaded
-		await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
-		console.log('SUCCESS %s public metadata item was created with TX %s', fileToUpload.filePath, dataItem.id);
-		return dataItem;
-	} catch (err) {
-		console.log('Error creating private data item');
-		console.log(err);
-		return null;
-	}
-}
-
-// Creates an arweave data item transaction (ANS-102) to encrypt and upload file data (and no metadata) to arweave
-export async function createArDrivePrivateDataItemTransaction(
-	fileKey: Buffer,
-	fileToUpload: ArFSFileMetaData,
-	walletPrivateKey: string
-): Promise<DataItemJson | null> {
-	try {
-		const data = fs.readFileSync(fileToUpload.filePath);
-		const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, data);
-		const item = await arBundles.createData({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
-
-		// Tag file with Content-Type, Cipher and Cipher-IV
-		arBundles.addTag(item, 'App-Name', appName);
-		arBundles.addTag(item, 'App-Version', appVersion);
-		arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
-		arBundles.addTag(item, 'Cipher', encryptedData.cipher);
-		arBundles.addTag(item, 'Cipher-IV', encryptedData.cipherIV);
-
-		// Sign file
-		// Sign the data, ready to be added to a bundle
-		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
-
-		const fileToUpdate = {
-			id: fileToUpload.id,
-			fileDataSyncStatus: 2,
-			dataTxId: item.id,
-			dataCipherIV: encryptedData.cipherIV,
-			cipher: encryptedData.cipher
-		};
-
-		// Update the queue since the file is now being uploaded
-		await updateFileDataSyncStatus(fileToUpdate);
-		console.log('SUCCESS %s data item was created with TX %s', fileToUpload.filePath, item.id);
-		return dataItem;
-	} catch (err) {
-		console.log('Error creating private data item');
-		console.log(err);
-		return null;
-	}
-}
-
-// Creates an arweave transaction to encrypt and upload only file metadata to arweave
-export async function createArDrivePrivateMetaDataItemTransaction(
-	fileKey: Buffer,
-	walletPrivateKey: string,
-	fileToUpload: ArFSFileMetaData,
-	secondaryFileMetaDataTags: string
-): Promise<DataItemJson | null> {
-	try {
-		// Encrypt the file metadata first since this is a private transaction
-		const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataTags));
-
-		// Setup the transaction and get the price
-		const item = await arBundles.createData({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
-
-		// Tag file with Private metadata
-		arBundles.addTag(item, 'App-Name', appName);
-		arBundles.addTag(item, 'App-Version', appVersion);
-		arBundles.addTag(item, 'Unix-Time', fileToUpload.unixTime.toString());
-		arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
-		arBundles.addTag(item, 'Cipher', encryptedData.cipher);
-		arBundles.addTag(item, 'Cipher-IV', encryptedData.cipherIV);
-		arBundles.addTag(item, 'ArFS', arFSVersion);
-		arBundles.addTag(item, 'Entity-Type', fileToUpload.entityType);
-		arBundles.addTag(item, 'Drive-Id', fileToUpload.driveId);
-		if (fileToUpload.entityType === 'file') {
-			arBundles.addTag(item, 'File-Id', fileToUpload.fileId);
-			arBundles.addTag(item, 'Parent-Folder-Id', fileToUpload.parentFolderId);
-		} else {
-			arBundles.addTag(item, 'Folder-Id', fileToUpload.fileId);
-			// If parent folder ID is 0, then this is a root folder and we do not include this tag.
-			if (fileToUpload.parentFolderId !== '0') {
-				arBundles.addTag(item, 'Parent-Folder-Id', fileToUpload.parentFolderId);
-			}
-		}
-
-		// Sign file
-		const dataItem = await arBundles.sign(item, JSON.parse(walletPrivateKey));
-		const fileMetaDataToUpdate = {
-			id: fileToUpload.id,
-			fileMetaDataSyncStatus: 2,
-			metaDataTxId: item.id,
-			metaDataCipherIV: encryptedData.cipherIV,
-			cipher: encryptedData.cipher
-		};
-		// Update the queue since the file metadata is now being uploaded
-		await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
-		console.log('SUCCESS %s public metadata item was created with TX %s', fileToUpload.filePath, dataItem.id);
-		return dataItem;
-	} catch (err) {
-		console.log('Error creating private metadata item');
-		console.log(err);
-		return null;
-	}
-}
-
-// Creates an arweave transaction to encrypt and upload file data (and no metadata) to arweave
-export async function createArDrivePrivateDataTransaction(
-	fileKey: Buffer,
-	fileToUpload: ArFSFileMetaData,
-	walletPrivateKey: string
-): Promise<string> {
-	try {
-		const data = fs.readFileSync(fileToUpload.filePath);
-		const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, data);
-		const transaction = await arweave.createTransaction({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
-
-		// Tag file with Content-Type, Cipher and Cipher-IV
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Content-Type', 'application/octet-stream');
-		transaction.addTag('Cipher', encryptedData.cipher);
-		transaction.addTag('Cipher-IV', encryptedData.cipherIV);
-
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-		const fileToUpdate = {
-			id: fileToUpload.id,
-			fileDataSyncStatus: 2,
-			dataTxId: transaction.id,
-			dataCipherIV: encryptedData.cipherIV,
-			cipher: encryptedData.cipher
-		};
-		// Update the queue since the file is now being uploaded
-		await updateFileDataSyncStatus(fileToUpdate);
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-			await setFileUploaderObject(JSON.stringify(uploader), fileToUpload.id);
-			console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
-		}
-		console.log('SUCCESS %s was submitted with TX %s', fileToUpload.filePath, transaction.id);
-		return transaction.id;
-	} catch (err) {
-		console.log(err);
-		return 'Error';
-	}
-}
-
-// Creates an arweave transaction to encrypt and upload only file metadata to arweave
-export async function createArDrivePrivateMetaDataTransaction(
-	fileKey: Buffer,
-	walletPrivateKey: string,
-	fileToUpload: ArFSFileMetaData,
-	secondaryFileMetaDataTags: string
-): Promise<string> {
-	try {
-		// Encrypt the file metadata first since this is a private transaction
-		const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataTags));
-
-		// Setup the transaction and get the price
-		const transaction = await arweave.createTransaction({ data: encryptedData.data }, JSON.parse(walletPrivateKey));
-
-		// Tag file with Private metadata
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Unix-Time', fileToUpload.unixTime.toString());
-		transaction.addTag('Content-Type', 'application/octet-stream');
-		transaction.addTag('Cipher', encryptedData.cipher);
-		transaction.addTag('Cipher-IV', encryptedData.cipherIV);
-		transaction.addTag('ArFS', arFSVersion);
-		transaction.addTag('Entity-Type', fileToUpload.entityType);
-		transaction.addTag('Drive-Id', fileToUpload.driveId);
-		if (fileToUpload.entityType === 'file') {
-			transaction.addTag('File-Id', fileToUpload.fileId);
-			transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
-		} else {
-			transaction.addTag('Folder-Id', fileToUpload.fileId);
-			// If parent folder ID is 0, then this is a root folder and we do not include this tag.
-			if (fileToUpload.parentFolderId !== '0') {
-				transaction.addTag('Parent-Folder-Id', fileToUpload.parentFolderId);
-			}
-		}
-
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-		const uploader = await arweave.transactions.getUploader(transaction);
-		const fileMetaDataToUpdate = {
-			id: fileToUpload.id,
-			fileMetaDataSyncStatus: 2,
-			metaDataTxId: transaction.id,
-			metaDataCipherIV: encryptedData.cipherIV,
-			cipher: encryptedData.cipher
-		};
-		// Update the queue since the file metadata is now being uploaded
-		await updateFileMetaDataSyncStatus(fileMetaDataToUpdate);
-		while (!uploader.isComplete) {
-			// eslint-disable-next-line no-await-in-loop
-			await uploader.uploadChunk();
-		}
-		console.log('SUCCESS %s metadata was submitted with TX %s', fileToUpload.filePath, transaction.id);
-		return transaction.id;
-	} catch (err) {
 		console.log(err);
 		return 'Error';
 	}
