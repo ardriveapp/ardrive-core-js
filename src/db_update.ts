@@ -80,10 +80,11 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
 		drivePrivacy,
 		driveAuthMode,
 		metaDataTxId,
-		metaDataSyncStatus
+		metaDataSyncStatus,
+		isLocal
 	} = drive;
 	return run(
-		'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+		'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, isLocal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 		[
 			login,
 			appName,
@@ -99,7 +100,8 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
 			drivePrivacy,
 			driveAuthMode,
 			metaDataTxId,
-			metaDataSyncStatus
+			metaDataSyncStatus,
+			isLocal
 		]
 	);
 };

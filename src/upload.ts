@@ -411,7 +411,8 @@ async function uploadArFSDriveMetaData(user: ArDriveUser, drive: ArFSDriveMetaDa
 
 		// Begin to upload chunks
 		while (!uploader.isComplete) {
-			uploader.uploadChunk();
+			await uploader.uploadChunk();
+			console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
 		}
 
 		if (uploader.isComplete) {
