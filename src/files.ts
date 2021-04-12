@@ -4,20 +4,17 @@ import * as fs from 'fs';
 import { extToMime, appName, appVersion, checkFileExistsSync } from './common';
 import { checksumFile } from './crypto';
 import {
-	addFileToSyncTable,
 	getFolderFromSyncTable,
 	getFolderByInodeFromSyncTable,
 	getByFileNameAndHashAndParentFolderIdFromSyncTable,
 	getByFilePathFromSyncTable,
 	getByFileHashAndParentFolderFromSyncTable,
 	getByFileHashAndFileNameFromSyncTable,
-	setPermaWebFileToCloudOnly,
-	setPermaWebFileToOverWrite,
 	getFolderByHashFromSyncTable,
-	setFilePath,
 	getDriveRootFolderFromSyncTable,
 	getAllPersonalDrivesByLoginFromDriveTable
-} from './db';
+} from './db_get';
+import { setFilePath, setPermaWebFileToCloudOnly, setPermaWebFileToOverWrite, addFileToSyncTable } from './db_update';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
@@ -25,6 +22,11 @@ import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
 import { hashElement, HashElementOptions } from 'folder-hash';
 
 //const { hashElement } = require('folder-hash');
+
+interface FolderWatchRef {
+	status: string;
+	stop(): Promise<void>;
+}
 
 const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
 	// Check to see if the file is ready
@@ -281,7 +283,12 @@ const queueFolder = async (
 	}
 };
 
-const watchFolder = (login: string, driveRootFolderPath: string, driveId: string, drivePrivacy: string) => {
+const watchFolder = (
+	login: string,
+	driveRootFolderPath: string,
+	driveId: string,
+	drivePrivacy: string
+): FolderWatchRef => {
 	const log = console.log.bind(console);
 	const watcher = chokidar.watch(driveRootFolderPath, {
 		persistent: true,
@@ -302,13 +309,14 @@ const watchFolder = (login: string, driveRootFolderPath: string, driveId: string
 		.on('addDir', async (path: string) => queueFolder(path, driveRootFolderPath, login, driveId, drivePrivacy))
 		.on('unlinkDir', async (path: string) => log(`Directory ${path} has been removed`))
 		.on('error', (error: string) => log(`Watcher error: ${error}`));
-	return {
+	const ref: FolderWatchRef = {
 		status: 'Watched',
 		stop: watcher.close
 	};
+	return ref;
 };
 
-const startWatchingFolders = async (user: ArDriveUser) => {
+async function startWatchingFolders(user: ArDriveUser): Promise<any> {
 	const drives: ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
 	const stoppers: Array<() => Promise<void>> = [];
 	if (drives !== undefined) {
@@ -320,14 +328,14 @@ const startWatchingFolders = async (user: ArDriveUser) => {
 		});
 	}
 	return () => Promise.all(stoppers);
-};
+}
 
-const resolveFileDownloadConflict = async (
+async function resolveFileDownloadConflict(
 	resolution: string,
 	fileName: string,
 	filePath: string,
 	id: string
-): Promise<string> => {
+): Promise<string> {
 	const folderPath = dirname(filePath);
 	switch (resolution) {
 		case 'R': {
@@ -350,6 +358,6 @@ const resolveFileDownloadConflict = async (
 			break;
 	}
 	return 'Success';
-};
+}
 
 export { watchFolder, resolveFileDownloadConflict, startWatchingFolders };

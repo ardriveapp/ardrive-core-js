@@ -19,31 +19,34 @@ import {
 import { asyncForEach, getWinston, formatBytes, gatewayURL, checkFileExistsSync, getArUSDPrice } from './common';
 import { deriveDriveKey, deriveFileKey } from './crypto';
 import {
-	getFilesToUploadFromSyncTable,
-	deleteFromSyncTable,
-	getNewDrivesFromDriveTable,
-	getDriveRootFolderFromSyncTable,
-	getAllUploadedDrivesFromDriveTable,
 	completeDriveMetaDataFromDriveTable,
 	setFileMetaDataSyncStatus,
 	updateFileUploadTimeInSyncTable,
-	getAllUploadedBundlesFromBundleTable,
 	completeFileDataItemFromSyncTable,
-	getAllUploadedDataItemsFromSyncTable,
 	updateFileBundleTxId,
-	getBundleUploadTimeFromBundleTable,
 	setFileDataItemSyncStatus,
 	completeBundleFromBundleTable,
-	getAllUploadedFilesFromSyncTable,
 	completeFileDataFromSyncTable,
 	completeFileMetaDataFromSyncTable,
-	getFileUploadTimeFromSyncTable,
 	setFileDataSyncStatus
-} from './db';
+} from './db_update';
+import {
+	getFilesToUploadFromSyncTable,
+	getNewDrivesFromDriveTable,
+	getDriveRootFolderFromSyncTable,
+	getAllUploadedDrivesFromDriveTable,
+	getAllUploadedBundlesFromBundleTable,
+	getAllUploadedDataItemsFromSyncTable,
+	getBundleUploadTimeFromBundleTable,
+	getAllUploadedFilesFromSyncTable,
+	getFileUploadTimeFromSyncTable
+} from './db_get';
+import { deleteFromSyncTable } from './db_delete';
+
 import { ArDriveBundle, ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, UploadBatch } from './types';
 
 // Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
-export const getPriceOfNextUploadBatch = async (login: string): Promise<UploadBatch> => {
+export async function getPriceOfNextUploadBatch(login: string): Promise<UploadBatch> {
 	let totalWinstonData = 0;
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
@@ -113,7 +116,7 @@ export const getPriceOfNextUploadBatch = async (login: string): Promise<UploadBa
 		return uploadBatch;
 	}
 	return uploadBatch;
-};
+}
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 async function uploadArDriveFileDataItem(
@@ -256,7 +259,7 @@ async function uploadArDriveFolderMetaDataItem(
 }
 
 // Uploads all queued files
-export const uploadArDriveFilesAndBundles = async (user: ArDriveUser): Promise<string> => {
+export async function uploadArDriveFilesAndBundles(user: ArDriveUser): Promise<string> {
 	try {
 		const items: DataItemJson[] = [];
 		let filesUploaded = 0;
@@ -387,10 +390,10 @@ export const uploadArDriveFilesAndBundles = async (user: ArDriveUser): Promise<s
 		console.log(err);
 		return 'ERROR processing files';
 	}
-};
+}
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
-export const checkUploadStatus = async (login: string): Promise<string> => {
+export async function checkUploadStatus(login: string): Promise<string> {
 	try {
 		console.log('---Checking Upload Status---');
 		let permaWebLink: string;
@@ -539,7 +542,7 @@ export const checkUploadStatus = async (login: string): Promise<string> => {
 		console.log(err);
 		return 'Error checking upload file status';
 	}
-};
+}
 
 // Tags and Uploads a single file to your ArDrive
 async function uploadArDriveFileData(
