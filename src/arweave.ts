@@ -1,37 +1,19 @@
-// arweave.js
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import {
-	appName,
-	appVersion,
-	asyncForEach,
-	arFSVersion,
-	Utf8ArrayToStr,
-	webAppName,
-	graphQLURL,
-	weightedRandom
-} from './common';
-import {
-	ArDriveUser,
-	ArFSDriveMetaData,
-	ArFSFileMetaData,
-	ArFSRootFolderMetaData,
-	GQLEdgeInterface,
-	GQLTagInterface,
-	Wallet
-} from './types';
+import { appName, appVersion, arFSVersion, weightedRandom } from './common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, Wallet } from './types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
 import { DataItemJson } from 'arweave-bundles';
-import { deriveDriveKey, driveDecrypt } from './crypto';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
 
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
+// Initialize Arweave
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
 	//host: 'arweave.dev', // Arweave Dev Gateway
@@ -40,7 +22,7 @@ const arweave = Arweave.init({
 	timeout: 600000
 });
 
-// Initialize the arweave-bundles API
+// Initialize the arweave-bundles API used for ANS102 Transactions
 const deps = {
 	utils: Arweave.utils,
 	crypto: Arweave.crypto,
@@ -83,690 +65,18 @@ export async function getWalletBalance(walletPublicKey: string): Promise<number>
 	}
 }
 
-// Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
-export async function getSharedPublicDrive(driveId: string): Promise<ArFSDriveMetaData> {
-	const drive: ArFSDriveMetaData = {
-		id: 0,
-		login: '',
-		appName: appName,
-		appVersion: appVersion,
-		driveName: '',
-		rootFolderId: '',
-		cipher: '',
-		cipherIV: '',
-		unixTime: 0,
-		arFS: '',
-		driveId,
-		driveSharing: 'shared',
-		drivePrivacy: 'public',
-		driveAuthMode: '',
-		metaDataTxId: '0',
-		metaDataSyncStatus: 0 // Drives are lazily created once the user performs an initial upload
-	};
+// Create a wallet and return the key and address
+export async function createArDriveWallet(): Promise<Wallet> {
 	try {
-		// GraphQL Query
-		const query = {
-			query: `query {
-      transactions(
-        first: 100
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Entity-Type", values: "drive" }
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
-		};
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		await asyncForEach(edges, async (edge: GQLEdgeInterface) => {
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			const { node } = edge;
-			const { tags } = node;
-			tags.forEach((tag: GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					default:
-						break;
-				}
-			});
-
-			// We cannot add this drive if it is private
-			if (drive.drivePrivacy === 'private') {
-				return 'Skipped';
-			}
-
-			// Download the File's Metadata using the metadata transaction ID
-			drive.metaDataTxId = node.id;
-			console.log('Shared Drive Metadata tx id: ', drive.metaDataTxId);
-			drive.metaDataSyncStatus = 3;
-			const data = await getTransactionData(drive.metaDataTxId);
-			const dataString = await Utf8ArrayToStr(data);
-			const dataJSON = await JSON.parse(dataString);
-
-			// Get the drive name and root folder id
-			drive.driveName = dataJSON.name;
-			drive.rootFolderId = dataJSON.rootFolderId;
-			return 'Found';
-		});
-		return drive;
+		const wallet = await generateWallet();
+		// TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
+		console.log('SUCCESS! Your new wallet public address is %s', wallet.walletPublicKey);
+		return wallet;
 	} catch (err) {
-		console.log(err);
-		console.log('Error getting Shared Public Drive');
-		return drive;
+		console.error('Cannot create Wallet');
+		console.error(err);
+		return Promise.reject(err);
 	}
-}
-
-// Gets the root folder ID for a Public Drive
-export async function getPublicDriveRootFolderTxId(driveId: string, folderId: string): Promise<string> {
-	let metaDataTxId = '0';
-	try {
-		const query = {
-			query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "ArFS", values: "${arFSVersion}" }
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Folder-Id", values: "${folderId}"}
-        ]
-      ) {
-        edges {
-          node {
-            id
-          }
-        }
-      }
-    }`
-		};
-		const response = await arweave.api.request().post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		await asyncForEach(edges, async (edge: GQLEdgeInterface) => {
-			const { node } = edge;
-			metaDataTxId = node.id;
-		});
-		return metaDataTxId;
-	} catch (err) {
-		console.log(err);
-		console.log('Error querying GQL for personal public drive root folder id, trying again.');
-		metaDataTxId = await getPublicDriveRootFolderTxId(driveId, folderId);
-		return metaDataTxId;
-	}
-}
-
-// Gets the root folder ID for a Private Drive and includes the Cipher and IV
-export async function getPrivateDriveRootFolderTxId(
-	driveId: string,
-	folderId: string
-): Promise<ArFSRootFolderMetaData> {
-	let rootFolderMetaData: ArFSRootFolderMetaData = {
-		metaDataTxId: '0',
-		cipher: '',
-		cipherIV: ''
-	};
-	try {
-		const query = {
-			query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "ArFS", values: "${arFSVersion}" }
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Folder-Id", values: "${folderId}"}
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
-		};
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		await asyncForEach(edges, async (edge: GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			rootFolderMetaData.metaDataTxId = node.id;
-			tags.forEach((tag: GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'Cipher':
-						rootFolderMetaData.cipher = value;
-						break;
-					case 'Cipher-IV':
-						rootFolderMetaData.cipherIV = value;
-						break;
-				}
-			});
-		});
-		return rootFolderMetaData;
-	} catch (err) {
-		console.log(err);
-		console.log('Error querying GQL for personal private drive root folder id, trying again.');
-		rootFolderMetaData = await getPrivateDriveRootFolderTxId(driveId, folderId);
-		return rootFolderMetaData;
-	}
-}
-
-// Gets all of the ardrive IDs from a user's wallet
-// Uses the Entity type to only search for Drive tags
-export async function getAllMyPublicArDriveIds(
-	login: string,
-	walletPublicKey: string,
-	lastBlockHeight: number
-): Promise<ArFSDriveMetaData[]> {
-	const allPublicDrives: ArFSDriveMetaData[] = [];
-	try {
-		// Search last 5 blocks minimum
-		if (lastBlockHeight > 5) {
-			lastBlockHeight -= 5;
-		}
-
-		// Create the Graphql Query to search for all drives relating to the User wallet
-		const query = {
-			query: `query {
-      			transactions(
-				block: {min: ${lastBlockHeight}}
-				first: 100
-				owners: ["${walletPublicKey}"]
-				tags: [
-					{ name: "App-Name", values: ["${appName}", "${webAppName}"] }
-					{ name: "Entity-Type", values: "drive" }
-					{ name: "Drive-Privacy", values: "public" }]) 
-				{
-					edges {
-						node {
-							id
-							tags {
-								name
-								value
-							}
-						}
-					}
-      			}
-    		}`
-		};
-
-		// Call the Arweave Graphql Endpoint
-		const response = await arweave.api.post(graphQLURL, query); // This must be updated to production when available
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-
-		// Iterate through each returned transaction and pull out the private drive IDs
-		await asyncForEach(edges, async (edge: GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			const drive: ArFSDriveMetaData = {
-				id: 0,
-				login: login,
-				appName: '',
-				appVersion: '',
-				driveName: '',
-				rootFolderId: '',
-				cipher: '',
-				cipherIV: '',
-				unixTime: 0,
-				arFS: '',
-				driveId: '',
-				driveSharing: 'personal',
-				drivePrivacy: 'public',
-				driveAuthMode: '',
-				metaDataTxId: '',
-				metaDataSyncStatus: 3
-			};
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			tags.forEach((tag: GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					case 'Drive-Id':
-						drive.driveId = value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					default:
-						break;
-				}
-			});
-
-			// Capture the TX of the public drive metadata tx
-			drive.metaDataTxId = node.id;
-
-			// Download the File's Metadata using the metadata transaction ID
-			const data = await getTransactionData(drive.metaDataTxId);
-			const dataString = await Utf8ArrayToStr(data);
-			const dataJSON = await JSON.parse(dataString);
-
-			// Get the drive name and root folder id
-			drive.driveName = dataJSON.name;
-			drive.rootFolderId = dataJSON.rootFolderId;
-			allPublicDrives.push(drive);
-			return 'Added';
-		});
-		return allPublicDrives;
-	} catch (err) {
-		console.log(err);
-		console.log('Error getting all public drives');
-		return allPublicDrives;
-	}
-}
-
-// Gets all of the private ardrive IDs from a user's wallet, using the Entity type to only search for Drive tags
-// Only returns Private drives from graphql
-export async function getAllMyPrivateArDriveIds(
-	user: ArDriveUser,
-	lastBlockHeight: number
-): Promise<ArFSDriveMetaData[]> {
-	const allPrivateDrives: ArFSDriveMetaData[] = [];
-
-	// Search last 5 blocks minimum
-	if (lastBlockHeight > 5) {
-		lastBlockHeight -= 5;
-	}
-
-	const query = {
-		query: `query {
-    transactions(
-      block: {min: ${lastBlockHeight}}
-      first: 100
-      owners: ["${user.walletPublicKey}"]
-      tags: [
-        { name: "ArFS", values: "${arFSVersion}" }
-        { name: "Entity-Type", values: "drive" }
-        { name: "Drive-Privacy", values: "private" }
-      ]
-    ) {
-      edges {
-        node {
-          id
-          tags {
-            name
-            value
-          }
-        }
-      }
-    }
-  }`
-	};
-
-	// Call the Arweave Graphql Endpoint
-	let response;
-	try {
-		response = await arweave.api.post(graphQLURL, query);
-	} catch (err) {
-		return allPrivateDrives;
-	}
-
-	const { data } = response.data;
-	const { transactions } = data;
-	const { edges } = transactions;
-
-	// Iterate through each returned transaction and pull out the private drive IDs
-	await asyncForEach(edges, async (edge: GQLEdgeInterface) => {
-		const { node } = edge;
-		const { tags } = node;
-		const drive: ArFSDriveMetaData = {
-			id: 0,
-			login: user.login,
-			appName: '',
-			appVersion: '',
-			driveName: '',
-			rootFolderId: '',
-			cipher: '',
-			cipherIV: '',
-			unixTime: 0,
-			arFS: '',
-			driveId: '',
-			driveSharing: 'personal',
-			drivePrivacy: '',
-			driveAuthMode: '',
-			metaDataTxId: '',
-			metaDataSyncStatus: 3
-		};
-		// Iterate through each tag and pull out each drive ID as well the drives privacy status
-		tags.forEach((tag: GQLTagInterface) => {
-			const key = tag.name;
-			const { value } = tag;
-			switch (key) {
-				case 'App-Name':
-					drive.appName = value;
-					break;
-				case 'App-Version':
-					drive.appVersion = value;
-					break;
-				case 'Unix-Time':
-					drive.unixTime = +value;
-					break;
-				case 'Drive-Id':
-					drive.driveId = value;
-					break;
-				case 'ArFS':
-					drive.arFS = value;
-					break;
-				case 'Drive-Privacy':
-					drive.drivePrivacy = value;
-					break;
-				case 'Drive-Auth-Mode':
-					drive.driveAuthMode = value;
-					break;
-				case 'Cipher':
-					drive.cipher = value;
-					break;
-				case 'Cipher-IV':
-					drive.cipherIV = value;
-					break;
-				default:
-					break;
-			}
-		});
-		try {
-			// Capture the TX of the public drive metadata tx
-			drive.metaDataTxId = node.id;
-
-			// Download the File's Metadata using the metadata transaction ID
-			const data = await getTransactionData(drive.metaDataTxId);
-			const dataBuffer = Buffer.from(data);
-			// Since this is a private drive, we must decrypt the JSON data
-			const driveKey: Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
-			const decryptedDriveBuffer: Buffer = await driveDecrypt(drive.cipherIV, driveKey, dataBuffer);
-			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
-			const decryptedDriveJSON = await JSON.parse(decryptedDriveString);
-
-			// Get the drive name and root folder id
-			drive.driveName = decryptedDriveJSON.name;
-			drive.rootFolderId = decryptedDriveJSON.rootFolderId;
-			allPrivateDrives.push(drive);
-		} catch (err) {
-			console.log('Error: ', err);
-			console.log('Password not valid for this private drive TX %s | ID %s', node.id, drive.driveId);
-			drive.driveName = 'Invalid Drive Password';
-			drive.rootFolderId = '';
-			allPrivateDrives.push(drive);
-		}
-	});
-	return allPrivateDrives;
-}
-
-// Gets all of the transactions from a user's wallet, filtered by owner and drive ID
-export async function getAllMyDataFileTxs(
-	walletPublicKey: string,
-	driveId: string,
-	lastBlockHeight: number
-): Promise<GQLEdgeInterface[]> {
-	let hasNextPage = true;
-	let cursor = '';
-	let edges: GQLEdgeInterface[] = [];
-	let primaryGraphQLURL = graphQLURL;
-	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
-	let tries = 0;
-
-	// Search last 5 blocks minimum
-	if (lastBlockHeight > 5) {
-		lastBlockHeight -= 5;
-	}
-
-	while (hasNextPage) {
-		const query = {
-			query: `query {
-      transactions(
-        block: {min: ${lastBlockHeight}}
-        owners: ["${walletPublicKey}"]
-        tags: [
-          { name: "App-Name", values: ["${appName}", "${webAppName}"]}
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Entity-Type", values: ["file", "folder"]}
-        ]
-        first: 100
-        after: "${cursor}"
-      ) {
-        pageInfo {
-          hasNextPage
-        }
-        edges {
-          cursor
-          node {
-            id
-            block {
-              timestamp
-              height
-            }
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
-		};
-
-		// Call the Arweave gateway
-		try {
-			const response = await arweave.api.post(primaryGraphQLURL, query);
-			const { data } = response.data;
-			const { transactions } = data;
-			if (transactions.edges && transactions.edges.length) {
-				edges = edges.concat(transactions.edges);
-				cursor = transactions.edges[transactions.edges.length - 1].cursor;
-			}
-			hasNextPage = transactions.pageInfo.hasNextPage;
-		} catch (err) {
-			console.log(err);
-			if (tries < 5) {
-				tries += 1;
-				console.log(
-					'Error querying GQL for personal data transactions for %s starting at block height %s, trying again.',
-					driveId,
-					lastBlockHeight
-				);
-			} else {
-				tries = 0;
-				if (primaryGraphQLURL.includes('.dev')) {
-					console.log('Backup gateway is having issues, switching to primary.');
-					primaryGraphQLURL = graphQLURL; // Set back to primary and try 5 times
-				} else {
-					console.log('Primary gateway is having issues, switching to backup.');
-					primaryGraphQLURL = backupGraphQLURL; // Change to the backup URL and try 5 times
-				}
-			}
-		}
-	}
-	return edges;
-}
-
-// Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
-export async function getAllMySharedDataFileTxs(driveId: string, lastBlockHeight: number): Promise<GQLEdgeInterface[]> {
-	let hasNextPage = true;
-	let cursor = '';
-	let edges: GQLEdgeInterface[] = [];
-	let primaryGraphQLURL = graphQLURL;
-	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
-	let tries = 0;
-
-	// Search last 5 blocks minimum
-	if (lastBlockHeight > 5) {
-		lastBlockHeight -= 5;
-	}
-
-	while (hasNextPage) {
-		const query = {
-			query: `query {
-      transactions(
-        block: {min: ${lastBlockHeight}}
-        tags: [
-          { name: "App-Name", values: ["${appName}", "${webAppName}"]}
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Entity-Type", values: ["file", "folder"]}
-        ]
-        first: 100
-        after: "${cursor}"
-      ) {
-        pageInfo {
-          hasNextPage
-        }
-        edges {
-          cursor
-          node {
-            id
-            block {
-              timestamp
-              height
-            }
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    		}`
-		};
-
-		// Call the Arweave gateway
-		try {
-			const response = await arweave.api.post(primaryGraphQLURL, query);
-			const { data } = response.data;
-			const { transactions } = data;
-			if (transactions.edges && transactions.edges.length) {
-				edges = edges.concat(transactions.edges);
-				cursor = transactions.edges[transactions.edges.length - 1].cursor;
-			}
-			hasNextPage = transactions.pageInfo.hasNextPage;
-		} catch (err) {
-			console.log(err);
-			if (tries < 5) {
-				tries += 1;
-				console.log(
-					'Error querying GQL for personal data transactions for %s starting at block height %s, trying again.',
-					driveId,
-					lastBlockHeight
-				);
-			} else {
-				tries = 0;
-				if (primaryGraphQLURL.includes('.dev')) {
-					console.log('Backup gateway is having issues, switching to primary.');
-					primaryGraphQLURL = graphQLURL; // Set back to primary and try 5 times
-				} else {
-					console.log('Primary gateway is having issues, switching to backup.');
-					primaryGraphQLURL = backupGraphQLURL; // Change to the backup URL and try 5 times
-				}
-			}
-		}
-	}
-	return edges;
-}
-
-// Gets the CipherIV tag of a private data transaction
-export async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
-	let primaryGraphQLURL = graphQLURL;
-	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
-	let tries = 0;
-	let dataCipherIV = '';
-	const query = {
-		query: `query {
-      transactions(ids: ["${txid}"]) {
-      edges {
-        node {
-          id
-          tags {
-            name
-            value
-          }
-        }
-      }
-    }
-  }`
-	};
-	// We will only attempt this 10 times
-	while (tries < 10) {
-		try {
-			// Call the Arweave Graphql Endpoint
-			const response = await arweave.api.request().post(primaryGraphQLURL, query);
-			const { data } = response.data;
-			const { transactions } = data;
-			const { edges } = transactions;
-			const { node } = edges[0];
-			const { tags } = node;
-			tags.forEach((tag: GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'Cipher-IV':
-						dataCipherIV = value;
-						break;
-					default:
-						break;
-				}
-			});
-			return dataCipherIV;
-		} catch (err) {
-			console.log(err);
-			console.log('Error getting private transaction cipherIV for txid %s, trying again', txid);
-			if (tries < 5) {
-				tries += 1;
-			} else {
-				tries += 1;
-				console.log('Primary gateway is having issues, switching to backup and trying again');
-				primaryGraphQLURL = backupGraphQLURL; // Change to the backup URL and try 5 times
-			}
-		}
-	}
-	return 'Error';
 }
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
@@ -804,7 +114,7 @@ export async function getLatestBlockHeight(): Promise<number> {
 }
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
-export async function prepareArDriveDriveTransaction(
+export async function prepareArFSDriveTransaction(
 	user: ArDriveUser,
 	driveJSON: string | Buffer,
 	driveMetaData: ArFSDriveMetaData
@@ -838,7 +148,7 @@ export async function prepareArDriveDriveTransaction(
 }
 
 // This will prepare and sign v2 data transaction using ArFS File Data Tags
-export async function prepareArDriveDataTransaction(
+export async function prepareArFSDataTransaction(
 	user: ArDriveUser,
 	fileData: Buffer,
 	fileMetaData: ArFSFileMetaData
@@ -867,7 +177,7 @@ export async function prepareArDriveDataTransaction(
 }
 
 // This will prepare and sign v2 data transaction using ArFS File Metadata Tags
-export async function prepareArDriveMetaDataTransaction(
+export async function prepareArFSMetaDataTransaction(
 	user: ArDriveUser,
 	fileMetaData: ArFSFileMetaData,
 	secondaryFileMetaData: string | Buffer
@@ -914,7 +224,7 @@ export async function prepareArDriveMetaDataTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
-export async function prepareArDriveDataItemTransaction(
+export async function prepareArFSDataItemTransaction(
 	user: ArDriveUser,
 	fileData: Buffer,
 	fileMetaData: ArFSFileMetaData
@@ -948,7 +258,7 @@ export async function prepareArDriveDataItemTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
-export async function prepareArDriveMetaDataItemTransaction(
+export async function prepareArFSMetaDataItemTransaction(
 	user: ArDriveUser,
 	fileMetaData: ArFSFileMetaData,
 	secondaryFileMetaData: string | Buffer
@@ -996,7 +306,7 @@ export async function prepareArDriveMetaDataItemTransaction(
 }
 
 // Creates a bundled data transaction
-export async function prepareArDriveBundledDataTransaction(
+export async function prepareArFSBundledDataTransaction(
 	user: ArDriveUser,
 	items: DataItemJson[]
 ): Promise<Transaction | null> {
@@ -1045,73 +355,6 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 	}
 }
 
-// Create a wallet and return the key and address
-export async function createArDriveWallet(): Promise<Wallet> {
-	try {
-		const wallet = await generateWallet();
-		// TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
-		console.log('SUCCESS! Your new wallet public address is %s', wallet.walletPublicKey);
-		return wallet;
-	} catch (err) {
-		console.error('Cannot create Wallet');
-		console.error(err);
-		return Promise.reject(err);
-	}
-}
-
-// Calls the ArDrive Community Smart Contract to pull the fee
-export async function getArDriveFee(): Promise<number> {
-	try {
-		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
-			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
-	} catch {
-		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
-	}
-}
-
-// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
-async function selectTokenHolder(): Promise<string | undefined> {
-	// Read the ArDrive Smart Contract to get the latest state
-	const state = await readContract(arweave, communityTxId);
-	const balances = state.balances;
-	const vault = state.vault;
-
-	// Get the total number of token holders
-	let total = 0;
-	for (const addr of Object.keys(balances)) {
-		total += balances[addr];
-	}
-
-	// Check for how many tokens the user has staked/vaulted
-	for (const addr of Object.keys(vault)) {
-		if (!vault[addr].length) continue;
-
-		const vaultBalance = vault[addr]
-			.map((a: { balance: number; start: number; end: number }) => a.balance)
-			.reduce((a: number, b: number) => a + b, 0);
-
-		total += vaultBalance;
-
-		if (addr in balances) {
-			balances[addr] += vaultBalance;
-		} else {
-			balances[addr] = vaultBalance;
-		}
-	}
-
-	// Create a weighted list of token holders
-	const weighted: { [addr: string]: number } = {};
-	for (const addr of Object.keys(balances)) {
-		weighted[addr] = balances[addr] / total;
-	}
-	// Get a random holder based off of the weighted list of holders
-	const randomHolder = weightedRandom(weighted);
-	return randomHolder;
-}
-
 // Sends a fee to ArDrive Profit Sharing Community holders
 export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
@@ -1153,4 +396,57 @@ export async function sendArDriveFee(walletPrivateKey: string, arPrice: number):
 		console.log(err);
 		return 'ERROR sending ArDrive fee';
 	}
+}
+
+// Calls the ArDrive Community Smart Contract to pull the fee
+export async function getArDriveFee(): Promise<number> {
+	try {
+		const contract = await readContract(arweave, communityTxId);
+		const arDriveCommunityFee = contract.settings.find(
+			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
+		);
+		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
+	} catch {
+		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
+	}
+}
+
+// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
+export async function selectTokenHolder(): Promise<string | undefined> {
+	// Read the ArDrive Smart Contract to get the latest state
+	const state = await readContract(arweave, communityTxId);
+	const balances = state.balances;
+	const vault = state.vault;
+
+	// Get the total number of token holders
+	let total = 0;
+	for (const addr of Object.keys(balances)) {
+		total += balances[addr];
+	}
+
+	// Check for how many tokens the user has staked/vaulted
+	for (const addr of Object.keys(vault)) {
+		if (!vault[addr].length) continue;
+
+		const vaultBalance = vault[addr]
+			.map((a: { balance: number; start: number; end: number }) => a.balance)
+			.reduce((a: number, b: number) => a + b, 0);
+
+		total += vaultBalance;
+
+		if (addr in balances) {
+			balances[addr] += vaultBalance;
+		} else {
+			balances[addr] = vaultBalance;
+		}
+	}
+
+	// Create a weighted list of token holders
+	const weighted: { [addr: string]: number } = {};
+	for (const addr of Object.keys(balances)) {
+		weighted[addr] = balances[addr] / total;
+	}
+	// Get a random holder based off of the weighted list of holders
+	const randomHolder = weightedRandom(weighted);
+	return randomHolder;
 }

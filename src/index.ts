@@ -1,10 +1,5 @@
-export {
-	getWalletBalance,
-	getLocalWallet,
-	createArDriveWallet,
-	getAllMyPrivateArDriveIds,
-	getAllMyPublicArDriveIds
-} from './arweave';
+export { getWalletBalance, getLocalWallet, createArDriveWallet } from './arweave';
+export { getAllMyPrivateArDriveIds, getAllMyPublicArDriveIds } from './gql';
 export { setupDatabase } from './db';
 export {
 	getUserFromProfileById,
