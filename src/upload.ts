@@ -305,7 +305,8 @@ async function uploadArFSFileMetaData(user: types.ArDriveUser, fileToUpload: typ
 
 		// Begin to upload chunks
 		while (!uploader.isComplete) {
-			uploader.uploadChunk();
+			await uploader.uploadChunk();
+			console.log(`${uploader.pctComplete}% complete, ${uploader.uploadedChunks}/${uploader.totalChunks}`);
 		}
 
 		// If the uploaded is completed successfully, update the uploadTime of the file so we can track the status
@@ -875,15 +876,17 @@ export async function uploadArDriveFiles(user: types.ArDriveUser): Promise<strin
 					// Check to see if we have to upload the File Data and Metadata
 					// If not, we just check to see if we have to update metadata.
 					if (+fileToUpload.fileDataSyncStatus === 1) {
+						console.log('Uploading file data and metadata - %s', fileToUpload.fileName);
 						const uploadedFile = await uploadArFSFileData(user, fileToUpload);
 						fileToUpload.dataTxId = uploadedFile.dataTxId;
 						totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
 						await uploadArFSFileMetaData(user, fileToUpload);
 					} else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
+						console.log('Uploading file metadata only - %s', fileToUpload.fileName);
 						await uploadArFSFileMetaData(user, fileToUpload);
 					}
 				} else if (fileToUpload.entityType === 'folder') {
-					//console.log ("Uploading folder - %s", fileToUpload.fileName)
+					console.log('Uploading folder - %s', fileToUpload.fileName);
 					await uploadArFSFileMetaData(user, fileToUpload);
 				}
 				filesUploaded += 1;
