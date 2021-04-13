@@ -58,6 +58,14 @@ export async function getWalletBalance(walletPublicKey: string): Promise<number>
 	}
 }
 
+// Gets the price of AR based on amount of data
+export async function getWinston(bytes: number): Promise<number> {
+	const response = await fetch(`https://arweave.net/price/${bytes}`);
+	// const response = await fetch(`https://perma.online/price/${bytes}`);
+	const winston = await response.json();
+	return winston;
+}
+
 // Creates a new Arweave wallet JWK comprised of a private key and public key
 export async function createArDriveWallet(): Promise<Wallet> {
 	try {

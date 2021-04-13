@@ -64,14 +64,6 @@ export function extToMime(fullPath: string): string {
 	return m === false ? 'unknown' : m;
 }
 
-// Gets the price of AR based on amount of data
-export async function getWinston(bytes: number): Promise<number> {
-	const response = await fetch(`https://arweave.net/price/${bytes}`);
-	// const response = await fetch(`https://perma.online/price/${bytes}`);
-	const winston = await response.json();
-	return winston;
-}
-
 /* Copies one folder to another folder location
 const copyFolder = (oldFolderPath: string, newFolderPath: string) : string => {
   const readStream = fs.createReadStream(oldFolderPath);
