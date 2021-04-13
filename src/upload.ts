@@ -331,7 +331,6 @@ async function uploadArFSFileMetaData(user: types.ArDriveUser, fileToUpload: typ
 async function uploadArFSDriveMetaData(user: types.ArDriveUser, drive: types.ArFSDriveMetaData): Promise<boolean> {
 	try {
 		let transaction: Transaction;
-		console.log('Creating a new Private Drive (name: %s) on the Permaweb', drive.driveName);
 		// Create a JSON file, containing necessary drive metadata
 		const driveMetaDataTags = {
 			name: drive.driveName,
@@ -340,7 +339,10 @@ async function uploadArFSDriveMetaData(user: types.ArDriveUser, drive: types.ArF
 
 		// Convert to JSON string
 		const driveMetaDataJSON = JSON.stringify(driveMetaDataTags);
+
+		// Check if the drive is public or private
 		if (drive.drivePrivacy === 'private') {
+			console.log('Creating a new Private Drive (name: %s) on the Permaweb', drive.driveName);
 			const driveKey: Buffer = await deriveDriveKey(user.dataProtectionKey, drive.driveId, user.walletPrivateKey);
 			const encryptedDriveMetaData: types.ArFSEncryptedData = await driveEncrypt(
 				driveKey,
@@ -351,6 +353,7 @@ async function uploadArFSDriveMetaData(user: types.ArDriveUser, drive: types.ArF
 			transaction = await arweave.prepareArFSDriveTransaction(user, encryptedDriveMetaData.data, drive);
 		} else {
 			// The drive is public
+			console.log('Creating a new Public Drive (name: %s) on the Permaweb', drive.driveName);
 			transaction = await arweave.prepareArFSDriveTransaction(user, driveMetaDataJSON, drive);
 		}
 		// Update the file's data transaction ID
