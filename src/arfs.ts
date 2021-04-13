@@ -150,8 +150,7 @@ export async function newArFSFileData(
 			console.log(
 				'Encrypting and uploading the PRIVATE file %s (%d bytes) at %s to the Permaweb',
 				fileMetaData.filePath,
-				fileMetaData.fileSize,
-				arPrice
+				fileMetaData.fileSize
 			);
 			// Derive the drive and file keys in order to encrypt it with ArFS encryption
 			const driveKey: Buffer = await deriveDriveKey(
@@ -175,8 +174,7 @@ export async function newArFSFileData(
 			console.log(
 				'Uploading the PUBLIC file %s (%d bytes) at %s to the Permaweb',
 				fileMetaData.filePath,
-				fileMetaData.fileSize,
-				arPrice
+				fileMetaData.fileSize
 			);
 
 			// Create the Arweave transaction.  It will add the correct ArFS tags depending if it is public or private
