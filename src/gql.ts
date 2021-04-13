@@ -286,7 +286,8 @@ export async function getAllMyPublicArDriveIds(
 				drivePrivacy: 'public',
 				driveAuthMode: '',
 				metaDataTxId: '',
-				metaDataSyncStatus: 3
+				metaDataSyncStatus: 3,
+				isLocal: 0
 			};
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
 			tags.forEach((tag: types.GQLTagInterface) => {
@@ -408,7 +409,8 @@ export async function getAllMyPrivateArDriveIds(
 			drivePrivacy: '',
 			driveAuthMode: '',
 			metaDataTxId: '',
-			metaDataSyncStatus: 3
+			metaDataSyncStatus: 3,
+			isLocal: 0
 		};
 		// Iterate through each tag and pull out each drive ID as well the drives privacy status
 		tags.forEach((tag: types.GQLTagInterface) => {
