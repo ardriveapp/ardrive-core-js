@@ -267,8 +267,8 @@ export async function newArFSDriveMetaData(
 		let transaction: Transaction;
 		// Create a JSON file, containing necessary drive metadata
 		const driveMetaDataTags = {
-			name: drive.driveName,
-			rootFolderId: drive.rootFolderId
+			name: driveMetaData.driveName,
+			rootFolderId: driveMetaData.rootFolderId
 		};
 
 		// Convert to JSON string
