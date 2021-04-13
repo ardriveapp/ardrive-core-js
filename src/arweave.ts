@@ -37,13 +37,6 @@ export async function getAddressForWallet(walletPrivateKey: JWKInterface): Promi
 	return arweave.wallets.jwkToAddress(walletPrivateKey);
 }
 
-// Creates a new Arweave wallet JWK comprised of a private key and public key
-export async function generateWallet(): Promise<Wallet> {
-	const walletPrivateKey = await arweave.wallets.generate();
-	const walletPublicKey = await getAddressForWallet(walletPrivateKey);
-	return { walletPrivateKey, walletPublicKey };
-}
-
 // Imports an existing wallet as a JWK from a user's local harddrive
 export async function getLocalWallet(
 	existingWalletPath: string
@@ -65,13 +58,13 @@ export async function getWalletBalance(walletPublicKey: string): Promise<number>
 	}
 }
 
-// Create a wallet and return the key and address
+// Creates a new Arweave wallet JWK comprised of a private key and public key
 export async function createArDriveWallet(): Promise<Wallet> {
 	try {
-		const wallet = await generateWallet();
-		// TODO: logging is useless we need to store this somewhere.  It is stored in the database - Phil
-		console.log('SUCCESS! Your new wallet public address is %s', wallet.walletPublicKey);
-		return wallet;
+		const walletPrivateKey = await arweave.wallets.generate();
+		const walletPublicKey = await getAddressForWallet(walletPrivateKey);
+		console.log('SUCCESS! Your new wallet public address is %s', walletPublicKey);
+		return { walletPrivateKey, walletPublicKey };
 	} catch (err) {
 		console.error('Cannot create Wallet');
 		console.error(err);
