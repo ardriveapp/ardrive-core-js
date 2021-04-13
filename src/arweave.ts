@@ -190,7 +190,7 @@ export async function prepareArFSMetaDataTransaction(
 		// Tag file with Content-Type, Cipher and Cipher-IV
 		transaction.addTag('Content-Type', 'application/octet-stream');
 		transaction.addTag('Cipher', fileMetaData.cipher);
-		transaction.addTag('Cipher-IV', fileMetaData.dataCipherIV);
+		transaction.addTag('Cipher-IV', fileMetaData.metaDataCipherIV);
 	} else {
 		// Tag file with public tags only
 		transaction.addTag('Content-Type', fileMetaData.contentType);
