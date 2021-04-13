@@ -120,7 +120,7 @@ async function createArFSFileMetaDataItem(
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
 			fileToUpload.cipher = encryptedData.cipher;
-			dataItem = await arweave.prepareArFSMetaDataItemTransaction(user, fileToUpload, secondaryFileMetaDataJSON);
+			dataItem = await arweave.prepareArFSMetaDataItemTransaction(user, fileToUpload, encryptedData.data);
 		}
 		if (dataItem != null) {
 			console.log('SUCCESS %s data item was created with TX %s', fileToUpload.filePath, dataItem.id);
@@ -155,7 +155,7 @@ async function uploadArFSFileData(
 	let dataTxId = '';
 	let arPrice = 0;
 	try {
-		const winston = await common.getWinston(fileToUpload.fileSize);
+		const winston = await arweave.getWinston(fileToUpload.fileSize);
 		arPrice = +winston * 0.000000000001;
 
 		if (fileToUpload.isPublic === 0) {
@@ -591,7 +591,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 	const filesToUpload: types.ArFSFileMetaData[] = await getDb.getFilesToUploadFromSyncTable(login);
 	if (Object.keys(filesToUpload).length > 0) {
 		// Estimate the size by getting the size of 1MB
-		const priceFor1MB = await common.getWinston(1000000);
+		const priceFor1MB = await arweave.getWinston(1000000);
 		const pricePerByte = priceFor1MB / 1003210;
 
 		// Calculate the size/price for each file/folder
@@ -676,7 +676,7 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 					const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, filesToUpload[n]);
 					if (fileDataItem !== null) {
 						// Get the price of this upload
-						const winston = await common.getWinston(filesToUpload[n].fileSize);
+						const winston = await arweave.getWinston(filesToUpload[n].fileSize);
 						totalSize += filesToUpload[n].fileSize;
 						totalARPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 						filesToUpload[n].dataTxId = fileDataItem.id;
@@ -789,7 +789,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 						const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, fileToUpload);
 						if (fileDataItem !== null) {
 							// Get the price of this upload
-							const winston = await common.getWinston(fileToUpload.fileSize);
+							const winston = await arweave.getWinston(fileToUpload.fileSize);
 							totalSize += fileToUpload.fileSize;
 							totalPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 							fileToUpload.dataTxId = fileDataItem.id;
