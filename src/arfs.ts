@@ -309,9 +309,9 @@ export async function newArFSDriveMetaData(
 // Creates a new drive depending on the privacy
 // This should be in the Drive class
 export async function newArFSDrive(
-	login: string,
 	driveName: string,
-	drivePrivacy: string
+	drivePrivacy: string,
+	login?: string
 ): Promise<types.ArFSDriveMetaData> {
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
@@ -361,6 +361,77 @@ export async function newArFSDrive(
 			isLocal: 1
 		};
 		return drive;
+	}
+}
+
+// This will create and upload a new drive entity and its root folder
+export async function createAndUploadArFSDriveAndRootFolder(
+	user: types.ArDriveUser,
+	driveName: string,
+	drivePrivacy: string
+): Promise<boolean> {
+	try {
+		// Create a new ArFS Drive entity
+		const newDrive = await newArFSDrive(driveName, drivePrivacy);
+
+		// Prepare the drive transaction.  It will encrypt the data if necessary.
+		const preppedDrive = await newArFSDriveMetaData(user, newDrive);
+		let isPublic = 1;
+		if (drivePrivacy === 'private') {
+			isPublic = 0;
+		}
+
+		// Create a new ArFS Drive Root Folder entity
+		const newRootFolderMetaData: types.ArFSFileMetaData = {
+			id: 0,
+			login: user.login,
+			appName: appName,
+			appVersion: appVersion,
+			unixTime: Math.round(Date.now() / 1000),
+			contentType: 'application/json',
+			entityType: 'folder',
+			driveId: newDrive.driveId,
+			parentFolderId: '0', // Must be set to 0 to indicate it is a root folder
+			fileId: newDrive.rootFolderId,
+			fileSize: 0,
+			fileName: driveName,
+			fileHash: '',
+			filePath: '',
+			fileVersion: 0,
+			cipher: '',
+			dataCipherIV: '',
+			metaDataCipherIV: '',
+			lastModifiedDate: Math.round(Date.now() / 1000),
+			isLocal: 0,
+			isPublic,
+			permaWebLink: '',
+			metaDataTxId: '0',
+			dataTxId: '0',
+			fileDataSyncStatus: 0,
+			fileMetaDataSyncStatus: 0,
+			cloudOnly: 0
+		};
+
+		// Prepare the root folder transaction.  It will encrypt the data if necessary.
+		const preppedRootFolder = await newArFSFileMetaData(user, newRootFolderMetaData);
+
+		// Upload the drive entity transaction
+		if (preppedDrive !== null && preppedRootFolder !== null) {
+			while (!preppedDrive.uploader.isComplete) {
+				await preppedDrive.uploader.uploadChunk();
+			}
+			// upload the root folder entity metadata transaction
+			while (!preppedRootFolder.uploader.isComplete) {
+				await preppedRootFolder.uploader.uploadChunk();
+			}
+			return true;
+		} else {
+			// Error creating root folder transaction and uploader
+			return false;
+		}
+	} catch (err) {
+		console.log(err);
+		return false;
 	}
 }
 
