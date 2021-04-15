@@ -120,7 +120,7 @@ export function checkOrCreateFolder(folderPath: string): string {
 		return '0';
 	} catch (err) {
 		console.log('Folder not found.  Creating new directory at %s', folderPath);
-		fs.mkdirSync(folderPath);
+		fs.mkdirSync(folderPath || '.');
 		return folderPath;
 	}
 }
