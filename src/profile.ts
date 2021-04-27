@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import path from 'path';
 import { Path } from 'typescript';
-import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './arweave';
+import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './gql';
 import { asyncForEach, moveFolder } from './common';
 import { encryptText, decryptText } from './crypto';
 import {

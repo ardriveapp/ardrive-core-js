@@ -3,17 +3,7 @@ import path, { sep, extname, basename, dirname } from 'path';
 import * as fs from 'fs';
 import { extToMime, appName, appVersion, checkFileExistsSync } from './common';
 import { checksumFile } from './crypto';
-import {
-	getFolderFromSyncTable,
-	getFolderByInodeFromSyncTable,
-	getByFileNameAndHashAndParentFolderIdFromSyncTable,
-	getByFilePathFromSyncTable,
-	getByFileHashAndParentFolderFromSyncTable,
-	getByFileHashAndFileNameFromSyncTable,
-	getFolderByHashFromSyncTable,
-	getDriveRootFolderFromSyncTable,
-	getAllPersonalDrivesByLoginFromDriveTable
-} from './db_get';
+import * as getDb from './db_get';
 import { setFilePath, setPermaWebFileToCloudOnly, setPermaWebFileToOverWrite, addFileToSyncTable } from './db_update';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
@@ -28,7 +18,8 @@ interface FolderWatchRef {
 	stop(): Promise<void>;
 }
 
-const queueFile = async (filePath: string, login: string, driveId: string, drivePrivacy: string) => {
+// Queues a single file in the database.  Determines if the file is new, has been renamed or moved.
+async function queueFile(filePath: string, login: string, driveId: string, drivePrivacy: string): Promise<any> {
 	// Check to see if the file is ready
 	let stats = null;
 	const extension = extname(filePath).toLowerCase();
@@ -44,7 +35,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 	if (extension !== '.enc' && stats.size !== 0 && !fileName.startsWith('~$')) {
 		// Check if the parent folder has been added to the DB first
 		const parentFolderPath = dirname(filePath);
-		const parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
+		const parentFolder: ArFSFileMetaData = await getDb.getFolderFromSyncTable(driveId, parentFolderPath);
 		let parentFolderId = '';
 		if (parentFolder !== undefined) {
 			parentFolderId = parentFolder.fileId;
@@ -65,7 +56,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 			isPublic = 0;
 		}
 		// Check if the exact file already exists in the same location
-		const exactMatch = await getByFileNameAndHashAndParentFolderIdFromSyncTable(
+		const exactMatch = await getDb.getByFileNameAndHashAndParentFolderIdFromSyncTable(
 			driveId,
 			fileName,
 			fileHash,
@@ -80,7 +71,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 		}
 
 		// Check if this is a new version of an existing file path, if yes, reuse the fileid and increment version
-		const newFileVersion = await getByFilePathFromSyncTable(driveId, filePath);
+		const newFileVersion = await getDb.getByFilePathFromSyncTable(driveId, filePath);
 		if (newFileVersion) {
 			// Add new version of existing file
 			newFileVersion.unixTime = Math.round(Date.now() / 1000);
@@ -98,7 +89,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
 		// Check if the file has been renamed by looking at its hash and base path
 		// The older version of the file must not also be present anymore, or else this is just a copy
-		const renamedFile = await getByFileHashAndParentFolderFromSyncTable(
+		const renamedFile = await getDb.getByFileHashAndParentFolderFromSyncTable(
 			driveId,
 			fileHash,
 			parentFolderPath.concat('%')
@@ -118,7 +109,7 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 
 		// Check if the file has been moved by seeing if another file with the same hash and name
 		// The older version of the file must also not be present anymore, or else this is just a copy
-		const movedFile = await getByFileHashAndFileNameFromSyncTable(driveId, fileHash, fileName);
+		const movedFile = await getDb.getByFileHashAndFileNameFromSyncTable(driveId, fileHash, fileName);
 		if (movedFile && !checkFileExistsSync(movedFile.filePath)) {
 			console.log('   %s has been moved', filePath);
 			movedFile.unixTime = Math.round(Date.now() / 1000);
@@ -169,15 +160,16 @@ const queueFile = async (filePath: string, login: string, driveId: string, drive
 		addFileToSyncTable(newFileToQueue);
 		return;
 	}
-};
+}
 
-const queueFolder = async (
+// Queues a single folder in the database.  Determines if the folder has been renamed or moved.
+async function queueFolder(
 	folderPath: string,
 	driveRootFolderPath: string,
 	login: string,
 	driveId: string,
 	drivePrivacy: string
-) => {
+): Promise<any> {
 	let stats = null;
 	let fileName = folderPath.split(sep).pop();
 	if (fileName === undefined) {
@@ -190,7 +182,7 @@ const queueFolder = async (
 	}
 
 	// Check if the folder is already in the Sync Table, therefore we do not need to add a new one.
-	const isQueuedOrCompleted = await getFolderFromSyncTable(driveId, folderPath);
+	const isQueuedOrCompleted = await getDb.getFolderFromSyncTable(driveId, folderPath);
 	if (isQueuedOrCompleted || fileName === 'New folder') {
 		// The folder is already in the queue, or it is the root and we do not want to process.
 		// Or the folder is a "New Folder" and we do not capture this
@@ -229,13 +221,13 @@ const queueFolder = async (
 		// Check if its parent folder has been added.  If not, lets add it first
 		let parentFolderId = '';
 		const parentFolderPath = dirname(folderPath);
-		const parentFolder: ArFSFileMetaData = await getFolderFromSyncTable(driveId, parentFolderPath);
+		const parentFolder: ArFSFileMetaData = await getDb.getFolderFromSyncTable(driveId, parentFolderPath);
 		if (parentFolder !== undefined) {
 			parentFolderId = parentFolder.fileId;
 		}
 
 		// Check to see if this folder was moved by matching against its hash
-		const movedFolder = await getFolderByHashFromSyncTable(driveId, folderHash.hash);
+		const movedFolder = await getDb.getFolderByHashFromSyncTable(driveId, folderHash.hash);
 		if (movedFolder) {
 			// create a new folder with previous folder ID
 			console.log('Folder was moved!  Using existing previous folder Id: %s', movedFolder.fileId);
@@ -243,7 +235,7 @@ const queueFolder = async (
 		}
 
 		// Check to see if this folder was renamed by matching against its inode, aka fileSize
-		const renamedFolder = await getFolderByInodeFromSyncTable(driveId, fileSize);
+		const renamedFolder = await getDb.getFolderByInodeFromSyncTable(driveId, fileSize);
 		if (renamedFolder) {
 			// create a new folder with previous folder ID
 			console.log('Folder was renamed!  Using previous folder Id: %s', renamedFolder.fileId);
@@ -281,14 +273,15 @@ const queueFolder = async (
 		};
 		await addFileToSyncTable(folderToQueue);
 	}
-};
+}
 
-const watchFolder = (
+// Watches a local folder for any file or folder changes.
+export function watchFolder(
 	login: string,
 	driveRootFolderPath: string,
 	driveId: string,
 	drivePrivacy: string
-): FolderWatchRef => {
+): FolderWatchRef {
 	const log = console.log.bind(console);
 	const watcher = chokidar.watch(driveRootFolderPath, {
 		persistent: true,
@@ -314,14 +307,15 @@ const watchFolder = (
 		stop: watcher.close
 	};
 	return ref;
-};
+}
 
-async function startWatchingFolders(user: ArDriveUser): Promise<any> {
-	const drives: ArFSDriveMetaData[] = await getAllPersonalDrivesByLoginFromDriveTable(user.login);
+// Initiates the folder watcher
+export async function startWatchingFolders(user: ArDriveUser): Promise<any> {
+	const drives: ArFSDriveMetaData[] = await getDb.getAllPersonalDrivesByLoginFromDriveTable(user.login);
 	const stoppers: Array<() => Promise<void>> = [];
 	if (drives !== undefined) {
 		drives.forEach(async (drive: ArFSDriveMetaData) => {
-			const rootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(drive.rootFolderId);
+			const rootFolder: ArFSFileMetaData = await getDb.getDriveRootFolderFromSyncTable(drive.rootFolderId);
 			const { status, stop } = watchFolder(user.login, rootFolder.filePath, drive.driveId, drive.drivePrivacy);
 			stoppers.push(stop);
 			console.log('%s %s drive: %s driveId: %s', status, drive.drivePrivacy, rootFolder.filePath, drive.driveId);
@@ -330,7 +324,7 @@ async function startWatchingFolders(user: ArDriveUser): Promise<any> {
 	return () => Promise.all(stoppers);
 }
 
-async function resolveFileDownloadConflict(
+export async function resolveFileDownloadConflict(
 	resolution: string,
 	fileName: string,
 	filePath: string,
@@ -359,5 +353,3 @@ async function resolveFileDownloadConflict(
 	}
 	return 'Success';
 }
-
-export { watchFolder, resolveFileDownloadConflict, startWatchingFolders };
