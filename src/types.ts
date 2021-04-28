@@ -39,7 +39,7 @@ export interface ArDriveBundle {
 
 export interface ArFSDriveMetaData {
 	id: number;
-	login: string;
+	login?: string;
 	appName: string;
 	appVersion: string;
 	driveName: string;

@@ -80,10 +80,11 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
 		drivePrivacy,
 		driveAuthMode,
 		metaDataTxId,
-		metaDataSyncStatus
+		metaDataSyncStatus,
+		isLocal
 	} = drive;
 	return run(
-		'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+		'REPLACE INTO Drive (login, appName, appVersion, driveName, rootFolderId, cipher, cipherIV, unixTime, arFS, driveId, driveSharing, drivePrivacy, driveAuthMode, metaDataTxId, metaDataSyncStatus, isLocal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 		[
 			login,
 			appName,
@@ -99,7 +100,8 @@ export const addDriveToDriveTable = (drive: ArFSDriveMetaData) => {
 			drivePrivacy,
 			driveAuthMode,
 			metaDataTxId,
-			metaDataSyncStatus
+			metaDataSyncStatus,
+			isLocal
 		]
 	);
 };
@@ -130,28 +132,26 @@ export const createArDriveProfile = (user: ArDriveUser) => {
 ////////////////////////
 // UPDATING FUNCTIONS //
 ////////////////////////
-export const updateFileMetaDataSyncStatus = (file: {
-	fileMetaDataSyncStatus: number;
-	metaDataTxId: string;
-	metaDataCipherIV: string;
-	cipher: string;
-	id: number;
-}) => {
-	const { fileMetaDataSyncStatus, metaDataTxId, metaDataCipherIV, cipher, id } = file;
+export const updateFileMetaDataSyncStatus = (
+	fileMetaDataSyncStatus: number,
+	metaDataTxId: string,
+	metaDataCipherIV: string,
+	cipher: string,
+	id: number
+) => {
 	return run(
 		`UPDATE Sync SET fileMetaDataSyncStatus = ?, metaDataTxId = ?, metaDataCipherIV = ?, cipher = ? WHERE id = ?`,
 		[fileMetaDataSyncStatus, metaDataTxId, metaDataCipherIV, cipher, id]
 	);
 };
 
-export const updateFileDataSyncStatus = (file: {
-	fileDataSyncStatus: number;
-	dataTxId: string;
-	dataCipherIV: string;
-	cipher: string;
-	id: number;
-}) => {
-	const { fileDataSyncStatus, dataTxId, dataCipherIV, cipher, id } = file;
+export const updateFileDataSyncStatus = (
+	fileDataSyncStatus: number,
+	dataTxId: string,
+	dataCipherIV: string,
+	cipher: string,
+	id: number
+) => {
 	return run(`UPDATE Sync SET fileDataSyncStatus = ?, dataTxId = ?, dataCipherIV = ?, cipher = ? WHERE id = ?`, [
 		fileDataSyncStatus,
 		dataTxId,
@@ -288,10 +288,16 @@ export const completeDriveMetaDataFromDriveTable = (metaDataSyncStatus: number, 
 	return run(`UPDATE Drive SET metaDataSyncStatus = ? WHERE driveId = ?`, [metaDataSyncStatus, driveId]);
 };
 
-export const updateDriveInDriveTable = (metaDataTxId: string, cipher: string, cipherIV: string, driveId: string) => {
+export const updateDriveInDriveTable = (
+	metaDataSyncStatus: number,
+	metaDataTxId: string,
+	cipher: string,
+	cipherIV: string,
+	driveId: string
+) => {
 	return run(
-		`UPDATE Drive SET metaDataTxId = ?, cipher = ?, cipherIV = ?, metaDataSyncStatus = 2 WHERE driveId = ?`,
-		[metaDataTxId, cipher, cipherIV, driveId]
+		`UPDATE Drive SET metaDataSyncStatus = ?, metaDataTxId = ?, cipher = ?, cipherIV = ? WHERE driveId = ?`,
+		[metaDataSyncStatus, metaDataTxId, cipher, cipherIV, driveId]
 	);
 };
 

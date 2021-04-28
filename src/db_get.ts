@@ -227,7 +227,7 @@ export const getAllDrivesByLoginFromDriveTable = (login: string) => {
 
 export const getAllUnSyncedPersonalDrivesByLoginFromDriveTable = (login: string, drivePrivacy: string) => {
 	return all(
-		`SELECT * FROM Drive WHERE login = ? AND drivePrivacy = ? AND driveSharing = 'personal' AND isLocal = 0 AND driveName != 'Invalid Drive Password'`,
+		`SELECT * FROM Drive WHERE login = ? AND drivePrivacy = ? AND driveSharing = 'personal' AND isLocal != 1 AND driveName != 'Invalid Drive Password'`,
 		[login, drivePrivacy]
 	);
 };
