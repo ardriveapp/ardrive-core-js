@@ -1,5 +1,9 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
+type cipher = '' | 'aes-gcm-256' | 'AES256-GCM' | 'invalid';
+type entityType = 'entityType' | 'file' | 'folder' | 'invalid';
+type drivePrivacy = 'private' | 'public' | 'invalid';
+type driveAuthMode = 'password' | 'invalid';
 export interface Wallet {
 	walletPrivateKey: JWKInterface;
 	walletPublicKey: string;
@@ -25,7 +29,7 @@ export interface UploadBatch {
 
 export interface ArFSRootFolderMetaData {
 	metaDataTxId: string;
-	cipher: string;
+	cipher: cipher;
 	cipherIV: string;
 }
 
@@ -44,14 +48,14 @@ export interface ArFSDriveMetaData {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: string;
+	cipher: cipher;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: string;
-	driveAuthMode: string;
+	drivePrivacy: drivePrivacy;
+	driveAuthMode: driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -64,7 +68,7 @@ export interface ArFSFileMetaData {
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: string;
+	entityType: entityType;
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -73,7 +77,7 @@ export interface ArFSFileMetaData {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: string;
+	cipher: cipher;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -88,7 +92,7 @@ export interface ArFSFileMetaData {
 }
 
 export interface ArFSEncryptedData {
-	cipher: string;
+	cipher: cipher;
 	cipherIV: string;
 	data: Buffer;
 }
