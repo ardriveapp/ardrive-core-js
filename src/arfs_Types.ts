@@ -1,5 +1,21 @@
-import { JWKInterface } from 'arweave/node/lib/wallet';
+// The arweave wallet RSA Public Key
+export interface JWKPublicInterface {
+	kty: string;
+	e: string;
+	n: string;
+}
 
+// The arweave wallet RSA private key
+export interface JWKInterface extends JWKPublicInterface {
+	d?: string;
+	p?: string;
+	q?: string;
+	dp?: string;
+	dq?: string;
+	qi?: string;
+}
+
+// Arweave Wallet object that comprises the public/private keypair in the form of a JWK and the Arweave wallet public key that can be used for gql queries or ownership.
 export interface Wallet {
 	walletPrivateKey: JWKInterface;
 	walletPublicKey: string;
