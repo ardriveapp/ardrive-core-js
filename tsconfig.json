@@ -14,6 +14,12 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@types/arfs": [ "./types/arfs_Types" ],
+      "@types/client": [ "./types/client_Types" ],
+      "@types/gql": [ "./types/gql" ],
+      
+  }
   },
   "include": ["src"],
   "exclude": ["node_modules", "**/__tests__/*"]

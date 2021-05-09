@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
-import { ArFSEncryptedData } from './types';
+import { ArFSEncryptedData } from './types/types';
 
 import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
