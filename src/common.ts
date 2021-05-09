@@ -1,7 +1,7 @@
 // index.js
 import * as mime from 'mime-types';
 import * as fs from 'fs';
-import * as types from './types/types';
+import * as types from './types/base_Types';
 import * as getDb from './db_get';
 import * as updateDb from './db_update';
 import fetch from 'node-fetch';

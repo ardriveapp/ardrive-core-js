@@ -1,3 +1,8 @@
+type cipher = '' | 'aes-gcm-256' | 'AES256-GCM' | 'invalid';
+type entityType = 'entityType' | 'file' | 'folder' | 'invalid';
+type drivePrivacy = 'private' | 'public' | 'invalid';
+type driveAuthMode = 'password' | 'invalid';
+
 export interface ArDriveUser {
 	login: string;
 	dataProtectionKey: string;

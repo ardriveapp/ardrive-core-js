@@ -1,5 +1,5 @@
 import * as common from './common';
-import * as types from './types/types';
+import * as types from './types/base_Types';
 import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
 import { getTransactionData } from './arweave';
 import { deriveDriveKey, driveDecrypt } from './crypto';

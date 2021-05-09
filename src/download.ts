@@ -10,7 +10,7 @@ import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
 import path, { dirname } from 'path';
 import { getLatestBlockHeight, getTransactionData } from './arweave';
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
 import { createWriteStream } from 'fs';
 
 import Axios from 'axios';
