@@ -1,4 +1,4 @@
-
+import * as guards from './type_guards';
 export interface ArDriveUser {
 	login: string;
 	dataProtectionKey: string;
@@ -19,7 +19,7 @@ export interface UploadBatch {
 
 export interface ArFSRootFolderMetaData {
 	metaDataTxId: string;
-	cipher: cipher;
+	cipher: guards.cipher;
 	cipherIV: string;
 }
 
@@ -38,14 +38,14 @@ export interface ArFSDriveMetaData {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: cipher;
+	cipher: guards.cipher;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: drivePrivacy;
-	driveAuthMode: driveAuthMode;
+	drivePrivacy: guards.drivePrivacy;
+	driveAuthMode: guards.driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -58,7 +58,7 @@ export interface ArFSFileMetaData {
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: entityType;
+	entityType: guards.entityType;
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -67,7 +67,7 @@ export interface ArFSFileMetaData {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: cipher;
+	cipher: guards.cipher;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -82,7 +82,7 @@ export interface ArFSFileMetaData {
 }
 
 export interface ArFSEncryptedData {
-	cipher: cipher;
+	cipher: guards.cipher;
 	cipherIV: string;
 	data: Buffer;
 }
