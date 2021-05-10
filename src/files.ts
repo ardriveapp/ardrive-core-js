@@ -7,7 +7,7 @@ import * as getDb from './db_get';
 import { setFilePath, setPermaWebFileToCloudOnly, setPermaWebFileToOverWrite, addFileToSyncTable } from './db_update';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
 
 import { hashElement, HashElementOptions } from 'folder-hash';
 

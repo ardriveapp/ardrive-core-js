@@ -1,7 +1,7 @@
 // arfs.js
 import * as arweave from './arweave';
 import * as fs from 'fs';
-import * as types from './types';
+import * as types from './types/base_Types';
 import { fileEncrypt, deriveDriveKey, deriveFileKey, getFileAndEncrypt, driveEncrypt } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { DataItemJson } from 'arweave-bundles';
