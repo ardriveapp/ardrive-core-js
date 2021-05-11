@@ -35,7 +35,12 @@ export interface ArFSLocalFolder extends ArFSLocalMetaData {
 
 // Contains metadata needed to synchronize a file's metadata and its data
 export interface ArFSLocalFile extends ArFSLocalMetaData {
-	entity: arfsTypes.ArFSFileFolderEntity | arfsTypes.ArFSPrivateFileFolderEntity;
+	entity: arfsTypes.ArFSFileFolderEntity;
+	data: arfsTypes.ArFSFileData;
+}
+
+export interface ArFSLocalPrivateFile extends ArFSLocalMetaData {
+	entity: arfsTypes.ArFSPrivateFileFolderEntity;
 	data: arfsTypes.ArFSFileData;
 }
 
