@@ -7,7 +7,14 @@ import * as arfsTypes from './arfs_Types';
 export interface ArFSLocalDriveEntity {
 	id: number; // an identifier that can be used in any underlying database
 	owner: string; // the public arweave wallet address that owns this drive
-	entity: arfsTypes.ArFSDriveEntity | arfsTypes.ArFSPrivateDriveEntity; // The underlying ArFS Drive entity and metadata
+	entity: arfsTypes.ArFSDriveEntity; // The underlying ArFS Drive entity and metadata
+	isLocal: number; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
+}
+
+export interface ArFSLocalPrivateDriveEntity {
+	id: number; // an identifier that can be used in any underlying database
+	owner: string; // the public arweave wallet address that owns this drive
+	entity: arfsTypes.ArFSPrivateDriveEntity; // The underlying ArFS Drive entity and metadata
 	isLocal: number; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
 }
 
