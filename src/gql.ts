@@ -18,24 +18,7 @@ const graphQLURL = common.gatewayURL.concat('graphql');
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
 export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSDriveMetaData> {
-	const drive: types.ArFSDriveMetaData = {
-		id: 0,
-		login: '',
-		appName: common.appName,
-		appVersion: common.appVersion,
-		driveName: '',
-		rootFolderId: '',
-		cipher: '',
-		cipherIV: '',
-		unixTime: 0,
-		arFS: '',
-		driveId,
-		driveSharing: 'shared',
-		drivePrivacy: 'public',
-		driveAuthMode: '',
-		metaDataTxId: '0',
-		metaDataSyncStatus: 0 // Drives are lazily created once the user performs an initial upload
-	};
+	const drive: types.ArFSDriveMetaData = types.ArFSDriveMetaData.Empty(common.appName, common.appVersion, driveId);
 	try {
 		// GraphQL Query
 		const query = {
