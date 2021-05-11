@@ -1,5 +1,6 @@
 import * as common from './common';
-import * as types from './types';
+import * as types from './types/base_Types';
+import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
 import { getTransactionData } from './arweave';
 import { deriveDriveKey, driveDecrypt } from './crypto';
 import Arweave from 'arweave';
@@ -17,24 +18,7 @@ const graphQLURL = common.gatewayURL.concat('graphql');
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
 export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSDriveMetaData> {
-	const drive: types.ArFSDriveMetaData = {
-		id: 0,
-		login: '',
-		appName: common.appName,
-		appVersion: common.appVersion,
-		driveName: '',
-		rootFolderId: '',
-		cipher: '',
-		cipherIV: '',
-		unixTime: 0,
-		arFS: '',
-		driveId,
-		driveSharing: 'shared',
-		drivePrivacy: 'public',
-		driveAuthMode: '',
-		metaDataTxId: '0',
-		metaDataSyncStatus: 0 // Drives are lazily created once the user performs an initial upload
-	};
+	const drive: types.ArFSDriveMetaData = types.ArFSDriveMetaData.Empty(common.appName, common.appVersion, driveId);
 	try {
 		// GraphQL Query
 		const query = {
@@ -63,11 +47,11 @@ export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSD
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		await common.asyncForEach(edges, async (edge: types.GQLEdgeInterface) => {
+		await common.asyncForEach(edges, async (edge: GQLEdgeInterface) => {
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
 			const { node } = edge;
 			const { tags } = node;
-			tags.forEach((tag: types.GQLTagInterface) => {
+			tags.forEach((tag: GQLTagInterface) => {
 				const key = tag.name;
 				const { value } = tag;
 				switch (key) {
@@ -144,7 +128,7 @@ export async function getPublicDriveRootFolderTxId(driveId: string, folderId: st
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		await common.asyncForEach(edges, async (edge: types.GQLEdgeInterface) => {
+		await common.asyncForEach(edges, async (edge: GQLEdgeInterface) => {
 			const { node } = edge;
 			metaDataTxId = node.id;
 		});
@@ -195,11 +179,11 @@ export async function getPrivateDriveRootFolderTxId(
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		await common.asyncForEach(edges, async (edge: types.GQLEdgeInterface) => {
+		await common.asyncForEach(edges, async (edge: GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			rootFolderMetaData.metaDataTxId = node.id;
-			tags.forEach((tag: types.GQLTagInterface) => {
+			tags.forEach((tag: GQLTagInterface) => {
 				const key = tag.name;
 				const { value } = tag;
 				switch (key) {
@@ -267,7 +251,7 @@ export async function getAllMyPublicArDriveIds(
 		const { edges } = transactions;
 
 		// Iterate through each returned transaction and pull out the private drive IDs
-		await common.asyncForEach(edges, async (edge: types.GQLEdgeInterface) => {
+		await common.asyncForEach(edges, async (edge: GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			const drive: types.ArFSDriveMetaData = {
@@ -290,7 +274,7 @@ export async function getAllMyPublicArDriveIds(
 				isLocal: 0
 			};
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			tags.forEach((tag: types.GQLTagInterface) => {
+			tags.forEach((tag: GQLTagInterface) => {
 				const key = tag.name;
 				const { value } = tag;
 				switch (key) {
@@ -390,7 +374,7 @@ export async function getAllMyPrivateArDriveIds(
 	const { edges } = transactions;
 
 	// Iterate through each returned transaction and pull out the private drive IDs
-	await common.asyncForEach(edges, async (edge: types.GQLEdgeInterface) => {
+	await common.asyncForEach(edges, async (edge: GQLEdgeInterface) => {
 		const { node } = edge;
 		const { tags } = node;
 		const drive: types.ArFSDriveMetaData = {
@@ -413,7 +397,7 @@ export async function getAllMyPrivateArDriveIds(
 			isLocal: 0
 		};
 		// Iterate through each tag and pull out each drive ID as well the drives privacy status
-		tags.forEach((tag: types.GQLTagInterface) => {
+		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;
 			const { value } = tag;
 			switch (key) {
@@ -482,10 +466,10 @@ export async function getAllMyDataFileTxs(
 	walletPublicKey: string,
 	driveId: string,
 	lastBlockHeight: number
-): Promise<types.GQLEdgeInterface[]> {
+): Promise<GQLEdgeInterface[]> {
 	let hasNextPage = true;
 	let cursor = '';
-	let edges: types.GQLEdgeInterface[] = [];
+	let edges: GQLEdgeInterface[] = [];
 	let primaryGraphQLURL = graphQLURL;
 	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
 	let tries = 0;
@@ -565,13 +549,10 @@ export async function getAllMyDataFileTxs(
 }
 
 // Gets all of the transactions from a user's wallet, filtered by owner and drive ID.
-export async function getAllMySharedDataFileTxs(
-	driveId: string,
-	lastBlockHeight: number
-): Promise<types.GQLEdgeInterface[]> {
+export async function getAllMySharedDataFileTxs(driveId: string, lastBlockHeight: number): Promise<GQLEdgeInterface[]> {
 	let hasNextPage = true;
 	let cursor = '';
-	let edges: types.GQLEdgeInterface[] = [];
+	let edges: GQLEdgeInterface[] = [];
 	let primaryGraphQLURL = graphQLURL;
 	const backupGraphQLURL = graphQLURL.replace('.net', '.dev');
 	let tries = 0;
@@ -680,7 +661,7 @@ export async function getPrivateTransactionCipherIV(txid: string): Promise<strin
 			const { edges } = transactions;
 			const { node } = edges[0];
 			const { tags } = node;
-			tags.forEach((tag: types.GQLTagInterface) => {
+			tags.forEach((tag: GQLTagInterface) => {
 				const key = tag.name;
 				const { value } = tag;
 				switch (key) {

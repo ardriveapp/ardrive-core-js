@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { appName, appVersion, arFSVersion, weightedRandom } from './common';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, Wallet } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import { Wallet } from './types/arfs_Types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';

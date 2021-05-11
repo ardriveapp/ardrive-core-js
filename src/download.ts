@@ -6,10 +6,11 @@ import * as common from './common';
 import * as getDb from './db_get';
 import * as updateDb from './db_update';
 import * as gql from './gql';
+import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
 import path, { dirname } from 'path';
 import { getLatestBlockHeight, getTransactionData } from './arweave';
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, GQLEdgeInterface, GQLTagInterface } from './types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
 import { createWriteStream } from 'fs';
 
 import Axios from 'axios';
@@ -125,35 +126,7 @@ async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFi
 
 // Takes an ArDrive File Data Transaction and writes to the database.
 async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDriveUser) {
-	const fileToSync: ArFSFileMetaData = {
-		id: 0,
-		login: user.login,
-		appName: '',
-		appVersion: '',
-		unixTime: 0,
-		contentType: '',
-		entityType: '',
-		driveId: '',
-		parentFolderId: '',
-		fileId: '',
-		fileSize: 0,
-		fileName: '',
-		fileHash: '',
-		filePath: '',
-		fileVersion: 0,
-		lastModifiedDate: 0,
-		isPublic: 0,
-		isLocal: 0,
-		fileDataSyncStatus: 0,
-		fileMetaDataSyncStatus: 0,
-		permaWebLink: '',
-		metaDataTxId: '',
-		dataTxId: '',
-		cipher: '',
-		dataCipherIV: '',
-		metaDataCipherIV: '',
-		cloudOnly: 0
-	};
+	const fileToSync: ArFSFileMetaData = ArFSFileMetaData.Empty(user.login);
 	try {
 		const { node } = fileDataTx;
 		const { tags } = node;
