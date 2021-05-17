@@ -58,9 +58,8 @@
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",
 		"test": "mocha -r ts-node/register tests/**/*.test.ts",
+		"typecheck": "tsc --noemit",
 		"build": "tsc",
-		"prepare": "yarn run build",
-		"preversion": "yarn run lint",
 		"version": "yarn run format && git add -A src",
 		"postversion": "git push && git push --tags"
 	},
