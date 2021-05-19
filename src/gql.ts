@@ -231,7 +231,8 @@ export async function getPublicFolderEntity(
 		parentFolderId: '',
 		txId: '',
 		unixTime: 0,
-		syncStatus: 0
+		syncStatus: 0,
+		lastModifiedDate: 0
 	};
 	try {
 		const query = {
@@ -327,7 +328,8 @@ export async function getPrivateFolderEntity(
 		parentFolderId: '',
 		txId: '',
 		unixTime: 0,
-		syncStatus: 0
+		syncStatus: 0,
+		lastModifiedDate: 0
 	};
 	try {
 		const query = {
@@ -427,7 +429,8 @@ export async function getPublicFileEntity(
 		parentFolderId: '',
 		txId: '',
 		unixTime: 0,
-		syncStatus: 0
+		syncStatus: 0,
+		lastModifiedDate: 0
 	};
 	try {
 		const query = {
@@ -523,7 +526,8 @@ export async function getPrivateFileEntity(
 		parentFolderId: '',
 		txId: '',
 		unixTime: 0,
-		syncStatus: 0
+		syncStatus: 0,
+		lastModifiedDate: 0
 	};
 	try {
 		const query = {
@@ -895,7 +899,8 @@ export async function getAllPublicFolderEntities(
 					parentFolderId: '',
 					unixTime: 0,
 					txId: '',
-					syncStatus: 0
+					syncStatus: 0,
+					lastModifiedDate: 0
 				};
 				cursor = edge.cursor;
 				const { node } = edge;
@@ -1037,7 +1042,8 @@ export async function getAllPrivateFolderEntities(
 					parentFolderId: '',
 					unixTime: 0,
 					txId: '',
-					syncStatus: 0
+					syncStatus: 0,
+					lastModifiedDate: 0
 				};
 				cursor = edge.cursor;
 				const { node } = edge;
@@ -1183,7 +1189,8 @@ export async function getAllPublicFileEntities(
 					parentFolderId: '',
 					txId: '',
 					unixTime: 0,
-					syncStatus: 0
+					syncStatus: 0,
+					lastModifiedDate: 0
 				};
 				cursor = edge.cursor;
 				const { node } = edge;
@@ -1325,7 +1332,8 @@ export async function getAllPrivateFileEntities(
 					parentFolderId: '',
 					txId: '',
 					unixTime: 0,
-					syncStatus: 0
+					syncStatus: 0,
+					lastModifiedDate:0,
 				};
 				cursor = edge.cursor;
 				const { node } = edge;
