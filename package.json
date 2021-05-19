@@ -82,7 +82,7 @@
 		"lib/**/*"
 	],
 	"lint-staged": {
-		"*.ts": [
+		"./src/*.ts": [
 			"prettier --write",
 			"eslint --cache --fix",
 			"tsc --noemit"
