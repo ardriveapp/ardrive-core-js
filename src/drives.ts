@@ -90,10 +90,7 @@ export async function createAndUploadArFSDriveAndRootFolder(
 
 		// Prepare the drive transaction.  It will encrypt the data if necessary.
 		const preppedDrive = await newArFSDriveMetaData(walletPrivateKey, newDrive);
-		let isPublic = 1;
-		if (drivePrivacy === 'private') {
-			isPublic = 0;
-		}
+		
 
 		// Create a new ArFS Drive Root Folder entity
 		const newRootFolderMetaData: ArFSLocalFile = {
@@ -116,7 +113,8 @@ export async function createAndUploadArFSDriveAndRootFolder(
 				name: driveName,
 				syncStatus: 0,
 				txId: '0',
-				arFS: arFSVersion
+				arFS: arFSVersion,
+				lastModifiedDate:0,
 			},
 			data: { appName: appName, appVersion: appVersion, contentType: '', syncStatus: 0, txId: '0', unixTime: 0 }
 		};
