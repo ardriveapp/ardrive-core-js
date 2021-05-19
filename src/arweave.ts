@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { weightedRandom } from './common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+
 import { appName, appVersion, arFSVersion } from './constants';
 
 import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, Wallet } from './types/arfs_Types';
@@ -434,4 +436,234 @@ export async function selectTokenHolder(): Promise<string | undefined> {
 	// Get a random holder based off of the weighted list of holders
 	const randomHolder = weightedRandom(weighted);
 	return randomHolder;
+}
+
+//Old functions
+
+// Creates an arweave transaction to upload encrypted private ardrive metadata
+// SPLIT INTO createPrivateDriveTransaction and createDriveTransaction
+export async function prepareArFSDriveTransaction(
+	user: ArDriveUser,
+	driveJSON: string | Buffer,
+	driveMetaData: ArFSDriveMetaData
+): Promise<Transaction> {
+	// Create transaction
+	const transaction = await arweave.createTransaction({ data: driveJSON }, JSON.parse(user.walletPrivateKey));
+
+	// Tag file with ArFS Tags
+	transaction.addTag('App-Name', appName);
+	transaction.addTag('App-Version', appVersion);
+	transaction.addTag('Unix-Time', driveMetaData.unixTime.toString());
+	transaction.addTag('Drive-Id', driveMetaData.driveId);
+	transaction.addTag('Drive-Privacy', driveMetaData.drivePrivacy);
+	if (driveMetaData.drivePrivacy === 'private') {
+		// If the file is private, we use extra tags
+		// Tag file with Content-Type, Cipher and Cipher-IV and Drive-Auth-Mode
+		transaction.addTag('Content-Type', 'application/octet-stream');
+		transaction.addTag('Cipher', driveMetaData.cipher);
+		transaction.addTag('Cipher-IV', driveMetaData.cipherIV);
+		transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('Content-Type', 'application/json');
+	}
+	transaction.addTag('ArFS', arFSVersion);
+	transaction.addTag('Entity-Type', 'drive');
+
+	// Sign file
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
+}
+
+// This will prepare and sign v2 data transaction using ArFS File Data Tags
+// SPLIT INTO createPrivateFileDataTransaction and createFileDataTransaction
+export async function prepareArFSDataTransaction(
+	user: ArDriveUser,
+	fileData: Buffer,
+	fileMetaData: ArFSFileMetaData
+): Promise<Transaction> {
+	// Create the arweave transaction using the file data and private key
+	const transaction = await arweave.createTransaction({ data: fileData }, JSON.parse(user.walletPrivateKey));
+
+	// If the file is not public, we must encrypt it
+	if (fileMetaData.isPublic === 0) {
+		// Tag file with Content-Type, Cipher and Cipher-IV
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Content-Type', 'application/octet-stream');
+		transaction.addTag('Cipher', fileMetaData.cipher);
+		transaction.addTag('Cipher-IV', fileMetaData.dataCipherIV);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Content-Type', fileMetaData.contentType);
+	}
+
+	// Sign file
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
+}
+
+// This will prepare and sign v2 data transaction using ArFS File Metadata Tags
+// SPLIT INTO createPrivateFileFolderMetaDataItemTransaction and createFileFolderMetaDataItemTransaction
+export async function prepareArFSMetaDataTransaction(
+	user: ArDriveUser,
+	fileMetaData: ArFSFileMetaData,
+	secondaryFileMetaData: string | Buffer
+): Promise<Transaction> {
+	// Create the arweave transaction using the file data and private key
+	const transaction = await arweave.createTransaction(
+		{ data: secondaryFileMetaData },
+		JSON.parse(user.walletPrivateKey)
+	);
+
+	// Tag file with ArFS Tags
+	transaction.addTag('App-Name', appName);
+	transaction.addTag('App-Version', appVersion);
+	transaction.addTag('Unix-Time', fileMetaData.unixTime.toString());
+	if (fileMetaData.isPublic === 0) {
+		// If the file is private, we use extra tags
+		// Tag file with Content-Type, Cipher and Cipher-IV
+		transaction.addTag('Content-Type', 'application/octet-stream');
+		transaction.addTag('Cipher', fileMetaData.cipher);
+		transaction.addTag('Cipher-IV', fileMetaData.metaDataCipherIV);
+	} else {
+		// Tag file with public tags only
+		transaction.addTag('Content-Type', fileMetaData.contentType);
+	}
+	transaction.addTag('ArFS', arFSVersion);
+	transaction.addTag('Entity-Type', fileMetaData.entityType);
+	transaction.addTag('Drive-Id', fileMetaData.driveId);
+
+	// Add file or folder specific tags
+	if (fileMetaData.entityType === 'file') {
+		transaction.addTag('File-Id', fileMetaData.fileId);
+		transaction.addTag('Parent-Folder-Id', fileMetaData.parentFolderId);
+	} else {
+		transaction.addTag('Folder-Id', fileMetaData.fileId);
+		if (fileMetaData.parentFolderId !== '0') {
+			// Root folder transactions do not have Parent-Folder-Id
+			transaction.addTag('Parent-Folder-Id', fileMetaData.parentFolderId);
+		}
+	}
+
+	// Sign transaction
+	await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+	return transaction;
+}
+
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+// SPLIT INTO createPrivateFileDataItemTransaction and createFileDataItemTransaction
+export async function prepareArFSDataItemTransaction(
+	user: ArDriveUser,
+	fileData: Buffer,
+	fileMetaData: ArFSFileMetaData
+): Promise<DataItemJson | null> {
+	try {
+		// Create the item using the data buffer
+		const item = await arBundles.createData({ data: fileData }, JSON.parse(user.walletPrivateKey));
+
+		// Tag file with common tags
+		arBundles.addTag(item, 'App-Name', appName);
+		arBundles.addTag(item, 'App-Version', appVersion);
+		if (fileMetaData.isPublic === 0) {
+			// If the file is private, we use extra tags
+			// Tag file with Privacy tags, Content-Type, Cipher and Cipher-IV
+			arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
+			arBundles.addTag(item, 'Cipher', fileMetaData.cipher);
+			arBundles.addTag(item, 'Cipher-IV', fileMetaData.dataCipherIV);
+		} else {
+			// Only tag the file with public tags
+			arBundles.addTag(item, 'Content-Type', fileMetaData.contentType);
+		}
+
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, JSON.parse(user.walletPrivateKey));
+		return signedItem;
+	} catch (err) {
+		console.log('Error creating data item');
+		console.log(err);
+		return null;
+	}
+}
+
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+// SPLIT INTO createPrivateFileMetaDataItemTransaction and createFileMetaDataItemTransaction
+export async function prepareArFSMetaDataItemTransaction(
+	user: ArDriveUser,
+	fileMetaData: ArFSFileMetaData,
+	secondaryFileMetaData: string | Buffer
+): Promise<DataItemJson | null> {
+	try {
+		// Create the item using the data buffer or string
+		const item = await arBundles.createData({ data: secondaryFileMetaData }, JSON.parse(user.walletPrivateKey));
+
+		// Tag file
+		arBundles.addTag(item, 'App-Name', appName);
+		arBundles.addTag(item, 'App-Version', appVersion);
+		arBundles.addTag(item, 'Unix-Time', fileMetaData.unixTime.toString());
+		if (fileMetaData.isPublic === 0) {
+			// If the file is private, we use extra tags
+			// Tag file with Content-Type, Cipher and Cipher-IV
+			arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
+			arBundles.addTag(item, 'Cipher', fileMetaData.cipher);
+			arBundles.addTag(item, 'Cipher-IV', fileMetaData.metaDataCipherIV);
+		} else {
+			arBundles.addTag(item, 'Content-Type', 'application/json');
+		}
+		arBundles.addTag(item, 'ArFS', arFSVersion);
+		arBundles.addTag(item, 'Entity-Type', fileMetaData.entityType);
+		arBundles.addTag(item, 'Drive-Id', fileMetaData.driveId);
+
+		// Add file or folder specific tags
+		if (fileMetaData.entityType === 'file') {
+			arBundles.addTag(item, 'File-Id', fileMetaData.fileId);
+			arBundles.addTag(item, 'Parent-Folder-Id', fileMetaData.parentFolderId);
+		} else {
+			arBundles.addTag(item, 'Folder-Id', fileMetaData.fileId);
+			if (fileMetaData.parentFolderId !== '0') {
+				arBundles.addTag(item, 'Parent-Folder-Id', fileMetaData.parentFolderId);
+			}
+		}
+
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, JSON.parse(user.walletPrivateKey));
+		return signedItem;
+	} catch (err) {
+		console.log('Error creating data item');
+		console.log(err);
+		return null;
+	}
+}
+
+// Creates a bundled data transaction
+// MOVED TO createBundledDataTransaction
+export async function prepareArFSBundledDataTransaction(
+	user: ArDriveUser,
+	items: DataItemJson[]
+): Promise<Transaction | null> {
+	try {
+		// Bundle up all individual items into a single data bundle
+		const dataBundle = await arBundles.bundleData(items);
+		const dataBuffer: Buffer = Buffer.from(JSON.stringify(dataBundle));
+
+		// Create the transaction for the entire data bundle
+		const transaction = await arweave.createTransaction({ data: dataBuffer }, JSON.parse(user.walletPrivateKey));
+
+		// Tag file
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Bundle-Format', 'json');
+		transaction.addTag('Bundle-Version', '1.0.0');
+		transaction.addTag('Content-Type', 'application/json');
+
+		// Sign the bundle
+		await arweave.transactions.sign(transaction, JSON.parse(user.walletPrivateKey));
+		return transaction;
+	} catch (err) {
+		console.log('Error creating data bundle');
+		console.log(err);
+		return null;
+	}
 }
