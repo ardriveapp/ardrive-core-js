@@ -1,16 +1,11 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { appName, appVersion, arFSVersion, weightedRandom } from './common';
+import { weightedRandom } from './common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
-import {
-	ArFSDriveEntity,
-	ArFSFileData,
-	ArFSFileFolderEntity,
-	ArFSPrivateDriveEntity,
-	ArFSPrivateFileData,
-	ArFSPrivateFileFolderEntity,
-	Wallet
-} from './types/arfs_Types';
+
+import { appName, appVersion, arFSVersion } from './constants';
+
+import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, Wallet } from './types/arfs_Types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
@@ -155,42 +150,6 @@ export async function createDriveTransaction(
 	return transaction;
 }
 
-// Creates an arweave transaction to upload a drive entity
-export async function createPrivateDriveTransaction(
-	driveJSON: Buffer, // must be an encrypted buffer
-	driveMetaData: ArFSPrivateDriveEntity,
-	walletPrivateKey?: JWKInterface
-): Promise<Transaction> {
-	// Create transaction
-	let transaction: Transaction;
-	if (walletPrivateKey) {
-		transaction = await arweave.createTransaction({ data: driveJSON }, walletPrivateKey);
-	} else {
-		transaction = await arweave.createTransaction({ data: driveJSON }); // Will use ArConnect if no wallet present
-	}
-	// Tag file with ArFS Tags
-	transaction.addTag('App-Name', driveMetaData.appName);
-	transaction.addTag('App-Version', driveMetaData.appVersion);
-	transaction.addTag('Unix-Time', driveMetaData.unixTime.toString());
-	transaction.addTag('Drive-Id', driveMetaData.driveId);
-	transaction.addTag('Drive-Privacy', driveMetaData.drivePrivacy);
-	transaction.addTag('Content-Type', driveMetaData.contentType);
-	// Tag file with Content-Type, Cipher and Cipher-IV and Drive-Auth-Mode
-	transaction.addTag('Cipher', driveMetaData.cipher);
-	transaction.addTag('Cipher-IV', driveMetaData.cipherIV);
-	transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
-	transaction.addTag('ArFS', driveMetaData.arFS);
-	transaction.addTag('Entity-Type', 'drive');
-
-	// Sign file
-	if (walletPrivateKey) {
-		await arweave.transactions.sign(transaction, walletPrivateKey);
-	} else {
-		await arweave.transactions.sign(transaction); // Will use ArConnect if no wallet present
-	}
-	return transaction;
-}
-
 // This will prepare and sign v2 data transaction using ArFS File Data Tags
 export async function createFileDataTransaction(
 	fileData: Buffer,
@@ -209,37 +168,6 @@ export async function createFileDataTransaction(
 	transaction.addTag('App-Name', fileMetaData.appName);
 	transaction.addTag('App-Version', fileMetaData.appVersion);
 	transaction.addTag('Content-Type', fileMetaData.contentType);
-
-	// Sign the transaction
-	if (walletPrivateKey) {
-		await arweave.transactions.sign(transaction, walletPrivateKey);
-	} else {
-		await arweave.transactions.sign(transaction); // Will use ArConnect if no wallet present
-	}
-
-	return transaction;
-}
-
-// This will prepare and sign a private v2 data transaction using ArFS File Data Tags including privacy tags
-export async function createPrivateFileDataTransaction(
-	fileData: Buffer, // the buffer must already be encrypted
-	fileMetaData: ArFSPrivateFileData,
-	walletPrivateKey?: JWKInterface
-): Promise<Transaction> {
-	let transaction: Transaction;
-	// Create the arweave transaction using the file data and private key
-	if (walletPrivateKey) {
-		transaction = await arweave.createTransaction({ data: fileData }, walletPrivateKey);
-	} else {
-		transaction = await arweave.createTransaction({ data: fileData }); // Will use ArConnect if no wallet present
-	}
-
-	// Tag file with Content-Type, Cipher and Cipher-IV
-	transaction.addTag('App-Name', fileMetaData.appName);
-	transaction.addTag('App-Version', fileMetaData.appVersion);
-	transaction.addTag('Content-Type', 'application/octet-stream');
-	transaction.addTag('Cipher', fileMetaData.cipher);
-	transaction.addTag('Cipher-IV', fileMetaData.cipherIV);
 
 	// Sign the transaction
 	if (walletPrivateKey) {
@@ -296,52 +224,6 @@ export async function createFileFolderMetaDataTransaction(
 	return transaction;
 }
 
-// This will prepare and sign a private v2 data transaction using ArFS File Metadata Tags including privacy tags
-export async function createPrivateFileFolderMetaDataTransaction(
-	metaData: ArFSPrivateFileFolderEntity,
-	secondaryFileMetaData: Buffer, // the buffer must already be encrypted
-	walletPrivateKey?: JWKInterface
-): Promise<Transaction> {
-	let transaction: Transaction;
-	if (walletPrivateKey) {
-		// Create the arweave transaction using the file data and private key
-		transaction = await arweave.createTransaction({ data: secondaryFileMetaData }, walletPrivateKey);
-	} else {
-		transaction = await arweave.createTransaction({ data: secondaryFileMetaData }); // Will use ArConnect if no wallet present
-	}
-
-	// Tag file with ArFS Tags including tags needed for privacy
-	transaction.addTag('App-Name', metaData.appName);
-	transaction.addTag('App-Version', metaData.appVersion);
-	transaction.addTag('Unix-Time', metaData.unixTime.toString());
-	transaction.addTag('Content-Type', 'application/octet-stream');
-	transaction.addTag('Cipher', metaData.cipher);
-	transaction.addTag('Cipher-IV', metaData.cipherIV);
-	transaction.addTag('ArFS', metaData.arFS);
-	transaction.addTag('Entity-Type', metaData.entityType);
-	transaction.addTag('Drive-Id', metaData.driveId);
-
-	// Add file or folder specific tags
-	if (metaData.entityType === 'file') {
-		transaction.addTag('File-Id', metaData.entityId);
-		transaction.addTag('Parent-Folder-Id', metaData.parentFolderId);
-	} else {
-		transaction.addTag('Folder-Id', metaData.entityId);
-		if (metaData.parentFolderId !== '0') {
-			transaction.addTag('Parent-Folder-Id', metaData.parentFolderId);
-		}
-	}
-
-	// Sign the transaction
-	if (walletPrivateKey) {
-		await arweave.transactions.sign(transaction, walletPrivateKey);
-	} else {
-		await arweave.transactions.sign(transaction); // Will use ArConnect if no wallet present
-	}
-
-	return transaction;
-}
-
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
 export async function createFileDataItemTransaction(
 	fileData: Buffer,
@@ -368,35 +250,6 @@ export async function createFileDataItemTransaction(
 	}
 }
 
-// Creates a private arweave data item transaction (ANS-102) using ArFS Tags including privacy tags
-export async function createPrivateFileDataItemTransaction(
-	fileData: Buffer, // the buffer must already be encrypted
-	fileMetaData: ArFSPrivateFileData,
-	walletPrivateKey: JWKInterface
-): Promise<DataItemJson | string> {
-	try {
-		// Create the item using the data buffer
-		const item = await arBundles.createData({ data: fileData }, walletPrivateKey);
-
-		// Tag file with common tags
-		arBundles.addTag(item, 'App-Name', fileMetaData.appName);
-		arBundles.addTag(item, 'App-Version', fileMetaData.appVersion);
-
-		// Tag file with Privacy tags, Content-Type, Cipher and Cipher-IV
-		arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
-		arBundles.addTag(item, 'Cipher', fileMetaData.cipher);
-		arBundles.addTag(item, 'Cipher-IV', fileMetaData.cipherIV);
-
-		// Sign the data, ready to be added to a bundle
-		const signedItem = await arBundles.sign(item, walletPrivateKey);
-		return signedItem;
-	} catch (err) {
-		console.log('Error creating data item');
-		console.log(err);
-		return 'Error';
-	}
-}
-
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
 export async function createFileFolderMetaDataItemTransaction(
 	metaData: ArFSFileFolderEntity,
@@ -412,52 +265,6 @@ export async function createFileFolderMetaDataItemTransaction(
 		arBundles.addTag(item, 'App-Version', metaData.appVersion);
 		arBundles.addTag(item, 'Unix-Time', metaData.unixTime.toString());
 		arBundles.addTag(item, 'Content-Type', 'application/json');
-		arBundles.addTag(item, 'ArFS', arFSVersion);
-		arBundles.addTag(item, 'Entity-Type', metaData.entityType);
-		arBundles.addTag(item, 'Drive-Id', metaData.driveId);
-		arBundles.addTag(item, 'File-Id', metaData.entityId);
-
-		// Add file or folder specific tags
-		if (metaData.entityType === 'file') {
-			arBundles.addTag(item, 'File-Id', metaData.entityId);
-			arBundles.addTag(item, 'Parent-Folder-Id', metaData.parentFolderId);
-		} else {
-			arBundles.addTag(item, 'Folder-Id', metaData.entityId);
-			if (metaData.parentFolderId !== '0') {
-				// If the parentFolderId is 0, then this is a root folder
-				arBundles.addTag(item, 'Parent-Folder-Id', metaData.parentFolderId);
-			}
-		}
-
-		// Sign the data, ready to be added to a bundle
-		const signedItem = await arBundles.sign(item, walletPrivateKey);
-		return signedItem;
-	} catch (err) {
-		console.log('Error creating data item');
-		console.log(err);
-		return 'Error';
-	}
-}
-
-// Creates an arweave data item transaction (ANS-102) using ArFS Tags
-export async function createPrivateFileFolderMetaDataItemTransaction(
-	metaData: ArFSPrivateFileFolderEntity,
-	secondaryFileMetaData: Buffer, // the buffer must already be encrypted
-	walletPrivateKey: JWKInterface
-): Promise<DataItemJson | string> {
-	try {
-		// Create the item using the data buffer or string
-		const item = await arBundles.createData({ data: secondaryFileMetaData }, walletPrivateKey);
-
-		// Tag file
-		arBundles.addTag(item, 'App-Name', metaData.appName);
-		arBundles.addTag(item, 'App-Version', metaData.appVersion);
-		arBundles.addTag(item, 'Unix-Time', metaData.unixTime.toString());
-		// If the file is private, we use extra tags
-		// Tag file with Content-Type, Cipher and Cipher-IV
-		arBundles.addTag(item, 'Content-Type', 'application/octet-stream');
-		arBundles.addTag(item, 'Cipher', metaData.cipher);
-		arBundles.addTag(item, 'Cipher-IV', metaData.cipherIV);
 		arBundles.addTag(item, 'ArFS', arFSVersion);
 		arBundles.addTag(item, 'Entity-Type', metaData.entityType);
 		arBundles.addTag(item, 'Drive-Id', metaData.driveId);
@@ -514,6 +321,124 @@ export async function createBundledDataTransaction(
 		return null;
 	}
 }
+
+// Creates a Transaction uploader object for a given arweave transaction
+export async function createDataUploader(transaction: Transaction): Promise<TransactionUploader> {
+	// Create an uploader object
+	const uploader = await arweave.transactions.getUploader(transaction);
+	return uploader;
+}
+
+// Creates an arweave transaction to upload file data (and no metadata) to arweave
+// Saves the upload chunk of the object in case the upload has to be restarted
+export async function uploadDataChunk(uploader: TransactionUploader): Promise<TransactionUploader | null> {
+	try {
+		await uploader.uploadChunk();
+		return uploader;
+	} catch (err) {
+		console.log('Uploading this chunk has failed');
+		console.log(err);
+		return null;
+	}
+}
+
+// Sends a fee to ArDrive Profit Sharing Community holders
+export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
+	try {
+		// Get the latest ArDrive Community Fee from the Community Smart Contract
+		let fee = arPrice * ((await getArDriveFee()) / 100);
+
+		// If the fee is too small, we assign a minimum
+		if (fee < 0.00001) {
+			fee = 0.00001;
+		}
+
+		// Probabilistically select the PST token holder
+		const holder = await selectTokenHolder();
+
+		// send a fee. You should inform the user about this fee and amount.
+		const transaction = await arweave.createTransaction(
+			{ target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
+			JSON.parse(walletPrivateKey)
+		);
+
+		// Tag file with data upload Tipping metadata
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Type', 'fee');
+		transaction.addTag('Tip-Type', 'data upload');
+
+		// Sign file
+		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+
+		// Submit the transaction
+		const response = await arweave.transactions.post(transaction);
+		if (response.status === 200 || response.status === 202) {
+			// console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
+		} else {
+			// console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
+		}
+		return transaction.id;
+	} catch (err) {
+		console.log(err);
+		return 'ERROR sending ArDrive fee';
+	}
+}
+
+// Calls the ArDrive Community Smart Contract to pull the fee
+export async function getArDriveFee(): Promise<number> {
+	try {
+		const contract = await readContract(arweave, communityTxId);
+		const arDriveCommunityFee = contract.settings.find(
+			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
+		);
+		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
+	} catch {
+		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
+	}
+}
+
+// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
+export async function selectTokenHolder(): Promise<string | undefined> {
+	// Read the ArDrive Smart Contract to get the latest state
+	const state = await readContract(arweave, communityTxId);
+	const balances = state.balances;
+	const vault = state.vault;
+
+	// Get the total number of token holders
+	let total = 0;
+	for (const addr of Object.keys(balances)) {
+		total += balances[addr];
+	}
+
+	// Check for how many tokens the user has staked/vaulted
+	for (const addr of Object.keys(vault)) {
+		if (!vault[addr].length) continue;
+
+		const vaultBalance = vault[addr]
+			.map((a: { balance: number; start: number; end: number }) => a.balance)
+			.reduce((a: number, b: number) => a + b, 0);
+
+		total += vaultBalance;
+
+		if (addr in balances) {
+			balances[addr] += vaultBalance;
+		} else {
+			balances[addr] = vaultBalance;
+		}
+	}
+
+	// Create a weighted list of token holders
+	const weighted: { [addr: string]: number } = {};
+	for (const addr of Object.keys(balances)) {
+		weighted[addr] = balances[addr] / total;
+	}
+	// Get a random holder based off of the weighted list of holders
+	const randomHolder = weightedRandom(weighted);
+	return randomHolder;
+}
+
+//Old functions
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
 // SPLIT INTO createPrivateDriveTransaction and createDriveTransaction
@@ -741,120 +666,4 @@ export async function prepareArFSBundledDataTransaction(
 		console.log(err);
 		return null;
 	}
-}
-
-// Creates a Transaction uploader object for a given arweave transaction
-export async function createDataUploader(transaction: Transaction): Promise<TransactionUploader> {
-	// Create an uploader object
-	const uploader = await arweave.transactions.getUploader(transaction);
-	return uploader;
-}
-
-// Creates an arweave transaction to upload file data (and no metadata) to arweave
-// Saves the upload chunk of the object in case the upload has to be restarted
-export async function uploadDataChunk(uploader: TransactionUploader): Promise<TransactionUploader | null> {
-	try {
-		await uploader.uploadChunk();
-		return uploader;
-	} catch (err) {
-		console.log('Uploading this chunk has failed');
-		console.log(err);
-		return null;
-	}
-}
-
-// Sends a fee to ArDrive Profit Sharing Community holders
-export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
-	try {
-		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let fee = arPrice * ((await getArDriveFee()) / 100);
-
-		// If the fee is too small, we assign a minimum
-		if (fee < 0.00001) {
-			fee = 0.00001;
-		}
-
-		// Probabilistically select the PST token holder
-		const holder = await selectTokenHolder();
-
-		// send a fee. You should inform the user about this fee and amount.
-		const transaction = await arweave.createTransaction(
-			{ target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
-			JSON.parse(walletPrivateKey)
-		);
-
-		// Tag file with data upload Tipping metadata
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Type', 'fee');
-		transaction.addTag('Tip-Type', 'data upload');
-
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-
-		// Submit the transaction
-		const response = await arweave.transactions.post(transaction);
-		if (response.status === 200 || response.status === 202) {
-			// console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
-		} else {
-			// console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
-		}
-		return transaction.id;
-	} catch (err) {
-		console.log(err);
-		return 'ERROR sending ArDrive fee';
-	}
-}
-
-// Calls the ArDrive Community Smart Contract to pull the fee
-export async function getArDriveFee(): Promise<number> {
-	try {
-		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
-			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
-	} catch {
-		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
-	}
-}
-
-// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
-export async function selectTokenHolder(): Promise<string | undefined> {
-	// Read the ArDrive Smart Contract to get the latest state
-	const state = await readContract(arweave, communityTxId);
-	const balances = state.balances;
-	const vault = state.vault;
-
-	// Get the total number of token holders
-	let total = 0;
-	for (const addr of Object.keys(balances)) {
-		total += balances[addr];
-	}
-
-	// Check for how many tokens the user has staked/vaulted
-	for (const addr of Object.keys(vault)) {
-		if (!vault[addr].length) continue;
-
-		const vaultBalance = vault[addr]
-			.map((a: { balance: number; start: number; end: number }) => a.balance)
-			.reduce((a: number, b: number) => a + b, 0);
-
-		total += vaultBalance;
-
-		if (addr in balances) {
-			balances[addr] += vaultBalance;
-		} else {
-			balances[addr] = vaultBalance;
-		}
-	}
-
-	// Create a weighted list of token holders
-	const weighted: { [addr: string]: number } = {};
-	for (const addr of Object.keys(balances)) {
-		weighted[addr] = balances[addr] / total;
-	}
-	// Get a random holder based off of the weighted list of holders
-	const randomHolder = weightedRandom(weighted);
-	return randomHolder;
 }
