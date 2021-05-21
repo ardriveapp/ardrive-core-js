@@ -1,12 +1,12 @@
 import * as arweave from './arweave';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
-import { ArDriveUser } from './types/base_Types';
-import { ArFSLocalFile, ArFSLocalDriveEntity } from './types/client_Types';
+import { ArDriveUser } from '../types/base_Types';
+import { ArFSLocalFile, ArFSLocalDriveEntity } from '../types/client_Types';
 import { newArFSFileMetaData } from './arfs';
 import { v4 as uuidv4 } from 'uuid';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { appName, appVersion, arFSVersion } from './constants';
+import { appName, appVersion, arFSVersion } from '../constants';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 export async function newArFSDriveMetaData(

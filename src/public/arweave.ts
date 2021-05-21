@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { weightedRandom } from './common';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import { weightedRandom } from './../common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
 
-import { appName, appVersion, arFSVersion } from './constants';
+import { appName, appVersion, arFSVersion } from './../constants';
 
-import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, Wallet } from './types/arfs_Types';
+import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, Wallet } from './../types/arfs_Types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
