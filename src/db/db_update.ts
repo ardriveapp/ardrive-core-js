@@ -1,5 +1,5 @@
-import { run } from './db';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import { run } from './db_common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
 
 ////////////////////////
 // NEW ITEM FUNCTIONS //

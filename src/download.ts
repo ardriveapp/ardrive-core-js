@@ -3,8 +3,8 @@
 // upload.js
 import * as fs from 'fs';
 import * as common from './common';
-import * as getDb from './db_get';
-import * as updateDb from './db_update';
+import * as getDb from './db/db_get';
+import * as updateDb from './db/db_update';
 import * as gql from './gql';
 import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
 import path, { dirname } from 'path';
