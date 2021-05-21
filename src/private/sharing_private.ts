@@ -1,5 +1,5 @@
-import { deriveFileKey } from './crypto';
-import { stagingAppUrl } from './constants';
+import { deriveFileKey } from './../crypto';
+import { stagingAppUrl } from './../constants';
 
 // Derives a file key from the drive key and formats it into a Private file sharing link using the file id
 export async function createArFSPrivateFileSharingLink(driveKey: Buffer, fileId: string): Promise<string> {

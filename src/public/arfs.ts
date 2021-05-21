@@ -1,10 +1,10 @@
 // arfs.js
-import * as arweave from './arweave';
+import * as arweave from './../public/arweave';
 import * as fs from 'fs';
-import * as clientTypes from './types/client_Types';
+import * as clientTypes from './../types/client_Types';
 import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
-import { JWKInterface } from './types/arfs_Types';
+import { JWKInterface } from './../types/arfs_Types';
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(

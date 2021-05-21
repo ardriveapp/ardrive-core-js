@@ -1,14 +1,14 @@
-import * as arweave from './arweave';
+import * as arweave from './../public/arweave';
 import * as arweavePrivate from './arweave_private';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
-import { ArDriveUser, ArFSEncryptedData } from './types/base_Types';
-import { ArFSLocalDriveEntity, ArFSLocalPrivateDriveEntity } from './types/client_Types';
+import { ArDriveUser, ArFSEncryptedData } from '../types/base_Types';
+import { ArFSLocalDriveEntity, ArFSLocalPrivateDriveEntity } from '../types/client_Types';
 import { v4 as uuidv4 } from 'uuid';
-import { deriveDriveKey, driveEncrypt } from './crypto';
+import { deriveDriveKey, driveEncrypt } from '../crypto';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
-import { appName, appVersion, arFSVersion, cipher } from './constants';
+import { appName, appVersion, arFSVersion, cipher } from '../constants';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 

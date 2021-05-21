@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as arweave from './arweave';
+import * as arweave from './public/arweave';
 import * as types from './types/base_Types';
 import * as updateDb from './db_update';
 import * as getDb from './db_get';
