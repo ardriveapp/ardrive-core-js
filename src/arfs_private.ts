@@ -8,7 +8,7 @@ import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import { JWKInterface } from './types/arfs_Types';
 
-// Tags and creates a new data item (ANS-102) to be bundled and uploaded
+// Tags and creates a new private file data item (ANS-102 bundles) to be bundled and uploaded
 export async function newArFSPrivateFileDataItem(
 	user: types.ArDriveUser,
 	walletPrivateKey: JWKInterface,
@@ -31,19 +31,19 @@ export async function newArFSPrivateFileDataItem(
 		// Get the encrypted version of the file
 		const encryptedData: types.ArFSEncryptedData = await fileEncrypt(fileKey, fileData);
 
-		// Set the private file metadata
-		file.entity.cipherIV;
-		file.entity.cipher;
+		// Set the cipher IV and cipher for the File Data itself, and not the entity
+		file.data.cipherIV = encryptedData.cipherIV;
+		file.data.cipher = encryptedData.cipher;
 
 		// Get a signed data item for the encrypted data
-		dataItem = await arweave.createFileDataItemTransaction(encryptedData.data, file.entity, walletPrivateKey);
+		dataItem = await arweave.createFileDataItemTransaction(encryptedData.data, file.data, walletPrivateKey);
 
 		if (typeof dataItem != 'string') {
 			console.log('SUCCESS %s data item was created with TX %s', file.path, dataItem.id);
 
 			// Set the file metadata to syncing
-			file.entity.syncStatus = 2;
-			file.entity.txId = dataItem.id;
+			file.data.syncStatus = 2;
+			file.data.txId = dataItem.id;
 			return { file, dataItem };
 		} else {
 			return null;
@@ -54,7 +54,7 @@ export async function newArFSPrivateFileDataItem(
 		return null;
 	}
 }
-// Tags and creates a single file metadata item (ANS-102) to your ArDrive
+// Tags and creates a single private file metadata item (ANS-102 bundles) to your ArDrive
 export async function newArFSPrivateFileMetaDataItem(
 	user: types.ArDriveUser,
 	walletPrivateKey: JWKInterface,
@@ -63,21 +63,14 @@ export async function newArFSPrivateFileMetaDataItem(
 	let dataItem: DataItemJson | string;
 	let secondaryFileMetaDataTags = {};
 	try {
-		// create secondary metadata, used to further ID the file (with encryption if necessary)
-		if (file.entity.entityType === 'folder') {
-			// create secondary metadata specifically for a folder
-			secondaryFileMetaDataTags = {
-				name: file.entity.name
-			};
-		} else if (file.entity.entityType === 'file') {
-			secondaryFileMetaDataTags = {
-				name: file.entity.name,
-				size: file.size,
-				lastModifiedDate: file.entity.unixTime,
-				dataTxId: file.data.txId,
-				dataContentType: file.entity.contentType
-			};
-		}
+		// create secondary metadata, used to further ID the file with encryption
+		secondaryFileMetaDataTags = {
+			name: file.entity.name,
+			size: file.size,
+			lastModifiedDate: file.entity.lastModifiedDate,
+			dataTxId: file.data.txId,
+			dataContentType: file.data.contentType
+		};
 
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
@@ -118,6 +111,59 @@ export async function newArFSPrivateFileMetaDataItem(
 		return null;
 	}
 }
+// Tags and creates a single private folder metadata item (ANS-102 bundles) to your ArDrive
+export async function newArFSPrivateFolderMetaDataItem(
+	user: types.ArDriveUser,
+	walletPrivateKey: JWKInterface,
+	folder: clientTypes.ArFSLocalPrivateFolder
+): Promise<{ folder: clientTypes.ArFSLocalPrivateFolder; dataItem: DataItemJson } | null> {
+	let dataItem: DataItemJson | string;
+	let secondaryFileMetaDataTags = {};
+	try {
+		// create secondary metadata specifically for a folder
+		secondaryFileMetaDataTags = {
+			name: folder.entity.name
+		};
+
+		// Convert to JSON string
+		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
+
+		// Private file, so it must be encrypted
+		const driveKey: Buffer = await deriveDriveKey(
+			user.dataProtectionKey,
+			folder.entity.driveId,
+			user.walletPrivateKey
+		);
+		const fileKey: Buffer = await deriveFileKey(folder.entity.entityId, driveKey);
+		const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
+			fileKey,
+			Buffer.from(secondaryFileMetaDataJSON)
+		);
+
+		// Update the file privacy metadata
+		folder.entity.cipherIV = encryptedData.cipherIV;
+		folder.entity.cipher = encryptedData.cipher;
+		dataItem = await arweavePrivate.createPrivateFileFolderMetaDataItemTransaction(
+			folder.entity,
+			encryptedData.data,
+			walletPrivateKey
+		);
+
+		if (typeof dataItem != 'string') {
+			console.log('SUCCESS %s data item was created with TX %s', folder.path, dataItem.id);
+			// Set the file metadata to syncing
+			folder.entity.syncStatus = 2;
+			folder.entity.txId = dataItem.id;
+			return { folder, dataItem };
+		} else {
+			return null;
+		}
+	} catch (err) {
+		console.log(err);
+		console.log('Error uploading file metadata item');
+		return null;
+	}
+}
 // Takes a buffer and ArFS File Metadata and creates an ArFS Data Transaction using V2 Transaction with proper GQL tags
 export async function newArFSPrivateFileData(
 	user: types.ArDriveUser,
@@ -142,14 +188,14 @@ export async function newArFSPrivateFileData(
 		// Encrypt the data with the file key
 		const encryptedData: types.ArFSEncryptedData = await getFileAndEncrypt(fileKey, file.path);
 
-		// Update the file metadata
-		file.entity.cipherIV = encryptedData.cipherIV;
-		file.entity.cipher = encryptedData.cipher;
+		// Update the cipher iv and cipher for the File Data and not its entity
+		file.data.cipherIV = encryptedData.cipherIV;
+		file.data.cipher = encryptedData.cipher;
 
 		// Create the Arweave transaction.  It will add the correct ArFS tags depending if it is public or private
 		const transaction = await arweavePrivate.createPrivateFileDataTransaction(
 			encryptedData.data,
-			file.entity,
+			file.data,
 			walletPrivateKey
 		);
 
@@ -165,7 +211,7 @@ export async function newArFSPrivateFileData(
 		return null;
 	}
 }
-// Takes ArFS File (or folder) Metadata and creates an ArFS MetaData Transaction using V2 Transaction with proper GQL tags
+// Takes ArFS Private File Metadata and creates an ArFS MetaData Transaction using V2 Transaction with proper GQL tags
 export async function newArFSPrivateFileMetaData(
 	user: types.ArDriveUser,
 	walletPrivateKey: JWKInterface,
@@ -174,21 +220,14 @@ export async function newArFSPrivateFileMetaData(
 	let transaction;
 	let secondaryFileMetaDataTags = {};
 	try {
-		// create secondary metadata, used to further ID the file (with encryption if necessary)
-		if (file.entity.entityType === 'folder') {
-			// create secondary metadata specifically for a folder
-			secondaryFileMetaDataTags = {
-				name: file.entity.name
-			};
-		} else if (file.entity.entityType === 'file') {
-			secondaryFileMetaDataTags = {
-				name: file.entity.name,
-				size: file.size,
-				lastModifiedDate: file.entity.unixTime,
-				dataTxId: file.data.txId,
-				dataContentType: file.entity.contentType
-			};
-		}
+		// create secondary metadata, used to further ID the file with encryption
+		secondaryFileMetaDataTags = {
+			name: file.entity.name,
+			size: file.size,
+			lastModifiedDate: file.entity.lastModifiedDate,
+			dataTxId: file.data.txId,
+			dataContentType: file.data.contentType
+		};
 
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
@@ -222,6 +261,58 @@ export async function newArFSPrivateFileMetaData(
 		const uploader = await arweave.createDataUploader(transaction);
 
 		return { file, uploader };
+	} catch (err) {
+		console.log(err);
+		return null;
+	}
+}
+// Takes ArFS Private Folder Metadata and creates an ArFS MetaData Transaction using V2 Transaction with proper GQL tags
+export async function newArFSPrivateFolderMetaData(
+	user: types.ArDriveUser,
+	walletPrivateKey: JWKInterface,
+	folder: clientTypes.ArFSLocalPrivateFolder
+): Promise<{ folder: clientTypes.ArFSLocalPrivateFolder; uploader: TransactionUploader } | null> {
+	let transaction;
+	let secondaryFileMetaDataTags = {};
+	try {
+
+		// create secondary metadata specifically for a folder
+		secondaryFileMetaDataTags = {
+			name: folder.entity.name
+		};
+
+		// Convert to JSON string
+		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
+
+		// Private file, so the metadata must be encrypted
+		// Get the drive and file key needed for encryption
+		const driveKey: Buffer = await deriveDriveKey(
+			user.dataProtectionKey,
+			folder.entity.driveId,
+			user.walletPrivateKey
+		);
+		const fileKey: Buffer = await deriveFileKey(folder.entity.entityId, driveKey);
+		const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
+			fileKey,
+			Buffer.from(secondaryFileMetaDataJSON)
+		);
+
+		// Update the file privacy metadata
+		folder.entity.cipherIV = encryptedData.cipherIV;
+		folder.entity.cipher = encryptedData.cipher;
+		transaction = await arweavePrivate.createPrivateFileFolderMetaDataTransaction(
+			folder.entity,
+			encryptedData.data,
+			walletPrivateKey
+		);
+
+		// Update the file's data transaction ID
+		folder.entity.txId = transaction.id;
+
+		// Create the File Uploader object
+		const uploader = await arweave.createDataUploader(transaction);
+
+		return { folder, uploader };
 	} catch (err) {
 		console.log(err);
 		return null;
