@@ -27,6 +27,8 @@
 		"uuid": "^8.3.2"
 	},
 	"devDependencies": {
+		"@commitlint/cli": "^12.1.4",
+		"@commitlint/config-conventional": "^12.1.4",
 		"@types/better-sqlite3": "^5.4.1",
 		"@types/chai": "^4.2.15",
 		"@types/folder-hash": "^4.0.0",
