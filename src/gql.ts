@@ -1333,7 +1333,7 @@ export async function getAllPrivateFileEntities(
 					txId: '',
 					unixTime: 0,
 					syncStatus: 0,
-					lastModifiedDate:0,
+					lastModifiedDate: 0
 				};
 				cursor = edge.cursor;
 				const { node } = edge;
@@ -2280,3 +2280,175 @@ export async function getAllMySharedDataFileTxs(
 	}
 	return edges;
 }
+
+function tagToAttributeMap(tag: string): string {
+	// tag to camel case
+	const words = tag.split('-');
+	const attribute = words.join('');
+	return `${attribute.charAt(0).toLowerCase()}${attribute.slice(1)}`;
+}
+
+const QUERY_ARGUMENTS_WHITELIST = [
+	'edges',
+	'edges.node',
+	'edges.node.id',
+	'edges.node.tags',
+	'edges.node.tags.name',
+	'edges.node.tags.value',
+	'edges.node.block',
+	'edges.node.block.timestamp',
+	'edges.node.block.height',
+	'pageInfo',
+	'pageInfo.hasNextPage'
+];
+
+class Query<T extends arfsTypes.ArFSEntity> {
+	private _parameters: string[] = ['edges.node.id', 'hasNextPage'];
+	private edges: gqlTypes.GQLEdgeInterface[] = [];
+	private hasNextPage = true;
+	private cursor = '';
+	owners?: string[];
+	tags?: { name: string; values: string | string[] }[];
+	block?: { min: number };
+	first?: number;
+
+	set parameters(parameters: string[]) {
+		if (!this._validateArguments(parameters)) {
+			throw new Error('Invalid parameters.');
+		}
+		this._parameters = parameters;
+	}
+
+	private _validateArguments(argument: string[]) {
+		const isValid = argument.reduce((valid: boolean, arg: string): boolean => {
+			return valid && QUERY_ARGUMENTS_WHITELIST.includes(arg);
+		}, true);
+		return isValid;
+	}
+
+	public getAll = async (): Promise<T[]> => {
+		await this._run();
+		const entities: T[] = [];
+		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+			const { node } = edge;
+			const { tags } = node;
+			const entity: any = {};
+			entity.txId = node.id;
+			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+				const { name, value } = tag;
+				const attributeName = tagToAttributeMap(name);
+				entity[attributeName] = value;
+			});
+			entities.push(entity);
+		});
+		return entities;
+	};
+
+	public getRaw = async (): Promise<gqlTypes.GQLEdgeInterface[]> => {
+		await this._run();
+		return this.edges;
+	};
+
+	private _run = async (): Promise<void> => {
+		const queryString = this._toString();
+		while (this.hasNextPage) {
+			const response = await arweave.api.post(primaryGraphQLURL, queryString);
+			const { data } = response.data;
+			const { transactions } = data;
+			if (transactions.edges && transactions.edges.length) {
+				this.edges = this.edges.concat(transactions.edges);
+				this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
+			}
+			this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
+		}
+	};
+
+	private _toString = () => {
+		const serializedTransactionData = this._getSerializedTransactionData();
+		const serializedQueryParameters = this._getSerializedParameters();
+		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
+	};
+
+	private _getSerializedTransactionData = (): string => {
+		const data: any = {};
+		if (this.owners) {
+			data.owners = serializedArray(this.owners, serializedString);
+		}
+		if (this.tags) {
+			if (typeof this.tags === 'string') {
+				data.tags = serializedString(this.tags);
+			} else {
+				data.tags = serializedArray(this.tags, serializedObject);
+			}
+		}
+		if (this.block) {
+			data.block = serializedObject(this.block);
+		}
+		if (this.first) {
+			data.first = serializedNumber(this.first);
+		}
+		if (this.cursor) {
+			data.after = serializedString(this.cursor);
+		}
+		const dataKeys = Object.keys(data);
+		const serializedData = dataKeys.map((key) => `${key}: ${data[key]}`).join('\n');
+		return serializedData;
+	};
+
+	private _getSerializedParameters = (params: any = this._getParametersObject(), depht = 0): string => {
+		const paramKeys = Object.keys(params);
+		let serializedParameters = '';
+		if (paramKeys.length > 0) {
+			serializedParameters = paramKeys
+				.map((key): string => {
+					const value = params[key];
+					const valueChildrenKeys = Object.keys(value);
+					if (valueChildrenKeys.length > 0) {
+						return `${key} {${this._getSerializedParameters(value, depht + 1)}}`;
+					} else {
+						return `${key}`;
+					}
+				})
+				.join('\n');
+		}
+		if (depht === 0 && serializedParameters) {
+			serializedParameters = `{\n${serializedParameters}\n}`;
+		}
+		return serializedParameters;
+	};
+
+	private _getParametersObject = (): { [key: string]: any } => {
+		const normalizedParameters = this._parameters.reduce((params: any, p: string): any => {
+			const object: any = {};
+			const nodes = p.split('.');
+			let o = object;
+			nodes.forEach((n) => {
+				if (!o[n]) {
+					o[n] = {};
+					o = o[n];
+				}
+			});
+			return Object.apply(params, object);
+		}, {} as any);
+		return normalizedParameters;
+	};
+}
+
+function serializedNumber(n: number): string {
+	return `${n}`;
+}
+
+function serializedString(s: string): string {
+	return `"${s}"`;
+}
+
+function serializedObject(o: any): string {
+	return JSON.stringify(o);
+}
+
+function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
+	const serialized = a.map(serializeItem).join('\n');
+	return `[\n${serialized}\n]`;
+}
+
+new Query<arfsTypes.ArFSDriveEntity>();
