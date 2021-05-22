@@ -1,5 +1,5 @@
 import * as arweave from './../public/arweave';
-import * as arweavePrivate from './arweave_private';
+import * as arweavePrivate from './transactions_private';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
 import { ArDriveUser, ArFSEncryptedData } from '../types/base_Types';

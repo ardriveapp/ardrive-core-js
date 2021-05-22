@@ -6,10 +6,14 @@ ArDrive Core contains the essential back end application features to support the
 
 We use Yarn 2.x please follow the guidelines [here](https://yarnpkg.com/getting-started/install)
 
+We use husky >6.
+
+You will need to run `yarn husky install` to enable hooks locally on your repo
+
 ### VSCode/VSCodium integration:
 
-- Make sure to open ardrive-core.code-workspace
-- Install recomended extensions (
+-   Make sure to open ardrive-core.code-workspace
+-   Install recomended extensions (
 
 arcanis.vscode-zipfs
 
@@ -23,7 +27,7 @@ Remember to use
 
 ```
 yarn install --check-cache
-````
+```
 
 for external PR
 
