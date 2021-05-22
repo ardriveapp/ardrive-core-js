@@ -1,11 +1,10 @@
-import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { weightedRandom } from './../common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
 
 import { appName, appVersion, arFSVersion } from './../constants';
 
-import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, Wallet } from './../types/arfs_Types';
+import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity } from './../types/arfs_Types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
@@ -18,7 +17,7 @@ import Transaction from 'arweave/node/lib/transaction';
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
 // Initialize Arweave
-const arweave = Arweave.init({
+export const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
 	//host: 'arweave.dev', // Arweave Dev Gateway
 	port: 443,
@@ -36,52 +35,12 @@ const deps = {
 // Arweave Bundles are used for ANS102 Transactions
 const arBundles = ArweaveBundles(deps);
 
-// Gets a public key for a given JWK
-export async function getAddressForWallet(walletPrivateKey: JWKInterface): Promise<string> {
-	return arweave.wallets.jwkToAddress(walletPrivateKey);
-}
-
-// Imports an existing wallet as a JWK from a user's local harddrive
-export async function getLocalWallet(
-	existingWalletPath: string
-): Promise<{ walletPrivateKey: JWKInterface; walletPublicKey: string }> {
-	const walletPrivateKey: JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
-	const walletPublicKey = await getAddressForWallet(walletPrivateKey);
-	return { walletPrivateKey, walletPublicKey };
-}
-
-// Get the balance of an Arweave wallet
-export async function getWalletBalance(walletPublicKey: string): Promise<number> {
-	try {
-		let balance = await arweave.wallets.getBalance(walletPublicKey);
-		balance = await arweave.ar.winstonToAr(balance);
-		return +balance;
-	} catch (err) {
-		console.log(err);
-		return 0;
-	}
-}
-
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
 	const response = await fetch(`https://arweave.net/price/${bytes}`);
 	// const response = await fetch(`https://perma.online/price/${bytes}`);
 	const winston = await response.json();
 	return winston;
-}
-
-// Creates a new Arweave wallet JWK comprised of a private key and public key
-export async function createArDriveWallet(): Promise<Wallet> {
-	try {
-		const walletPrivateKey = await arweave.wallets.generate();
-		const walletPublicKey = await getAddressForWallet(walletPrivateKey);
-		console.log('SUCCESS! Your new wallet public address is %s', walletPublicKey);
-		return { walletPrivateKey, walletPublicKey };
-	} catch (err) {
-		console.error('Cannot create Wallet');
-		console.error(err);
-		return Promise.reject(err);
-	}
 }
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
