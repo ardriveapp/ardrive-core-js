@@ -1,6 +1,6 @@
 // arfs.js
 import * as arweave from './../public/arweave';
-import * as arweavePrivate from './arweave_private';
+import * as arweavePrivate from './transactions_private';
 import * as types from './../types/base_Types';
 import * as clientTypes from './../types/client_Types';
 import { fileEncrypt, deriveDriveKey, deriveFileKey, getFileAndEncrypt } from './../crypto';
