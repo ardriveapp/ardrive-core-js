@@ -1,4 +1,4 @@
-import { get, all } from './db';
+import { get, all } from './db_common';
 
 ///////////////////////////////
 // GET SINGLE ITEM FUNCTIONS //

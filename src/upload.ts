@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as arweave from './public/arweave';
 import * as types from './types/base_Types';
-import * as updateDb from './db_update';
-import * as getDb from './db_get';
+import * as updateDb from './db/db_update';
+import * as getDb from './db/db_get';
 import * as common from './common';
 import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from './crypto';
-import { deleteFromSyncTable } from './db_delete';
+import { deleteFromSyncTable } from './db/db_delete';
 import { DataItemJson } from 'arweave-bundles';
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded

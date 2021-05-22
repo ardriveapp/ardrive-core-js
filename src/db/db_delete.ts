@@ -1,4 +1,4 @@
-import { run } from './db';
+import { run } from './db_common';
 
 ////////////////////////
 // DELETING FUNCTIONS //
