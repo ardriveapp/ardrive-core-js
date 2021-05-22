@@ -1,6 +1,6 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { arFSVersion } from './constants';
-import { ArFSPrivateDriveEntity, ArFSPrivateFileData, ArFSPrivateFileFolderEntity } from './types/arfs_Types';
+import { arFSVersion } from './../constants';
+import { ArFSPrivateDriveEntity, ArFSPrivateFileData, ArFSPrivateFileFolderEntity } from './../types/arfs_Types';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';

@@ -1,12 +1,12 @@
 // arfs.js
-import * as arweave from './arweave';
+import * as arweave from './../public/arweave';
 import * as arweavePrivate from './arweave_private';
-import * as types from './types/base_Types';
-import * as clientTypes from './types/client_Types';
-import { fileEncrypt, deriveDriveKey, deriveFileKey, getFileAndEncrypt } from './crypto';
+import * as types from './../types/base_Types';
+import * as clientTypes from './../types/client_Types';
+import { fileEncrypt, deriveDriveKey, deriveFileKey, getFileAndEncrypt } from './../crypto';
 import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
-import { JWKInterface } from './types/arfs_Types';
+import { JWKInterface } from './../types/arfs_Types';
 
 // Tags and creates a new private file data item (ANS-102 bundles) to be bundled and uploaded
 export async function newArFSPrivateFileDataItem(
