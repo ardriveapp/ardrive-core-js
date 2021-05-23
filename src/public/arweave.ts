@@ -13,7 +13,11 @@ import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
 import * as common from './../common';
-import { getFilesToUploadFromSyncTable, getNewDrivesFromDriveTable, getDriveRootFolderFromSyncTable } from '..';
+import {
+	getFilesToUploadFromSyncTable,
+	getNewDrivesFromDriveTable,
+	getDriveRootFolderFromSyncTable
+} from '../db/db_get';
 import { uploadArFSFileData, uploadArFSFileMetaData, uploadArFSDriveMetaData } from './arfs';
 
 // ArDrive Profit Sharing Community Smart Contract
