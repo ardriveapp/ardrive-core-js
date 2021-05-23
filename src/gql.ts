@@ -2303,14 +2303,14 @@ const QUERY_ARGUMENTS_WHITELIST = [
 ];
 
 class Query<T extends arfsTypes.ArFSEntity> {
-	private _parameters: string[] = ['edges.node.id', 'hasNextPage'];
+	private _parameters: string[] = ['edges.node.id'];
 	private edges: gqlTypes.GQLEdgeInterface[] = [];
 	private hasNextPage = true;
 	private cursor = '';
 	owners?: string[];
 	tags?: { name: string; values: string | string[] }[];
-	block?: { min: number };
 	first?: number;
+	lastDriveBlockHeight?: number;
 
 	set parameters(parameters: string[]) {
 		if (!this._validateArguments(parameters)) {
@@ -2381,8 +2381,9 @@ class Query<T extends arfsTypes.ArFSEntity> {
 				data.tags = serializedArray(this.tags, serializedObject);
 			}
 		}
-		if (this.block) {
-			data.block = serializedObject(this.block);
+		if (this.lastDriveBlockHeight) {
+			const min = this.lastDriveBlockHeight > 5 ? this.lastDriveBlockHeight - 5 : this.lastDriveBlockHeight;
+			data.block = serializedObject({ min });
 		}
 		if (this.first) {
 			data.first = serializedNumber(this.first);
@@ -2418,20 +2419,24 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	};
 
 	private _getParametersObject = (): { [key: string]: any } => {
-		const normalizedParameters = this._parameters.reduce((params: any, p: string): any => {
-			const object: any = {};
-			const nodes = p.split('.');
-			let o = object;
-			nodes.forEach((n) => {
-				if (!o[n]) {
-					o[n] = {};
-					o = o[n];
-				}
-			});
-			return Object.apply(params, object);
-		}, {} as any);
+		const normalizedParameters: any = this._parameters.reduce(
+			(params: any, path: string): any => pathToObjectAttributes(path, Object.assign({}, params)),
+			{}
+		);
 		return normalizedParameters;
 	};
+}
+
+function pathToObjectAttributes(path: string, object: any = {}): any {
+	const nodes = path.split('.');
+	let pointerObject = object;
+	nodes.forEach((propertyName) => {
+		if (!pointerObject[propertyName]) {
+			pointerObject[propertyName] = {};
+		}
+		pointerObject = pointerObject[propertyName];
+	});
+	return object;
 }
 
 function serializedNumber(n: number): string {
@@ -2450,5 +2455,3 @@ function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
 	const serialized = a.map(serializeItem).join('\n');
 	return `[\n${serialized}\n]`;
 }
-
-new Query<arfsTypes.ArFSDriveEntity>();
