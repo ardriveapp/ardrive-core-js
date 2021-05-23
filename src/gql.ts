@@ -2307,6 +2307,8 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	private edges: gqlTypes.GQLEdgeInterface[] = [];
 	private hasNextPage = true;
 	private cursor = '';
+	private triesCount = 0;
+	private MAX_TRIES_COUNT = 5;
 	owners?: string[];
 	tags?: { name: string; values: string | string[] }[];
 	first?: number;
@@ -2350,20 +2352,37 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	};
 
 	private _run = async (): Promise<void> => {
-		const queryString = this._toString();
+		const query = this._getQueryString();
+		let gqlUrl = primaryGraphQLURL;
+		this.triesCount = 0;
+		this.hasNextPage = true;
 		while (this.hasNextPage) {
-			const response = await arweave.api.post(primaryGraphQLURL, queryString);
-			const { data } = response.data;
-			const { transactions } = data;
-			if (transactions.edges && transactions.edges.length) {
-				this.edges = this.edges.concat(transactions.edges);
-				this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
+			const response = await arweave.api.post(gqlUrl, query).catch((e) => {
+				if (this.triesCount === this.MAX_TRIES_COUNT) {
+					console.info(
+						`The primary GQL server has failed ${this.MAX_TRIES_COUNT} times, will now try the backup server`
+					);
+					gqlUrl = backupGraphQLURL;
+				} else if (this.triesCount === this.MAX_TRIES_COUNT * 2) {
+					throw new Error('Max tries exceeded');
+				}
+				this.triesCount++;
+				return null;
+			});
+			if (response) {
+				const { data } = response.data;
+				const { transactions } = data;
+				if (transactions.edges && transactions.edges.length) {
+					this.edges = this.edges.concat(transactions.edges);
+					this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
+				}
+				this.hasNextPage =
+					this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
 			}
-			this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
 		}
 	};
 
-	private _toString = () => {
+	private _getQueryString = () => {
 		const serializedTransactionData = this._getSerializedTransactionData();
 		const serializedQueryParameters = this._getSerializedParameters();
 		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
