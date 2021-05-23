@@ -1,9 +1,10 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { weightedRandom } from './../common';
+import { sleep, weightedRandom } from './../common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
-
-import { appName, appVersion, arFSVersion } from './../constants';
-
+import { getLatestFolderVersionFromSyncTable } from './../db/db_get';
+import { setFilePath } from './../db/db_update';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { appName, appVersion, arFSVersion, gatewayURL } from './../constants';
 import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity } from './../types/arfs_Types';
 import { readContract } from 'smartweave';
 import Arweave from 'arweave';
@@ -12,7 +13,11 @@ import ArweaveBundles from 'arweave-bundles';
 import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
-
+import path, { dirname } from 'path';
+import { createWriteStream } from 'fs';
+import Axios from 'axios';
+import ProgressBar from 'progress';
+import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
@@ -624,5 +629,110 @@ export async function prepareArFSBundledDataTransaction(
 		console.log('Error creating data bundle');
 		console.log(err);
 		return null;
+	}
+}
+// Downloads a single file from ArDrive by transaction
+export async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFileMetaData) {
+	try {
+		// Get the parent folder's path
+		const parentFolder: ArFSFileMetaData = await getLatestFolderVersionFromSyncTable(fileToDownload.parentFolderId);
+
+		// Check if this file's path has the right path from its parent folder.  This ensures folders moved on the web are properly moved locally
+		if (parentFolder.filePath !== path.dirname(fileToDownload.filePath)) {
+			// Update the file path in the database
+			console.log('Fixing file path to ', parentFolder.filePath);
+			fileToDownload.filePath = path.join(parentFolder.filePath, fileToDownload.fileName);
+			await setFilePath(fileToDownload.filePath, fileToDownload.id);
+		}
+
+		// Check if this is a folder.  If it is, we dont need to download anything and we create the folder.
+		const folderPath = dirname(fileToDownload.filePath);
+		if (!existsSync(folderPath)) {
+			mkdirSync(folderPath, { recursive: true });
+			await sleep(100);
+		}
+
+		const dataTxUrl = gatewayURL.concat(fileToDownload.dataTxId);
+		// Public files do not need decryption
+		if (+fileToDownload.isPublic === 1) {
+			console.log('Downloading %s', fileToDownload.filePath);
+			const writer = createWriteStream(fileToDownload.filePath);
+			const response = await Axios({
+				method: 'get',
+				url: dataTxUrl,
+				responseType: 'stream'
+			});
+			const totalLength = response.headers['content-length'];
+			const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+				width: 40,
+				complete: '=',
+				incomplete: ' ',
+				renderThrottle: 1,
+				total: parseInt(totalLength)
+			});
+
+			response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length));
+			response.data.pipe(writer);
+
+			return new Promise((resolve, reject) => {
+				writer.on('error', (err) => {
+					writer.close();
+					reject(err);
+				});
+				writer.on('close', () => {
+					console.log('   Completed!', fileToDownload.filePath);
+					resolve(true);
+				});
+			});
+		} else {
+			// File is private and we must decrypt it
+			console.log('Downloading and decrypting %s', fileToDownload.filePath);
+			const writer = createWriteStream(fileToDownload.filePath);
+			const response = await Axios({
+				method: 'get',
+				url: dataTxUrl,
+				responseType: 'stream'
+			});
+			const totalLength = response.headers['content-length'];
+			const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+				width: 40,
+				complete: '=',
+				incomplete: ' ',
+				renderThrottle: 1,
+				total: parseInt(totalLength)
+			});
+
+			response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length));
+			response.data.pipe(writer);
+
+			return new Promise((resolve, reject) => {
+				writer.on('error', (err) => {
+					writer.close();
+					console.log(user);
+					reject(err);
+				});
+				writer.on('close', async () => {
+					// Once the file is finished being streamed, we read it and decrypt it.
+					const data = readFileSync(fileToDownload.filePath);
+					const dataBuffer = Buffer.from(data);
+					const driveKey: Buffer = await deriveDriveKey(
+						user.dataProtectionKey,
+						fileToDownload.driveId,
+						user.walletPrivateKey
+					);
+					const fileKey: Buffer = await deriveFileKey(fileToDownload.fileId, driveKey);
+					const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
+
+					// Overwrite the file with the decrypted version
+					writeFileSync(fileToDownload.filePath, decryptedData);
+					console.log('   Completed!', fileToDownload.filePath);
+					resolve(true);
+				});
+			});
+		}
+	} catch (err) {
+		//console.log(err);
+		console.log('Error downloading file data %s to %s', fileToDownload.fileName, fileToDownload.filePath);
+		return 'Error downloading file';
 	}
 }
