@@ -2309,6 +2309,7 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	private cursor = '';
 	private triesCount = 0;
 	private MAX_TRIES_COUNT = 5;
+	ids?: string[];
 	owners?: string[];
 	tags?: { name: string; values: string | string[] }[];
 	first?: number;
@@ -2390,6 +2391,9 @@ class Query<T extends arfsTypes.ArFSEntity> {
 
 	private _getSerializedTransactionData = (): string => {
 		const data: any = {};
+		if (this.ids) {
+			data.ids = serializedArray(this.ids, serializedString);
+		}
 		if (this.owners) {
 			data.owners = serializedArray(this.owners, serializedString);
 		}
