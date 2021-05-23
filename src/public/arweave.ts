@@ -1,7 +1,12 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { sleep, weightedRandom } from './../common';
+import { asyncForEach, sleep, weightedRandom } from './../common';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
-import { getLatestFolderVersionFromSyncTable } from './../db/db_get';
+import {
+	getDriveRootFolderFromSyncTable,
+	getFilesToUploadFromSyncTable,
+	getLatestFolderVersionFromSyncTable,
+	getNewDrivesFromDriveTable
+} from './../db/db_get';
 import { setFilePath } from './../db/db_update';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { appName, appVersion, arFSVersion, gatewayURL } from './../constants';
@@ -18,6 +23,8 @@ import { createWriteStream } from 'fs';
 import Axios from 'axios';
 import ProgressBar from 'progress';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
+import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './arfs';
+
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
@@ -734,5 +741,69 @@ export async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload:
 		//console.log(err);
 		console.log('Error downloading file data %s to %s', fileToDownload.fileName, fileToDownload.filePath);
 		return 'Error downloading file';
+
+		// Uploads all queued files as V2 transactions ONLY with no data bundles
+	}
+}
+export async function uploadArDriveFiles(user: ArDriveUser): Promise<string> {
+	try {
+		let filesUploaded = 0;
+		let totalPrice = 0;
+		console.log('---Uploading All Queued Files and Folders---');
+		const filesToUpload = getFilesToUploadFromSyncTable(user.login);
+		if (Object.keys(filesToUpload).length > 0) {
+			// Ready to upload
+			await asyncForEach(filesToUpload, async (fileToUpload: ArFSFileMetaData) => {
+				if (fileToUpload.entityType === 'file') {
+					// console.log ("Uploading file - %s", fileToUpload.fileName)
+					// Check to see if we have to upload the File Data and Metadata
+					// If not, we just check to see if we have to update metadata.
+					if (+fileToUpload.fileDataSyncStatus === 1) {
+						console.log('Uploading file data and metadata - %s', fileToUpload.fileName);
+						const uploadedFile = await uploadArFSFileData(user, fileToUpload);
+						fileToUpload.dataTxId = uploadedFile.dataTxId;
+						totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
+						await uploadArFSFileMetaData(user, fileToUpload);
+					} else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
+						console.log('Uploading file metadata only - %s', fileToUpload.fileName);
+						await uploadArFSFileMetaData(user, fileToUpload);
+					}
+				} else if (fileToUpload.entityType === 'folder') {
+					console.log('Uploading folder - %s', fileToUpload.fileName);
+					await uploadArFSFileMetaData(user, fileToUpload);
+				}
+				filesUploaded += 1;
+			});
+		}
+		if (filesUploaded > 0) {
+			// Send the tip to the ArDrive community
+			await sendArDriveFee(user.walletPrivateKey, totalPrice);
+			console.log('Uploaded %s files to your ArDrive!', filesUploaded);
+
+			// Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
+			// Check for unsynced drive entities and create if necessary
+			const newDrives: ArFSFileMetaData[] = getNewDrivesFromDriveTable(user.login);
+			if (newDrives.length > 0) {
+				console.log('   Wow that was your first ARDRIVE Transaction!  Congrats!');
+				console.log(
+					'   Lets finish setting up your profile by submitting a few more small transactions to the network.'
+				);
+				await asyncForEach(newDrives, async (newDrive: ArFSDriveMetaData) => {
+					// Create the Drive metadata transaction as submit as V2
+					const success = await uploadArFSDriveMetaData(user, newDrive);
+					if (success) {
+						// Create the Drive Root folder and submit as V2 transaction
+						const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
+							newDrive.rootFolderId
+						);
+						await uploadArFSFileMetaData(user, driveRootFolder);
+					}
+				});
+			}
+		}
+		return 'SUCCESS';
+	} catch (err) {
+		console.log(err);
+		return 'ERROR processing files';
 	}
 }
