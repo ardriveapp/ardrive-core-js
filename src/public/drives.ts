@@ -1,11 +1,17 @@
+import * as fs from 'fs';
+import path from 'path';
+
+import * as arweave from './arweave';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
-import { ArDriveUser } from '../types/base_Types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 import { ArFSLocalFile, ArFSLocalDriveEntity } from '../types/client_Types';
 import { newArFSFileMetaData } from './arfs';
 import { v4 as uuidv4 } from 'uuid';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { appName, appVersion, arFSVersion } from '../constants';
+import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
+import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
@@ -134,5 +140,78 @@ export async function createAndUploadArFSDriveAndRootFolder(
 	} catch (err) {
 		console.log(err);
 		return false;
+	}
+}
+
+// Add a Shared Public drive, using a DriveId
+export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): Promise<string> {
+	try {
+		// Get the drive information from arweave
+		const sharedPublicDrive: ArFSDriveMetaData = await getSharedPublicDrive(driveId);
+
+		// If there is no meta data tx id, then the drive id does not exist or has not been mined yet
+		if (sharedPublicDrive.metaDataTxId === '0') {
+			return 'Invalid';
+		}
+
+		// Set the drives login
+		sharedPublicDrive.login = user.login;
+
+		// Set the drive to sync locally
+		sharedPublicDrive.isLocal = 1;
+
+		// Check if the drive path exists, if not, create it
+		const drivePath: string = path.join(user.syncFolderPath, sharedPublicDrive.driveName);
+		if (!fs.existsSync(drivePath)) {
+			fs.mkdirSync(drivePath);
+		}
+
+		// Get the root folder ID for this drive
+		const metaDataTxId = await getPublicDriveRootFolderTxId(
+			sharedPublicDrive.driveId,
+			sharedPublicDrive.rootFolderId
+		);
+
+		// Setup Drive Root Folder
+		const driveRootFolderToAdd: ArFSFileMetaData = {
+			id: 0,
+			login: user.login,
+			appName: sharedPublicDrive.appName,
+			appVersion: sharedPublicDrive.appVersion,
+			unixTime: sharedPublicDrive.unixTime,
+			contentType: 'application/json',
+			entityType: 'folder',
+			driveId: sharedPublicDrive.driveId,
+			parentFolderId: '0', // Root folders have no parent folder ID.
+			fileId: sharedPublicDrive.rootFolderId,
+			filePath: drivePath,
+			fileName: sharedPublicDrive.driveName,
+			fileHash: '0',
+			fileSize: 0,
+			lastModifiedDate: sharedPublicDrive.unixTime,
+			fileVersion: 0,
+			isPublic: 1,
+			isLocal: 1,
+			metaDataTxId,
+			dataTxId: '0',
+			permaWebLink: '',
+			fileDataSyncStatus: 0, // Folders do not require a data tx
+			fileMetaDataSyncStatus: 3,
+			cipher: '',
+			dataCipherIV: '',
+			metaDataCipherIV: '',
+			cloudOnly: 0
+		};
+
+		// Add Drive to Drive Table
+		await addDriveToDriveTable(sharedPublicDrive);
+		await setDriveToSync(sharedPublicDrive.driveId);
+
+		// Add the Root Folder to the Sync Table
+		await addFileToSyncTable(driveRootFolderToAdd);
+		return sharedPublicDrive.driveName;
+	} catch (err) {
+		console.log(err);
+		return 'Invalid';
 	}
 }
