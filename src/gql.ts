@@ -5,6 +5,7 @@ import * as gqlTypes from './types/gql_Types';
 import { getTransactionData } from './public/arweave';
 import { deriveDriveKey, driveDecrypt } from './crypto';
 import Arweave from 'arweave';
+import { AxiosResponse } from 'axios';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -2309,11 +2310,48 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	private cursor = '';
 	private triesCount = 0;
 	private MAX_TRIES_COUNT = 5;
-	ids?: string[];
-	owners?: string[];
-	tags?: { name: string; values: string | string[] }[];
-	first?: number;
-	lastDriveBlockHeight?: number;
+	private gqlUrl = primaryGraphQLURL;
+
+	public ids?: string[];
+	public owners?: string[];
+	public tags?: { name: string; values: string | string[] }[];
+	public first?: number;
+	public lastDriveBlockHeight?: number;
+
+	private get parsedIds(): string | false {
+		return !!this.ids && serializedArray(this.ids, serializedString);
+	}
+
+	private get parsedOwners(): string | false {
+		return !!this.owners && serializedArray(this.owners, serializedString);
+	}
+
+	private get parsedTags(): string | false {
+		const tags = this.tags?.map((tag) => {
+			const parsedValue = Array.isArray(tag.values)
+				? serializedArray(tag.values, serializedString)
+				: serializedString(tag.values);
+			return { name: tag.name, value: parsedValue };
+		});
+		return !!tags && serializedArray(tags, serializedObject);
+	}
+
+	private get parsedFirst(): string | false {
+		return !!this.first && serializedNumber(this.first);
+	}
+
+	private get parsedBlock(): string | false {
+		if (this.lastDriveBlockHeight) {
+			const min = this.lastDriveBlockHeight > 5 ? this.lastDriveBlockHeight - 5 : this.lastDriveBlockHeight;
+			const block = serializedObject({ min });
+			return serializedObject(block);
+		}
+		return false;
+	}
+
+	private get parsedAfter(): string | false {
+		return !!this.cursor && serializedString(this.cursor);
+	}
 
 	set parameters(parameters: string[]) {
 		if (!this._validateArguments(parameters)) {
@@ -2354,33 +2392,37 @@ class Query<T extends arfsTypes.ArFSEntity> {
 
 	private _run = async (): Promise<void> => {
 		const query = this._getQueryString();
-		let gqlUrl = primaryGraphQLURL;
 		this.triesCount = 0;
 		this.hasNextPage = true;
 		while (this.hasNextPage) {
-			const response = await arweave.api.post(gqlUrl, query).catch((e) => {
-				if (this.triesCount === this.MAX_TRIES_COUNT) {
-					console.info(
-						`The primary GQL server has failed ${this.MAX_TRIES_COUNT} times, will now try the backup server`
-					);
-					gqlUrl = backupGraphQLURL;
-				} else if (this.triesCount === this.MAX_TRIES_COUNT * 2) {
-					throw new Error('Max tries exceeded');
-				}
-				this.triesCount++;
-				return null;
-			});
+			const response = await arweave.api.post(this.gqlUrl, query).catch(this._handleError);
 			if (response) {
-				const { data } = response.data;
-				const { transactions } = data;
-				if (transactions.edges && transactions.edges.length) {
-					this.edges = this.edges.concat(transactions.edges);
-					this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
-				}
-				this.hasNextPage =
-					this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
+				this._handleResponse(response);
 			}
 		}
+	};
+
+	private _handleError = (e: Error): false => {
+		if (this.triesCount === this.MAX_TRIES_COUNT) {
+			console.info(
+				`The primary GQL server has failed ${this.MAX_TRIES_COUNT} times, will now try the backup server`
+			);
+			this.gqlUrl = backupGraphQLURL;
+		} else if (this.triesCount === this.MAX_TRIES_COUNT * 2) {
+			throw new Error('Max tries exceeded');
+		}
+		this.triesCount++;
+		return false;
+	};
+
+	private _handleResponse = (response: AxiosResponse): void => {
+		const { data } = response.data;
+		const { transactions } = data;
+		if (transactions.edges && transactions.edges.length) {
+			this.edges = this.edges.concat(transactions.edges);
+			this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
+		}
+		this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
 	};
 
 	private _getQueryString = () => {
@@ -2390,31 +2432,15 @@ class Query<T extends arfsTypes.ArFSEntity> {
 	};
 
 	private _getSerializedTransactionData = (): string => {
-		const data: any = {};
-		if (this.ids) {
-			data.ids = serializedArray(this.ids, serializedString);
-		}
-		if (this.owners) {
-			data.owners = serializedArray(this.owners, serializedString);
-		}
-		if (this.tags) {
-			if (typeof this.tags === 'string') {
-				data.tags = serializedString(this.tags);
-			} else {
-				data.tags = serializedArray(this.tags, serializedObject);
-			}
-		}
-		if (this.lastDriveBlockHeight) {
-			const min = this.lastDriveBlockHeight > 5 ? this.lastDriveBlockHeight - 5 : this.lastDriveBlockHeight;
-			data.block = serializedObject({ min });
-		}
-		if (this.first) {
-			data.first = serializedNumber(this.first);
-		}
-		if (this.cursor) {
-			data.after = serializedString(this.cursor);
-		}
-		const dataKeys = Object.keys(data);
+		const data: { [key: string]: string | false } = {
+			ids: this.parsedIds,
+			owners: this.parsedOwners,
+			tags: this.parsedTags,
+			block: this.parsedBlock,
+			first: this.parsedFirst,
+			after: this.parsedAfter
+		};
+		const dataKeys = Object.keys(data).filter((key) => typeof data[key] === 'string');
 		const serializedData = dataKeys.map((key) => `${key}: ${data[key]}`).join('\n');
 		return serializedData;
 	};
@@ -2462,8 +2488,12 @@ function pathToObjectAttributes(path: string, object: any = {}): any {
 	return object;
 }
 
-function serializedNumber(n: number): string {
-	return `${n}`;
+function serializedNumber(n: number) {
+	return serializedRaw(n);
+}
+
+function serializedRaw(r: any): string {
+	return `${r}`;
 }
 
 function serializedString(s: string): string {
