@@ -1,5 +1,4 @@
 // arfs.js
-import * as arweave from './../public/arweave';
 import * as arweavePrivate from './transactions_private';
 import * as types from './../types/base_Types';
 import * as clientTypes from './../types/client_Types';
@@ -7,6 +6,8 @@ import { fileEncrypt, deriveDriveKey, deriveFileKey, getFileAndEncrypt } from '.
 import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import { JWKInterface } from './../types/arfs_Types';
+import { createFileDataItemTransaction } from '../bundles';
+import { createDataUploader } from '../transactions';
 
 // Tags and creates a new private file data item (ANS-102 bundles) to be bundled and uploaded
 export async function newArFSPrivateFileDataItem(
@@ -36,7 +37,7 @@ export async function newArFSPrivateFileDataItem(
 		file.data.cipher = encryptedData.cipher;
 
 		// Get a signed data item for the encrypted data
-		dataItem = await arweave.createFileDataItemTransaction(encryptedData.data, file.data, walletPrivateKey);
+		dataItem = await createFileDataItemTransaction(encryptedData.data, file.data, walletPrivateKey);
 
 		if (typeof dataItem != 'string') {
 			console.log('SUCCESS %s data item was created with TX %s', file.path, dataItem.id);
@@ -203,7 +204,7 @@ export async function newArFSPrivateFileData(
 		file.data.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { file, uploader };
 	} catch (err) {
@@ -258,7 +259,7 @@ export async function newArFSPrivateFileMetaData(
 		file.entity.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { file, uploader };
 	} catch (err) {
@@ -275,7 +276,6 @@ export async function newArFSPrivateFolderMetaData(
 	let transaction;
 	let secondaryFileMetaDataTags = {};
 	try {
-
 		// create secondary metadata specifically for a folder
 		secondaryFileMetaDataTags = {
 			name: folder.entity.name
@@ -310,7 +310,7 @@ export async function newArFSPrivateFolderMetaData(
 		folder.entity.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { folder, uploader };
 	} catch (err) {

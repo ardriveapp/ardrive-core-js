@@ -7,7 +7,9 @@ import * as getDb from './db/db_get';
 import * as updateDb from './db/db_update';
 import * as gql from './gql';
 import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
-import { getLatestBlockHeight, getTransactionData, downloadArDriveFileByTx } from './public/arweave';
+import { downloadArDriveFileByTx } from './public/arweave';
+import { getLatestBlockHeight, getTransactionData } from './gateway';
+
 import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
 
