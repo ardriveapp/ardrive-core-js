@@ -2,26 +2,17 @@
 import * as fs from 'fs';
 import path from 'path';
 import { Path } from 'typescript';
-import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId, getSharedPublicDrive } from './gql';
+import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './gql';
 import { asyncForEach, moveFolder } from './common';
-import { encryptText, decryptText } from './crypto';
-import {
-	addDriveToDriveTable,
-	addFileToSyncTable,
-	createArDriveProfile,
-	setDriveToSync,
-	updateFilePathInSyncTable,
-	updateUserSyncFolderPathInProfileTable
-} from './db/db_update';
+import { addFileToSyncTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from './db/db_update';
 import {
 	getAllDrivesByLoginFromDriveTable,
 	getAllFilesByLoginFromSyncTable,
 	getFolderFromSyncTable,
-	getSyncFolderPathFromProfile,
-	getUserFromProfile
+	getSyncFolderPathFromProfile
 } from './db/db_get';
-import { removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db/db_delete';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types/base_Types';
+import { removeByDriveIdFromSyncTable, removeFromDriveTable } from './db/db_delete';
+import { ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types/base_Types';
 
 // This creates all of the Drives found for the user
 export async function setupDrives(login: string, syncFolderPath: string): Promise<string> {
@@ -108,22 +99,6 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 	}
 }
 
-// Encrypts the user's keys and adds a user to the database
-export async function addNewUser(loginPassword: string, user: ArDriveUser): Promise<string> {
-	try {
-		const encryptedWalletPrivateKey = await encryptText(user.walletPrivateKey, loginPassword);
-		const encryptedDataProtectionKey = await encryptText(user.dataProtectionKey, loginPassword);
-		user.dataProtectionKey = JSON.stringify(encryptedDataProtectionKey);
-		user.walletPrivateKey = JSON.stringify(encryptedWalletPrivateKey);
-		await createArDriveProfile(user);
-		console.log('New ArDrive user added!');
-		return 'Success';
-	} catch (err) {
-		console.log(err);
-		return 'Error';
-	}
-}
-
 // Changes the sync folder path for a user, and updates every file for that user in the sync database and moves every file to the new location
 // The sync folder contains all downloaded drives, folders and files
 export async function updateUserSyncFolderPath(login: string, newSyncFolderPath: string): Promise<string> {
@@ -155,94 +130,6 @@ export async function updateUserSyncFolderPath(login: string, newSyncFolderPath:
 		return 'Error';
 	}
 }
-// Add a Shared Public drive, using a DriveId
-export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): Promise<string> {
-	try {
-		// Get the drive information from arweave
-		const sharedPublicDrive: ArFSDriveMetaData = await getSharedPublicDrive(driveId);
-
-		// If there is no meta data tx id, then the drive id does not exist or has not been mined yet
-		if (sharedPublicDrive.metaDataTxId === '0') {
-			return 'Invalid';
-		}
-
-		// Set the drives login
-		sharedPublicDrive.login = user.login;
-
-		// Set the drive to sync locally
-		sharedPublicDrive.isLocal = 1;
-
-		// Check if the drive path exists, if not, create it
-		const drivePath: string = path.join(user.syncFolderPath, sharedPublicDrive.driveName);
-		if (!fs.existsSync(drivePath)) {
-			fs.mkdirSync(drivePath);
-		}
-
-		// Get the root folder ID for this drive
-		const metaDataTxId = await getPublicDriveRootFolderTxId(
-			sharedPublicDrive.driveId,
-			sharedPublicDrive.rootFolderId
-		);
-
-		// Setup Drive Root Folder
-		const driveRootFolderToAdd: ArFSFileMetaData = {
-			id: 0,
-			login: user.login,
-			appName: sharedPublicDrive.appName,
-			appVersion: sharedPublicDrive.appVersion,
-			unixTime: sharedPublicDrive.unixTime,
-			contentType: 'application/json',
-			entityType: 'folder',
-			driveId: sharedPublicDrive.driveId,
-			parentFolderId: '0', // Root folders have no parent folder ID.
-			fileId: sharedPublicDrive.rootFolderId,
-			filePath: drivePath,
-			fileName: sharedPublicDrive.driveName,
-			fileHash: '0',
-			fileSize: 0,
-			lastModifiedDate: sharedPublicDrive.unixTime,
-			fileVersion: 0,
-			isPublic: 1,
-			isLocal: 1,
-			metaDataTxId,
-			dataTxId: '0',
-			permaWebLink: '',
-			fileDataSyncStatus: 0, // Folders do not require a data tx
-			fileMetaDataSyncStatus: 3,
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		};
-
-		// Add Drive to Drive Table
-		await addDriveToDriveTable(sharedPublicDrive);
-		await setDriveToSync(sharedPublicDrive.driveId);
-
-		// Add the Root Folder to the Sync Table
-		await addFileToSyncTable(driveRootFolderToAdd);
-		return sharedPublicDrive.driveName;
-	} catch (err) {
-		console.log(err);
-		return 'Invalid';
-	}
-}
-
-// Deletes a user and all of their associated drives and files in the database
-export async function deleteUserAndDrives(login: string): Promise<string> {
-	// Delete profile matching login
-	await removeFromProfileTable(login);
-	// Get DriveIDs for login
-	const drivesToDelete: ArFSDriveMetaData[] = await getAllDrivesByLoginFromDriveTable(login);
-	// Delete drives and files matching login
-	await asyncForEach(drivesToDelete, async (drive: ArFSDriveMetaData) => {
-		// Delete files in the sync table with matching DriveIDs
-		await removeByDriveIdFromSyncTable(drive.driveId);
-		// Remove the drive itself from the Drive Table
-		await removeFromDriveTable(drive.driveId);
-	});
-	return 'Success';
-}
 
 // Deletes a single drive and its files in the database
 export async function deleteDrive(driveId: string): Promise<string> {
@@ -251,29 +138,4 @@ export async function deleteDrive(driveId: string): Promise<string> {
 
 	// This should also stop the Chokidar folder watch if it has started
 	return 'Success';
-}
-
-// Checks if the user's password is valid
-export async function passwordCheck(loginPassword: string, login: string): Promise<boolean> {
-	try {
-		const user: ArDriveUser = await getUserFromProfile(login);
-		user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
-		if (user.walletPrivateKey === 'ERROR') {
-			return false;
-		}
-		return true;
-	} catch (err) {
-		return false;
-	}
-}
-
-// Decrypts user's private key information and unlocks their ArDrive
-export async function getUser(loginPassword: string, login: string): Promise<ArDriveUser> {
-	const user: ArDriveUser = await getUserFromProfile(login);
-	user.dataProtectionKey = await decryptText(JSON.parse(user.dataProtectionKey), loginPassword);
-	user.walletPrivateKey = await decryptText(JSON.parse(user.walletPrivateKey), loginPassword);
-	console.log('');
-	console.log('ArDrive unlocked!!');
-	console.log('');
-	return user;
 }
