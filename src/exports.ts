@@ -9,3 +9,8 @@ export * from './crypto';
 export * from './db/db_common';
 export * from './db/db_get';
 export * from './db/db_update';
+export * from './gateway';
+export * from './bundles';
+export * from './node';
+export * from './smartweave';
+export * from './transactions';

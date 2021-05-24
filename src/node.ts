@@ -1,9 +1,17 @@
-import * as arweave from './public/arweave';
 import * as types from './types/base_Types';
 import * as updateDb from './db/db_update';
 import * as getDb from './db/db_get';
 import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
+import { getTransactionStatus } from './gateway';
+import { getArDriveFee } from './smartweave';
+// Gets the price of AR based on amount of data
+export async function getWinston(bytes: number): Promise<number> {
+	const response = await fetch(`https://arweave.net/price/${bytes}`);
+	// const response = await fetch(`https://perma.online/price/${bytes}`);
+	const winston = await response.json();
+	return winston;
+}
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
 export async function checkUploadStatus(login: string): Promise<string> {
@@ -15,7 +23,7 @@ export async function checkUploadStatus(login: string): Promise<string> {
 		// Get all data bundles that need to have their V2 transactions checked (bundleSyncStatus of 2)
 		const unsyncedBundles: types.ArDriveBundle[] = getDb.getAllUploadedBundlesFromBundleTable(login);
 		await common.asyncForEach(unsyncedBundles, async (unsyncedBundle: types.ArDriveBundle) => {
-			status = await arweave.getTransactionStatus(unsyncedBundle.bundleTxId);
+			status = await getTransactionStatus(unsyncedBundle.bundleTxId);
 			// Status 200 means the file has been mined
 			if (status === 200) {
 				console.log('SUCCESS! Data bundle was uploaded with TX of %s', unsyncedBundle.bundleTxId);
@@ -62,7 +70,7 @@ export async function checkUploadStatus(login: string): Promise<string> {
 		await common.asyncForEach(unsyncedFiles, async (unsyncedFile: types.ArFSFileMetaData) => {
 			// Is the file data uploaded on the web?
 			if (+unsyncedFile.fileDataSyncStatus === 2) {
-				status = await arweave.getTransactionStatus(unsyncedFile.dataTxId);
+				status = await getTransactionStatus(unsyncedFile.dataTxId);
 				if (status === 200) {
 					permaWebLink = common.gatewayURL.concat(unsyncedFile.dataTxId);
 					console.log(
@@ -93,7 +101,7 @@ export async function checkUploadStatus(login: string): Promise<string> {
 
 			// Is the file metadata uploaded on the web?
 			if (+unsyncedFile.fileMetaDataSyncStatus === 2) {
-				status = await arweave.getTransactionStatus(unsyncedFile.metaDataTxId);
+				status = await getTransactionStatus(unsyncedFile.metaDataTxId);
 				if (status === 200) {
 					permaWebLink = common.gatewayURL.concat(unsyncedFile.dataTxId);
 					console.log(
@@ -128,7 +136,7 @@ export async function checkUploadStatus(login: string): Promise<string> {
 		// Get all drives that need to have their transactions checked (metaDataSyncStatus of 2)
 		const unsyncedDrives: types.ArFSDriveMetaData[] = getDb.getAllUploadedDrivesFromDriveTable();
 		await common.asyncForEach(unsyncedDrives, async (unsyncedDrive: types.ArFSDriveMetaData) => {
-			status = await arweave.getTransactionStatus(unsyncedDrive.metaDataTxId);
+			status = await getTransactionStatus(unsyncedDrive.metaDataTxId);
 			if (status === 200) {
 				console.log(
 					'SUCCESS! %s Drive metadata was uploaded with TX of %s',
@@ -176,7 +184,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 	const filesToUpload: types.ArFSFileMetaData[] = getDb.getFilesToUploadFromSyncTable(login);
 	if (Object.keys(filesToUpload).length > 0) {
 		// Estimate the size by getting the size of 1MB
-		const priceFor1MB = await arweave.getWinston(1000000);
+		const priceFor1MB = await getWinston(1000000);
 		const pricePerByte = priceFor1MB / 1003210;
 
 		// Calculate the size/price for each file/folder
@@ -215,7 +223,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 		const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
 
 		// Add the ArDrive fee
-		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * ((await arweave.getArDriveFee()) / 100);
+		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * ((await getArDriveFee()) / 100);
 		if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
 			arDriveFee = 0.00001;
 		}
