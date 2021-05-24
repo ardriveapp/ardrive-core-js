@@ -1,9 +1,9 @@
-import * as arweave from './public/arweave';
+import { arweave, sendArDriveFee } from './public/arweave';
 import * as types from './types/base_Types';
 import * as updateDb from './db/db_update';
 import * as getDb from './db/db_get';
 import * as common from './common';
-import { DataItemJson } from 'arweave-bundles';
+import ArweaveBundles, { DataItemJson } from 'arweave-bundles';
 import {
 	createArFSFileDataItem,
 	createArFSFileMetaDataItem,
@@ -12,6 +12,22 @@ import {
 	uploadArFSFileData,
 	uploadArFSFileMetaData
 } from './public/arfs';
+import { ArFSFileData, ArFSFileFolderEntity, JWKInterface } from './types/arfs_Types';
+import Transaction from 'arweave/node/lib/transaction';
+import { appName, appVersion, arFSVersion } from './constants';
+import Arweave from 'arweave';
+import deepHash from 'arweave/node/lib/deepHash';
+import { getWinston } from './node';
+
+// Initialize the arweave-bundles API used for ANS102 Transactions
+const deps = {
+	utils: Arweave.utils,
+	crypto: Arweave.crypto,
+	deepHash: deepHash
+};
+
+// Arweave Bundles are used for ANS102 Transactions
+const arBundles = ArweaveBundles(deps);
 
 // Uploads all queued files as v2 transactions (files bigger than 50mb) and data bundles (capped at 50mb)
 export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Promise<string> {
@@ -44,7 +60,7 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 					const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, filesToUpload[n]);
 					if (fileDataItem !== null) {
 						// Get the price of this upload
-						const winston = await arweave.getWinston(filesToUpload[n].fileSize);
+						const winston = await getWinston(filesToUpload[n].fileSize);
 						totalSize += filesToUpload[n].fileSize;
 						totalARPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 						filesToUpload[n].dataTxId = fileDataItem.id;
@@ -95,7 +111,7 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 		// If any bundles or large files have been uploaded, we send the ArDrive Profit Sharing Tip and create drive transaction if necessary
 		if (bundledFilesUploaded > 0 || filesUploaded > 0) {
 			// Send the tip to a random ArDrive community member
-			await arweave.sendArDriveFee(user.walletPrivateKey, totalARPrice);
+			await sendArDriveFee(user.walletPrivateKey, totalARPrice);
 			const totalUSDPrice = totalARPrice * (await common.getArUSDPrice());
 			console.log(
 				'Uploaded %s file(s) (totaling %s AR, %s USD) to your ArDrive!',
@@ -157,7 +173,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 						const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, fileToUpload);
 						if (fileDataItem !== null) {
 							// Get the price of this upload
-							const winston = await arweave.getWinston(fileToUpload.fileSize);
+							const winston = await getWinston(fileToUpload.fileSize);
 							totalSize += fileToUpload.fileSize;
 							totalPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 							fileToUpload.dataTxId = fileDataItem.id;
@@ -200,7 +216,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 				}
 
 				// Send the tip to the ArDrive community
-				await arweave.sendArDriveFee(user.walletPrivateKey, totalPrice);
+				await sendArDriveFee(user.walletPrivateKey, totalPrice);
 				console.log('Uploaded %s file(s) (totaling %s AR) to your ArDrive!', filesUploaded, totalPrice);
 			}
 
@@ -229,5 +245,102 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 	} catch (err) {
 		console.log(err);
 		return 'ERROR processing files';
+	}
+}
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+export async function createFileDataItemTransaction(
+	fileData: Buffer,
+	fileMetaData: ArFSFileData,
+	walletPrivateKey: JWKInterface
+): Promise<DataItemJson | string> {
+	try {
+		// Create the item using the data buffer
+		const item = await arBundles.createData({ data: fileData }, walletPrivateKey);
+
+		// Tag file with common tags
+		arBundles.addTag(item, 'App-Name', fileMetaData.appName);
+		arBundles.addTag(item, 'App-Version', fileMetaData.appVersion);
+		// Only tag the file with public tags
+		arBundles.addTag(item, 'Content-Type', fileMetaData.contentType);
+
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, walletPrivateKey);
+		return signedItem;
+	} catch (err) {
+		console.log('Error creating data item');
+		console.log(err);
+		return 'Error';
+	}
+}
+
+// Creates an arweave data item transaction (ANS-102) using ArFS Tags
+export async function createFileFolderMetaDataItemTransaction(
+	metaData: ArFSFileFolderEntity,
+	secondaryFileMetaData: string,
+	walletPrivateKey: JWKInterface
+): Promise<DataItemJson | string> {
+	try {
+		// Create the item using the data buffer or string
+		const item = await arBundles.createData({ data: secondaryFileMetaData }, walletPrivateKey);
+
+		// Tag file
+		arBundles.addTag(item, 'App-Name', metaData.appName);
+		arBundles.addTag(item, 'App-Version', metaData.appVersion);
+		arBundles.addTag(item, 'Unix-Time', metaData.unixTime.toString());
+		arBundles.addTag(item, 'Content-Type', 'application/json');
+		arBundles.addTag(item, 'ArFS', arFSVersion);
+		arBundles.addTag(item, 'Entity-Type', metaData.entityType);
+		arBundles.addTag(item, 'Drive-Id', metaData.driveId);
+		arBundles.addTag(item, 'File-Id', metaData.entityId);
+
+		// Add file or folder specific tags
+		if (metaData.entityType === 'file') {
+			arBundles.addTag(item, 'File-Id', metaData.entityId);
+			arBundles.addTag(item, 'Parent-Folder-Id', metaData.parentFolderId);
+		} else {
+			arBundles.addTag(item, 'Folder-Id', metaData.entityId);
+			if (metaData.parentFolderId !== '0') {
+				// If the parentFolderId is 0, then this is a root folder
+				arBundles.addTag(item, 'Parent-Folder-Id', metaData.parentFolderId);
+			}
+		}
+
+		// Sign the data, ready to be added to a bundle
+		const signedItem = await arBundles.sign(item, walletPrivateKey);
+		return signedItem;
+	} catch (err) {
+		console.log('Error creating data item');
+		console.log(err);
+		return 'Error';
+	}
+}
+
+// Creates a bundled data transaction (ANS-102)
+export async function createBundledDataTransaction(
+	walletPrivateKey: JWKInterface,
+	items: DataItemJson[]
+): Promise<Transaction | null> {
+	try {
+		// Bundle up all individual items into a single data bundle
+		const dataBundle = await arBundles.bundleData(items);
+		const dataBuffer: Buffer = Buffer.from(JSON.stringify(dataBundle));
+
+		// Create the transaction for the entire data bundle
+		const transaction = await arweave.createTransaction({ data: dataBuffer }, walletPrivateKey);
+
+		// Tag file
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Bundle-Format', 'json');
+		transaction.addTag('Bundle-Version', '1.0.0');
+		transaction.addTag('Content-Type', 'application/json');
+
+		// Sign the bundle
+		await arweave.transactions.sign(transaction, walletPrivateKey);
+		return transaction;
+	} catch (err) {
+		console.log('Error creating data bundle');
+		console.log(err);
+		return null;
 	}
 }

@@ -17,7 +17,7 @@ export async function getAddressForWallet(walletPrivateKey: JWKInterface): Promi
 }
 
 // Imports an existing wallet as a JWK from a user's local harddrive
-export async function getLocalWallet(
+export async function getCachedWallet(
 	existingWalletPath: string
 ): Promise<{ walletPrivateKey: JWKInterface; walletPublicKey: string }> {
 	const walletPrivateKey: JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());

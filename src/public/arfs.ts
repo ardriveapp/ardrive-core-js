@@ -8,7 +8,9 @@ import { JWKInterface } from './../types/arfs_Types';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData } from './../types/base_Types';
 import * as updateDb from './../db/db_update';
 import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from '../crypto';
-
+import { getWinston } from '../node';
+import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
+import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -18,7 +20,7 @@ export async function newArFSFileDataItem(
 	let dataItem: DataItemJson | string;
 	try {
 		console.log('Bundling %s (%d bytes) to the Permaweb', file.path, file.size);
-		dataItem = await arweave.createFileDataItemTransaction(fileData, file.data, walletPrivateKey);
+		dataItem = await createFileDataItemTransaction(fileData, file.data, walletPrivateKey);
 
 		if (typeof dataItem != 'string') {
 			console.log('SUCCESS %s data item was created with TX %s', file.path, dataItem.id);
@@ -57,7 +59,7 @@ export async function newArFSFileMetaDataItem(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		// Public file, do not encrypt
-		dataItem = await arweave.createFileFolderMetaDataItemTransaction(
+		dataItem = await createFileFolderMetaDataItemTransaction(
 			file.entity,
 			secondaryFileMetaDataJSON,
 			walletPrivateKey
@@ -95,7 +97,7 @@ export async function newArFSFolderMetaDataItem(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		// Public file, do not encrypt
-		dataItem = await arweave.createFileFolderMetaDataItemTransaction(
+		dataItem = await createFileFolderMetaDataItemTransaction(
 			folder.entity,
 			secondaryFileMetaDataJSON,
 			walletPrivateKey
@@ -128,13 +130,13 @@ export async function newArFSFileData(
 		console.log('Uploading the PUBLIC file %s (%d bytes) at %s to the Permaweb', file.path, file.size);
 
 		// Create the Arweave transaction.  It will add the correct ArFS tags depending if it is public or private
-		const transaction = await arweave.createFileDataTransaction(fileData, file.entity, walletPrivateKey);
+		const transaction = await createFileDataTransaction(fileData, file.entity, walletPrivateKey);
 
 		// Update the file's data transaction ID
 		file.data.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { file, uploader };
 	} catch (err) {
@@ -163,14 +165,14 @@ export async function newArFSFileMetaData(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		// Public file, do not encrypt
-		(transaction = await arweave.createFileFolderMetaDataTransaction(file.entity, secondaryFileMetaDataJSON)),
+		(transaction = await createFileFolderMetaDataTransaction(file.entity, secondaryFileMetaDataJSON)),
 			walletPrivateKey;
 
 		// Update the file's data transaction ID
 		file.data.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { file, uploader };
 	} catch (err) {
@@ -321,7 +323,7 @@ export async function uploadArFSFileData(
 	let dataTxId = '';
 	let arPrice = 0;
 	try {
-		const winston = await arweave.getWinston(fileToUpload.fileSize);
+		const winston = await getWinston(fileToUpload.fileSize);
 		arPrice = +winston * 0.000000000001;
 
 		if (fileToUpload.isPublic === 0) {
@@ -368,7 +370,7 @@ export async function uploadArFSFileData(
 		fileToUpload.dataTxId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		// Set the file metadata to indicate it s being synchronized and update its record in the database
 		fileToUpload.fileDataSyncStatus = 2;
@@ -454,7 +456,7 @@ export async function uploadArFSFileMetaData(user: ArDriveUser, fileToUpload: Ar
 		fileToUpload.metaDataTxId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		// Set the file metadata to indicate it s being synchronized and update its record in the database
 		fileToUpload.fileMetaDataSyncStatus = 2;
@@ -523,7 +525,7 @@ export async function uploadArFSDriveMetaData(user: ArDriveUser, drive: ArFSDriv
 		drive.metaDataTxId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		// Update the Drive table to include this transaction information
 		drive.metaDataSyncStatus = 2;
@@ -558,7 +560,7 @@ export async function uploadArFSDataBundle(user: ArDriveUser, dataItems: DataIte
 	try {
 		const bundledDataTx = await arweave.prepareArFSBundledDataTransaction(user, dataItems);
 		if (bundledDataTx !== null) {
-			const uploader = await arweave.createDataUploader(bundledDataTx);
+			const uploader = await createDataUploader(bundledDataTx);
 
 			// Get current time and update the database
 			const currentTime = Math.round(Date.now() / 1000);
@@ -597,14 +599,14 @@ export async function newArFSFolderMetaData(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		// Public file, do not encrypt
-		(transaction = await arweave.createFileFolderMetaDataTransaction(folder.entity, secondaryFileMetaDataJSON)),
+		(transaction = await createFileFolderMetaDataTransaction(folder.entity, secondaryFileMetaDataJSON)),
 			walletPrivateKey;
 
 		// Update the file's data transaction ID
 		folder.entity.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { folder, uploader };
 	} catch (err) {

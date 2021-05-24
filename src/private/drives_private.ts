@@ -1,4 +1,3 @@
-import * as arweave from './../public/arweave';
 import * as arweavePrivate from './transactions_private';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
@@ -9,6 +8,7 @@ import { deriveDriveKey, driveEncrypt } from '../crypto';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
 import { appName, appVersion, arFSVersion, cipher } from '../constants';
+import { createDataUploader } from '../transactions';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 
@@ -47,7 +47,7 @@ export async function newArFSPrivateDriveMetaData(
 		driveMetaData.entity.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { driveMetaData, uploader };
 	} catch (err) {

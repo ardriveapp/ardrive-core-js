@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import path from 'path';
 
-import * as arweave from './arweave';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
@@ -12,6 +11,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
+import { createDataUploader, createDriveTransaction } from '../transactions';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 export async function newArFSDriveMetaData(
@@ -30,17 +30,13 @@ export async function newArFSDriveMetaData(
 
 		// The drive is public
 		console.log('Creating a new Public Drive (name: %s) on the Permaweb', driveMetaData.entity.name);
-		const transaction = await arweave.createDriveTransaction(
-			driveMetaDataJSON,
-			driveMetaData.entity,
-			walletPrivateKey
-		);
+		const transaction = await createDriveTransaction(driveMetaDataJSON, driveMetaData.entity, walletPrivateKey);
 
 		// Update the file's data transaction ID
 		driveMetaData.entity.txId = transaction.id;
 
 		// Create the File Uploader object
-		const uploader = await arweave.createDataUploader(transaction);
+		const uploader = await createDataUploader(transaction);
 
 		return { driveMetaData, uploader };
 	} catch (err) {
