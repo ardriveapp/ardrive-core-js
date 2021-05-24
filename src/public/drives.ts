@@ -4,7 +4,6 @@ import path from 'path';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
-
 import { ArFSLocalFile, ArFSLocalDriveEntity } from '../types/client_Types';
 import { newArFSFileMetaData } from './arfs';
 import { v4 as uuidv4 } from 'uuid';

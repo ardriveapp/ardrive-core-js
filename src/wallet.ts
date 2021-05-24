@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-
 import { arweave } from './public/arweave';
 import { Wallet } from './types/arfs_Types';
 import { ArDriveUser } from './types/base_Types';
