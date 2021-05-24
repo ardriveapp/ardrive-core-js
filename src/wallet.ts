@@ -3,7 +3,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 
 import { arweave } from './public/arweave';
 import { Wallet } from './types/arfs_Types';
-import { ArDriveUser } from './types/client_Types';
+import { ArDriveUser } from './types/base_Types';
 import { getAllDrivesByLoginFromDriveTable, getUserFromProfile } from './db/db_get';
 import { decryptText, encryptText } from './crypto';
 import { removeByDriveIdFromSyncTable, removeFromDriveTable, removeFromProfileTable } from './db/db_delete';

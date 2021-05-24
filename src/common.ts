@@ -10,6 +10,9 @@ import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
+import { ArDriveUser } from './types/base_Types';
+import { cipher } from './constants';
+
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 export const gatewayURL = 'https://arweave.net/';
@@ -19,7 +22,6 @@ export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';
 export const arFSVersion = '0.11';
-export const cipher = 'AES256-GCM';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -362,7 +364,7 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher: cipher,
+		cipher,
 		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,
@@ -380,7 +382,7 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 
 // Derives a file key from the drive key and formats it into a Private file sharing link using the file id
 export async function createPrivateFileSharingLink(
-	user: types.ArDriveUser,
+	user: ArDriveUser,
 	fileToShare: types.ArFSFileMetaData
 ): Promise<string> {
 	let fileSharingUrl = '';
