@@ -19,7 +19,7 @@ export interface UploadBatch {
 
 export interface ArFSRootFolderMetaData {
 	metaDataTxId: string;
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	cipherIV: string;
 }
 
@@ -38,7 +38,7 @@ export interface ArFSDriveMetaDataParameters {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
@@ -58,7 +58,7 @@ export class ArFSDriveMetaData {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
@@ -146,7 +146,7 @@ export interface ArFSFileMetaDataParameters {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -175,7 +175,7 @@ export class ArFSFileMetaData {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -280,7 +280,7 @@ export class ArFSFileMetaData {
 }
 
 export interface ArFSEncryptedData {
-	cipher: guards.cipher;
+	cipher: guards.cipherType;
 	cipherIV: string;
 	data: Buffer;
 }

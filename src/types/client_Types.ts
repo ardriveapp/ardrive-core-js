@@ -344,21 +344,3 @@ export interface ArFSBundle {
 	syncStatus: number; // the status of this transaction.  0 = 'ready to download', 1 = 'ready to upload', 2 = 'getting mined', 3 = 'successfully uploaded'
 	uploadTime: number; // seconds since unix epoch, taken at the time of upload and used to see how long a transaction is taking 10 numbers eg. 1620068042
 }
-
-export interface ArDriveUser {
-	login: string;
-	dataProtectionKey: string;
-	walletPrivateKey: string;
-	walletPublicKey: string;
-	syncFolderPath: string;
-	autoSyncApproval: number;
-}
-
-export interface UploadBatch {
-	totalArDrivePrice: number;
-	totalUSDPrice: number;
-	totalSize: string;
-	totalNumberOfFileUploads: number;
-	totalNumberOfMetaDataUploads: number;
-	totalNumberOfFolderUploads: number;
-}
