@@ -2,17 +2,17 @@
 import * as fs from 'fs';
 import path from 'path';
 import { Path } from 'typescript';
-import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from './gql';
-import { asyncForEach, moveFolder } from './common';
-import { addFileToSyncTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from './db/db_update';
+import { getPrivateDriveRootFolderTxId, getPublicDriveRootFolderTxId } from '../gql';
+import { asyncForEach, moveFolder } from '../common';
+import { addFileToSyncTable, updateFilePathInSyncTable, updateUserSyncFolderPathInProfileTable } from '../db/db_update';
 import {
 	getAllDrivesByLoginFromDriveTable,
 	getAllFilesByLoginFromSyncTable,
 	getFolderFromSyncTable,
 	getSyncFolderPathFromProfile
-} from './db/db_get';
-import { removeByDriveIdFromSyncTable, removeFromDriveTable } from './db/db_delete';
-import { ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from './types/base_Types';
+} from '../db/db_get';
+import { removeByDriveIdFromSyncTable, removeFromDriveTable } from '../db/db_delete';
+import { ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from '../types/base_Types';
 
 // This creates all of the Drives found for the user
 export async function setupDrives(login: string, syncFolderPath: string): Promise<string> {

@@ -2,16 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // upload.js
 import * as fs from 'fs';
-import * as common from './common';
-import * as getDb from './db/db_get';
-import * as updateDb from './db/db_update';
-import * as gql from './gql';
-import { GQLEdgeInterface, GQLTagInterface } from './types/gql_Types';
-import { downloadArDriveFileByTx } from './public/arweave';
-import { getLatestBlockHeight, getTransactionData } from './gateway';
+import * as common from '../common';
+import * as getDb from '../db/db_get';
+import * as updateDb from '../db/db_update';
+import * as gql from '../gql';
+import { GQLEdgeInterface, GQLTagInterface } from '../types/gql_Types';
+import { downloadArDriveFileByTx } from '../public/arweave';
+import { getLatestBlockHeight, getTransactionData } from '../gateway';
 
-import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
 // Takes an ArDrive File Data Transaction and writes to the database.
 async function getFileMetaDataFromTx(fileDataTx: GQLEdgeInterface, user: ArDriveUser) {
