@@ -2412,6 +2412,7 @@ class Query<T extends arfsTypes.ArFSEntity> {
 			throw new Error('Max tries exceeded');
 		}
 		this.triesCount++;
+		common.sleep(50); // Sleep a few ms here to avoid overusing network resources
 		return false;
 	};
 
