@@ -24,9 +24,7 @@ export * from './private/sharing_private';
 export * from './private/transactions_private';
 
 export * from './common';
-export * from './download';
-export * from './files';
-export * from './profile';
+
 export * from './gql';
 export * from './crypto';
 export * from './gateway';
@@ -35,3 +33,8 @@ export * from './node';
 export * from './smartweave';
 export * from './transactions';
 export * from './wallet';
+
+// Moving to Daemon
+export * from './toDaemon/files';
+export * from './toDaemon/profile';
+export * from './toDaemon/download';

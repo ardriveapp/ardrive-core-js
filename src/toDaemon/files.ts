@@ -1,13 +1,18 @@
 // files.js
 import path, { sep, extname, basename, dirname } from 'path';
 import * as fs from 'fs';
-import { extToMime, appName, appVersion, checkFileExistsSync } from './common';
-import { checksumFile } from './crypto';
-import * as getDb from './db/db_get';
-import { setFilePath, setPermaWebFileToCloudOnly, setPermaWebFileToOverWrite, addFileToSyncTable } from './db/db_update';
+import { extToMime, appName, appVersion, checkFileExistsSync } from '../common';
+import { checksumFile } from '../crypto';
+import * as getDb from '../db/db_get';
+import {
+	setFilePath,
+	setPermaWebFileToCloudOnly,
+	setPermaWebFileToOverWrite,
+	addFileToSyncTable
+} from '../db/db_update';
 import * as chokidar from 'chokidar';
 import { v4 as uuidv4 } from 'uuid';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
 import { hashElement, HashElementOptions } from 'folder-hash';
 
