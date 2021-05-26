@@ -24,8 +24,6 @@ export async function getCachedWallet(
 	return { walletPrivateKey, walletPublicKey };
 }
 
-export const getLocalWallet = getCachedWallet;
-
 // Get the balance of an Arweave wallet
 export async function getWalletBalance(walletPublicKey: string): Promise<number> {
 	try {
