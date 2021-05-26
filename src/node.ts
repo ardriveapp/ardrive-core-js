@@ -5,6 +5,8 @@ import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
 import { getArDriveFee } from './smartweave';
+import fetch from 'node-fetch';
+
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
 	const response = await fetch(`https://arweave.net/price/${bytes}`);
