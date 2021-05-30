@@ -1,5 +1,5 @@
 import * as common from '../common';
-import * as arfsTypes from '../types/arfs_Types';
+import { IEntity } from '../types/arfs_Types';
 import * as gqlTypes from '../types/gql_Types';
 import Arweave from 'arweave';
 import { AxiosResponse } from 'axios';
@@ -13,8 +13,10 @@ const arweave = Arweave.init({
 });
 
 // Our primary GQL url
-export const primaryGraphQLURL = `${common.gatewayURL}graphql`;
-export const backupGraphQLURL = 'https://arweave.dev/graphql';
+// export const primaryGraphQLURL = `${common.gatewayURL}graphql`;
+// export const backupGraphQLURL = 'https://arweave.dev/graphql';
+export const primaryGraphQLURL = `https://gateway.amplify.host/graphql`;
+export const backupGraphQLURL = 'http://gateway.ardrive.io/graphql';
 
 function tagToAttributeMap(tag: string): string {
 	// tag to camel case
@@ -37,7 +39,7 @@ const QUERY_ARGUMENTS_WHITELIST = [
 	'pageInfo.hasNextPage'
 ];
 
-export class Query<T extends arfsTypes.ArFSEntity = arfsTypes.ArFSEntity> {
+export class Query {
 	private _hasRan = false;
 	private _parameters: string[] = ['edges.node.id'];
 	private edges: gqlTypes.GQLEdgeInterface[] = [];
@@ -52,8 +54,6 @@ export class Query<T extends arfsTypes.ArFSEntity = arfsTypes.ArFSEntity> {
 	public tags?: { name: string; values: string | string[] }[];
 	public first?: number;
 	public lastDriveBlockHeight?: number;
-
-	constructor(private returnedType: typeof arfsTypes.ArFSEntity) {}
 
 	private get parsedIds(): string | false {
 		return !!this.ids && serializedArray(this.ids, serializedString);
@@ -104,7 +104,7 @@ export class Query<T extends arfsTypes.ArFSEntity = arfsTypes.ArFSEntity> {
 		return isValid;
 	}
 
-	public getAll = async (): Promise<T[]> => {
+	public getAll = async <T extends IEntity>(): Promise<T[]> => {
 		await this._run();
 		const entities: T[] = [];
 		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
@@ -123,7 +123,7 @@ export class Query<T extends arfsTypes.ArFSEntity = arfsTypes.ArFSEntity> {
 			});
 			entities.push(entity);
 		});
-		return entities;
+		return entities.map((e) => <T>e);
 	};
 
 	public getRaw = async (): Promise<gqlTypes.GQLEdgeInterface[]> => {
@@ -145,7 +145,7 @@ export class Query<T extends arfsTypes.ArFSEntity = arfsTypes.ArFSEntity> {
 		this._hasRan = true;
 	};
 
-	private _handleError = (e: Error): false => {
+	private _handleError = (): false => {
 		if (this.triesCount === this.MAX_TRIES_COUNT) {
 			console.info(
 				`The primary GQL server has failed ${this.MAX_TRIES_COUNT} times, will now try the backup server`
