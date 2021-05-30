@@ -259,7 +259,7 @@ export async function getPublicFolderEntity(
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			folder.txId = node.id;
@@ -356,7 +356,7 @@ export async function getPrivateFolderEntity(
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			folder.txId = node.id;
@@ -457,7 +457,7 @@ export async function getPublicFileEntity(
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			file.txId = node.id;
@@ -554,7 +554,7 @@ export async function getPrivateFileEntity(
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			file.txId = node.id;
@@ -653,7 +653,7 @@ export async function getAllPublicDriveEntities(
 		const { edges } = transactions;
 
 		// Iterate through each returned transaction and pull out the drive IDs
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			const drive: arfsTypes.ArFSDriveEntity = {
@@ -757,7 +757,7 @@ export async function getAllPrivateDriveEntities(
 		const { edges } = transactions;
 
 		// Iterate through each returned transaction and pull out the drive IDs
-		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
 			const drive: arfsTypes.ArFSPrivateDriveEntity = {
@@ -886,7 +886,7 @@ export async function getAllPublicFolderEntities(
 			const { transactions } = data;
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 				const folder: arfsTypes.ArFSFileFolderEntity = {
 					appName: '',
 					appVersion: '',
@@ -1027,7 +1027,7 @@ export async function getAllPrivateFolderEntities(
 			const { transactions } = data;
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 				const folder: arfsTypes.ArFSPrivateFileFolderEntity = {
 					appName: '',
 					appVersion: '',
@@ -1176,7 +1176,7 @@ export async function getAllPublicFileEntities(
 			const { transactions } = data;
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 				const file: arfsTypes.ArFSFileFolderEntity = {
 					appName: '',
 					appVersion: '',
@@ -1317,7 +1317,7 @@ export async function getAllPrivateFileEntities(
 			const { transactions } = data;
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 				const file: arfsTypes.ArFSPrivateFileFolderEntity = {
 					appName: '',
 					appVersion: '',
