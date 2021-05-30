@@ -1028,6 +1028,7 @@ __metadata:
     prompt-password: ^1.2.0
     prompt-sync: ^4.2.0
     prompts: ^2.4.0
+    rimraf: ^3.0.2
     smartweave: 0.4.27
     ts-node: ^9.1.1
     tsc-files: ^1.1.2
