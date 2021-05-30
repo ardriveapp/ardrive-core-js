@@ -1,5 +1,23 @@
-export type cipherType = 'aes-gcm-256' | 'AES256-GCM' | 'invalid' | string;
-export type entityType = 'drive' | 'file' | 'folder' | 'invalid' | string;
-export type drivePrivacy = 'private' | 'public' | 'invalid' | string;
-export type driveAuthMode = 'password' | 'invalid' | string;
-export type syncStatus = 0 | 1 | 2 | 3;
+export type invalid = 'invalid';
+export const invalid = 'invalid';
+export type cipherType = 'aes-gcm-256' | 'AES256-GCM';
+export enum entityType {
+	DRIVE = 'drive',
+	FILE = 'file',
+	FOLDER = 'folder'
+}
+export enum contentType {
+	APPLICATION_JSON = 'application/json',
+	APPLICATION_OCTET_STREAM = 'application/octet-stream'
+}
+export enum drivePrivacy {
+	PRIVATE = 'private',
+	PUBLIC = 'public'
+}
+export type driveAuthMode = 'password';
+export enum syncStatus {
+	READY_TO_DOWNLOAD = 0,
+	READY_TO_UPLOAD = 1,
+	GETTING_MINED = 2,
+	SUCCESSFULLY_UPLOADED = 3
+}

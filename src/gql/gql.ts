@@ -1,14 +1,11 @@
-import * as common from './common';
-import * as types from './types/base_Types';
-import * as arfsTypes from './types/arfs_Types';
-import * as gqlTypes from './types/gql_Types';
-import * as getDb from './db/db_get';
-import * as updateDb from './db/db_update';
-
-import { getTransactionData } from './gateway';
-import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
-
+import * as common from '../common';
+import * as types from '../types/base_Types';
+import * as arfsTypes from '../types/arfs_Types';
+import * as gqlTypes from '../types/gql_Types';
+import { getTransactionData } from '../gateway';
+import { deriveDriveKey, driveDecrypt } from '../crypto';
 import Arweave from 'arweave';
+import { entityType } from '../types/type_guards';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -24,220 +21,208 @@ export const primaryGraphQLURL = 'https://arweave.net/graphql';
 export const backupGraphQLURL = 'https://arweave.dev/graphql';
 
 // Gets the latest version of a drive entity
-export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.ArFSDriveEntity | string> {
-	const graphQLURL = primaryGraphQLURL;
-	const drive: arfsTypes.ArFSDriveEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		contentType: '',
-		driveId,
-		drivePrivacy: '',
-		entityType: 'drive',
-		name: '',
-		rootFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0
-	};
-	try {
-		// GraphQL Query
-		const query = {
-			query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Entity-Type", values: "drive" }
-		  { name: "Drive-Privacy", values: "public" }]) 
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
-		};
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			const { node } = edge;
-			const { tags } = node;
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Content-Type':
-						drive.contentType = value;
-						break;
-					case 'Drive-Id':
-						drive.driveId = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					default:
-						break;
-				}
-			});
+// export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.ArFSDriveEntity | string> {
+// 	const graphQLURL = primaryGraphQLURL;
+// 	const drive: arfsTypes.ArFSDriveEntity = {
+// 		appName: '',
+// 		appVersion: '',
+// 		arFS: '',
+// 		contentType: '',
+// 		driveId,
+// 		drivePrivacy: '',
+// 		entityType: 'drive',
+// 		name: '',
+// 		rootFolderId: '',
+// 		txId: '',
+// 		unixTime: 0,
+// 		syncStatus: 0
+// 	};
+// 	try {
+// 		// GraphQL Query
+// 		const query = {
+// 			query: `query {
+//       transactions(
+//         first: 1
+//         sort: HEIGHT_ASC
+//         tags: [
+//           { name: "Drive-Id", values: "${driveId}" }
+//           { name: "Entity-Type", values: "drive" }
+// 		  { name: "Drive-Privacy", values: "public" }])
+//         ]
+//       ) {
+//         edges {
+//           node {
+//             id
+//             tags {
+//               name
+//               value
+//             }
+//           }
+//         }
+//       }
+//     }`
+// 		};
+// 		const response = await arweave.api.post(graphQLURL, query);
+// 		const { data } = response.data;
+// 		const { transactions } = data;
+// 		const { edges } = transactions;
+// 		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+// 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
+// 			const { node } = edge;
+// 			const { tags } = node;
+// 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+// 				const key = tag.name;
+// 				const { value } = tag;
+// 				switch (key) {
+// 					case 'App-Name':
+// 						drive.appName = value;
+// 						break;
+// 					case 'App-Version':
+// 						drive.appVersion = value;
+// 						break;
+// 					case 'ArFS':
+// 						drive.arFS = value;
+// 						break;
+// 					case 'Content-Type':
+// 						drive.contentType = value;
+// 						break;
+// 					case 'Drive-Id':
+// 						drive.driveId = value;
+// 						break;
+// 					case 'Drive-Privacy':
+// 						drive.drivePrivacy = value;
+// 						break;
+// 					case 'Unix-Time':
+// 						drive.unixTime = +value;
+// 						break;
+// 					default:
+// 						break;
+// 				}
+// 			});
 
-			// Get the drives transaction ID
-			drive.txId = node.id;
-		});
-		return drive;
-	} catch (err) {
-		console.log(err);
-		console.log('CORE GQL ERROR: Cannot get Shared Public Drive');
-		return 'CORE GQL ERROR: Cannot get Shared Public Drive';
-	}
-}
+// 			// Get the drives transaction ID
+// 			drive.txId = node.id;
+// 		});
+// 		return drive;
+// 	} catch (err) {
+// 		console.log(err);
+// 		console.log('CORE GQL ERROR: Cannot get Shared Public Drive');
+// 		return 'CORE GQL ERROR: Cannot get Shared Public Drive';
+// 	}
+// }
 
 // Gets the latest version of a drive entity
-export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.ArFSPrivateDriveEntity | string> {
-	const graphQLURL = primaryGraphQLURL;
-	const drive: arfsTypes.ArFSPrivateDriveEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		cipher: '',
-		cipherIV: '',
-		contentType: '',
-		driveId,
-		drivePrivacy: '',
-		driveAuthMode: '',
-		entityType: '',
-		name: '',
-		rootFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0
-	};
-	try {
-		// GraphQL Query
-		const query = {
-			query: `query {
-      transactions(
-        first: 1
-        sort: HEIGHT_ASC
-        tags: [
-          { name: "Drive-Id", values: "${driveId}" }
-          { name: "Entity-Type", values: "drive" }
-		  { name: "Drive-Privacy", values: "private" }]) 
-        ]
-      ) {
-        edges {
-          node {
-            id
-            tags {
-              name
-              value
-            }
-          }
-        }
-      }
-    }`
-		};
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			const { node } = edge;
-			const { tags } = node;
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Cipher':
-						drive.cipher = value;
-						break;
-					case 'Cipher-IV':
-						drive.cipherIV = value;
-						break;
-					case 'Content-Type':
-						drive.contentType = value;
-						break;
-					case 'Drive-Auth-Mode':
-						drive.driveAuthMode = value;
-						break;
-					case 'Drive-Id':
-						drive.driveId = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					default:
-						break;
-				}
-			});
+// export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.ArFSPrivateDriveEntity | string> {
+// 	const graphQLURL = primaryGraphQLURL;
+// 	const drive: arfsTypes.ArFSPrivateDriveEntity = {
+// 		appName: '',
+// 		appVersion: '',
+// 		arFS: '',
+// 		cipher: '',
+// 		cipherIV: '',
+// 		contentType: '',
+// 		driveId,
+// 		drivePrivacy: '',
+// 		driveAuthMode: '',
+// 		entityType: '',
+// 		name: '',
+// 		rootFolderId: '',
+// 		txId: '',
+// 		unixTime: 0,
+// 		syncStatus: 0
+// 	};
+// 	try {
+// 		// GraphQL Query
+// 		const query = {
+// 			query: `query {
+//       transactions(
+//         first: 1
+//         sort: HEIGHT_ASC
+//         tags: [
+//           { name: "Drive-Id", values: "${driveId}" }
+//           { name: "Entity-Type", values: "drive" }
+// 		  { name: "Drive-Privacy", values: "private" }])
+//         ]
+//       ) {
+//         edges {
+//           node {
+//             id
+//             tags {
+//               name
+//               value
+//             }
+//           }
+//         }
+//       }
+//     }`
+// 		};
+// 		const response = await arweave.api.post(graphQLURL, query);
+// 		const { data } = response.data;
+// 		const { transactions } = data;
+// 		const { edges } = transactions;
+// 		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+// 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
+// 			const { node } = edge;
+// 			const { tags } = node;
+// 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+// 				const key = tag.name;
+// 				const { value } = tag;
+// 				switch (key) {
+// 					case 'App-Name':
+// 						drive.appName = value;
+// 						break;
+// 					case 'App-Version':
+// 						drive.appVersion = value;
+// 						break;
+// 					case 'ArFS':
+// 						drive.arFS = value;
+// 						break;
+// 					case 'Cipher':
+// 						drive.cipher = value;
+// 						break;
+// 					case 'Cipher-IV':
+// 						drive.cipherIV = value;
+// 						break;
+// 					case 'Content-Type':
+// 						drive.contentType = value;
+// 						break;
+// 					case 'Drive-Auth-Mode':
+// 						drive.driveAuthMode = value;
+// 						break;
+// 					case 'Drive-Id':
+// 						drive.driveId = value;
+// 						break;
+// 					case 'Drive-Privacy':
+// 						drive.drivePrivacy = value;
+// 						break;
+// 					case 'Unix-Time':
+// 						drive.unixTime = +value;
+// 						break;
+// 					default:
+// 						break;
+// 				}
+// 			});
 
-			// Get the drives transaction ID
-			drive.txId = node.id;
-		});
-		return drive;
-	} catch (err) {
-		console.log(err);
-		console.log('CORE GQL ERROR: Cannot get Public Drive');
-		return 'CORE GQL ERROR: Cannot get Public Drive';
-	}
-}
+// 			// Get the drives transaction ID
+// 			drive.txId = node.id;
+// 		});
+// 		return drive;
+// 	} catch (err) {
+// 		console.log(err);
+// 		console.log('CORE GQL ERROR: Cannot get Public Drive');
+// 		return 'CORE GQL ERROR: Cannot get Public Drive';
+// 	}
+// }
 
 // Gets the latest version of a folder entity
 export async function getPublicFolderEntity(
 	owner: string,
 	entityId: string
-): Promise<arfsTypes.ArFSFileFolderEntity | string> {
+): Promise<arfsTypes.ArFSPublicFileFolderEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const folder: arfsTypes.ArFSFileFolderEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		contentType: '',
-		driveId: '',
-		entityType: 'folder',
-		entityId: '',
-		name: '',
-		parentFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0,
-		lastModifiedDate: 0
-	};
+	const folder: arfsTypes.ArFSPublicFileFolderEntity = new arfsTypes.ArFSPublicFileFolderEntity({
+		entityType: entityType.FOLDER
+	});
 	try {
 		const query = {
 			query: `query {
@@ -614,224 +599,224 @@ export async function getPrivateFileEntity(
 }
 
 // Gets all of the drive entities for a users wallet
-export async function getAllPublicDriveEntities(
-	owner: string,
-	lastBlockHeight: number
-): Promise<arfsTypes.ArFSDriveEntity[] | string> {
-	const graphQLURL = primaryGraphQLURL;
-	const allDrives: arfsTypes.ArFSDriveEntity[] = [];
-	try {
-		// Search last 5 blocks minimum
-		if (lastBlockHeight > 5) {
-			lastBlockHeight -= 5;
-		}
+// export async function getAllPublicDriveEntities(
+// 	owner: string,
+// 	lastBlockHeight: number
+// ): Promise<arfsTypes.ArFSDriveEntity[] | string> {
+// 	const graphQLURL = primaryGraphQLURL;
+// 	const allDrives: arfsTypes.ArFSDriveEntity[] = [];
+// 	try {
+// 		// Search last 5 blocks minimum
+// 		if (lastBlockHeight > 5) {
+// 			lastBlockHeight -= 5;
+// 		}
 
-		// Create the Graphql Query to search for all drives relating to the User wallet
-		const query = {
-			query: `query {
-      			transactions(
-				block: {min: ${lastBlockHeight}}
-				first: 100
-				owners: ["${owner}"]
-				tags: [
-					{ name: "Entity-Type", values: "drive" }
-					{ name: "Drive-Privacy", values: "public" }]) 
-				{
-					edges {
-						node {
-							id
-							tags {
-								name
-								value
-							}
-						}
-					}
-      			}
-    		}`
-		};
+// 		// Create the Graphql Query to search for all drives relating to the User wallet
+// 		const query = {
+// 			query: `query {
+//       			transactions(
+// 				block: {min: ${lastBlockHeight}}
+// 				first: 100
+// 				owners: ["${owner}"]
+// 				tags: [
+// 					{ name: "Entity-Type", values: "drive" }
+// 					{ name: "Drive-Privacy", values: "public" }])
+// 				{
+// 					edges {
+// 						node {
+// 							id
+// 							tags {
+// 								name
+// 								value
+// 							}
+// 						}
+// 					}
+//       			}
+//     		}`
+// 		};
 
-		// Call the Arweave Graphql Endpoint
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
+// 		// Call the Arweave Graphql Endpoint
+// 		const response = await arweave.api.post(graphQLURL, query);
+// 		const { data } = response.data;
+// 		const { transactions } = data;
+// 		const { edges } = transactions;
 
-		// Iterate through each returned transaction and pull out the drive IDs
-		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			const drive: arfsTypes.ArFSDriveEntity = {
-				appName: '',
-				appVersion: '',
-				arFS: '',
-				contentType: 'application/json',
-				driveId: '',
-				drivePrivacy: 'public',
-				entityType: 'drive',
-				name: '',
-				rootFolderId: '',
-				txId: '',
-				unixTime: 0,
-				syncStatus: 0
-			};
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Content-Type':
-						drive.contentType = value;
-						break;
-					case 'Drive-Id':
-						drive.driveId = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					default:
-						break;
-				}
-			});
+// 		// Iterate through each returned transaction and pull out the drive IDs
+// 		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+// 			const { node } = edge;
+// 			const { tags } = node;
+// 			const drive: arfsTypes.ArFSDriveEntity = {
+// 				appName: '',
+// 				appVersion: '',
+// 				arFS: '',
+// 				contentType: 'application/json',
+// 				driveId: '',
+// 				drivePrivacy: 'public',
+// 				entityType: 'drive',
+// 				name: '',
+// 				rootFolderId: '',
+// 				txId: '',
+// 				unixTime: 0,
+// 				syncStatus: 0
+// 			};
+// 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
+// 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+// 				const key = tag.name;
+// 				const { value } = tag;
+// 				switch (key) {
+// 					case 'App-Name':
+// 						drive.appName = value;
+// 						break;
+// 					case 'App-Version':
+// 						drive.appVersion = value;
+// 						break;
+// 					case 'ArFS':
+// 						drive.arFS = value;
+// 						break;
+// 					case 'Content-Type':
+// 						drive.contentType = value;
+// 						break;
+// 					case 'Drive-Id':
+// 						drive.driveId = value;
+// 						break;
+// 					case 'Drive-Privacy':
+// 						drive.drivePrivacy = value;
+// 						break;
+// 					case 'Unix-Time':
+// 						drive.unixTime = +value;
+// 						break;
+// 					default:
+// 						break;
+// 				}
+// 			});
 
-			// Capture the TX of the public drive metadata tx
-			drive.txId = node.id;
-			allDrives.push(drive);
-		});
-		return allDrives;
-	} catch (err) {
-		console.log(err);
-		console.log('CORE GQL ERROR: Cannot get folder entity');
-		return 'CORE GQL ERROR: Cannot get drive ids';
-	}
-}
+// 			// Capture the TX of the public drive metadata tx
+// 			drive.txId = node.id;
+// 			allDrives.push(drive);
+// 		});
+// 		return allDrives;
+// 	} catch (err) {
+// 		console.log(err);
+// 		console.log('CORE GQL ERROR: Cannot get folder entity');
+// 		return 'CORE GQL ERROR: Cannot get drive ids';
+// 	}
+// }
 
 // Gets all of the private drive entities for a users wallet
-export async function getAllPrivateDriveEntities(
-	owner: string,
-	lastBlockHeight: number
-): Promise<arfsTypes.ArFSPrivateDriveEntity[] | string> {
-	const graphQLURL = primaryGraphQLURL;
-	const allDrives: arfsTypes.ArFSPrivateDriveEntity[] = [];
-	try {
-		// Search last 5 blocks minimum
-		if (lastBlockHeight > 5) {
-			lastBlockHeight -= 5;
-		}
+// export async function getAllPrivateDriveEntities(
+// 	owner: string,
+// 	lastBlockHeight: number
+// ): Promise<arfsTypes.ArFSPrivateDriveEntity[] | string> {
+// 	const graphQLURL = primaryGraphQLURL;
+// 	const allDrives: arfsTypes.ArFSPrivateDriveEntity[] = [];
+// 	try {
+// 		// Search last 5 blocks minimum
+// 		if (lastBlockHeight > 5) {
+// 			lastBlockHeight -= 5;
+// 		}
 
-		// Create the Graphql Query to search for all drives relating to the User wallet
-		const query = {
-			query: `query {
-      			transactions(
-				block: {min: ${lastBlockHeight}}
-				first: 100
-				owners: ["${owner}"]
-				tags: [
-					{ name: "Entity-Type", values: "drive" }
-					{ name: "Drive-Privacy", values: "private" }]) 
-				{
-					edges {
-						node {
-							id
-							tags {
-								name
-								value
-							}
-						}
-					}
-      			}
-    		}`
-		};
+// 		// Create the Graphql Query to search for all drives relating to the User wallet
+// 		const query = {
+// 			query: `query {
+//       			transactions(
+// 				block: {min: ${lastBlockHeight}}
+// 				first: 100
+// 				owners: ["${owner}"]
+// 				tags: [
+// 					{ name: "Entity-Type", values: "drive" }
+// 					{ name: "Drive-Privacy", values: "private" }])
+// 				{
+// 					edges {
+// 						node {
+// 							id
+// 							tags {
+// 								name
+// 								value
+// 							}
+// 						}
+// 					}
+//       			}
+//     		}`
+// 		};
 
-		// Call the Arweave Graphql Endpoint
-		const response = await arweave.api.post(graphQLURL, query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
+// 		// Call the Arweave Graphql Endpoint
+// 		const response = await arweave.api.post(graphQLURL, query);
+// 		const { data } = response.data;
+// 		const { transactions } = data;
+// 		const { edges } = transactions;
 
-		// Iterate through each returned transaction and pull out the drive IDs
-		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			const drive: arfsTypes.ArFSPrivateDriveEntity = {
-				appName: '',
-				appVersion: '',
-				arFS: '',
-				cipher: '',
-				cipherIV: '',
-				contentType: 'application/json',
-				driveId: '',
-				drivePrivacy: 'private',
-				driveAuthMode: '',
-				entityType: 'drive',
-				name: '',
-				rootFolderId: '',
-				txId: '',
-				unixTime: 0,
-				syncStatus: 0
-			};
-			// Iterate through each tag and pull out each drive ID as well the drives privacy status
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'App-Name':
-						drive.appName = value;
-						break;
-					case 'App-Version':
-						drive.appVersion = value;
-						break;
-					case 'ArFS':
-						drive.arFS = value;
-						break;
-					case 'Cipher':
-						drive.cipher = value;
-						break;
-					case 'Cipher-IV':
-						drive.cipherIV = value;
-						break;
-					case 'Content-Type':
-						drive.contentType = value;
-						break;
-					case 'Drive-Auth-Mode':
-						drive.driveAuthMode = value;
-						break;
-					case 'Drive-Id':
-						drive.driveId = value;
-						break;
-					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
-						break;
-					case 'Unix-Time':
-						drive.unixTime = +value;
-						break;
-					default:
-						break;
-				}
-			});
+// 		// Iterate through each returned transaction and pull out the drive IDs
+// 		edges.array.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+// 			const { node } = edge;
+// 			const { tags } = node;
+// 			const drive: arfsTypes.ArFSPrivateDriveEntity = {
+// 				appName: '',
+// 				appVersion: '',
+// 				arFS: '',
+// 				cipher: '',
+// 				cipherIV: '',
+// 				contentType: 'application/json',
+// 				driveId: '',
+// 				drivePrivacy: 'private',
+// 				driveAuthMode: '',
+// 				entityType: 'drive',
+// 				name: '',
+// 				rootFolderId: '',
+// 				txId: '',
+// 				unixTime: 0,
+// 				syncStatus: 0
+// 			};
+// 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
+// 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+// 				const key = tag.name;
+// 				const { value } = tag;
+// 				switch (key) {
+// 					case 'App-Name':
+// 						drive.appName = value;
+// 						break;
+// 					case 'App-Version':
+// 						drive.appVersion = value;
+// 						break;
+// 					case 'ArFS':
+// 						drive.arFS = value;
+// 						break;
+// 					case 'Cipher':
+// 						drive.cipher = value;
+// 						break;
+// 					case 'Cipher-IV':
+// 						drive.cipherIV = value;
+// 						break;
+// 					case 'Content-Type':
+// 						drive.contentType = value;
+// 						break;
+// 					case 'Drive-Auth-Mode':
+// 						drive.driveAuthMode = value;
+// 						break;
+// 					case 'Drive-Id':
+// 						drive.driveId = value;
+// 						break;
+// 					case 'Drive-Privacy':
+// 						drive.drivePrivacy = value;
+// 						break;
+// 					case 'Unix-Time':
+// 						drive.unixTime = +value;
+// 						break;
+// 					default:
+// 						break;
+// 				}
+// 			});
 
-			// Capture the TX of the public drive metadata tx
-			drive.txId = node.id;
-			allDrives.push(drive);
-		});
-		return allDrives;
-	} catch (err) {
-		console.log(err);
-		console.log('CORE GQL ERROR: Cannot get private drive entities');
-		return 'CORE GQL ERROR: Cannot get private drive entities';
-	}
-}
+// 			// Capture the TX of the public drive metadata tx
+// 			drive.txId = node.id;
+// 			allDrives.push(drive);
+// 		});
+// 		return allDrives;
+// 	} catch (err) {
+// 		console.log(err);
+// 		console.log('CORE GQL ERROR: Cannot get private drive entities');
+// 		return 'CORE GQL ERROR: Cannot get private drive entities';
+// 	}
+// }
 
 // Gets all of the folder entity metadata transactions from a user's wallet, filtered by owner and drive ID
 export async function getAllPublicFolderEntities(
@@ -2284,342 +2269,3 @@ export async function getAllMySharedDataFileTxs(
 	}
 	return edges;
 }
-// Takes an ArDrive File Data Transaction and writes to the database.
-export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterface, user: types.ArDriveUser) {
-	const fileToSync: types.ArFSFileMetaData = types.ArFSFileMetaData.Empty(user.login);
-	try {
-		const { node } = fileDataTx;
-		const { tags } = node;
-		fileToSync.metaDataTxId = node.id;
-
-		// DOUBLE CHECK THIS
-		// Is the File or Folder already present in the database?  If it is, lets ensure its already downloaded
-		const isMetaDataSynced = await getDb.getByMetaDataTxFromSyncTable(fileToSync.metaDataTxId);
-		if (isMetaDataSynced) {
-			// this file is already downloaded and synced
-			return 'Synced Already';
-		}
-
-		// Download the File's Metadata using the metadata transaction ID
-		const data: string | Uint8Array = await getTransactionData(fileToSync.metaDataTxId);
-
-		// Enumerate through each tag to pull the data
-		tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-			const key = tag.name;
-			const { value } = tag;
-			switch (key) {
-				case 'App-Name':
-					fileToSync.appName = value;
-					break;
-				case 'App-Version':
-					fileToSync.appVersion = value;
-					break;
-				case 'Unix-Time':
-					fileToSync.unixTime = +value; // Convert to number
-					break;
-				case 'Content-Type':
-					fileToSync.contentType = value;
-					break;
-				case 'Entity-Type':
-					fileToSync.entityType = value;
-					break;
-				case 'Drive-Id':
-					fileToSync.driveId = value;
-					break;
-				case 'File-Id':
-					fileToSync.fileId = value;
-					break;
-				case 'Folder-Id':
-					fileToSync.fileId = value;
-					break;
-				case 'Parent-Folder-Id':
-					fileToSync.parentFolderId = value;
-					break;
-				case 'Cipher':
-					fileToSync.cipher = value;
-					break;
-				case 'Cipher-IV':
-					fileToSync.metaDataCipherIV = value;
-					break;
-				default:
-					break;
-			}
-		});
-
-		let dataJSON;
-		let decryptedData = Buffer.from('');
-		// If it is a private file or folder, the data will need decryption.
-		if (fileToSync.cipher === 'AES256-GCM') {
-			fileToSync.isPublic = 0;
-			const dataBuffer = Buffer.from(data);
-			const driveKey: Buffer = await deriveDriveKey(
-				user.dataProtectionKey,
-				fileToSync.driveId,
-				user.walletPrivateKey
-			);
-			if (fileToSync.entityType === 'file') {
-				// Decrypt files using a File Key derived from the Drive key
-				const fileKey: Buffer = await deriveFileKey(fileToSync.fileId, driveKey);
-				decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, fileKey, dataBuffer);
-			} else if (fileToSync.entityType === 'folder') {
-				// Decrypt folders using the Drive Key only
-				decryptedData = await fileDecrypt(fileToSync.metaDataCipherIV, driveKey, dataBuffer);
-			}
-
-			// Handle an error with decryption by ignoring this file.  THIS NEEDS TO BE IMPROVED.
-			if (decryptedData.toString('ascii') === 'Error') {
-				console.log(
-					'There was a problem decrypting a private %s with TXID: %s',
-					fileToSync.entityType,
-					fileToSync.metaDataTxId
-				);
-				console.log('Skipping this file...');
-				fileToSync.fileSize = 0;
-				fileToSync.fileName = '';
-				fileToSync.fileHash = '';
-				fileToSync.fileDataSyncStatus = 0;
-				fileToSync.fileMetaDataSyncStatus = 3;
-				fileToSync.dataTxId = '0';
-				fileToSync.lastModifiedDate = fileToSync.unixTime;
-				fileToSync.permaWebLink = common.gatewayURL.concat(fileToSync.dataTxId);
-				fileToSync.cloudOnly = 1;
-				await updateDb.addFileToSyncTable(fileToSync); // This must be handled better.
-				return 'Error Decrypting';
-			} else {
-				const dataString = await common.Utf8ArrayToStr(decryptedData);
-				dataJSON = await JSON.parse(dataString);
-			}
-		} else {
-			// the file is public and does not require decryption
-			const dataString = await common.Utf8ArrayToStr(data);
-			dataJSON = await JSON.parse(dataString);
-			fileToSync.isPublic = 1;
-		}
-
-		// Set metadata for Folder and File entities
-		fileToSync.fileSize = dataJSON.size;
-		fileToSync.fileName = dataJSON.name;
-		fileToSync.fileHash = '';
-		fileToSync.fileDataSyncStatus = 3;
-		fileToSync.fileMetaDataSyncStatus = 3;
-		fileToSync.dataTxId = '0';
-
-		// Perform specific actions for File, Folder and Drive entities
-		if (fileToSync.entityType === 'file') {
-			// The actual data transaction ID, lastModifiedDate, and Filename of the underlying file are pulled from the metadata transaction
-			fileToSync.lastModifiedDate = dataJSON.lastModifiedDate; // Convert to milliseconds
-			fileToSync.dataTxId = dataJSON.dataTxId;
-			fileToSync.contentType = common.extToMime(dataJSON.name);
-			fileToSync.permaWebLink = common.gatewayURL.concat(dataJSON.dataTxId);
-
-			if (fileToSync.isPublic === 0) {
-				// if this is a private file, the CipherIV of the Data transaction should also be captured
-				fileToSync.dataCipherIV = await getPrivateTransactionCipherIV(fileToSync.dataTxId);
-			}
-
-			// Check to see if a previous version exists, and if so, increment the version.
-			// Versions are determined by comparing old/new file hash.
-			const latestFile = await getDb.getLatestFileVersionFromSyncTable(fileToSync.fileId);
-			if (latestFile !== undefined) {
-				if (latestFile.fileDataTx !== fileToSync.dataTxId) {
-					fileToSync.fileVersion = +latestFile.fileVersion + 1;
-					// console.log ("%s has a new version %s", dataJSON.name, fileToSync.fileVersion)
-				}
-				// If the previous file data tx matches, then we do not increment the version
-				else {
-					fileToSync.fileVersion = latestFile.fileVersion;
-				}
-			}
-			// Perform specific actions for Folder entities
-		} else if (fileToSync.entityType === 'folder') {
-			fileToSync.lastModifiedDate = fileToSync.unixTime;
-			fileToSync.permaWebLink = common.gatewayURL.concat(fileToSync.metaDataTxId);
-		}
-
-		console.log(
-			'QUEUING %s %s | Id: %s | Tx: %s for download',
-			fileToSync.entityType,
-			fileToSync.fileName,
-			fileToSync.fileId,
-			fileToSync.metaDataTxId
-		);
-		await updateDb.addFileToSyncTable(fileToSync);
-		return 'Success';
-	} catch (err) {
-		console.log(err);
-		console.log('Error syncing file metadata');
-		console.log(fileToSync);
-		return 'Error syncing file metadata';
-	}
-}
-function tagToAttributeMap(tag: string): string {
-	// tag to camel case
-	const words = tag.split('-');
-	const attribute = words.join('');
-	return `${attribute.charAt(0).toLowerCase()}${attribute.slice(1)}`;
-}
-
-const QUERY_ARGUMENTS_WHITELIST = [
-	'edges',
-	'edges.node',
-	'edges.node.id',
-	'edges.node.tags',
-	'edges.node.tags.name',
-	'edges.node.tags.value',
-	'edges.node.block',
-	'edges.node.block.timestamp',
-	'edges.node.block.height',
-	'pageInfo',
-	'pageInfo.hasNextPage'
-];
-
-class Query<T extends arfsTypes.ArFSEntity> {
-	private _parameters: string[] = ['edges.node.id', 'hasNextPage'];
-	private edges: gqlTypes.GQLEdgeInterface[] = [];
-	private hasNextPage = true;
-	private cursor = '';
-	owners?: string[];
-	tags?: { name: string; values: string | string[] }[];
-	block?: { min: number };
-	first?: number;
-
-	set parameters(parameters: string[]) {
-		if (!this._validateArguments(parameters)) {
-			throw new Error('Invalid parameters.');
-		}
-		this._parameters = parameters;
-	}
-
-	private _validateArguments(argument: string[]) {
-		const isValid = argument.reduce((valid: boolean, arg: string): boolean => {
-			return valid && QUERY_ARGUMENTS_WHITELIST.includes(arg);
-		}, true);
-		return isValid;
-	}
-
-	public getAll = async (): Promise<T[]> => {
-		await this._run();
-		const entities: T[] = [];
-		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			const entity: any = {};
-			entity.txId = node.id;
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const { name, value } = tag;
-				const attributeName = tagToAttributeMap(name);
-				entity[attributeName] = value;
-			});
-			entities.push(entity);
-		});
-		return entities;
-	};
-
-	public getRaw = async (): Promise<gqlTypes.GQLEdgeInterface[]> => {
-		await this._run();
-		return this.edges;
-	};
-
-	private _run = async (): Promise<void> => {
-		const queryString = this._toString();
-		while (this.hasNextPage) {
-			const response = await arweave.api.post(primaryGraphQLURL, queryString);
-			const { data } = response.data;
-			const { transactions } = data;
-			if (transactions.edges && transactions.edges.length) {
-				this.edges = this.edges.concat(transactions.edges);
-				this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
-			}
-			this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
-		}
-	};
-
-	private _toString = () => {
-		const serializedTransactionData = this._getSerializedTransactionData();
-		const serializedQueryParameters = this._getSerializedParameters();
-		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
-	};
-
-	private _getSerializedTransactionData = (): string => {
-		const data: any = {};
-		if (this.owners) {
-			data.owners = serializedArray(this.owners, serializedString);
-		}
-		if (this.tags) {
-			if (typeof this.tags === 'string') {
-				data.tags = serializedString(this.tags);
-			} else {
-				data.tags = serializedArray(this.tags, serializedObject);
-			}
-		}
-		if (this.block) {
-			data.block = serializedObject(this.block);
-		}
-		if (this.first) {
-			data.first = serializedNumber(this.first);
-		}
-		if (this.cursor) {
-			data.after = serializedString(this.cursor);
-		}
-		const dataKeys = Object.keys(data);
-		const serializedData = dataKeys.map((key) => `${key}: ${data[key]}`).join('\n');
-		return serializedData;
-	};
-
-	private _getSerializedParameters = (params: any = this._getParametersObject(), depht = 0): string => {
-		const paramKeys = Object.keys(params);
-		let serializedParameters = '';
-		if (paramKeys.length > 0) {
-			serializedParameters = paramKeys
-				.map((key): string => {
-					const value = params[key];
-					const valueChildrenKeys = Object.keys(value);
-					if (valueChildrenKeys.length > 0) {
-						return `${key} {${this._getSerializedParameters(value, depht + 1)}}`;
-					} else {
-						return `${key}`;
-					}
-				})
-				.join('\n');
-		}
-		if (depht === 0 && serializedParameters) {
-			serializedParameters = `{\n${serializedParameters}\n}`;
-		}
-		return serializedParameters;
-	};
-
-	private _getParametersObject = (): { [key: string]: any } => {
-		const normalizedParameters = this._parameters.reduce((params: any, p: string): any => {
-			const object: any = {};
-			const nodes = p.split('.');
-			let o = object;
-			nodes.forEach((n) => {
-				if (!o[n]) {
-					o[n] = {};
-					o = o[n];
-				}
-			});
-			return Object.apply(params, object);
-		}, {} as any);
-		return normalizedParameters;
-	};
-}
-
-function serializedNumber(n: number): string {
-	return `${n}`;
-}
-
-function serializedString(s: string): string {
-	return `"${s}"`;
-}
-
-function serializedObject(o: any): string {
-	return JSON.stringify(o);
-}
-
-function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
-	const serialized = a.map(serializeItem).join('\n');
-	return `[\n${serialized}\n]`;
-}
-
-new Query<arfsTypes.ArFSDriveEntity>();
