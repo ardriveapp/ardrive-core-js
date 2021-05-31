@@ -1,39 +1,41 @@
-import * as arfsTpes from '../types/arfs_Types';
+import { ArFSFileFolderEntity, IFileFolderEntity } from '../types/arfs_Types';
+import { PrivacyToFileFolderEntity } from '../types/type_conditionals';
+import { drivePrivacy } from '../types/type_guards';
 import { EntityQuery } from './EntityQuery';
 
 const entityType = 'file';
 
-export const getPrivateFileEntity = getFileEntity.bind(this, 'private');
+export const getPrivateFileEntity = getFileEntity.bind(this, drivePrivacy.PRIVATE);
 
-export const getPublicFileEntity = getFileEntity.bind(this, 'public');
+export const getPublicFileEntity = getFileEntity.bind(this, drivePrivacy.PUBLIC);
 
-export const getPrivateFileEntities = getFilesEntities.bind(this, 'private');
+export const getAllPrivateFileEntities = getFilesEntities.bind(this, drivePrivacy.PRIVATE);
 
-export const getPublicFileEntities = getFilesEntities.bind(this, 'public');
+export const getAllPublicFileEntities = getFilesEntities.bind(this, drivePrivacy.PUBLIC);
 
-async function getFileEntity(
-	privacy: 'private' | 'public',
+async function getFileEntity<P extends drivePrivacy>(
+	privacy: P,
 	owner: string,
 	fileId: string
-): Promise<arfsTpes.ArFSDriveEntity> {
-	const query = new EntityQuery<arfsTpes.IDriveEntity>({
+): Promise<PrivacyToFileFolderEntity<P>> {
+	const query = new EntityQuery<IFileFolderEntity>({
 		entityType,
 		owner,
 		entityId: fileId,
 		privacy
 	});
 	const entity = await query.get();
-	const entityInstance = new arfsTpes.ArFSDriveEntity(entity[0]);
+	const entityInstance = new ArFSFileFolderEntity(entity[0]);
 	return entityInstance;
 }
 
-async function getFilesEntities(
-	privacy: 'private' | 'public',
+async function getFilesEntities<P extends drivePrivacy>(
+	privacy: P,
 	owner: string,
 	driveId: string,
 	lastBlockHeight: number
-): Promise<arfsTpes.ArFSDriveEntity> {
-	const query = new EntityQuery<arfsTpes.IDriveEntity>({
+): Promise<PrivacyToFileFolderEntity<P>[]> {
+	const query = new EntityQuery<IFileFolderEntity>({
 		entityType,
 		owner,
 		driveId,
@@ -41,7 +43,7 @@ async function getFilesEntities(
 		privacy
 	});
 	query.parameters.push('pageInfo.hasNextPage', 'edges.cursor');
-	const entity = await query.get();
-	const entityInstance = new arfsTpes.ArFSDriveEntity(entity[0]);
-	return entityInstance;
+	const result = await query.get();
+	const entityInstances = result.map((entity) => new ArFSFileFolderEntity(entity));
+	return entityInstances;
 }
