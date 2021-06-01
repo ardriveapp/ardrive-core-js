@@ -335,6 +335,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lokijs@npm:^1":
+  version: 1.5.4
+  resolution: "@types/lokijs@npm:1.5.4"
+  checksum: 10ab7ec7cea3ee69c3540f11f3187799b97e568e7baceb41928d6c809aff90a9f2b7638846178aa1e1b559c2494e25df41d1721af2378018e9e11fd7bb796fc1
+  languageName: node
+  linkType: hard
+
 "@types/mime-types@npm:^2.1.0":
   version: 2.1.0
   resolution: "@types/mime-types@npm:2.1.0"
@@ -993,6 +1000,7 @@ __metadata:
     "@types/folder-hash": ^4.0.0
     "@types/fs-extra": ^9.0.8
     "@types/jwk-to-pem": ^2.0.0
+    "@types/lokijs": ^1
     "@types/mime-types": ^2.1.0
     "@types/mocha": ^8.2.1
     "@types/node": ^14.14.32
@@ -1019,6 +1027,7 @@ __metadata:
     husky: ^=6
     jwk-to-pem: ^2.0.4
     lint-staged: ^11.0.0
+    lokijs: ^1.5.12
     md5-file: ^5.0.0
     mime-types: ^2.1.29
     mocha: ^8.3.1
@@ -3667,6 +3676,13 @@ fsevents@~2.3.1:
   version: 1.7.1
   resolution: "loglevel@npm:1.7.1"
   checksum: abee97e346afb3c7e4130eff3025b4e8da1450cf92495bd12f3cc5faff46d6f658f73529c21e7d75634677f48ab1e14ceb5167d1952f53e8aceba5cb795029c2
+  languageName: node
+  linkType: hard
+
+"lokijs@npm:^1.5.12":
+  version: 1.5.12
+  resolution: "lokijs@npm:1.5.12"
+  checksum: 460bf1d36fd95782977af7fe80fe68bac5536ff393a021ea404d2c770d70877b5ca5949a976212d13f52240eefd01c4748a6cc6a7b7a0f3778d776c53dae075f
   languageName: node
   linkType: hard
 

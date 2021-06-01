@@ -4,6 +4,10 @@ export * from './db/db_delete';
 export * from './db/db_get';
 export * from './db/db_update';
 
+//Loki
+export * from './loki/drives_public';
+
+
 //Types
 export * from './types/arfs_Types';
 export * from './types/base_Types';

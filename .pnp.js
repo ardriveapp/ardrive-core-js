@@ -44,6 +44,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
+            ["@types/lokijs", "npm:1.5.4"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
@@ -70,6 +71,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["husky", "npm:6.0.0"],
             ["jwk-to-pem", "npm:2.0.4"],
             ["lint-staged", "npm:11.0.0"],
+            ["lokijs", "npm:1.5.12"],
             ["md5-file", "npm:5.0.0"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
@@ -457,6 +459,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-jwk-to-pem-npm-2.0.0-85a9aabd67-647e62d347.zip/node_modules/@types/jwk-to-pem/",
           "packageDependencies": [
             ["@types/jwk-to-pem", "npm:2.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/lokijs", [
+        ["npm:1.5.4", {
+          "packageLocation": "./.yarn/cache/@types-lokijs-npm-1.5.4-5b3c7eeb07-10ab7ec7ce.zip/node_modules/@types/lokijs/",
+          "packageDependencies": [
+            ["@types/lokijs", "npm:1.5.4"]
           ],
           "linkType": "HARD",
         }]
@@ -1266,6 +1277,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/folder-hash", "npm:4.0.0"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
+            ["@types/lokijs", "npm:1.5.4"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.14.35"],
@@ -1292,6 +1304,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["husky", "npm:6.0.0"],
             ["jwk-to-pem", "npm:2.0.4"],
             ["lint-staged", "npm:11.0.0"],
+            ["lokijs", "npm:1.5.12"],
             ["md5-file", "npm:5.0.0"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
@@ -4342,6 +4355,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/loglevel-npm-1.7.1-46e39bd115-abee97e346.zip/node_modules/loglevel/",
           "packageDependencies": [
             ["loglevel", "npm:1.7.1"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["lokijs", [
+        ["npm:1.5.12", {
+          "packageLocation": "./.yarn/cache/lokijs-npm-1.5.12-739e26e476-460bf1d36f.zip/node_modules/lokijs/",
+          "packageDependencies": [
+            ["lokijs", "npm:1.5.12"]
           ],
           "linkType": "HARD",
         }]
