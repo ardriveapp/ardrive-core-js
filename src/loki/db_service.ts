@@ -2,10 +2,10 @@ import { Collection } from 'lokijs';
 
 import { LokiService } from './loki_service';
 
-export class DbService<T extends object> {
-	_collection!: Collection<T>;
+export class DbService<T> {
+	_collection!: Collection;
 
-	collectionName: string = 'sync';
+	collectionName = 'sync';
 
 	constructor(collectionName: string) {
 		this.collectionName = collectionName;
