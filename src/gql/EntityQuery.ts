@@ -1,5 +1,5 @@
 import { IEntity } from '../types/arfs_Types';
-import { Query } from './Query';
+import { Query, NODE_ID_AND_TAGS_PARAMETERS } from './Query';
 
 export class EntityQuery<T extends IEntity> extends Query {
 	constructor(args: {
@@ -52,5 +52,3 @@ export class EntityQuery<T extends IEntity> extends Query {
 		return entities;
 	}
 }
-
-export const NODE_ID_AND_TAGS_PARAMETERS = ['edges.node.id', 'edges.node.tags.name', 'edges.node.tags.value'];

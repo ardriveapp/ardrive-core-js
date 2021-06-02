@@ -104,7 +104,7 @@ export class Query {
 		return isValid;
 	}
 
-	public getAll = async <T extends IEntity>(): Promise<T[]> => {
+	public getAll = async <T>(): Promise<T[]> => {
 		await this._run();
 		const entities: T[] = [];
 		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
@@ -254,3 +254,5 @@ function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
 	const serialized = a.map(serializeItem).join('\n');
 	return `[\n${serialized}\n]`;
 }
+
+export const NODE_ID_AND_TAGS_PARAMETERS = ['edges.node.id', 'edges.node.tags.name', 'edges.node.tags.value'];
