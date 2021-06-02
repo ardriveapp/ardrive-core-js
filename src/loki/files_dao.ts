@@ -1,7 +1,7 @@
-import { DbService } from './db_service';
+import { DaoBase } from './dao_base';
 import { ArFSLocalFile } from '../types/client_Types';
 
-export class PublicFilesService extends DbService<ArFSLocalFile> {
+export class FilesDao extends DaoBase<ArFSLocalFile> {
 	collectionName = 'publicFiles';
 
 	saveFiles(folders: ArFSLocalFile[]): void {

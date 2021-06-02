@@ -1,7 +1,7 @@
-import { DbService } from './db_service';
+import { DaoBase } from './dao_base';
 import { ArFSLocalDriveEntity } from '../types/client_Types';
 
-export class PublicDrivesService extends DbService<ArFSLocalDriveEntity> {
+export class DrivesDao extends DaoBase<ArFSLocalDriveEntity> {
 	collectionName = 'publicDrives';
 
 	saveDrives(drives: ArFSLocalDriveEntity[]): void {

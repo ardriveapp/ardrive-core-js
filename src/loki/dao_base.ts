@@ -1,18 +1,18 @@
 import { Collection } from 'lokijs';
 
-import { LokiService } from './loki_service';
+import { LokiAccessor } from './loki_accessor';
 
-export class DbService<T> {
+export class DaoBase<T> {
 	_collection!: Collection;
 
 	collectionName = 'sync';
 
 	constructor(collectionName: string) {
 		this.collectionName = collectionName;
-		if (LokiService.lokiDb.getCollection(collectionName) == null) {
-			LokiService.lokiDb.addCollection(collectionName);
+		if (LokiAccessor.lokiDb.getCollection(collectionName) == null) {
+			LokiAccessor.lokiDb.addCollection(collectionName);
 		}
-		this._collection = LokiService.lokiDb.getCollection(collectionName);
+		this._collection = LokiAccessor.lokiDb.getCollection(collectionName);
 	}
 
 	saveObjectsToCollection(objects: T[]): void {

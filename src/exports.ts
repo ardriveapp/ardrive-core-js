@@ -5,8 +5,7 @@ export * from './db/db_get';
 export * from './db/db_update';
 
 //Loki
-export * from './loki/drives_public';
-
+export * from './loki/drives_dao';
 
 //Types
 export * from './types/arfs_Types';

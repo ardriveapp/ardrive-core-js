@@ -1,7 +1,7 @@
-import { DbService } from './db_service';
+import { DaoBase } from './dao_base';
 import { ArFSLocalPrivateFolder } from '../types/client_Types';
 
-export class PrivateFoldersService extends DbService<ArFSLocalPrivateFolder> {
+export class PrivateFoldersDao extends DaoBase<ArFSLocalPrivateFolder> {
 	collectionName = 'privateFolders';
 
 	saveFolders(folders: ArFSLocalPrivateFolder[]): void {

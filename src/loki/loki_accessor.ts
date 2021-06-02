@@ -1,5 +1,5 @@
-var loki = require('lokijs');
+import loki = require('lokijs');
 
-export class LokiService {
+export class LokiAccessor {
 	static lokiDb = new loki('db.json', { autosave: true, autoload: true });
 }
