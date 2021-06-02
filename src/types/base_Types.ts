@@ -1,11 +1,11 @@
-import * as guards from './type_guards';
-export interface ArDriveUser {
+import { cipherType, driveAuthMode, drivePrivacy, entityType, invalid } from './type_guards';
+export interface IDriveUser {
 	login: string;
 	dataProtectionKey: string;
 	walletPrivateKey: string;
 	walletPublicKey: string;
 	syncFolderPath: string;
-	autoSyncApproval: number;
+	autoSyncApproval: number | invalid;
 }
 
 export interface UploadBatch {
@@ -19,7 +19,7 @@ export interface UploadBatch {
 
 export interface ArFSRootFolderMetaData {
 	metaDataTxId: string;
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	cipherIV: string;
 }
 
@@ -31,24 +31,33 @@ export interface ArDriveBundle {
 	uploadTime: number;
 }
 
-export interface ArFSDriveMetaDataParameters {
+export interface IDriveMetaData {
 	id: number;
 	login?: string;
 	appName: string;
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	drivePrivacy: drivePrivacy;
+	driveAuthMode: driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
+}
+
+export class ArDriveUser implements IDriveUser {
+	login: string = invalid;
+	dataProtectionKey: string = invalid;
+	walletPrivateKey: string = invalid;
+	walletPublicKey: string = invalid;
+	syncFolderPath: string = invalid;
+	autoSyncApproval: number | invalid = invalid;
 }
 
 export class ArFSDriveMetaData {
@@ -58,14 +67,14 @@ export class ArFSDriveMetaData {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	drivePrivacy: drivePrivacy;
+	driveAuthMode: driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -130,14 +139,14 @@ export class ArFSDriveMetaData {
 	}
 }
 
-export interface ArFSFileMetaDataParameters {
+export interface IFileMetaData {
 	id: number;
 	login: string;
 	appName: string;
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: guards.entityType;
+	entityType: entityType;
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -146,7 +155,7 @@ export interface ArFSFileMetaDataParameters {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -159,14 +168,14 @@ export interface ArFSFileMetaDataParameters {
 	fileMetaDataSyncStatus: number;
 	cloudOnly: number;
 }
-export class ArFSFileMetaData {
+export class ArFSFileMetaData implements IFileMetaData {
 	id: number;
 	login: string;
 	appName: string;
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: guards.entityType;
+	entityType: entityType;
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -175,7 +184,7 @@ export class ArFSFileMetaData {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -216,7 +225,7 @@ export class ArFSFileMetaData {
 		fileDataSyncStatus,
 		fileMetaDataSyncStatus,
 		cloudOnly
-	}: ArFSFileMetaDataParameters) {
+	}: IFileMetaData) {
 		this.id = id;
 		this.login = login;
 		this.appName = appName;
@@ -280,7 +289,7 @@ export class ArFSFileMetaData {
 }
 
 export interface ArFSEncryptedData {
-	cipher: guards.cipherType;
+	cipher: cipherType;
 	cipherIV: string;
 	data: Buffer;
 }
