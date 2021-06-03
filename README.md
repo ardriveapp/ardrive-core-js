@@ -1,14 +1,24 @@
 # ardrive-core-js
 
-ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.
+ArDrive Core is a TypeScript library that contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management, and other common functions.
 
-## Dev-install
+## Development Environment Setup
 
-We use Yarn 2.x please follow the guidelines [here](https://yarnpkg.com/getting-started/install)
+We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.
 
-We use husky >6.
+<ol>
+<li>Install nvm [using the instructions here](https://github.com/nvm-sh/nvm).</li>
+<li>Ensure that the correct Node version is installed and activated by performing `nvm install` and then `nvm use`</li>
+<li>We use Yarn 2.x please [follow the installation guidelines here](https://yarnpkg.com/getting-started/install)</li>
+<li>We use husky 6.x to manage the git commit hooks that help to improve the quality of our commits. Please run:
+  `yarn husky install`
+  to enable git hooks for this local repository. Without doing so, you risk committing non-compliant code to the repository.
+</li>
+<li>Install all node package dependencies by running `yarn install --check-cache`</li>
+</ol>
 
-You will need to run `yarn husky install` to enable hooks locally on your repo
+## Building the Library
+Simply run `yarn build`. This will clean the project and compile the TypeScript library.
 
 ### VSCode/VSCodium integration:
 
