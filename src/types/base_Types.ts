@@ -1,291 +1,210 @@
-import { cipherType, driveAuthMode, drivePrivacy, entityType, invalid } from './type_guards';
+import { OrInvalid } from './type_conditionals';
+import { cipherType, contentType, driveAuthMode, drivePrivacy, driveSharing, entityType, invalid } from './type_guards';
 export interface IDriveUser {
-	login: string;
-	dataProtectionKey: string;
-	walletPrivateKey: string;
-	walletPublicKey: string;
-	syncFolderPath: string;
-	autoSyncApproval: number | invalid;
+	login?: OrInvalid<string>;
+	dataProtectionKey?: OrInvalid<string>;
+	walletPrivateKey?: OrInvalid<string>;
+	walletPublicKey?: OrInvalid<string>;
+	syncFolderPath?: OrInvalid<string>;
+	autoSyncApproval?: OrInvalid<number>;
 }
 
 export interface UploadBatch {
-	totalArDrivePrice: number;
-	totalUSDPrice: number;
-	totalSize: string;
-	totalNumberOfFileUploads: number;
-	totalNumberOfMetaDataUploads: number;
-	totalNumberOfFolderUploads: number;
+	totalArDrivePrice: OrInvalid<number>;
+	totalUSDPrice: OrInvalid<number>;
+	totalSize: OrInvalid<string>;
+	totalNumberOfFileUploads: OrInvalid<number>;
+	totalNumberOfMetaDataUploads: OrInvalid<number>;
+	totalNumberOfFolderUploads: OrInvalid<number>;
 }
 
-export interface ArFSRootFolderMetaData {
-	metaDataTxId: string;
-	cipher: cipherType;
-	cipherIV: string;
+export interface IRootFolderMetaData {
+	metaDataTxId?: OrInvalid<string>;
+	cipher?: OrInvalid<cipherType>;
+	cipherIV?: OrInvalid<string>;
 }
 
 export interface ArDriveBundle {
-	id: number;
-	login: string;
-	bundleTxId: string;
-	bundleSyncStatus: number;
-	uploadTime: number;
+	id: OrInvalid<number>;
+	login: OrInvalid<string>;
+	bundleTxId: OrInvalid<string>;
+	bundleSyncStatus: OrInvalid<number>;
+	uploadTime: OrInvalid<number>;
 }
 
 export interface IDriveMetaData {
-	id: number;
-	login?: string;
-	appName: string;
-	appVersion: string;
-	driveName: string;
-	rootFolderId: string;
-	cipher: cipherType;
-	cipherIV: string;
-	unixTime: number;
-	arFS: string;
-	driveId: string;
-	driveSharing?: string;
-	drivePrivacy: drivePrivacy;
-	driveAuthMode: driveAuthMode;
-	metaDataTxId: string;
-	metaDataSyncStatus: number;
-	isLocal?: number;
+	id?: OrInvalid<number>;
+	login?: OrInvalid<string>;
+	appName?: OrInvalid<string>;
+	appVersion?: OrInvalid<string>;
+	driveName?: OrInvalid<string>;
+	rootFolderId?: OrInvalid<string>;
+	cipher?: OrInvalid<cipherType>;
+	cipherIV?: OrInvalid<string>;
+	unixTime?: OrInvalid<number>;
+	arFS?: OrInvalid<string>;
+	driveId?: OrInvalid<string>;
+	driveSharing?: OrInvalid<driveSharing>;
+	drivePrivacy?: OrInvalid<drivePrivacy>;
+	driveAuthMode?: OrInvalid<driveAuthMode>;
+	metaDataTxId?: OrInvalid<string>;
+	metaDataSyncStatus?: OrInvalid<number>;
+	isLocal?: OrInvalid<number>;
 }
 
 export class ArDriveUser implements IDriveUser {
-	login: string = invalid;
-	dataProtectionKey: string = invalid;
-	walletPrivateKey: string = invalid;
-	walletPublicKey: string = invalid;
-	syncFolderPath: string = invalid;
-	autoSyncApproval: number | invalid = invalid;
+	login: OrInvalid<string> = invalid;
+	dataProtectionKey: OrInvalid<string> = invalid;
+	walletPrivateKey: OrInvalid<string> = invalid;
+	walletPublicKey: OrInvalid<string> = invalid;
+	syncFolderPath: OrInvalid<string> = invalid;
+	autoSyncApproval: OrInvalid<number> = invalid;
+
+	constructor(args: IDriveUser = {}) {
+		Object.assign(this, args);
+	}
 }
 
-export class ArFSDriveMetaData {
-	id: number;
+export class ArFSRootFolderMetaData implements IRootFolderMetaData {
+	metaDataTxId: OrInvalid<string> = invalid;
+	cipher: OrInvalid<cipherType> = invalid;
+	cipherIV: OrInvalid<string> = invalid;
+
+	constructor(args: IRootFolderMetaData = {}) {
+		Object.assign(this, args);
+	}
+}
+
+export class ArFSDriveMetaData implements IDriveMetaData {
+	id: OrInvalid<number> = invalid;
 	login?: string;
-	appName: string;
-	appVersion: string;
-	driveName: string;
-	rootFolderId: string;
-	cipher: cipherType;
-	cipherIV: string;
-	unixTime: number;
-	arFS: string;
-	driveId: string;
-	driveSharing?: string;
-	drivePrivacy: drivePrivacy;
-	driveAuthMode: driveAuthMode;
-	metaDataTxId: string;
-	metaDataSyncStatus: number;
-	isLocal?: number;
+	appName: string = invalid;
+	appVersion: string = invalid;
+	driveName: string = invalid;
+	rootFolderId: string = invalid;
+	cipher: OrInvalid<cipherType> = invalid;
+	cipherIV: string = invalid;
+	unixTime: OrInvalid<number> = invalid;
+	arFS: string = invalid;
+	driveId: string = invalid;
+	driveSharing?: OrInvalid<driveSharing>;
+	drivePrivacy: OrInvalid<drivePrivacy> = invalid;
+	driveAuthMode?: OrInvalid<driveAuthMode>;
+	metaDataTxId: string = invalid;
+	metaDataSyncStatus: OrInvalid<number> = invalid;
+	isLocal?: OrInvalid<number> = invalid;
 
-	constructor({
-		id,
-		login,
-		appName,
-		appVersion,
-		driveName,
-		rootFolderId,
-		cipher,
-		cipherIV,
-		unixTime,
-		arFS,
-		driveId,
-		driveSharing,
-		drivePrivacy,
-		driveAuthMode,
-		metaDataTxId,
-		metaDataSyncStatus,
-		isLocal
-	}: ArFSDriveMetaDataParameters) {
-		this.id = id;
-		this.login = login;
-		this.appName = appName;
-		this.appVersion = appVersion;
-		this.driveName = driveName;
-		this.rootFolderId = rootFolderId;
-		this.cipher = cipher;
-		this.cipherIV = cipherIV;
-		this.unixTime = unixTime;
-		this.arFS = arFS;
-		this.driveId = driveId;
-		this.driveSharing = driveSharing;
-		this.drivePrivacy = drivePrivacy;
-		this.driveAuthMode = driveAuthMode;
-		this.metaDataTxId = metaDataTxId;
-		this.metaDataSyncStatus = metaDataSyncStatus;
-		this.isLocal = isLocal;
+	constructor(args: IDriveMetaData) {
+		Object.assign(this, args);
 	}
 
-	static Empty(appName: string, appVersion: string, driveId: string): ArFSDriveMetaData {
-		return new ArFSDriveMetaData({
-			id: 0,
-			login: '',
-			appName: appName,
-			appVersion: appVersion,
-			driveName: '',
-			rootFolderId: '',
-			cipher: '',
-			cipherIV: '',
-			unixTime: 0,
-			arFS: '',
-			driveId,
-			driveSharing: 'shared',
-			drivePrivacy: 'public',
-			driveAuthMode: '',
-			metaDataTxId: '0',
-			metaDataSyncStatus: 0
-		});
-	}
+	// static Empty(appName: string, appVersion: string, driveId: string): ArFSDriveMetaData {
+	// 	return new ArFSDriveMetaData({
+	// 		id: 0,
+	// 		appName: appName,
+	// 		appVersion: appVersion,
+	// 		driveId,
+	// 		driveSharing: driveSharing.SHARED,
+	// 		drivePrivacy: drivePrivacy.PUBLIC,
+	// 		metaDataTxId: '0',
+	// 		metaDataSyncStatus: 0
+	// 	});
+	// }
 }
 
 export interface IFileMetaData {
-	id: number;
+	id?: OrInvalid<number>;
 	login: string;
 	appName: string;
 	appVersion: string;
-	unixTime: number;
-	contentType: string;
-	entityType: entityType;
+	unixTime?: OrInvalid<number>;
+	contentType?: string;
+	entityType: OrInvalid<entityType>;
 	driveId: string;
 	parentFolderId: string;
-	fileId: string;
-	fileSize: number;
-	fileName: string;
-	fileHash: string;
-	filePath: string;
-	fileVersion: number;
-	cipher: cipherType;
-	dataCipherIV: string;
-	metaDataCipherIV: string;
-	lastModifiedDate: number;
-	isLocal: number;
-	isPublic: number;
-	permaWebLink: string;
-	metaDataTxId: string;
-	dataTxId: string;
-	fileDataSyncStatus: number;
-	fileMetaDataSyncStatus: number;
-	cloudOnly: number;
+	fileId?: string;
+	fileSize?: OrInvalid<number>;
+	fileName?: string;
+	fileHash?: string;
+	filePath?: string;
+	fileVersion: OrInvalid<number>;
+	cipher?: OrInvalid<cipherType>;
+	dataCipherIV?: string;
+	metaDataCipherIV?: string;
+	lastModifiedDate?: OrInvalid<number>;
+	isLocal: OrInvalid<number>;
+	isPublic: OrInvalid<number>;
+	permaWebLink?: string;
+	metaDataTxId?: string;
+	dataTxId?: string;
+	fileDataSyncStatus: OrInvalid<number>;
+	fileMetaDataSyncStatus: OrInvalid<number>;
+	cloudOnly: OrInvalid<number>;
 }
 export class ArFSFileMetaData implements IFileMetaData {
-	id: number;
-	login: string;
-	appName: string;
-	appVersion: string;
-	unixTime: number;
-	contentType: string;
-	entityType: entityType;
-	driveId: string;
-	parentFolderId: string;
-	fileId: string;
-	fileSize: number;
-	fileName: string;
-	fileHash: string;
-	filePath: string;
-	fileVersion: number;
-	cipher: cipherType;
-	dataCipherIV: string;
-	metaDataCipherIV: string;
-	lastModifiedDate: number;
-	isLocal: number;
-	isPublic: number;
-	permaWebLink: string;
-	metaDataTxId: string;
-	dataTxId: string;
-	fileDataSyncStatus: number;
-	fileMetaDataSyncStatus: number;
-	cloudOnly: number;
+	id: OrInvalid<number> = invalid;
+	login: string = invalid;
+	appName: string = invalid;
+	appVersion: string = invalid;
+	unixTime: OrInvalid<number> = invalid;
+	contentType: OrInvalid<contentType> = invalid;
+	entityType: OrInvalid<entityType> = invalid;
+	driveId: string = invalid;
+	parentFolderId: string = invalid;
+	fileId: string = invalid;
+	fileSize: OrInvalid<number> = invalid;
+	fileName: string = invalid;
+	fileHash: string = invalid;
+	filePath: string = invalid;
+	fileVersion: OrInvalid<number> = invalid;
+	cipher: OrInvalid<cipherType> = invalid;
+	dataCipherIV: string = invalid;
+	metaDataCipherIV: string = invalid;
+	lastModifiedDate: OrInvalid<number> = invalid;
+	isLocal: OrInvalid<number> = invalid;
+	isPublic: OrInvalid<number> = invalid;
+	permaWebLink: string = invalid;
+	metaDataTxId: string = invalid;
+	dataTxId: string = invalid;
+	fileDataSyncStatus: OrInvalid<number> = invalid;
+	fileMetaDataSyncStatus: OrInvalid<number> = invalid;
+	cloudOnly: OrInvalid<number> = invalid;
 
-	constructor({
-		id,
-		login,
-		appName,
-		appVersion,
-		unixTime,
-		contentType,
-		entityType,
-		driveId,
-		parentFolderId,
-		fileId,
-		fileSize,
-		fileName,
-		fileHash,
-		filePath,
-		fileVersion,
-		cipher,
-		dataCipherIV,
-		metaDataCipherIV,
-		lastModifiedDate,
-		isLocal,
-		isPublic,
-		permaWebLink,
-		metaDataTxId,
-		dataTxId,
-		fileDataSyncStatus,
-		fileMetaDataSyncStatus,
-		cloudOnly
-	}: IFileMetaData) {
-		this.id = id;
-		this.login = login;
-		this.appName = appName;
-		this.appVersion = appVersion;
-		this.unixTime = unixTime;
-		this.contentType = contentType;
-		this.entityType = entityType;
-		this.driveId = driveId;
-		this.parentFolderId = parentFolderId;
-		this.fileId = fileId;
-		this.fileSize = fileSize;
-		this.fileName = fileName;
-		this.fileHash = fileHash;
-		this.filePath = filePath;
-		this.fileVersion = fileVersion;
-		this.cipher = cipher;
-		this.dataCipherIV = dataCipherIV;
-		this.metaDataCipherIV = metaDataCipherIV;
-		this.lastModifiedDate = lastModifiedDate;
-		this.isLocal = isLocal;
-		this.isPublic = isPublic;
-		this.permaWebLink = permaWebLink;
-		this.metaDataTxId = metaDataTxId;
-		this.dataTxId = dataTxId;
-		this.fileDataSyncStatus = fileDataSyncStatus;
-		this.fileMetaDataSyncStatus = fileMetaDataSyncStatus;
-		this.cloudOnly = cloudOnly;
+	constructor(args: IFileMetaData) {
+		Object.assign(this, args);
 	}
 
-	static Empty(userLogin: string): ArFSFileMetaData {
-		return new ArFSFileMetaData({
-			id: 0,
-			login: userLogin,
-			appName: '',
-			appVersion: '',
-			unixTime: 0,
-			contentType: '',
-			entityType: '',
-			driveId: '',
-			parentFolderId: '',
-			fileId: '',
-			fileSize: 0,
-			fileName: '',
-			fileHash: '',
-			filePath: '',
-			fileVersion: 0,
-			lastModifiedDate: 0,
-			isPublic: 0,
-			isLocal: 0,
-			fileDataSyncStatus: 0,
-			fileMetaDataSyncStatus: 0,
-			permaWebLink: '',
-			metaDataTxId: '',
-			dataTxId: '',
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		});
-	}
+	// static Empty(userLogin: string): ArFSFileMetaData {
+	// 	return new ArFSFileMetaData({
+	// 		id: 0,
+	// 		login: userLogin,
+	// 		appName: '',
+	// 		appVersion: '',
+	// 		unixTime: 0,
+	// 		contentType: '',
+	// 		entityType: '',
+	// 		driveId: '',
+	// 		parentFolderId: '',
+	// 		fileId: '',
+	// 		fileSize: 0,
+	// 		fileName: '',
+	// 		fileHash: '',
+	// 		filePath: '',
+	// 		fileVersion: 0,
+	// 		lastModifiedDate: 0,
+	// 		isPublic: 0,
+	// 		isLocal: 0,
+	// 		fileDataSyncStatus: 0,
+	// 		fileMetaDataSyncStatus: 0,
+	// 		permaWebLink: '',
+	// 		metaDataTxId: '',
+	// 		dataTxId: '',
+	// 		cipher: '',
+	// 		dataCipherIV: '',
+	// 		metaDataCipherIV: '',
+	// 		cloudOnly: 0
+	// 	});
+	// }
 }
 
 export interface ArFSEncryptedData {
@@ -293,5 +212,3 @@ export interface ArFSEncryptedData {
 	cipherIV: string;
 	data: Buffer;
 }
-
-// Arweave GraphQL Interfaces

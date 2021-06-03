@@ -65,7 +65,7 @@ export async function newArFSDrive(driveName: string, login: string): Promise<Ar
 
 	// Drive is public
 	console.log('Creating a new public drive %s | %s', driveName, driveId);
-	const drive: ArFSLocalPublicDriveEntity = {
+	const drive = new ArFSLocalPublicDriveEntity({
 		id: 0,
 		driveId,
 		owner: login,
@@ -80,7 +80,7 @@ export async function newArFSDrive(driveName: string, login: string): Promise<Ar
 			txId: '0',
 			unixTime: unixTime
 		} as IPublicDriveEntity)
-	};
+	});
 
 	return drive;
 }
@@ -101,7 +101,7 @@ export async function createAndUploadArFSDriveAndRootFolder(
 			const preppedDrive = await newArFSDriveMetaData(walletPrivateKey, newDrive);
 
 			// Create a new ArFS Drive Root Folder entity
-			const newRootFolderMetaData: ArFSLocalPublicFile = {
+			const newRootFolderMetaData = new ArFSLocalPublicFile({
 				id: 0,
 				owner: user.walletPublicKey,
 				hash: '',
@@ -132,7 +132,7 @@ export async function createAndUploadArFSDriveAndRootFolder(
 					txId: '0',
 					unixTime: 0
 				})
-			};
+			});
 
 			// Prepare the root folder transaction.  It will encrypt the data if necessary.
 			const preppedRootFolder = await newArFSFileMetaData(walletPrivateKey, newRootFolderMetaData);
@@ -189,20 +189,19 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 		);
 
 		// Setup Drive Root Folder
-		const driveRootFolderToAdd: ArFSFileMetaData = {
+		const driveRootFolderToAdd = new ArFSFileMetaData({
 			id: 0,
 			login: user.login,
 			appName: sharedPublicDrive.appName,
 			appVersion: sharedPublicDrive.appVersion,
 			unixTime: sharedPublicDrive.unixTime,
-			contentType: 'application/json',
-			entityType: 'folder',
+			contentType: contentType.APPLICATION_JSON,
+			entityType: entityType.FOLDER,
 			driveId: sharedPublicDrive.driveId,
 			parentFolderId: '0', // Root folders have no parent folder ID.
 			fileId: sharedPublicDrive.rootFolderId,
 			filePath: drivePath,
 			fileName: sharedPublicDrive.driveName,
-			fileHash: '0',
 			fileSize: 0,
 			lastModifiedDate: sharedPublicDrive.unixTime,
 			fileVersion: 0,
@@ -210,14 +209,10 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 			isLocal: 1,
 			metaDataTxId,
 			dataTxId: '0',
-			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
 			fileMetaDataSyncStatus: 3,
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
 			cloudOnly: 0
-		};
+		});
 
 		// Add Drive to Drive Table
 		await addDriveToDriveTable(sharedPublicDrive);

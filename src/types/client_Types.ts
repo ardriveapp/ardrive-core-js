@@ -15,7 +15,7 @@ export interface ILocalDriveEntity<P extends drivePrivacy> {
 }
 
 export class ArFSLocalDriveEntity<P extends drivePrivacy> implements ILocalDriveEntity<P> {
-	id: ILocalDriveEntity<P>['id'] = invalid;
+	id: OrInvalid<number> = invalid;
 	driveId: OrInvalid<string> = invalid;
 	owner: ILocalDriveEntity<P>['owner'] = invalid;
 	entity: ILocalDriveEntity<P>['entity'] = invalid;
