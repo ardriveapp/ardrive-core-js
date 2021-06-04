@@ -1,6 +1,7 @@
 import { arFSVersion } from '../common';
+import { appName, webAppName } from '../constants';
 import * as arfsTpes from '../types/arfs_Types';
-import { ArFSRootFolderMetaData } from '../types/base_Types';
+import { ArFSDriveMetaData, ArFSRootFolderMetaData } from '../types/base_Types';
 import { GQLEdgeInterface } from '../types/gql_Types';
 import { PrivacyToDriveEntity } from '../types/type_conditionals';
 import { cipherType, drivePrivacy } from '../types/type_guards';
@@ -29,14 +30,34 @@ async function getDriveEntity<P extends drivePrivacy>(privacy: P, driveId: strin
 	return drive;
 }
 
-export async function getPublicDriveRootFolderTxId<P extends drivePrivacy>(
-	driveId: string,
-	folderId: string
-): Promise<string> {
+export async function getPublicDriveRootFolderTxId(driveId: string, folderId: string): Promise<string> {
 	const query = getDriveRootFolderQuery(driveId, folderId);
 	const transaction = (await query.getRaw())[0];
 	const metaDataTxId = getMetaDataTxIdFrom(transaction);
 	return metaDataTxId;
+}
+
+export const getAllMyPublicArDriveIds = getAllMyArDriveIds.bind(this, drivePrivacy.PUBLIC);
+
+export const getAllMyPrivateArDriveIds = getAllMyArDriveIds.bind(this, drivePrivacy.PRIVATE);
+
+async function getAllMyArDriveIds<P extends drivePrivacy>(
+	privacy: P,
+	user: { login: string; dataProtectionKey?: string; walletPublicKey: string },
+	lastBlockHeight: number
+): Promise<ArFSDriveMetaData[]> {
+	const query = new Query();
+	query.lastDriveBlockHeight = lastBlockHeight;
+	query.first = 100;
+	query.owners = [user.walletPublicKey];
+	query.tags = [
+		{ name: 'App-Name', values: [appName, webAppName] },
+		{ name: 'Entity-Type', values: entityType },
+		{ name: 'Drive-Privacy', values: privacy }
+	];
+	query.parameters = NODE_ID_AND_TAGS_PARAMETERS;
+	const result = await query.getAll<ArFSDriveMetaData>();
+	return result;
 }
 
 export async function getPrivateDriveRootFolderTxId(
