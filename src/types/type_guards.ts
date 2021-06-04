@@ -1,6 +1,6 @@
 export type invalid = 'invalid';
 export const invalid: invalid = 'invalid';
-
+export const AES256_GCM = 'AES256-GCM';
 export type cipherType = 'aes-gcm-256' | 'AES256-GCM';
 export enum entityType {
 	DRIVE = 'drive',
