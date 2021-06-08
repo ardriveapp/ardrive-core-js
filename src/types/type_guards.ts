@@ -1,19 +1,22 @@
-export type invalid = 'invalid';
-export const invalid: invalid = 'invalid';
+export type emptyString = '';
+export const emptyString: emptyString = '';
 export const AES256_GCM = 'AES256-GCM';
 export type cipherType = 'aes-gcm-256' | 'AES256-GCM';
 export enum entityType {
 	DRIVE = 'drive',
 	FILE = 'file',
-	FOLDER = 'folder'
+	FOLDER = 'folder',
+	EMPTY = ''
 }
 export enum contentType {
 	APPLICATION_JSON = 'application/json',
-	APPLICATION_OCTET_STREAM = 'application/octet-stream'
+	APPLICATION_OCTET_STREAM = 'application/octet-stream',
+	EMPTY = ''
 }
 export enum drivePrivacy {
 	PRIVATE = 'private',
-	PUBLIC = 'public'
+	PUBLIC = 'public',
+	EMPTY = ''
 }
 export type driveAuthMode = 'password';
 export enum driveSharing {

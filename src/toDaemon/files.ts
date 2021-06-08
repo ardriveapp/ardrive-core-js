@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
 import { hashElement, HashElementOptions } from 'folder-hash';
+import { contentType, entityType } from '../types/type_guards';
 
 //const { hashElement } = require('folder-hash');
 
@@ -130,17 +131,17 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 		// No match, so queue a new file
 		console.log('   Queuing a new file for upload %s', filePath);
 		const unixTime = Math.round(Date.now() / 1000);
-		const contentType = extToMime(filePath);
+		const fileContentType = extToMime(filePath) as contentType;
 		const fileId = uuidv4();
 		const fileSize = stats.size;
-		const newFileToQueue: ArFSFileMetaData = {
+		const newFileToQueue: ArFSFileMetaData = new ArFSFileMetaData({
 			id: 0,
 			login,
 			appName,
 			appVersion,
 			unixTime,
-			contentType,
-			entityType: 'file',
+			contentType: fileContentType,
+			entityType: entityType.FILE,
 			driveId,
 			parentFolderId,
 			fileId,
@@ -154,14 +155,10 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 			isLocal: 1,
 			metaDataTxId: '0',
 			dataTxId: '0',
-			permaWebLink: '',
 			fileDataSyncStatus: 1, // Sync status of 1 requires a data tx
 			fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
 			cloudOnly: 0
-		};
+		});
 		addFileToSyncTable(newFileToQueue);
 		return;
 	}
@@ -214,13 +211,11 @@ async function queueFolder(
 		}
 
 		const unixTime = Math.round(Date.now() / 1000);
-		const contentType = 'application/json';
 		let fileId = uuidv4();
 		const lastModifiedDate = Math.floor(stats.mtimeMs);
 
 		// Use the inode value instead of file size
 		const fileSize = stats.ino;
-		const entityType = 'folder';
 		const fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
 		// Check if its parent folder has been added.  If not, lets add it first
@@ -247,14 +242,14 @@ async function queueFolder(
 			fileId = renamedFolder.fileId;
 		}
 
-		const folderToQueue: ArFSFileMetaData = {
+		const folderToQueue: ArFSFileMetaData = new ArFSFileMetaData({
 			id: 0,
 			login,
 			appName,
 			appVersion,
 			unixTime,
-			contentType,
-			entityType,
+			contentType: contentType.APPLICATION_JSON,
+			entityType: entityType.FOLDER,
 			driveId,
 			parentFolderId,
 			fileId,
@@ -268,14 +263,10 @@ async function queueFolder(
 			isLocal: 1,
 			metaDataTxId: '0',
 			dataTxId: '0',
-			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
 			fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
 			cloudOnly: 0
-		};
+		});
 		await addFileToSyncTable(folderToQueue);
 	}
 }

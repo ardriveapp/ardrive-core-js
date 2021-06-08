@@ -14,13 +14,24 @@ export const getPrivateDriveEntity = getDriveEntity.bind(this, drivePrivacy.PRIV
 
 export const getPublicDriveEntity = getDriveEntity.bind(this, drivePrivacy.PUBLIC);
 
-export const getSharedPublicDrive = getDriveEntity.bind(this, drivePrivacy.PUBLIC);
-
 export const getAllPrivateDriveEntities = getAllDriveEntities.bind(this, drivePrivacy.PRIVATE);
 
 export const getAllPublicDriveEntities = getAllDriveEntities.bind(this, drivePrivacy.PUBLIC);
 
-async function getDriveEntity<P extends drivePrivacy>(privacy: P, driveId: string): Promise<PrivacyToDriveEntity<P>> {
+export async function getSharedPublicDrive(driveId: string): Promise<ArFSDriveMetaData> {
+	const query = new EntityQuery<ArFSDriveMetaData>({
+		entityType,
+		entityId: driveId,
+		privacy: drivePrivacy.PUBLIC
+	});
+	const drive = (await query.get())[0];
+	return drive;
+}
+
+async function getDriveEntity<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
+	privacy: P,
+	driveId: string
+): Promise<PrivacyToDriveEntity<P>> {
 	const query = new EntityQuery<PrivacyToDriveEntity<P>>({
 		entityType,
 		entityId: driveId,
@@ -98,7 +109,7 @@ function getDriveRootFolderQuery(driveId: string, folderId: string): Query {
 	return query;
 }
 
-async function getAllDriveEntities<P extends drivePrivacy>(
+async function getAllDriveEntities<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	privacy: P,
 	owner: string,
 	lastBlockHeight: number

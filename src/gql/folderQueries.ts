@@ -13,7 +13,7 @@ export const getAllPrivateFolderEntities = getFolderEntities.bind(this, drivePri
 
 export const getAllPublicFolderEntities = getFolderEntities.bind(this, drivePrivacy.PUBLIC);
 
-async function getFolderEntity<P extends drivePrivacy>(
+async function getFolderEntity<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	privacy: P,
 	folderId: string
 ): Promise<PrivacyToFileFolderEntity<P>> {
@@ -26,7 +26,7 @@ async function getFolderEntity<P extends drivePrivacy>(
 	return new ArFSFileFolderEntity(privateDrive);
 }
 
-async function getFolderEntities<P extends drivePrivacy>(
+async function getFolderEntities<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	privacy: P,
 	owner: string,
 	driveId: string,

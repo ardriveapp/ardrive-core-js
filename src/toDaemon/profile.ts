@@ -13,6 +13,7 @@ import {
 } from '../db/db_get';
 import { removeByDriveIdFromSyncTable, removeFromDriveTable } from '../db/db_delete';
 import { ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from '../types/base_Types';
+import { contentType, entityType } from '../types/type_guards';
 
 // This creates all of the Drives found for the user
 export async function setupDrives(login: string, syncFolderPath: string): Promise<string> {
@@ -41,11 +42,7 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 				// determine if the files are private or public
 				// this should be refactored, and isPublic should change to drivePrivacy
 				let isPublic = 1;
-				let rootFolderMetaData: ArFSRootFolderMetaData = {
-					metaDataTxId: '',
-					cipher: '',
-					cipherIV: ''
-				};
+				let rootFolderMetaData: ArFSRootFolderMetaData = new ArFSRootFolderMetaData({});
 				if (drive.drivePrivacy === 'private') {
 					isPublic = 0;
 					rootFolderMetaData = await getPrivateDriveRootFolderTxId(drive.driveId, drive.rootFolderId);
@@ -59,14 +56,13 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 
 				// Prepare a new folder to add to the sync table
 				// This folder will require a metadata transaction to arweave
-				const driveRootFolderToAdd: ArFSFileMetaData = {
-					id: 0,
+				const driveRootFolderToAdd: ArFSFileMetaData = new ArFSFileMetaData({
 					login,
 					appName: drive.appName,
 					appVersion: drive.appVersion,
 					unixTime: drive.unixTime,
-					contentType: 'application/json',
-					entityType: 'folder',
+					contentType: contentType.APPLICATION_JSON,
+					entityType: entityType.FOLDER,
 					driveId: drive.driveId,
 					parentFolderId: '0', // Root folders have no parent folder ID.
 					fileId: drive.rootFolderId,
@@ -80,14 +76,12 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 					isLocal: 1,
 					metaDataTxId: rootFolderMetaData.metaDataTxId,
 					dataTxId: '0',
-					permaWebLink: '',
 					fileDataSyncStatus: 0, // Folders do not require a data tx
 					fileMetaDataSyncStatus: drive.metaDataSyncStatus, // Sync status of 1 requries a metadata tx
 					cipher: rootFolderMetaData.cipher,
-					dataCipherIV: '',
 					metaDataCipherIV: rootFolderMetaData.cipherIV,
 					cloudOnly: 0
-				};
+				});
 				await addFileToSyncTable(driveRootFolderToAdd);
 			}
 		});

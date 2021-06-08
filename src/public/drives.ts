@@ -12,7 +12,7 @@ import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
-import { contentType, entityType, invalid } from '../types/type_guards';
+import { contentType, entityType, emptyString } from '../types/type_guards';
 import {
 	ArFSEntity,
 	ArFSPublicDriveEntity,
@@ -48,10 +48,7 @@ export async function newArFSDriveMetaData(
 		return null;
 	} catch (err) {
 		console.log(err);
-		console.log(
-			'Error creating new ArFS Drive transaction and uploader %s',
-			(entity !== invalid && entity.name) || entity
-		);
+		console.log('Error creating new ArFS Drive transaction and uploader %s', (entity && entity.name) || entity);
 		return null;
 	}
 }

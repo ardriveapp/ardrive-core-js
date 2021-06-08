@@ -8,7 +8,7 @@ import {
 	ArFSPublicFileData,
 	ArFSPublicFileFolderEntity
 } from './arfs_Types';
-import { drivePrivacy, invalid } from './type_guards';
+import { drivePrivacy } from './type_guards';
 
 export type PrivacyToDriveEntity<P extends drivePrivacy> = ArFSDriveEntity<
 	P extends drivePrivacy.PRIVATE ? ArFSPrivateDriveEntity : ArFSPublicDriveEntity
@@ -21,5 +21,3 @@ export type PrivacyToFileFolderEntity<P extends drivePrivacy> = ArFSFileFolderEn
 export type PrivacyToData<P extends drivePrivacy> = P extends drivePrivacy.PRIVATE
 	? ArFSPrivateFileData
 	: ArFSPublicFileData;
-
-export type OrInvalid<T> = T | invalid;
