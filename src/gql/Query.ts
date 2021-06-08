@@ -1,5 +1,4 @@
 import * as common from '../common';
-import { IEntity } from '../types/arfs_Types';
 import * as gqlTypes from '../types/gql_Types';
 import Arweave from 'arweave';
 import { AxiosResponse } from 'axios';

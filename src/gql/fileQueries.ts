@@ -13,7 +13,7 @@ export const getAllPrivateFileEntities = getFilesEntities.bind(this, drivePrivac
 
 export const getAllPublicFileEntities = getFilesEntities.bind(this, drivePrivacy.PUBLIC);
 
-async function getFileEntity<P extends drivePrivacy>(
+async function getFileEntity<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	privacy: P,
 	owner: string,
 	fileId: string
@@ -29,7 +29,7 @@ async function getFileEntity<P extends drivePrivacy>(
 	return entityInstance;
 }
 
-async function getFilesEntities<P extends drivePrivacy>(
+async function getFilesEntities<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	privacy: P,
 	owner: string,
 	driveId: string,

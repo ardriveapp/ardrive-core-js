@@ -12,7 +12,7 @@ import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
-import { contentType, entityType, emptyString } from '../types/type_guards';
+import { contentType, entityType } from '../types/type_guards';
 import {
 	ArFSEntity,
 	ArFSPublicDriveEntity,

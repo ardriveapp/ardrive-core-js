@@ -12,12 +12,13 @@ import {
 	uploadArFSFileData,
 	uploadArFSFileMetaData
 } from './public/arfs';
-import { ArFSFileData, ArFSFileFolderEntity, JWKInterface } from './types/arfs_Types';
+import { ArFSFileData, ArFSPublicFileFolderEntity, JWKInterface } from './types/arfs_Types';
 import Transaction from 'arweave/node/lib/transaction';
 import { appName, appVersion, arFSVersion } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import { getWinston } from './node';
+import { drivePrivacy } from './types/type_guards';
 
 // Initialize the arweave-bundles API used for ANS102 Transactions
 const deps = {
@@ -248,9 +249,9 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 	}
 }
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
-export async function createFileDataItemTransaction(
+export async function createFileDataItemTransaction<P extends drivePrivacy.PRIVATE | drivePrivacy.PUBLIC>(
 	fileData: Buffer,
-	fileMetaData: ArFSFileData,
+	fileMetaData: ArFSFileData<P>,
 	walletPrivateKey: JWKInterface
 ): Promise<DataItemJson | string> {
 	try {
@@ -275,7 +276,7 @@ export async function createFileDataItemTransaction(
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
 export async function createFileFolderMetaDataItemTransaction(
-	metaData: ArFSFileFolderEntity,
+	metaData: ArFSPublicFileFolderEntity,
 	secondaryFileMetaData: string,
 	walletPrivateKey: JWKInterface
 ): Promise<DataItemJson | string> {

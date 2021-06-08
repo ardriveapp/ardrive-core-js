@@ -2,13 +2,15 @@ import * as arweavePrivate from './transactions_private';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
 import { ArDriveUser, ArFSEncryptedData } from '../types/base_Types';
-import { ArFSLocalDriveEntity, ArFSLocalPrivateDriveEntity } from '../types/client_Types';
+import { ArFSLocalPrivateDriveEntity } from '../types/client_Types';
 import { v4 as uuidv4 } from 'uuid';
 import { deriveDriveKey, driveEncrypt } from '../crypto';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
 import { appName, appVersion, arFSVersion, cipher } from '../constants';
 import { createDataUploader } from '../transactions';
+import { contentType, drivePrivacy, entityType } from '../types/type_guards';
+import { ArFSPrivateDriveEntity } from '../types/arfs_Types';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 
@@ -60,33 +62,33 @@ export async function newArFSPrivateDriveMetaData(
 // Creates a new drive depending on the privacy
 // This should be in the Drive class
 
-export async function newArFSPrivateDrive(driveName: string, login?: string): Promise<ArFSLocalDriveEntity> {
+export async function newArFSPrivateDrive(driveName: string, login?: string): Promise<ArFSLocalPrivateDriveEntity> {
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
 	console.log('Creating a new private drive %s | %s', driveName, driveId);
-	const drive: ArFSLocalPrivateDriveEntity = {
+	const drive: ArFSLocalPrivateDriveEntity = new ArFSLocalPrivateDriveEntity({
 		id: 0,
 		owner: login != undefined ? login : '',
 		isLocal: 1,
-		entity: {
+		entity: new ArFSPrivateDriveEntity({
 			appName: appName,
 			appVersion: appVersion,
 			arFS: arFSVersion,
-			contentType: '',
+			contentType: contentType.EMPTY,
 			driveId: driveId,
-			drivePrivacy: 'personal',
+			drivePrivacy: drivePrivacy.PRIVATE,
 			rootFolderId: rootFolderId,
 			syncStatus: 0,
 			txId: '0',
 			unixTime: unixTime,
 			name: '',
-			entityType: '',
+			entityType: entityType.DRIVE,
 			cipher: cipher,
 			cipherIV: '',
 			driveAuthMode: 'password'
-		}
-	};
+		})
+	});
 
 	return drive;
 }
