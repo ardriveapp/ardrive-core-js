@@ -2,17 +2,37 @@ import { DaoBase } from './dao_base';
 import { ArFSLocalPrivateFile } from '../types/client_Types';
 
 export class PrivateFilesDao extends DaoBase<ArFSLocalPrivateFile> {
-	collectionName = 'privateFiles';
-
-	saveFiles(folders: ArFSLocalPrivateFile[]): void {
-		this._collection.insert(folders);
+	constructor() {
+		super('privateFiles');
 	}
 
-	getFileById(id: number): ArFSLocalPrivateFile {
-		return this._collection.get(id);
-	}
+	//Proposed functions, but any queries from these can be accessed from the collection object
 
-	getFileByEntityId(id: string): ArFSLocalPrivateFile[] {
-		return this._collection.where((e) => e.entity.entityId == id);
-	}
+	// saveFiles(folders: ArFSLocalPrivateFile[]): void {
+	// 	this.collection.insert(folders);
+	// }
+
+	// getFileById(id: number): ArFSLocalPrivateFile {
+	// 	return this.collection.get(id);
+	// }
+
+	// getFileByEntityId(id: string): ArFSLocalPrivateFile[] {
+	// 	return this.collection.where((e) => e.entity.entityId == id);
+	// }
+
+	// getLocalPrivateFileByHashAndParent() {}
+	// getLocalPrivateFileByHashAndName (){}
+	// getLocalPrivateFileByPath(){}
+	// getExactLocalPrivateFile (){}
+	// getLatestLocalPrivateFile(){}
+	// getPreviousLocalPrivateFile(){}
+	// getLocalPrivateFileByTx(){}
+	// getPrivateFilesToDownload(){}
+	// getAllLocalPrivateFiles(){}
+	// getPrivateFilesToUpload(){}
+	// getRecentlyUploadedPrivateFiles(){}
+	// getPrivateFilesWithMissingPaths(){}
+	// getPrivateFilesWithMissingParents(){}
+	// getUnhashedLocalPrivateFiles(){}
+	// getLatestLocalPrivateFiles(){}
 }

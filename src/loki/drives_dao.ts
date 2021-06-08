@@ -2,17 +2,33 @@ import { DaoBase } from './dao_base';
 import { ArFSLocalDriveEntity } from '../types/client_Types';
 
 export class DrivesDao extends DaoBase<ArFSLocalDriveEntity> {
-	collectionName = 'publicDrives';
-
-	saveDrives(drives: ArFSLocalDriveEntity[]): void {
-		this._collection.insert(drives);
+	constructor() {
+		super('drives');
 	}
 
-	getDriveById(id: number): ArFSLocalDriveEntity {
-		return this._collection.get(id);
-	}
+	//Proposed functions, but any queries from these can be accessed from the collection object
 
-	getDriveByDriveId(id: string): ArFSLocalDriveEntity[] {
-		return this._collection.where((e) => e.entity.driveId == id);
-	}
+	// saveDrives(drives: ArFSLocalDriveEntity[]): void {
+	// 	this.collection.insert(drives);
+	// }
+
+	// getLocalDrives(owner: string): ArFSLocalDriveEntity[] {
+	// 	return this.collection.find({ owner: owner, isLocal: 1 });
+	// }
+	// getAllRecentlyUploadedDrives(): ArFSLocalDriveEntity[] {
+	// 	return this.collection.where((e: ArFSLocalDriveEntity) => e.entity.syncStatus == 2);
+	// }
+	// getDrivesToUpload(owner: string) {
+	// 	return this.collection.where((e: ArFSLocalDriveEntity) => e.owner == owner && e.entity.txId == '0');
+	// }
+	// getLocalDrive() {}
+	// getUnsyncedDrives() {}
+
+	// getDriveById(id: number): ArFSLocalDriveEntity {
+	// 	return this.collection.get(id);
+	// }
+
+	// getDriveByDriveId(id: string): ArFSLocalDriveEntity[] {
+	// 	return this.collection.where((e) => e.entity.driveId == id);
+	// }
 }
