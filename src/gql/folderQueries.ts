@@ -1,9 +1,9 @@
 import { ArFSFileFolderEntity, IFileFolderEntity } from '../types/arfs_Types';
 import { PrivacyToFileFolderEntity } from '../types/type_conditionals';
-import { drivePrivacy } from '../types/type_guards';
+import { drivePrivacy, entityType as _entityType } from '../types/type_guards';
 import { EntityQuery } from './EntityQuery';
 
-const entityType = 'folder';
+const entityType = _entityType.FOLDER;
 
 export const getPrivateFolderEntity = getFolderEntity.bind(this, drivePrivacy.PRIVATE);
 

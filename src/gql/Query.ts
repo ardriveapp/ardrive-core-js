@@ -26,6 +26,7 @@ function tagToAttributeMap(tag: string): string {
 
 const QUERY_ARGUMENTS_WHITELIST = [
 	'edges',
+	'edges.cursor',
 	'edges.node',
 	'edges.node.id',
 	'edges.node.tags',
@@ -67,7 +68,7 @@ export class Query {
 			const parsedValue = Array.isArray(tag.values)
 				? serializedArray(tag.values, serializedString)
 				: serializedString(tag.values);
-			return { name: tag.name, value: parsedValue };
+			return { name: serializedString(tag.name), values: parsedValue };
 		});
 		return !!tags && serializedArray(tags, serializedObject);
 	}
@@ -79,7 +80,7 @@ export class Query {
 	private get parsedBlock(): string | false {
 		if (this.lastDriveBlockHeight) {
 			const min = this.lastDriveBlockHeight > 5 ? this.lastDriveBlockHeight - 5 : this.lastDriveBlockHeight;
-			const block = serializedObject({ min });
+			const block = { min };
 			return serializedObject(block);
 		}
 		return false;
@@ -98,7 +99,11 @@ export class Query {
 
 	private _validateArguments(argument: string[]) {
 		const isValid = argument.reduce((valid: boolean, arg: string): boolean => {
-			return valid && QUERY_ARGUMENTS_WHITELIST.includes(arg);
+			const validation = QUERY_ARGUMENTS_WHITELIST.includes(arg);
+			if (!validation) {
+				console.error(`Not whitelisted parameter: ${arg}`);
+			}
+			return valid && validation;
 		}, true);
 		return isValid;
 	}
@@ -132,13 +137,19 @@ export class Query {
 
 	private _run = async (): Promise<void> => {
 		if (this._hasRan) return;
-		const query = this._getQueryString();
+		const queryPayload = { query: this._getQueryString() };
 		this.triesCount = 0;
 		this.hasNextPage = true;
 		while (this.hasNextPage) {
-			const response = await arweave.api.post(this.gqlUrl, query).catch(this._handleError);
-			if (response) {
+			const response = await arweave.api.post(this.gqlUrl, queryPayload).catch(this._handleError);
+			const data = response ? response.data && response.data.data : false;
+			if (response && data && data.transactions) {
 				this._handleResponse(response);
+			} else if (response !== false) {
+				console.error(`Query request has failed with status code ${response.status}: ${response.statusText}`);
+				this._handleError();
+			} else {
+				this.hasNextPage = false;
 			}
 		}
 		this._hasRan = true;
@@ -161,7 +172,7 @@ export class Query {
 	private _handleResponse = (response: AxiosResponse): void => {
 		const { data } = response.data;
 		const { transactions } = data;
-		if (transactions.edges && transactions.edges.length) {
+		if (transactions && transactions.edges && transactions.edges.length) {
 			const edges = Array.from(transactions.edges) as gqlTypes.GQLEdgeInterface[];
 			const lastEdge = edges[edges.length - 1];
 			this.edges = this.edges.concat(edges);
@@ -170,10 +181,10 @@ export class Query {
 		this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
 	};
 
-	private _getQueryString = () => {
+	private _getQueryString = (): string => {
 		const serializedTransactionData = this._getSerializedTransactionData();
 		const serializedQueryParameters = this._getSerializedParameters();
-		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
+		return `query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`;
 	};
 
 	private _getSerializedTransactionData = (): string => {
@@ -199,7 +210,7 @@ export class Query {
 					const value = params[key];
 					const valueChildrenKeys = Object.keys(value);
 					if (valueChildrenKeys.length > 0) {
-						return `${key} {${this._getSerializedParameters(value, depht + 1)}}`;
+						return `${key} {\n${this._getSerializedParameters(value, depht + 1)}\n}`;
 					} else {
 						return `${key}`;
 					}
@@ -246,12 +257,27 @@ function serializedString(s: string): string {
 }
 
 function serializedObject(o: any): string {
-	return JSON.stringify(o);
+	const keys = Object.keys(o);
+	const keyValueStringArray = keys.map((key: string) => {
+		const value = o[key];
+		let serializedValue;
+		if (['string', 'number', 'boolean'].includes(typeof value)) {
+			serializedValue = value;
+		} else {
+			if (Array.isArray(value)) {
+				serializedValue = serializedArray(value, serializedString);
+			} else {
+				serializedValue = serializedObject(value);
+			}
+		}
+		return `${key}: ${serializedValue}`;
+	});
+	return `{ ${keyValueStringArray.join(', ')} }`;
 }
 
 function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
-	const serialized = a.map(serializeItem).join('\n');
-	return `[\n${serialized}\n]`;
+	const serialized = a.map(serializeItem).join(', ');
+	return `[ ${serialized} ]`;
 }
 
 export const NODE_ID_AND_TAGS_PARAMETERS = ['edges.node.id', 'edges.node.tags.name', 'edges.node.tags.value'];

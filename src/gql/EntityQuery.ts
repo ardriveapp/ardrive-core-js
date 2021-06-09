@@ -1,13 +1,14 @@
 import { IEntity } from '../types/arfs_Types';
+import { drivePrivacy, entityType } from '../types/type_guards';
 import { Query, NODE_ID_AND_TAGS_PARAMETERS } from './Query';
 
 export class EntityQuery<T extends IEntity> extends Query {
 	constructor(args: {
 		entityId?: string;
-		entityType: 'drive' | 'folder' | 'file';
+		entityType: entityType.DRIVE | entityType.FOLDER | entityType.FILE;
 		owner?: string;
 		lastBlockHeight?: number;
-		privacy?: 'private' | 'public';
+		privacy?: drivePrivacy.PRIVATE | drivePrivacy.PUBLIC;
 		driveId?: string;
 		extraParameters?: string[];
 	}) {

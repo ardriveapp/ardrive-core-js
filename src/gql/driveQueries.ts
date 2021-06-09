@@ -4,11 +4,11 @@ import * as arfsTpes from '../types/arfs_Types';
 import { ArFSDriveMetaData, ArFSRootFolderMetaData } from '../types/base_Types';
 import { GQLEdgeInterface } from '../types/gql_Types';
 import { PrivacyToDriveEntity } from '../types/type_conditionals';
-import { cipherType, drivePrivacy } from '../types/type_guards';
+import { cipherType, drivePrivacy, entityType as _entityType } from '../types/type_guards';
 import { EntityQuery } from './EntityQuery';
 import { NODE_ID_AND_TAGS_PARAMETERS, Query } from './Query';
 
-const entityType = 'drive';
+const entityType = _entityType.DRIVE;
 
 export const getPrivateDriveEntity = getDriveEntity.bind(this, drivePrivacy.PRIVATE);
 
