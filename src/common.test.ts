@@ -1,34 +1,26 @@
 import { expect } from 'chai';
 import { formatBytes } from './common';
 
-type byteTypes = 'Bytes' | 'KB' | 'MB' | 'GB';
-
-function formatBytesTestHelper(returnedString: string, type: byteTypes) {
-	const stringArray = returnedString.split(' ');
-
-	// Has correct string value, ex: 'Bytes'
-	expect(stringArray[1], `Incorrect string value: ${stringArray[1]}, expected: ${type}`).to.equal(type);
-
-	if (stringArray[0].includes('.')) {
-		// Byte value has been limited to 3 decimal places (thousandths), ex: 1743.432 KB
-		const decimalValue = stringArray[0].split('.')[1];
-		expect(decimalValue.length, `Decimal value is too long: "${stringArray[0]}"`).to.be.lessThan(4);
-	}
-}
+// Cases for rounding
+// Cases for max/min int
+// Cases for TB represented as GB
 
 describe('The formatBytes function correctly returns', () => {
-	it('Bytes', () => {
-		// Very small integer for testing values without decimals
-		formatBytesTestHelper(formatBytes(85), 'Bytes');
-	});
-	it('KB', () => {
-		formatBytesTestHelper(formatBytes(8537), 'KB');
-	});
-	it('MB', () => {
-		formatBytesTestHelper(formatBytes(1262143), 'MB');
-	});
-	it('GB', () => {
-		// Very long integer for testing `.toFixed()` decimal places
-		formatBytesTestHelper(formatBytes(34737418246534), 'GB');
+	const inputToExpectedOutputMap = new Map<number, string>([
+		[-12, '-12 Bytes'],
+		[0, '0 Bytes'],
+		[1023.999, '1023.999 Bytes'],
+		[1024, '1.000 KB'],
+		[85, '85 Bytes'],
+		[8537, '8.337 KB'],
+		[1262143, '1.204 MB'],
+		[34737418246534, '32351.742 GB'],
+		[Number.MAX_SAFE_INTEGER, '8388608.000 GB']
+	]);
+
+	inputToExpectedOutputMap.forEach((expectedOutput, input) => {
+		it(`${expectedOutput} with ${input}`, () => {
+			expect(formatBytes(input)).to.equal(expectedOutput);
+		});
 	});
 });
