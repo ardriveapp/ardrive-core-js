@@ -1,6 +1,20 @@
 import { expect } from 'chai';
 import { formatBytes } from './common';
 
+/**
+ * formatBytes main test cases:
+ *
+ * All byte ranges return the properly formatted byte description
+ * Function is successfully rounding the up and down
+ * TB values are represented as GB
+ *
+ * Edge cases:
+ *
+ * Works with byte counts represented as a decimal
+ * Accepts negative integers as byte counts
+ * Does not round/convert negative byte counts
+ * Returns values as "1024.000 MB" instead of "1.000 GB" when rounded up
+ */
 describe('The formatBytes function ', () => {
 	describe('returns the properly formatted byte count description ', () => {
 		const inputToExpectedOutputMap = new Map<number, string>([
