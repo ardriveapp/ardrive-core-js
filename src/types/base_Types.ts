@@ -45,7 +45,7 @@ export interface ArFSDriveMetaDataParameters {
 	driveId: string;
 	driveSharing?: string;
 	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	driveAuthMode?: guards.driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -65,7 +65,7 @@ export class ArFSDriveMetaData {
 	driveId: string;
 	driveSharing?: string;
 	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	driveAuthMode?: guards.driveAuthMode;
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -111,19 +111,18 @@ export class ArFSDriveMetaData {
 	static Empty(appName: string, appVersion: string, driveId: string): ArFSDriveMetaData {
 		return new ArFSDriveMetaData({
 			id: 0,
-			login: '',
+			login: guards.emptyString,
 			appName: appName,
 			appVersion: appVersion,
-			driveName: '',
-			rootFolderId: '',
-			cipher: '',
-			cipherIV: '',
+			driveName: guards.emptyString,
+			rootFolderId: guards.emptyString,
+			cipher: guards.AES256_GCM,
+			cipherIV: guards.emptyString,
 			unixTime: 0,
-			arFS: '',
+			arFS: guards.emptyString,
 			driveId,
-			driveSharing: 'shared',
-			drivePrivacy: 'public',
-			driveAuthMode: '',
+			driveSharing: guards.driveSharing.SHARED,
+			drivePrivacy: guards.drivePrivacy.PUBLIC,
 			metaDataTxId: '0',
 			metaDataSyncStatus: 0
 		});
@@ -250,30 +249,30 @@ export class ArFSFileMetaData {
 		return new ArFSFileMetaData({
 			id: 0,
 			login: userLogin,
-			appName: '',
-			appVersion: '',
+			appName: guards.emptyString,
+			appVersion: guards.emptyString,
 			unixTime: 0,
-			contentType: '',
-			entityType: '',
-			driveId: '',
-			parentFolderId: '',
-			fileId: '',
+			contentType: guards.emptyString,
+			entityType: guards.entityType.EMPTY,
+			driveId: guards.emptyString,
+			parentFolderId: guards.emptyString,
+			fileId: guards.emptyString,
 			fileSize: 0,
-			fileName: '',
-			fileHash: '',
-			filePath: '',
+			fileName: guards.emptyString,
+			fileHash: guards.emptyString,
+			filePath: guards.emptyString,
 			fileVersion: 0,
 			lastModifiedDate: 0,
 			isPublic: 0,
 			isLocal: 0,
 			fileDataSyncStatus: 0,
 			fileMetaDataSyncStatus: 0,
-			permaWebLink: '',
-			metaDataTxId: '',
-			dataTxId: '',
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
+			permaWebLink: guards.emptyString,
+			metaDataTxId: guards.emptyString,
+			dataTxId: guards.emptyString,
+			cipher: guards.AES256_GCM,
+			dataCipherIV: guards.emptyString,
+			metaDataCipherIV: guards.emptyString,
 			cloudOnly: 0
 		});
 	}

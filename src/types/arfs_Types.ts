@@ -1,3 +1,5 @@
+import { emptyString } from './type_guards';
+
 // The arweave wallet RSA Public Key
 export interface JWKPublicInterface {
 	kty: string;
@@ -71,13 +73,13 @@ export class ArFSEntity {
 		unixTime?: number
 	): ArFSEntity {
 		return new ArFSEntity(
-			appName ?? '',
-			appVersion ?? '',
-			arFS ?? '',
-			contentType ?? '',
-			driveId ?? '',
-			entityType ?? '',
-			name ?? '',
+			appName ?? emptyString,
+			appVersion ?? emptyString,
+			arFS ?? emptyString,
+			contentType ?? emptyString,
+			driveId ?? emptyString,
+			entityType ?? emptyString,
+			name ?? emptyString,
 			syncStatus ?? 0,
 			txId ?? '0',
 			unixTime ?? 0
@@ -152,9 +154,9 @@ export class ArFSFileData {
 		unixTime?: number
 	): ArFSFileData {
 		return new ArFSFileData(
-			appName ?? '',
-			appVersion ?? '',
-			contentType ?? '',
+			appName ?? emptyString,
+			appVersion ?? emptyString,
+			contentType ?? emptyString,
 			syncStatus ?? 0,
 			txId ?? '0',
 			unixTime ?? 0
@@ -193,14 +195,14 @@ export class ArFSPrivateFileData extends ArFSFileData {
 		cipherIV?: string
 	): ArFSPrivateFileData {
 		return new ArFSPrivateFileData(
-			appName ?? '',
-			appVersion ?? '',
-			contentType ?? '',
+			appName ?? emptyString,
+			appVersion ?? emptyString,
+			contentType ?? emptyString,
 			syncStatus ?? 0,
 			txId ?? '0',
 			unixTime ?? 0,
-			cipher ?? '',
-			cipherIV ?? ''
+			cipher ?? emptyString,
+			cipherIV ?? emptyString
 		);
 	}
 }

@@ -13,6 +13,7 @@ import {
 } from '../db/db_get';
 import { removeByDriveIdFromSyncTable, removeFromDriveTable } from '../db/db_delete';
 import { ArFSDriveMetaData, ArFSFileMetaData, ArFSRootFolderMetaData } from '../types/base_Types';
+import { AES256_GCM, entityType } from '../types/type_guards';
 
 // This creates all of the Drives found for the user
 export async function setupDrives(login: string, syncFolderPath: string): Promise<string> {
@@ -43,7 +44,7 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 				let isPublic = 1;
 				let rootFolderMetaData: ArFSRootFolderMetaData = {
 					metaDataTxId: '',
-					cipher: '',
+					cipher: AES256_GCM,
 					cipherIV: ''
 				};
 				if (drive.drivePrivacy === 'private') {
@@ -66,7 +67,7 @@ export async function setupDrives(login: string, syncFolderPath: string): Promis
 					appVersion: drive.appVersion,
 					unixTime: drive.unixTime,
 					contentType: 'application/json',
-					entityType: 'folder',
+					entityType: entityType.FOLDER,
 					driveId: drive.driveId,
 					parentFolderId: '0', // Root folders have no parent folder ID.
 					fileId: drive.rootFolderId,

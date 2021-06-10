@@ -9,6 +9,7 @@ import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
 
 import Arweave from 'arweave';
+import { AES256_GCM, cipherType, driveAuthMode, drivePrivacy, driveSharing, entityType } from './types/type_guards';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -1720,7 +1721,7 @@ export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSD
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						drive.drivePrivacy = value as drivePrivacy;
 						break;
 					default:
 						break;
@@ -1800,7 +1801,7 @@ export async function getPrivateDriveRootFolderTxId(
 ): Promise<types.ArFSRootFolderMetaData> {
 	let rootFolderMetaData: types.ArFSRootFolderMetaData = {
 		metaDataTxId: '0',
-		cipher: '',
+		cipher: AES256_GCM,
 		cipherIV: ''
 	};
 	try {
@@ -1840,7 +1841,7 @@ export async function getPrivateDriveRootFolderTxId(
 				const { value } = tag;
 				switch (key) {
 					case 'Cipher':
-						rootFolderMetaData.cipher = value;
+						rootFolderMetaData.cipher = value as cipherType;
 						break;
 					case 'Cipher-IV':
 						rootFolderMetaData.cipherIV = value;
@@ -1913,14 +1914,13 @@ export async function getAllMyPublicArDriveIds(
 				appVersion: '',
 				driveName: '',
 				rootFolderId: '',
-				cipher: '',
+				cipher: AES256_GCM,
 				cipherIV: '',
 				unixTime: 0,
 				arFS: '',
 				driveId: '',
-				driveSharing: 'personal',
-				drivePrivacy: 'public',
-				driveAuthMode: '',
+				driveSharing: driveSharing.PERSONAL,
+				drivePrivacy: drivePrivacy.PUBLIC,
 				metaDataTxId: '',
 				metaDataSyncStatus: 3,
 				isLocal: 0
@@ -1946,7 +1946,7 @@ export async function getAllMyPublicArDriveIds(
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						drive.drivePrivacy = value as drivePrivacy;
 						break;
 					default:
 						break;
@@ -2036,14 +2036,13 @@ export async function getAllMyPrivateArDriveIds(
 			appVersion: '',
 			driveName: '',
 			rootFolderId: '',
-			cipher: '',
+			cipher: AES256_GCM,
 			cipherIV: '',
 			unixTime: 0,
 			arFS: '',
 			driveId: '',
-			driveSharing: 'personal',
-			drivePrivacy: '',
-			driveAuthMode: '',
+			driveSharing: driveSharing.PERSONAL,
+			drivePrivacy: drivePrivacy.EMPTY,
 			metaDataTxId: '',
 			metaDataSyncStatus: 3,
 			isLocal: 0
@@ -2069,13 +2068,13 @@ export async function getAllMyPrivateArDriveIds(
 					drive.arFS = value;
 					break;
 				case 'Drive-Privacy':
-					drive.drivePrivacy = value;
+					drive.drivePrivacy = value as drivePrivacy;
 					break;
 				case 'Drive-Auth-Mode':
-					drive.driveAuthMode = value;
+					drive.driveAuthMode = value as driveAuthMode;
 					break;
 				case 'Cipher':
-					drive.cipher = value;
+					drive.cipher = value as cipherType;
 					break;
 				case 'Cipher-IV':
 					drive.cipherIV = value;
@@ -2321,7 +2320,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.contentType = value;
 					break;
 				case 'Entity-Type':
-					fileToSync.entityType = value;
+					fileToSync.entityType = value as entityType;
 					break;
 				case 'Drive-Id':
 					fileToSync.driveId = value;
@@ -2336,7 +2335,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.parentFolderId = value;
 					break;
 				case 'Cipher':
-					fileToSync.cipher = value;
+					fileToSync.cipher = value as cipherType;
 					break;
 				case 'Cipher-IV':
 					fileToSync.metaDataCipherIV = value;

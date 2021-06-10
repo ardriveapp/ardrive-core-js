@@ -12,6 +12,7 @@ import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
+import { AES256_GCM, contentType, entityType } from '../types/type_guards';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 export async function newArFSDriveMetaData(
@@ -178,8 +179,8 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 			appName: sharedPublicDrive.appName,
 			appVersion: sharedPublicDrive.appVersion,
 			unixTime: sharedPublicDrive.unixTime,
-			contentType: 'application/json',
-			entityType: 'folder',
+			contentType: contentType.APPLICATION_JSON,
+			entityType: entityType.FOLDER,
 			driveId: sharedPublicDrive.driveId,
 			parentFolderId: '0', // Root folders have no parent folder ID.
 			fileId: sharedPublicDrive.rootFolderId,
@@ -196,7 +197,7 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
 			fileMetaDataSyncStatus: 3,
-			cipher: '',
+			cipher: AES256_GCM,
 			dataCipherIV: '',
 			metaDataCipherIV: '',
 			cloudOnly: 0

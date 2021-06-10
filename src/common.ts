@@ -12,6 +12,7 @@ import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
 import { ArDriveUser } from './types/base_Types';
 import { cipher } from './constants';
+import { AES256_GCM, drivePrivacy, driveSharing } from './types/type_guards';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -336,14 +337,13 @@ export async function createNewPublicDrive(login: string, driveName: string): Pr
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher: '',
+		cipher: AES256_GCM,
 		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,
 		driveId,
-		driveSharing: 'personal',
-		drivePrivacy: 'public',
-		driveAuthMode: '',
+		driveSharing: driveSharing.PERSONAL,
+		drivePrivacy: drivePrivacy.PUBLIC,
 		metaDataTxId: '0',
 		metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
 		isLocal: 1
@@ -369,8 +369,8 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 		unixTime,
 		arFS: arFSVersion,
 		driveId,
-		driveSharing: 'personal',
-		drivePrivacy: 'private',
+		driveSharing: driveSharing.PERSONAL,
+		drivePrivacy: drivePrivacy.PRIVATE,
 		driveAuthMode: 'password',
 		metaDataTxId: '0',
 		metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload

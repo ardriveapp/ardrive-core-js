@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
 import { hashElement, HashElementOptions } from 'folder-hash';
+import { AES256_GCM, entityType } from '../types/type_guards';
 
 //const { hashElement } = require('folder-hash');
 
@@ -140,7 +141,7 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 			appVersion,
 			unixTime,
 			contentType,
-			entityType: 'file',
+			entityType: entityType.FILE,
 			driveId,
 			parentFolderId,
 			fileId,
@@ -157,7 +158,7 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 			permaWebLink: '',
 			fileDataSyncStatus: 1, // Sync status of 1 requires a data tx
 			fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
-			cipher: '',
+			cipher: AES256_GCM,
 			dataCipherIV: '',
 			metaDataCipherIV: '',
 			cloudOnly: 0
@@ -220,7 +221,6 @@ async function queueFolder(
 
 		// Use the inode value instead of file size
 		const fileSize = stats.ino;
-		const entityType = 'folder';
 		const fileMetaDataSyncStatus = 1; // Set sync status to 1 for meta data transaction
 
 		// Check if its parent folder has been added.  If not, lets add it first
@@ -254,7 +254,7 @@ async function queueFolder(
 			appVersion,
 			unixTime,
 			contentType,
-			entityType,
+			entityType: entityType.FOLDER,
 			driveId,
 			parentFolderId,
 			fileId,
@@ -271,7 +271,7 @@ async function queueFolder(
 			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
 			fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
-			cipher: '',
+			cipher: AES256_GCM,
 			dataCipherIV: '',
 			metaDataCipherIV: '',
 			cloudOnly: 0

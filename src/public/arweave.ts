@@ -121,7 +121,9 @@ export async function prepareArFSDriveTransaction(
 		transaction.addTag('Content-Type', 'application/octet-stream');
 		transaction.addTag('Cipher', driveMetaData.cipher);
 		transaction.addTag('Cipher-IV', driveMetaData.cipherIV);
-		transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
+		if (driveMetaData.driveAuthMode) {
+			transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
+		}
 	} else {
 		// Tag file with public tags only
 		transaction.addTag('Content-Type', 'application/json');
