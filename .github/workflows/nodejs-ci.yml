@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: '14.x'
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: yarn --immutable-cache
       - name: Test codebase
         run: yarn test
       - name: Build codebase
