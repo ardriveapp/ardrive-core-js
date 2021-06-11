@@ -1,7 +1,4 @@
-export type emptyString = '';
-export const emptyString: emptyString = '';
-export const AES256_GCM = 'AES256-GCM';
-export type cipherType = 'aes-gcm-256' | 'AES256-GCM';
+export type cipherType = 'aes-gcm-256' | 'AES256-GCM' | '';
 export enum entityType {
 	DRIVE = 'drive',
 	FILE = 'file',

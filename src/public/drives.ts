@@ -12,7 +12,7 @@ import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
-import { AES256_GCM, contentType, entityType } from '../types/type_guards';
+import { contentType, entityType } from '../types/type_guards';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 export async function newArFSDriveMetaData(
@@ -197,7 +197,7 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
 			fileMetaDataSyncStatus: 3,
-			cipher: AES256_GCM,
+			cipher: '',
 			dataCipherIV: '',
 			metaDataCipherIV: '',
 			cloudOnly: 0

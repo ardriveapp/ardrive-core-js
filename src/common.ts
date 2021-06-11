@@ -12,7 +12,7 @@ import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
 import { ArDriveUser } from './types/base_Types';
 import { cipher } from './constants';
-import { AES256_GCM, drivePrivacy, driveSharing } from './types/type_guards';
+import { drivePrivacy, driveSharing } from './types/type_guards';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -337,7 +337,7 @@ export async function createNewPublicDrive(login: string, driveName: string): Pr
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher: AES256_GCM,
+		cipher: '',
 		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,

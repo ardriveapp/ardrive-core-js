@@ -9,7 +9,7 @@ import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
 
 import Arweave from 'arweave';
-import { AES256_GCM, cipherType, driveAuthMode, drivePrivacy, driveSharing, entityType } from './types/type_guards';
+import { cipherType, driveAuthMode, drivePrivacy, driveSharing, entityType } from './types/type_guards';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -1801,7 +1801,7 @@ export async function getPrivateDriveRootFolderTxId(
 ): Promise<types.ArFSRootFolderMetaData> {
 	let rootFolderMetaData: types.ArFSRootFolderMetaData = {
 		metaDataTxId: '0',
-		cipher: AES256_GCM,
+		cipher: '',
 		cipherIV: ''
 	};
 	try {
@@ -1914,7 +1914,7 @@ export async function getAllMyPublicArDriveIds(
 				appVersion: '',
 				driveName: '',
 				rootFolderId: '',
-				cipher: AES256_GCM,
+				cipher: '',
 				cipherIV: '',
 				unixTime: 0,
 				arFS: '',
@@ -2036,7 +2036,7 @@ export async function getAllMyPrivateArDriveIds(
 			appVersion: '',
 			driveName: '',
 			rootFolderId: '',
-			cipher: AES256_GCM,
+			cipher: '',
 			cipherIV: '',
 			unixTime: 0,
 			arFS: '',
