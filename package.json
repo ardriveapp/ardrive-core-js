@@ -62,11 +62,12 @@
 		"format": "prettier --write \"src/**/*.ts\"",
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",
-		"test": "mocha -r ts-node/register tests/**/*.test.ts",
+		"test": "mocha -r ts-node/register src/**/*.test.ts",
 		"typecheck": "tsc --noemit",
 		"build": "yarn clean && tsc",
 		"version": "yarn run format && git add -A src",
-		"postversion": "git push && git push --tags"
+		"postversion": "git push && git push --tags",
+		"ci": "yarn test && yarn build"
 	},
 	"husky": {
 		"hooks": {
