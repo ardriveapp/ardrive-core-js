@@ -137,7 +137,7 @@ export class ArFSDriveEntity<T extends IDriveEntity> extends ArFSEntity<T> imple
 // An entity for a Private Drive entity with the extra privacy tags
 export class ArFSPrivateDriveEntity extends ArFSDriveEntity<IPrivateDriveEntity> implements IPrivateDriveEntity {
 	drivePrivacy = drivePrivacyValues.PRIVATE;
-	// driveAuthMode is not invalod in propose, as it isn't setted unless when 'password'
+	contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
 	driveAuthMode?: DriveAuthMode; // used for future authentication schemes.  the only allowable value is "password"
 	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
 	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
@@ -145,6 +145,7 @@ export class ArFSPrivateDriveEntity extends ArFSDriveEntity<IPrivateDriveEntity>
 
 export class ArFSPublicDriveEntity extends ArFSDriveEntity<IPublicDriveEntity> implements IPublicDriveEntity {
 	drivePrivacy = drivePrivacyValues.PUBLIC;
+	contentType = contentTypeValues.APPLICATION_JSON;
 }
 
 // A Folder is a logical group of folders and files.  It contains a parent folder ID used to reference where this folder lives in the Drive hierarchy.
@@ -163,13 +164,17 @@ export class ArFSFileFolderEntity<T extends IFileFolderEntity> extends ArFSEntit
 
 export class ArFSPublicFileFolderEntity
 	extends ArFSFileFolderEntity<IPublicFileFolderEntity>
-	implements IPublicFileFolderEntity {}
+	implements IPublicFileFolderEntity
+{
+	contentType = contentTypeValues.APPLICATION_JSON;
+}
 
 // Used for private Files/Folders only.
 export class ArFSPrivateFileFolderEntity
 	extends ArFSFileFolderEntity<IFileFolderEntity & IPrivate>
 	implements IFileFolderEntity, IPrivate
 {
+	contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
 	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
 	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
 }

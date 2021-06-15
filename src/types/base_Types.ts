@@ -106,8 +106,8 @@ export class ArFSDriveMetaData implements IDriveMetaData {
 	drivePrivacy: DrivePrivacy = drivePrivacyValues.PRIVATE;
 	driveAuthMode?: DriveAuthMode;
 	metaDataTxId = '';
-	metaDataSyncStatus = 0;
-	isLocal?: number = 0;
+	metaDataSyncStatus: SyncStatus = 0;
+	isLocal?: YesNoInteger = 0;
 
 	constructor(args: IDriveMetaData) {
 		Object.assign(this, args);
@@ -116,32 +116,32 @@ export class ArFSDriveMetaData implements IDriveMetaData {
 
 export interface IFileMetaData {
 	id?: number;
-	login: string;
-	appName: string;
-	appVersion: string;
+	login?: string;
+	appName?: string;
+	appVersion?: string;
 	unixTime?: number;
 	contentType?: ContentType;
-	entityType: EntityType;
-	driveId: string;
-	parentFolderId: string;
+	entityType?: EntityType;
+	driveId?: string;
+	parentFolderId?: string;
 	fileId?: string;
 	fileSize?: number;
 	fileName?: string;
 	fileHash?: string;
 	filePath?: string;
-	fileVersion: number;
+	fileVersion?: number;
 	cipher?: CipherType;
 	dataCipherIV?: string;
 	metaDataCipherIV?: string;
 	lastModifiedDate?: number;
-	isLocal: YesNoInteger;
-	isPublic: YesNoInteger;
+	isLocal?: YesNoInteger;
+	isPublic?: YesNoInteger;
 	permaWebLink?: string;
 	metaDataTxId?: string;
 	dataTxId?: string;
-	fileDataSyncStatus: SyncStatus;
-	fileMetaDataSyncStatus: SyncStatus;
-	cloudOnly: YesNoInteger;
+	fileDataSyncStatus?: SyncStatus;
+	fileMetaDataSyncStatus?: SyncStatus;
+	cloudOnly?: YesNoInteger;
 }
 export class ArFSFileMetaData implements IFileMetaData {
 	id = 0;
