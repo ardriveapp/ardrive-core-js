@@ -19,7 +19,7 @@ export interface UploadBatch {
 
 export interface ArFSRootFolderMetaData {
 	metaDataTxId: string;
-	cipher: guards.cipherType;
+	cipher: guards.CipherType | '';
 	cipherIV: string;
 }
 
@@ -38,14 +38,14 @@ export interface ArFSDriveMetaDataParameters {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipherType;
+	cipher: guards.CipherType | '';
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	drivePrivacy: guards.DrivePrivacy | '';
+	driveAuthMode: guards.DriveAuthMode | '';
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -58,14 +58,14 @@ export class ArFSDriveMetaData {
 	appVersion: string;
 	driveName: string;
 	rootFolderId: string;
-	cipher: guards.cipherType;
+	cipher: guards.CipherType | '';
 	cipherIV: string;
 	unixTime: number;
 	arFS: string;
 	driveId: string;
 	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
+	drivePrivacy: guards.DrivePrivacy | '';
+	driveAuthMode: guards.DriveAuthMode | '';
 	metaDataTxId: string;
 	metaDataSyncStatus: number;
 	isLocal?: number;
@@ -137,7 +137,7 @@ export interface ArFSFileMetaDataParameters {
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: guards.entityType;
+	entityType: guards.EntityType | '';
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -146,7 +146,7 @@ export interface ArFSFileMetaDataParameters {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipherType;
+	cipher: guards.CipherType | '';
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -166,7 +166,7 @@ export class ArFSFileMetaData {
 	appVersion: string;
 	unixTime: number;
 	contentType: string;
-	entityType: guards.entityType;
+	entityType: guards.EntityType | '';
 	driveId: string;
 	parentFolderId: string;
 	fileId: string;
@@ -175,7 +175,7 @@ export class ArFSFileMetaData {
 	fileHash: string;
 	filePath: string;
 	fileVersion: number;
-	cipher: guards.cipherType;
+	cipher: guards.CipherType | '';
 	dataCipherIV: string;
 	metaDataCipherIV: string;
 	lastModifiedDate: number;
@@ -280,7 +280,7 @@ export class ArFSFileMetaData {
 }
 
 export interface ArFSEncryptedData {
-	cipher: guards.cipherType;
+	cipher: guards.CipherType;
 	cipherIV: string;
 	data: Buffer;
 }
