@@ -1,11 +1,27 @@
-import * as guards from './type_guards';
-export interface ArDriveUser {
-	login: string;
-	dataProtectionKey: string;
-	walletPrivateKey: string;
-	walletPublicKey: string;
-	syncFolderPath: string;
-	autoSyncApproval: number;
+import {
+	CipherType,
+	cipherTypeValues,
+	ContentType,
+	contentTypeValues,
+	DriveAuthMode,
+	DrivePrivacy,
+	drivePrivacyValues,
+	DriveSharing,
+	EntityType,
+	entityTypeValues,
+	SyncStatus,
+	syncStatusValues,
+	YesNoInteger,
+	yesNoIntegerValues
+} from './type_guards';
+
+export interface IDriveUser {
+	login?: string;
+	dataProtectionKey?: string;
+	walletPrivateKey?: string;
+	walletPublicKey?: string;
+	syncFolderPath?: string;
+	autoSyncApproval?: YesNoInteger;
 }
 
 export interface UploadBatch {
@@ -17,10 +33,10 @@ export interface UploadBatch {
 	totalNumberOfFolderUploads: number;
 }
 
-export interface ArFSRootFolderMetaData {
-	metaDataTxId: string;
-	cipher: guards.cipherType;
-	cipherIV: string;
+export interface IRootFolderMetaData {
+	metaDataTxId?: string;
+	cipher?: CipherType;
+	cipherIV?: string;
 }
 
 export interface ArDriveBundle {
@@ -31,258 +47,138 @@ export interface ArDriveBundle {
 	uploadTime: number;
 }
 
-export interface ArFSDriveMetaDataParameters {
-	id: number;
+export interface IDriveMetaData {
+	id?: number;
 	login?: string;
-	appName: string;
-	appVersion: string;
-	driveName: string;
-	rootFolderId: string;
-	cipher: guards.cipherType;
-	cipherIV: string;
-	unixTime: number;
-	arFS: string;
-	driveId: string;
-	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
-	metaDataTxId: string;
-	metaDataSyncStatus: number;
+	appName?: string;
+	appVersion?: string;
+	driveName?: string;
+	rootFolderId?: string;
+	cipher?: CipherType;
+	cipherIV?: string;
+	unixTime?: number;
+	arFS?: string;
+	driveId?: string;
+	driveSharing?: DriveSharing;
+	drivePrivacy?: DrivePrivacy;
+	driveAuthMode?: DriveAuthMode;
+	metaDataTxId?: string;
+	metaDataSyncStatus?: number;
 	isLocal?: number;
 }
 
-export class ArFSDriveMetaData {
-	id: number;
-	login?: string;
-	appName: string;
-	appVersion: string;
-	driveName: string;
-	rootFolderId: string;
-	cipher: guards.cipherType;
-	cipherIV: string;
-	unixTime: number;
-	arFS: string;
-	driveId: string;
-	driveSharing?: string;
-	drivePrivacy: guards.drivePrivacy;
-	driveAuthMode: guards.driveAuthMode;
-	metaDataTxId: string;
-	metaDataSyncStatus: number;
-	isLocal?: number;
+export class ArDriveUser implements IDriveUser {
+	login = '';
+	dataProtectionKey = '';
+	walletPrivateKey = '';
+	walletPublicKey = '';
+	syncFolderPath = '';
+	autoSyncApproval: YesNoInteger = 0;
 
-	constructor({
-		id,
-		login,
-		appName,
-		appVersion,
-		driveName,
-		rootFolderId,
-		cipher,
-		cipherIV,
-		unixTime,
-		arFS,
-		driveId,
-		driveSharing,
-		drivePrivacy,
-		driveAuthMode,
-		metaDataTxId,
-		metaDataSyncStatus,
-		isLocal
-	}: ArFSDriveMetaDataParameters) {
-		this.id = id;
-		this.login = login;
-		this.appName = appName;
-		this.appVersion = appVersion;
-		this.driveName = driveName;
-		this.rootFolderId = rootFolderId;
-		this.cipher = cipher;
-		this.cipherIV = cipherIV;
-		this.unixTime = unixTime;
-		this.arFS = arFS;
-		this.driveId = driveId;
-		this.driveSharing = driveSharing;
-		this.drivePrivacy = drivePrivacy;
-		this.driveAuthMode = driveAuthMode;
-		this.metaDataTxId = metaDataTxId;
-		this.metaDataSyncStatus = metaDataSyncStatus;
-		this.isLocal = isLocal;
-	}
-
-	static Empty(appName: string, appVersion: string, driveId: string): ArFSDriveMetaData {
-		return new ArFSDriveMetaData({
-			id: 0,
-			login: '',
-			appName: appName,
-			appVersion: appVersion,
-			driveName: '',
-			rootFolderId: '',
-			cipher: '',
-			cipherIV: '',
-			unixTime: 0,
-			arFS: '',
-			driveId,
-			driveSharing: 'shared',
-			drivePrivacy: 'public',
-			driveAuthMode: '',
-			metaDataTxId: '0',
-			metaDataSyncStatus: 0
-		});
+	constructor(args: IDriveUser = {}) {
+		Object.assign(this, args);
 	}
 }
 
-export interface ArFSFileMetaDataParameters {
-	id: number;
-	login: string;
-	appName: string;
-	appVersion: string;
-	unixTime: number;
-	contentType: string;
-	entityType: guards.entityType;
-	driveId: string;
-	parentFolderId: string;
-	fileId: string;
-	fileSize: number;
-	fileName: string;
-	fileHash: string;
-	filePath: string;
-	fileVersion: number;
-	cipher: guards.cipherType;
-	dataCipherIV: string;
-	metaDataCipherIV: string;
-	lastModifiedDate: number;
-	isLocal: number;
-	isPublic: number;
-	permaWebLink: string;
-	metaDataTxId: string;
-	dataTxId: string;
-	fileDataSyncStatus: number;
-	fileMetaDataSyncStatus: number;
-	cloudOnly: number;
-}
-export class ArFSFileMetaData {
-	id: number;
-	login: string;
-	appName: string;
-	appVersion: string;
-	unixTime: number;
-	contentType: string;
-	entityType: guards.entityType;
-	driveId: string;
-	parentFolderId: string;
-	fileId: string;
-	fileSize: number;
-	fileName: string;
-	fileHash: string;
-	filePath: string;
-	fileVersion: number;
-	cipher: guards.cipherType;
-	dataCipherIV: string;
-	metaDataCipherIV: string;
-	lastModifiedDate: number;
-	isLocal: number;
-	isPublic: number;
-	permaWebLink: string;
-	metaDataTxId: string;
-	dataTxId: string;
-	fileDataSyncStatus: number;
-	fileMetaDataSyncStatus: number;
-	cloudOnly: number;
+export class ArFSRootFolderMetaData implements IRootFolderMetaData {
+	metaDataTxId = '';
+	cipher: CipherType = cipherTypeValues.AES_256_GCM;
+	cipherIV = '';
 
-	constructor({
-		id,
-		login,
-		appName,
-		appVersion,
-		unixTime,
-		contentType,
-		entityType,
-		driveId,
-		parentFolderId,
-		fileId,
-		fileSize,
-		fileName,
-		fileHash,
-		filePath,
-		fileVersion,
-		cipher,
-		dataCipherIV,
-		metaDataCipherIV,
-		lastModifiedDate,
-		isLocal,
-		isPublic,
-		permaWebLink,
-		metaDataTxId,
-		dataTxId,
-		fileDataSyncStatus,
-		fileMetaDataSyncStatus,
-		cloudOnly
-	}: ArFSFileMetaDataParameters) {
-		this.id = id;
-		this.login = login;
-		this.appName = appName;
-		this.appVersion = appVersion;
-		this.unixTime = unixTime;
-		this.contentType = contentType;
-		this.entityType = entityType;
-		this.driveId = driveId;
-		this.parentFolderId = parentFolderId;
-		this.fileId = fileId;
-		this.fileSize = fileSize;
-		this.fileName = fileName;
-		this.fileHash = fileHash;
-		this.filePath = filePath;
-		this.fileVersion = fileVersion;
-		this.cipher = cipher;
-		this.dataCipherIV = dataCipherIV;
-		this.metaDataCipherIV = metaDataCipherIV;
-		this.lastModifiedDate = lastModifiedDate;
-		this.isLocal = isLocal;
-		this.isPublic = isPublic;
-		this.permaWebLink = permaWebLink;
-		this.metaDataTxId = metaDataTxId;
-		this.dataTxId = dataTxId;
-		this.fileDataSyncStatus = fileDataSyncStatus;
-		this.fileMetaDataSyncStatus = fileMetaDataSyncStatus;
-		this.cloudOnly = cloudOnly;
+	constructor(args: IRootFolderMetaData = {}) {
+		Object.assign(this, args);
 	}
+}
 
-	static Empty(userLogin: string): ArFSFileMetaData {
-		return new ArFSFileMetaData({
-			id: 0,
-			login: userLogin,
-			appName: '',
-			appVersion: '',
-			unixTime: 0,
-			contentType: '',
-			entityType: '',
-			driveId: '',
-			parentFolderId: '',
-			fileId: '',
-			fileSize: 0,
-			fileName: '',
-			fileHash: '',
-			filePath: '',
-			fileVersion: 0,
-			lastModifiedDate: 0,
-			isPublic: 0,
-			isLocal: 0,
-			fileDataSyncStatus: 0,
-			fileMetaDataSyncStatus: 0,
-			permaWebLink: '',
-			metaDataTxId: '',
-			dataTxId: '',
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		});
+export class ArFSDriveMetaData implements IDriveMetaData {
+	id = 0;
+	login = '';
+	appName = '';
+	appVersion = '';
+	driveName = '';
+	rootFolderId = '';
+	cipher: CipherType = cipherTypeValues.AES_256_GCM;
+	cipherIV = '';
+	unixTime = 0;
+	arFS = '';
+	driveId = '';
+	driveSharing?: DriveSharing;
+	drivePrivacy: DrivePrivacy = drivePrivacyValues.PRIVATE;
+	driveAuthMode?: DriveAuthMode;
+	metaDataTxId = '';
+	metaDataSyncStatus = 0;
+	isLocal?: number = 0;
+
+	constructor(args: IDriveMetaData) {
+		Object.assign(this, args);
+	}
+}
+
+export interface IFileMetaData {
+	id?: number;
+	login: string;
+	appName: string;
+	appVersion: string;
+	unixTime?: number;
+	contentType?: ContentType;
+	entityType: EntityType;
+	driveId: string;
+	parentFolderId: string;
+	fileId?: string;
+	fileSize?: number;
+	fileName?: string;
+	fileHash?: string;
+	filePath?: string;
+	fileVersion: number;
+	cipher?: CipherType;
+	dataCipherIV?: string;
+	metaDataCipherIV?: string;
+	lastModifiedDate?: number;
+	isLocal: YesNoInteger;
+	isPublic: YesNoInteger;
+	permaWebLink?: string;
+	metaDataTxId?: string;
+	dataTxId?: string;
+	fileDataSyncStatus: SyncStatus;
+	fileMetaDataSyncStatus: SyncStatus;
+	cloudOnly: YesNoInteger;
+}
+export class ArFSFileMetaData implements IFileMetaData {
+	id = 0;
+	login = '';
+	appName = '';
+	appVersion = '';
+	unixTime = 0;
+	contentType: ContentType = contentTypeValues.APPLICATION_JSON;
+	entityType: EntityType = entityTypeValues.FILE;
+	driveId = '';
+	parentFolderId = '';
+	fileId = '';
+	fileSize = 0;
+	fileName = '';
+	fileHash = '';
+	filePath = '';
+	fileVersion = 0;
+	cipher: CipherType = cipherTypeValues.AES_256_GCM;
+	dataCipherIV = '';
+	metaDataCipherIV = '';
+	lastModifiedDate = 0;
+	isLocal: YesNoInteger = yesNoIntegerValues.NO;
+	isPublic: YesNoInteger = yesNoIntegerValues.NO;
+	permaWebLink = '';
+	metaDataTxId = '';
+	dataTxId = '';
+	fileDataSyncStatus: SyncStatus = syncStatusValues.READY_TO_DOWNLOAD;
+	fileMetaDataSyncStatus: SyncStatus = syncStatusValues.READY_TO_DOWNLOAD;
+	cloudOnly: YesNoInteger = yesNoIntegerValues.NO;
+
+	constructor(args: IFileMetaData) {
+		Object.assign(this, args);
 	}
 }
 
 export interface ArFSEncryptedData {
-	cipher: guards.cipherType;
+	cipher: CipherType;
 	cipherIV: string;
 	data: Buffer;
 }
-
-// Arweave GraphQL Interfaces
