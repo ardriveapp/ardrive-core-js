@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
 import { ArDriveUser } from './types/base_Types';
-import { cipher } from './constants';
 import {
 	driveAuthModeValues,
 	drivePrivacyValues,
@@ -19,6 +18,7 @@ import {
 	syncStatusValues,
 	yesNoIntegerValues
 } from './types/type_guards';
+import { defaultCipher } from './constants';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -366,7 +366,7 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher,
+		cipher: defaultCipher,
 		unixTime,
 		arFS: arFSVersion,
 		driveId,
