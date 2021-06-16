@@ -9,6 +9,18 @@ import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
 
 import Arweave from 'arweave';
+import {
+	CipherType,
+	ContentType,
+	DriveAuthMode,
+	driveAuthModeValues,
+	DrivePrivacy,
+	drivePrivacyValues,
+	driveSharingValues,
+	EntityType,
+	entityTypeValues,
+	syncStatusValues
+} from './types/type_guards';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -24,22 +36,9 @@ export const primaryGraphQLURL = 'https://arweave.net/graphql';
 export const backupGraphQLURL = 'https://arweave.dev/graphql';
 
 // Gets the latest version of a drive entity
-export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.ArFSDriveEntity | string> {
+export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.ArFSPublicDriveEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const drive: arfsTypes.ArFSDriveEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		contentType: '',
-		driveId,
-		drivePrivacy: '',
-		entityType: 'drive',
-		name: '',
-		rootFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0
-	};
+	const drive: arfsTypes.ArFSPublicDriveEntity = new arfsTypes.ArFSPublicDriveEntity({ driveId });
 	try {
 		// GraphQL Query
 		const query = {
@@ -87,13 +86,13 @@ export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.A
 						drive.arFS = value;
 						break;
 					case 'Content-Type':
-						drive.contentType = value;
+						// drive.contentType = value;
 						break;
 					case 'Drive-Id':
 						drive.driveId = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					case 'Unix-Time':
 						drive.unixTime = +value;
@@ -117,23 +116,7 @@ export async function getPublicDriveEntity(driveId: string): Promise<arfsTypes.A
 // Gets the latest version of a drive entity
 export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.ArFSPrivateDriveEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const drive: arfsTypes.ArFSPrivateDriveEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		cipher: '',
-		cipherIV: '',
-		contentType: '',
-		driveId,
-		drivePrivacy: '',
-		driveAuthMode: '',
-		entityType: '',
-		name: '',
-		rootFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0
-	};
+	const drive: arfsTypes.ArFSPrivateDriveEntity = new arfsTypes.ArFSPrivateDriveEntity({ driveId });
 	try {
 		// GraphQL Query
 		const query = {
@@ -181,22 +164,24 @@ export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.
 						drive.arFS = value;
 						break;
 					case 'Cipher':
-						drive.cipher = value;
+						drive.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						drive.cipherIV = value;
 						break;
 					case 'Content-Type':
-						drive.contentType = value;
+						// drive.contentType = value;
 						break;
 					case 'Drive-Auth-Mode':
-						drive.driveAuthMode = value;
+						if (value !== '') {
+							drive.driveAuthMode = driveAuthModeValues.PASSWORD;
+						}
 						break;
 					case 'Drive-Id':
 						drive.driveId = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					case 'Unix-Time':
 						drive.unixTime = +value;
@@ -221,23 +206,11 @@ export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.
 export async function getPublicFolderEntity(
 	owner: string,
 	entityId: string
-): Promise<arfsTypes.ArFSFileFolderEntity | string> {
+): Promise<arfsTypes.ArFSPublicFileFolderEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const folder: arfsTypes.ArFSFileFolderEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		contentType: '',
-		driveId: '',
-		entityType: 'folder',
-		entityId: '',
-		name: '',
-		parentFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0,
-		lastModifiedDate: 0
-	};
+	const folder: arfsTypes.ArFSPublicFileFolderEntity = new arfsTypes.ArFSPublicFileFolderEntity({
+		entityType: entityTypeValues.FOLDER
+	});
 	try {
 		const query = {
 			query: `query {
@@ -282,13 +255,13 @@ export async function getPublicFolderEntity(
 						folder.arFS = value;
 						break;
 					case 'Content-Type':
-						folder.contentType = value;
+						// folder.contentType = value;
 						break;
 					case 'Drive-Id':
 						folder.driveId = value;
 						break;
 					case 'Entity-Type':
-						folder.entityType = value;
+						// folder.entityType = value;
 						break;
 					case 'Folder-Id':
 						folder.entityId = value;
@@ -318,23 +291,9 @@ export async function getPrivateFolderEntity(
 	entityId: string
 ): Promise<arfsTypes.ArFSPrivateFileFolderEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const folder: arfsTypes.ArFSPrivateFileFolderEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		cipher: '',
-		cipherIV: '',
-		contentType: '',
-		driveId: '',
-		entityType: 'folder',
-		entityId: '',
-		name: '',
-		parentFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0,
-		lastModifiedDate: 0
-	};
+	const folder: arfsTypes.ArFSPrivateFileFolderEntity = new arfsTypes.ArFSPrivateFileFolderEntity({
+		entityType: entityTypeValues.FOLDER
+	});
 	try {
 		const query = {
 			query: `query {
@@ -379,19 +338,19 @@ export async function getPrivateFolderEntity(
 						folder.arFS = value;
 						break;
 					case 'Cipher':
-						folder.cipher = value;
+						folder.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						folder.cipherIV = value;
 						break;
 					case 'Content-Type':
-						folder.contentType = value;
+						// folder.contentType = value;
 						break;
 					case 'Drive-Id':
 						folder.driveId = value;
 						break;
 					case 'Entity-Type':
-						folder.entityType = value;
+						// folder.entityType = value;
 						break;
 					case 'Folder-Id':
 						folder.entityId = value;
@@ -419,23 +378,11 @@ export async function getPrivateFolderEntity(
 export async function getPublicFileEntity(
 	owner: string,
 	entityId: string
-): Promise<arfsTypes.ArFSFileFolderEntity | string> {
+): Promise<arfsTypes.ArFSPublicFileFolderEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const file: arfsTypes.ArFSFileFolderEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		contentType: '',
-		driveId: '',
-		entityType: 'file',
-		entityId: '',
-		name: '',
-		parentFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0,
-		lastModifiedDate: 0
-	};
+	const file: arfsTypes.ArFSPublicFileFolderEntity = new arfsTypes.ArFSPublicFileFolderEntity({
+		entityType: entityTypeValues.FILE
+	});
 	try {
 		const query = {
 			query: `query {
@@ -480,13 +427,13 @@ export async function getPublicFileEntity(
 						file.arFS = value;
 						break;
 					case 'Content-Type':
-						file.contentType = value;
+						// file.contentType = value;
 						break;
 					case 'Drive-Id':
 						file.driveId = value;
 						break;
 					case 'Entity-Type':
-						file.entityType = value;
+						// file.entityType = value;
 						break;
 					case 'File-Id':
 						file.entityId = value;
@@ -516,23 +463,9 @@ export async function getPrivateFileEntity(
 	entityId: string
 ): Promise<arfsTypes.ArFSPrivateFileFolderEntity | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const file: arfsTypes.ArFSPrivateFileFolderEntity = {
-		appName: '',
-		appVersion: '',
-		arFS: '',
-		cipher: '',
-		cipherIV: '',
-		contentType: '',
-		driveId: '',
-		entityType: 'file',
-		entityId: '',
-		name: '',
-		parentFolderId: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0,
-		lastModifiedDate: 0
-	};
+	const file: arfsTypes.ArFSPrivateFileFolderEntity = new arfsTypes.ArFSPrivateFileFolderEntity({
+		entityType: entityTypeValues.FILE
+	});
 	try {
 		const query = {
 			query: `query {
@@ -577,19 +510,19 @@ export async function getPrivateFileEntity(
 						file.arFS = value;
 						break;
 					case 'Cipher':
-						file.cipher = value;
+						file.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						file.cipherIV = value;
 						break;
 					case 'Content-Type':
-						file.contentType = value;
+						// file.contentType = value;
 						break;
 					case 'Drive-Id':
 						file.driveId = value;
 						break;
 					case 'Entity-Type':
-						file.entityType = value;
+						// file.entityType = value;
 						break;
 					case 'File-Id':
 						file.entityId = value;
@@ -617,9 +550,9 @@ export async function getPrivateFileEntity(
 export async function getAllPublicDriveEntities(
 	owner: string,
 	lastBlockHeight: number
-): Promise<arfsTypes.ArFSDriveEntity[] | string> {
+): Promise<arfsTypes.ArFSPublicDriveEntity[] | string> {
 	const graphQLURL = primaryGraphQLURL;
-	const allDrives: arfsTypes.ArFSDriveEntity[] = [];
+	const allDrives: arfsTypes.ArFSPublicDriveEntity[] = [];
 	try {
 		// Search last 5 blocks minimum
 		if (lastBlockHeight > 5) {
@@ -660,20 +593,7 @@ export async function getAllPublicDriveEntities(
 		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
-			const drive: arfsTypes.ArFSDriveEntity = {
-				appName: '',
-				appVersion: '',
-				arFS: '',
-				contentType: 'application/json',
-				driveId: '',
-				drivePrivacy: 'public',
-				entityType: 'drive',
-				name: '',
-				rootFolderId: '',
-				txId: '',
-				unixTime: 0,
-				syncStatus: 0
-			};
+			const drive: arfsTypes.ArFSPublicDriveEntity = new arfsTypes.ArFSPublicDriveEntity({});
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
 				const key = tag.name;
@@ -689,13 +609,13 @@ export async function getAllPublicDriveEntities(
 						drive.arFS = value;
 						break;
 					case 'Content-Type':
-						drive.contentType = value;
+						// drive.contentType = value;
 						break;
 					case 'Drive-Id':
 						drive.driveId = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					case 'Unix-Time':
 						drive.unixTime = +value;
@@ -764,23 +684,7 @@ export async function getAllPrivateDriveEntities(
 		edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
-			const drive: arfsTypes.ArFSPrivateDriveEntity = {
-				appName: '',
-				appVersion: '',
-				arFS: '',
-				cipher: '',
-				cipherIV: '',
-				contentType: 'application/json',
-				driveId: '',
-				drivePrivacy: 'private',
-				driveAuthMode: '',
-				entityType: 'drive',
-				name: '',
-				rootFolderId: '',
-				txId: '',
-				unixTime: 0,
-				syncStatus: 0
-			};
+			const drive: arfsTypes.ArFSPrivateDriveEntity = new arfsTypes.ArFSPrivateDriveEntity({});
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
 				const key = tag.name;
@@ -796,22 +700,24 @@ export async function getAllPrivateDriveEntities(
 						drive.arFS = value;
 						break;
 					case 'Cipher':
-						drive.cipher = value;
+						drive.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						drive.cipherIV = value;
 						break;
 					case 'Content-Type':
-						drive.contentType = value;
+						// drive.contentType = value;
 						break;
 					case 'Drive-Auth-Mode':
-						drive.driveAuthMode = value;
+						if (value !== '') {
+							drive.driveAuthMode = driveAuthModeValues.PASSWORD;
+						}
 						break;
 					case 'Drive-Id':
 						drive.driveId = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					case 'Unix-Time':
 						drive.unixTime = +value;
@@ -838,11 +744,11 @@ export async function getAllPublicFolderEntities(
 	owner: string,
 	driveId: string,
 	lastBlockHeight: number
-): Promise<arfsTypes.ArFSFileFolderEntity[] | string> {
+): Promise<arfsTypes.ArFSPublicFileFolderEntity[] | string> {
 	let hasNextPage = true;
 	let cursor = '';
 	let graphQLURL = primaryGraphQLURL;
-	const allFolders: arfsTypes.ArFSFileFolderEntity[] = [];
+	const allFolders: arfsTypes.ArFSPublicFileFolderEntity[] = [];
 	let tries = 0;
 
 	// Search last 5 blocks minimum
@@ -891,21 +797,9 @@ export async function getAllPublicFolderEntities(
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-				const folder: arfsTypes.ArFSFileFolderEntity = {
-					appName: '',
-					appVersion: '',
-					arFS: '',
-					contentType: '',
-					driveId: '',
-					entityType: 'folder',
-					entityId: '',
-					name: '',
-					parentFolderId: '',
-					unixTime: 0,
-					txId: '',
-					syncStatus: 0,
-					lastModifiedDate: 0
-				};
+				const folder: arfsTypes.ArFSPublicFileFolderEntity = new arfsTypes.ArFSPublicFileFolderEntity({
+					entityType: entityTypeValues.FOLDER
+				});
 				cursor = edge.cursor;
 				const { node } = edge;
 				const { tags } = node;
@@ -924,7 +818,7 @@ export async function getAllPublicFolderEntities(
 							folder.arFS = value;
 							break;
 						case 'Content-Type':
-							folder.contentType = value;
+							// folder.contentType = value;
 							break;
 						case 'Drive-Id':
 							folder.driveId = value;
@@ -1032,23 +926,9 @@ export async function getAllPrivateFolderEntities(
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-				const folder: arfsTypes.ArFSPrivateFileFolderEntity = {
-					appName: '',
-					appVersion: '',
-					arFS: '',
-					cipher: '',
-					cipherIV: '',
-					contentType: '',
-					driveId: '',
-					entityType: 'folder',
-					entityId: '',
-					name: '',
-					parentFolderId: '',
-					unixTime: 0,
-					txId: '',
-					syncStatus: 0,
-					lastModifiedDate: 0
-				};
+				const folder: arfsTypes.ArFSPrivateFileFolderEntity = new arfsTypes.ArFSPrivateFileFolderEntity({
+					entityType: entityTypeValues.FOLDER
+				});
 				cursor = edge.cursor;
 				const { node } = edge;
 				const { tags } = node;
@@ -1067,13 +947,13 @@ export async function getAllPrivateFolderEntities(
 							folder.arFS = value;
 							break;
 						case 'Cipher':
-							folder.cipher = value;
+							folder.cipher = value as CipherType;
 							break;
 						case 'Cipher-IV':
 							folder.cipherIV = value;
 							break;
 						case 'Content-Type':
-							folder.contentType = value;
+							// folder.contentType = value;
 							break;
 						case 'Drive-Id':
 							folder.driveId = value;
@@ -1128,11 +1008,11 @@ export async function getAllPublicFileEntities(
 	owner: string,
 	driveId: string,
 	lastBlockHeight: number
-): Promise<arfsTypes.ArFSFileFolderEntity[] | string> {
+): Promise<arfsTypes.ArFSPublicFileFolderEntity[] | string> {
 	let hasNextPage = true;
 	let cursor = '';
 	let graphQLURL = primaryGraphQLURL;
-	const allFileEntities: arfsTypes.ArFSFileFolderEntity[] = [];
+	const allFileEntities: arfsTypes.ArFSPublicFileFolderEntity[] = [];
 	let tries = 0;
 
 	// Search last 5 blocks minimum
@@ -1181,21 +1061,9 @@ export async function getAllPublicFileEntities(
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-				const file: arfsTypes.ArFSFileFolderEntity = {
-					appName: '',
-					appVersion: '',
-					arFS: '',
-					contentType: '',
-					driveId: '',
-					entityType: 'file',
-					entityId: '',
-					name: '',
-					parentFolderId: '',
-					txId: '',
-					unixTime: 0,
-					syncStatus: 0,
-					lastModifiedDate: 0
-				};
+				const file: arfsTypes.ArFSPublicFileFolderEntity = new arfsTypes.ArFSPublicFileFolderEntity({
+					entityType: entityTypeValues.FILE
+				});
 				cursor = edge.cursor;
 				const { node } = edge;
 				const { tags } = node;
@@ -1214,7 +1082,7 @@ export async function getAllPublicFileEntities(
 							file.arFS = value;
 							break;
 						case 'Content-Type':
-							file.contentType = value;
+							// file.contentType = value;
 							break;
 						case 'Drive-Id':
 							file.driveId = value;
@@ -1322,23 +1190,9 @@ export async function getAllPrivateFileEntities(
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-				const file: arfsTypes.ArFSPrivateFileFolderEntity = {
-					appName: '',
-					appVersion: '',
-					arFS: '',
-					cipher: '',
-					cipherIV: '',
-					contentType: '',
-					driveId: '',
-					entityType: 'file',
-					entityId: '',
-					name: '',
-					parentFolderId: '',
-					txId: '',
-					unixTime: 0,
-					syncStatus: 0,
-					lastModifiedDate: 0
-				};
+				const file: arfsTypes.ArFSPrivateFileFolderEntity = new arfsTypes.ArFSPrivateFileFolderEntity({
+					entityType: entityTypeValues.FILE
+				});
 				cursor = edge.cursor;
 				const { node } = edge;
 				const { tags } = node;
@@ -1357,13 +1211,13 @@ export async function getAllPrivateFileEntities(
 							file.arFS = value;
 							break;
 						case 'Cipher':
-							file.cipher = value;
+							file.cipher = value as CipherType;
 							break;
 						case 'Cipher-IV':
 							file.cipherIV = value;
 							break;
 						case 'Content-Type':
-							file.contentType = value;
+							// file.contentType = value;
 							break;
 						case 'Drive-Id':
 							file.driveId = value;
@@ -1418,7 +1272,8 @@ export async function getAllPublicFileFolderEntities(
 	driveId: string,
 	lastBlockHeight: number
 ): Promise<
-	{ fileEntities: arfsTypes.ArFSFileFolderEntity[]; folderEntities: arfsTypes.ArFSFileFolderEntity[] } | string
+	| { fileEntities: arfsTypes.ArFSPublicFileFolderEntity[]; folderEntities: arfsTypes.ArFSPublicFileFolderEntity[] }
+	| string
 > {
 	const folderEntities = await getAllPublicFolderEntities(owner, driveId, lastBlockHeight);
 	const fileEntities = await getAllPublicFileEntities(owner, driveId, lastBlockHeight);
@@ -1450,14 +1305,7 @@ export async function getAllPrivateFileFolderEntities(
 // Gets the the tags for a file entity data transaction
 export async function getPublicFileData(txid: string): Promise<arfsTypes.ArFSFileData | string> {
 	let graphQLURL = primaryGraphQLURL;
-	const fileData: arfsTypes.ArFSFileData = {
-		appName: '',
-		appVersion: '',
-		contentType: '',
-		syncStatus: 0,
-		txId: '',
-		unixTime: 0
-	};
+	const fileData: arfsTypes.ArFSFileData = new arfsTypes.ArFSFileData({});
 	let tries = 0;
 	const query = {
 		query: `query {
@@ -1503,7 +1351,7 @@ export async function getPublicFileData(txid: string): Promise<arfsTypes.ArFSFil
 						fileData.unixTime = +value;
 						break;
 					case 'Content-Type':
-						fileData.contentType = value;
+						fileData.contentType = value as ContentType;
 						break;
 					default:
 						break;
@@ -1528,16 +1376,7 @@ export async function getPublicFileData(txid: string): Promise<arfsTypes.ArFSFil
 // Gets the the tags for a file entity data transaction
 export async function getPrivateFileData(txid: string): Promise<arfsTypes.ArFSPrivateFileData | string> {
 	let graphQLURL = primaryGraphQLURL;
-	const fileData: arfsTypes.ArFSPrivateFileData = {
-		appName: '',
-		appVersion: '',
-		cipher: '',
-		cipherIV: '',
-		contentType: '',
-		txId: '',
-		unixTime: 0,
-		syncStatus: 0
-	};
+	const fileData: arfsTypes.ArFSPrivateFileData = new arfsTypes.ArFSPrivateFileData({});
 	let tries = 0;
 	const query = {
 		query: `query {
@@ -1583,13 +1422,13 @@ export async function getPrivateFileData(txid: string): Promise<arfsTypes.ArFSPr
 						fileData.unixTime = +value;
 						break;
 					case 'Cipher':
-						fileData.cipher = value;
+						fileData.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						fileData.cipherIV = value;
 						break;
 					case 'Content-Type':
-						fileData.contentType = value;
+						fileData.contentType = value as ContentType;
 						break;
 					default:
 						break;
@@ -1670,7 +1509,11 @@ export async function getPrivateTransactionCipherIV(txid: string): Promise<strin
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
 export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSDriveMetaData> {
-	const drive: types.ArFSDriveMetaData = types.ArFSDriveMetaData.Empty(common.appName, common.appVersion, driveId);
+	const drive: types.ArFSDriveMetaData = new types.ArFSDriveMetaData({
+		appName: common.appName,
+		appVersion: common.appVersion,
+		driveId
+	});
 	try {
 		// GraphQL Query
 		const query = {
@@ -1720,7 +1563,7 @@ export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSD
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					default:
 						break;
@@ -1798,11 +1641,7 @@ export async function getPrivateDriveRootFolderTxId(
 	driveId: string,
 	folderId: string
 ): Promise<types.ArFSRootFolderMetaData> {
-	let rootFolderMetaData: types.ArFSRootFolderMetaData = {
-		metaDataTxId: '0',
-		cipher: '',
-		cipherIV: ''
-	};
+	let rootFolderMetaData: types.ArFSRootFolderMetaData = new types.ArFSRootFolderMetaData();
 	try {
 		const query = {
 			query: `query {
@@ -1840,7 +1679,7 @@ export async function getPrivateDriveRootFolderTxId(
 				const { value } = tag;
 				switch (key) {
 					case 'Cipher':
-						rootFolderMetaData.cipher = value;
+						rootFolderMetaData.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						rootFolderMetaData.cipherIV = value;
@@ -1906,25 +1745,12 @@ export async function getAllMyPublicArDriveIds(
 		await common.asyncForEach(edges, async (edge: gqlTypes.GQLEdgeInterface) => {
 			const { node } = edge;
 			const { tags } = node;
-			const drive: types.ArFSDriveMetaData = {
-				id: 0,
+			const drive: types.ArFSDriveMetaData = new types.ArFSDriveMetaData({
 				login: login,
-				appName: '',
-				appVersion: '',
-				driveName: '',
-				rootFolderId: '',
-				cipher: '',
-				cipherIV: '',
-				unixTime: 0,
-				arFS: '',
-				driveId: '',
-				driveSharing: 'personal',
-				drivePrivacy: 'public',
-				driveAuthMode: '',
-				metaDataTxId: '',
-				metaDataSyncStatus: 3,
-				isLocal: 0
-			};
+				driveSharing: driveSharingValues.PERSONAL,
+				drivePrivacy: drivePrivacyValues.PUBLIC,
+				metaDataSyncStatus: syncStatusValues.SUCCESSFULLY_UPLOADED
+			});
 			// Iterate through each tag and pull out each drive ID as well the drives privacy status
 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
 				const key = tag.name;
@@ -1946,7 +1772,7 @@ export async function getAllMyPublicArDriveIds(
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						// drive.drivePrivacy = value;
 						break;
 					default:
 						break;
@@ -2029,25 +1855,11 @@ export async function getAllMyPrivateArDriveIds(
 	await common.asyncForEach(edges, async (edge: gqlTypes.GQLEdgeInterface) => {
 		const { node } = edge;
 		const { tags } = node;
-		const drive: types.ArFSDriveMetaData = {
-			id: 0,
+		const drive: types.ArFSDriveMetaData = new types.ArFSDriveMetaData({
 			login: user.login,
-			appName: '',
-			appVersion: '',
-			driveName: '',
-			rootFolderId: '',
-			cipher: '',
-			cipherIV: '',
-			unixTime: 0,
-			arFS: '',
-			driveId: '',
-			driveSharing: 'personal',
-			drivePrivacy: '',
-			driveAuthMode: '',
-			metaDataTxId: '',
-			metaDataSyncStatus: 3,
-			isLocal: 0
-		};
+			driveSharing: driveSharingValues.PERSONAL,
+			metaDataSyncStatus: 3
+		});
 		// Iterate through each tag and pull out each drive ID as well the drives privacy status
 		tags.forEach((tag: gqlTypes.GQLTagInterface) => {
 			const key = tag.name;
@@ -2069,13 +1881,13 @@ export async function getAllMyPrivateArDriveIds(
 					drive.arFS = value;
 					break;
 				case 'Drive-Privacy':
-					drive.drivePrivacy = value;
+					// drive.drivePrivacy = value;
 					break;
 				case 'Drive-Auth-Mode':
-					drive.driveAuthMode = value;
+					drive.driveAuthMode = value as DriveAuthMode;
 					break;
 				case 'Cipher':
-					drive.cipher = value;
+					drive.cipher = value as CipherType;
 					break;
 				case 'Cipher-IV':
 					drive.cipherIV = value;
@@ -2286,7 +2098,7 @@ export async function getAllMySharedDataFileTxs(
 }
 // Takes an ArDrive File Data Transaction and writes to the database.
 export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterface, user: types.ArDriveUser) {
-	const fileToSync: types.ArFSFileMetaData = types.ArFSFileMetaData.Empty(user.login);
+	const fileToSync: types.ArFSFileMetaData = new types.ArFSFileMetaData({ login: user.login });
 	try {
 		const { node } = fileDataTx;
 		const { tags } = node;
@@ -2318,10 +2130,10 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.unixTime = +value; // Convert to number
 					break;
 				case 'Content-Type':
-					fileToSync.contentType = value;
+					fileToSync.contentType = value as ContentType;
 					break;
 				case 'Entity-Type':
-					fileToSync.entityType = value;
+					fileToSync.entityType = value as EntityType;
 					break;
 				case 'Drive-Id':
 					fileToSync.driveId = value;
@@ -2336,7 +2148,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.parentFolderId = value;
 					break;
 				case 'Cipher':
-					fileToSync.cipher = value;
+					fileToSync.cipher = value as CipherType;
 					break;
 				case 'Cipher-IV':
 					fileToSync.metaDataCipherIV = value;
@@ -2409,7 +2221,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 			// The actual data transaction ID, lastModifiedDate, and Filename of the underlying file are pulled from the metadata transaction
 			fileToSync.lastModifiedDate = dataJSON.lastModifiedDate; // Convert to milliseconds
 			fileToSync.dataTxId = dataJSON.dataTxId;
-			fileToSync.contentType = common.extToMime(dataJSON.name);
+			fileToSync.contentType = common.extToMime(dataJSON.name) as ContentType;
 			fileToSync.permaWebLink = common.gatewayURL.concat(dataJSON.dataTxId);
 
 			if (fileToSync.isPublic === 0) {
@@ -2452,174 +2264,173 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 		return 'Error syncing file metadata';
 	}
 }
-function tagToAttributeMap(tag: string): string {
-	// tag to camel case
-	const words = tag.split('-');
-	const attribute = words.join('');
-	return `${attribute.charAt(0).toLowerCase()}${attribute.slice(1)}`;
-}
 
-const QUERY_ARGUMENTS_WHITELIST = [
-	'edges',
-	'edges.node',
-	'edges.node.id',
-	'edges.node.tags',
-	'edges.node.tags.name',
-	'edges.node.tags.value',
-	'edges.node.block',
-	'edges.node.block.timestamp',
-	'edges.node.block.height',
-	'pageInfo',
-	'pageInfo.hasNextPage'
-];
+// function tagToAttributeMap(tag: string): string {
+// 	// tag to camel case
+// 	const words = tag.split('-');
+// 	const attribute = words.join('');
+// 	return `${attribute.charAt(0).toLowerCase()}${attribute.slice(1)}`;
+// }
 
-class Query<T extends arfsTypes.ArFSEntity> {
-	private _parameters: string[] = ['edges.node.id', 'hasNextPage'];
-	private edges: gqlTypes.GQLEdgeInterface[] = [];
-	private hasNextPage = true;
-	private cursor = '';
-	owners?: string[];
-	tags?: { name: string; values: string | string[] }[];
-	block?: { min: number };
-	first?: number;
+// const QUERY_ARGUMENTS_WHITELIST = [
+// 	'edges',
+// 	'edges.node',
+// 	'edges.node.id',
+// 	'edges.node.tags',
+// 	'edges.node.tags.name',
+// 	'edges.node.tags.value',
+// 	'edges.node.block',
+// 	'edges.node.block.timestamp',
+// 	'edges.node.block.height',
+// 	'pageInfo',
+// 	'pageInfo.hasNextPage'
+// ];
 
-	set parameters(parameters: string[]) {
-		if (!this._validateArguments(parameters)) {
-			throw new Error('Invalid parameters.');
-		}
-		this._parameters = parameters;
-	}
+// class Query<T extends arfsTypes.IEntity> {
+// 	private _parameters: string[] = ['edges.node.id', 'hasNextPage'];
+// 	private edges: gqlTypes.GQLEdgeInterface[] = [];
+// 	private hasNextPage = true;
+// 	private cursor = '';
+// 	owners?: string[];
+// 	tags?: { name: string; values: string | string[] }[];
+// 	block?: { min: number };
+// 	first?: number;
 
-	private _validateArguments(argument: string[]) {
-		const isValid = argument.reduce((valid: boolean, arg: string): boolean => {
-			return valid && QUERY_ARGUMENTS_WHITELIST.includes(arg);
-		}, true);
-		return isValid;
-	}
+// 	set parameters(parameters: string[]) {
+// 		if (!this._validateArguments(parameters)) {
+// 			throw new Error('Invalid parameters.');
+// 		}
+// 		this._parameters = parameters;
+// 	}
 
-	public getAll = async (): Promise<T[]> => {
-		await this._run();
-		const entities: T[] = [];
-		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
-			const { node } = edge;
-			const { tags } = node;
-			const entity: any = {};
-			entity.txId = node.id;
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const { name, value } = tag;
-				const attributeName = tagToAttributeMap(name);
-				entity[attributeName] = value;
-			});
-			entities.push(entity);
-		});
-		return entities;
-	};
+// 	private _validateArguments(argument: string[]) {
+// 		const isValid = argument.reduce((valid: boolean, arg: string): boolean => {
+// 			return valid && QUERY_ARGUMENTS_WHITELIST.includes(arg);
+// 		}, true);
+// 		return isValid;
+// 	}
 
-	public getRaw = async (): Promise<gqlTypes.GQLEdgeInterface[]> => {
-		await this._run();
-		return this.edges;
-	};
+// 	public getAll = async (): Promise<T[]> => {
+// 		await this._run();
+// 		const entities: T[] = [];
+// 		this.edges.forEach((edge: gqlTypes.GQLEdgeInterface) => {
+// 			const { node } = edge;
+// 			const { tags } = node;
+// 			const entity: any = {};
+// 			entity.txId = node.id;
+// 			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+// 				const { name, value } = tag;
+// 				const attributeName = tagToAttributeMap(name);
+// 				entity[attributeName] = value;
+// 			});
+// 			entities.push(entity);
+// 		});
+// 		return entities;
+// 	};
 
-	private _run = async (): Promise<void> => {
-		const queryString = this._toString();
-		while (this.hasNextPage) {
-			const response = await arweave.api.post(primaryGraphQLURL, queryString);
-			const { data } = response.data;
-			const { transactions } = data;
-			if (transactions.edges && transactions.edges.length) {
-				this.edges = this.edges.concat(transactions.edges);
-				this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
-			}
-			this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
-		}
-	};
+// 	public getRaw = async (): Promise<gqlTypes.GQLEdgeInterface[]> => {
+// 		await this._run();
+// 		return this.edges;
+// 	};
 
-	private _toString = () => {
-		const serializedTransactionData = this._getSerializedTransactionData();
-		const serializedQueryParameters = this._getSerializedParameters();
-		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
-	};
+// 	private _run = async (): Promise<void> => {
+// 		const queryString = this._toString();
+// 		while (this.hasNextPage) {
+// 			const response = await arweave.api.post(primaryGraphQLURL, queryString);
+// 			const { data } = response.data;
+// 			const { transactions } = data;
+// 			if (transactions.edges && transactions.edges.length) {
+// 				this.edges = this.edges.concat(transactions.edges);
+// 				this.cursor = transactions.edges[transactions.edges.length - 1].cursor;
+// 			}
+// 			this.hasNextPage = this._parameters.includes('pageInfo.hasNextPage') && transactions.pageInfo.hasNextPage;
+// 		}
+// 	};
 
-	private _getSerializedTransactionData = (): string => {
-		const data: any = {};
-		if (this.owners) {
-			data.owners = serializedArray(this.owners, serializedString);
-		}
-		if (this.tags) {
-			if (typeof this.tags === 'string') {
-				data.tags = serializedString(this.tags);
-			} else {
-				data.tags = serializedArray(this.tags, serializedObject);
-			}
-		}
-		if (this.block) {
-			data.block = serializedObject(this.block);
-		}
-		if (this.first) {
-			data.first = serializedNumber(this.first);
-		}
-		if (this.cursor) {
-			data.after = serializedString(this.cursor);
-		}
-		const dataKeys = Object.keys(data);
-		const serializedData = dataKeys.map((key) => `${key}: ${data[key]}`).join('\n');
-		return serializedData;
-	};
+// 	private _toString = () => {
+// 		const serializedTransactionData = this._getSerializedTransactionData();
+// 		const serializedQueryParameters = this._getSerializedParameters();
+// 		return JSON.stringify(`query {\ntransactions(\n${serializedTransactionData}) ${serializedQueryParameters}\n}`);
+// 	};
 
-	private _getSerializedParameters = (params: any = this._getParametersObject(), depht = 0): string => {
-		const paramKeys = Object.keys(params);
-		let serializedParameters = '';
-		if (paramKeys.length > 0) {
-			serializedParameters = paramKeys
-				.map((key): string => {
-					const value = params[key];
-					const valueChildrenKeys = Object.keys(value);
-					if (valueChildrenKeys.length > 0) {
-						return `${key} {${this._getSerializedParameters(value, depht + 1)}}`;
-					} else {
-						return `${key}`;
-					}
-				})
-				.join('\n');
-		}
-		if (depht === 0 && serializedParameters) {
-			serializedParameters = `{\n${serializedParameters}\n}`;
-		}
-		return serializedParameters;
-	};
+// 	private _getSerializedTransactionData = (): string => {
+// 		const data: any = {};
+// 		if (this.owners) {
+// 			data.owners = serializedArray(this.owners, serializedString);
+// 		}
+// 		if (this.tags) {
+// 			if (typeof this.tags === 'string') {
+// 				data.tags = serializedString(this.tags);
+// 			} else {
+// 				data.tags = serializedArray(this.tags, serializedObject);
+// 			}
+// 		}
+// 		if (this.block) {
+// 			data.block = serializedObject(this.block);
+// 		}
+// 		if (this.first) {
+// 			data.first = serializedNumber(this.first);
+// 		}
+// 		if (this.cursor) {
+// 			data.after = serializedString(this.cursor);
+// 		}
+// 		const dataKeys = Object.keys(data);
+// 		const serializedData = dataKeys.map((key) => `${key}: ${data[key]}`).join('\n');
+// 		return serializedData;
+// 	};
 
-	private _getParametersObject = (): { [key: string]: any } => {
-		const normalizedParameters = this._parameters.reduce((params: any, p: string): any => {
-			const object: any = {};
-			const nodes = p.split('.');
-			let o = object;
-			nodes.forEach((n) => {
-				if (!o[n]) {
-					o[n] = {};
-					o = o[n];
-				}
-			});
-			return Object.apply(params, object);
-		}, {} as any);
-		return normalizedParameters;
-	};
-}
+// 	private _getSerializedParameters = (params: any = this._getParametersObject(), depht = 0): string => {
+// 		const paramKeys = Object.keys(params);
+// 		let serializedParameters = '';
+// 		if (paramKeys.length > 0) {
+// 			serializedParameters = paramKeys
+// 				.map((key): string => {
+// 					const value = params[key];
+// 					const valueChildrenKeys = Object.keys(value);
+// 					if (valueChildrenKeys.length > 0) {
+// 						return `${key} {${this._getSerializedParameters(value, depht + 1)}}`;
+// 					} else {
+// 						return `${key}`;
+// 					}
+// 				})
+// 				.join('\n');
+// 		}
+// 		if (depht === 0 && serializedParameters) {
+// 			serializedParameters = `{\n${serializedParameters}\n}`;
+// 		}
+// 		return serializedParameters;
+// 	};
 
-function serializedNumber(n: number): string {
-	return `${n}`;
-}
+// 	private _getParametersObject = (): { [key: string]: any } => {
+// 		const normalizedParameters = this._parameters.reduce((params: any, p: string): any => {
+// 			const object: any = {};
+// 			const nodes = p.split('.');
+// 			let o = object;
+// 			nodes.forEach((n) => {
+// 				if (!o[n]) {
+// 					o[n] = {};
+// 					o = o[n];
+// 				}
+// 			});
+// 			return Object.apply(params, object);
+// 		}, {} as any);
+// 		return normalizedParameters;
+// 	};
+// }
 
-function serializedString(s: string): string {
-	return `"${s}"`;
-}
+// function serializedNumber(n: number): string {
+// 	return `${n}`;
+// }
 
-function serializedObject(o: any): string {
-	return JSON.stringify(o);
-}
+// function serializedString(s: string): string {
+// 	return `"${s}"`;
+// }
 
-function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
-	const serialized = a.map(serializeItem).join('\n');
-	return `[\n${serialized}\n]`;
-}
+// function serializedObject(o: any): string {
+// 	return JSON.stringify(o);
+// }
 
-new Query<arfsTypes.ArFSDriveEntity>();
+// function serializedArray<T>(a: T[], serializeItem: (i: T) => string) {
+// 	const serialized = a.map(serializeItem).join('\n');
+// 	return `[\n${serialized}\n]`;
+// }

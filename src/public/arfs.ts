@@ -14,9 +14,9 @@ import { createDataUploader, createFileDataTransaction, createFileFolderMetaData
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
-	file: clientTypes.ArFSLocalFile,
+	file: clientTypes.ArFSLocalPublicFile,
 	fileData: Buffer
-): Promise<{ file: clientTypes.ArFSLocalFile; dataItem: DataItemJson } | null> {
+): Promise<{ file: clientTypes.ArFSLocalPublicFile; dataItem: DataItemJson } | null> {
 	let dataItem: DataItemJson | string;
 	try {
 		console.log('Bundling %s (%d bytes) to the Permaweb', file.path, file.size);
@@ -41,9 +41,9 @@ export async function newArFSFileDataItem(
 
 // Tags and creates a single file metadata item (ANS-102) to your ArDrive
 export async function newArFSFileMetaDataItem(
-	file: clientTypes.ArFSLocalFile,
+	file: clientTypes.ArFSLocalPublicFile,
 	walletPrivateKey: JWKInterface
-): Promise<{ file: clientTypes.ArFSLocalFile; dataItem: DataItemJson } | null> {
+): Promise<{ file: clientTypes.ArFSLocalPublicFile; dataItem: DataItemJson } | null> {
 	let dataItem: DataItemJson | string;
 	let secondaryFileMetaDataTags = {};
 	try {
@@ -83,9 +83,9 @@ export async function newArFSFileMetaDataItem(
 
 // Tags and creates a single folder metadata item (ANS-102) to your ArDrive
 export async function newArFSFolderMetaDataItem(
-	folder: clientTypes.ArFSLocalFolder,
+	folder: clientTypes.ArFSLocalPublicFolder,
 	walletPrivateKey: JWKInterface
-): Promise<{ folder: clientTypes.ArFSLocalFolder; dataItem: DataItemJson } | null> {
+): Promise<{ folder: clientTypes.ArFSLocalPublicFolder; dataItem: DataItemJson } | null> {
 	let dataItem: DataItemJson | string;
 	let secondaryFileMetaDataTags = {};
 	try {
@@ -122,9 +122,9 @@ export async function newArFSFolderMetaDataItem(
 // Takes a buffer and ArFS File Metadata and creates an ArFS Data Transaction using V2 Transaction with proper GQL tags
 export async function newArFSFileData(
 	walletPrivateKey: JWKInterface,
-	file: clientTypes.ArFSLocalFile,
+	file: clientTypes.ArFSLocalPublicFile,
 	fileData: Buffer
-): Promise<{ file: clientTypes.ArFSLocalFile; uploader: TransactionUploader } | null> {
+): Promise<{ file: clientTypes.ArFSLocalPublicFile; uploader: TransactionUploader } | null> {
 	try {
 		// The file is public
 		console.log('Uploading the PUBLIC file %s (%d bytes) at %s to the Permaweb', file.path, file.size);
@@ -148,8 +148,8 @@ export async function newArFSFileData(
 // Takes ArFS File Metadata and creates an ArFS MetaData Transaction using V2 Transaction with proper GQL tags
 export async function newArFSFileMetaData(
 	walletPrivateKey: JWKInterface,
-	file: clientTypes.ArFSLocalFile
-): Promise<{ file: clientTypes.ArFSLocalFile; uploader: TransactionUploader } | null> {
+	file: clientTypes.ArFSLocalPublicFile
+): Promise<{ file: clientTypes.ArFSLocalPublicFile; uploader: TransactionUploader } | null> {
 	let transaction;
 	let secondaryFileMetaDataTags = {};
 	try {
@@ -586,8 +586,8 @@ export async function uploadArFSDataBundle(user: ArDriveUser, dataItems: DataIte
 }
 export async function newArFSFolderMetaData(
 	walletPrivateKey: JWKInterface,
-	folder: clientTypes.ArFSLocalFolder
-): Promise<{ folder: clientTypes.ArFSLocalFolder; uploader: TransactionUploader } | null> {
+	folder: clientTypes.ArFSLocalPublicFolder
+): Promise<{ folder: clientTypes.ArFSLocalPublicFolder; uploader: TransactionUploader } | null> {
 	let transaction;
 	let secondaryFileMetaDataTags = {};
 	try {

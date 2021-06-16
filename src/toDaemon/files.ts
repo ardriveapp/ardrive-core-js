@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
 import { hashElement, HashElementOptions } from 'folder-hash';
+import { ContentType, entityTypeValues, YesNoInteger, yesNoIntegerValues } from '../types/type_guards';
 
 //const { hashElement } = require('folder-hash');
 
@@ -53,12 +54,10 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 		const lastModifiedDate = Math.floor(stats.mtimeMs);
 
 		// Set Privacy status.  this should be FIXED
-		let isPublic = 0;
+		let isPublic: YesNoInteger = yesNoIntegerValues.NO;
 		if (drivePrivacy === 'public') {
 			// File is in the public drive.
-			isPublic = 1;
-		} else if (drivePrivacy === 'private') {
-			isPublic = 0;
+			isPublic = yesNoIntegerValues.YES;
 		}
 		// Check if the exact file already exists in the same location
 		const exactMatch = await getDb.getByFileNameAndHashAndParentFolderIdFromSyncTable(
@@ -130,17 +129,16 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 		// No match, so queue a new file
 		console.log('   Queuing a new file for upload %s', filePath);
 		const unixTime = Math.round(Date.now() / 1000);
-		const contentType = extToMime(filePath);
+		const contentType = extToMime(filePath) as ContentType;
 		const fileId = uuidv4();
 		const fileSize = stats.size;
-		const newFileToQueue: ArFSFileMetaData = {
-			id: 0,
+		const newFileToQueue: ArFSFileMetaData = new ArFSFileMetaData({
 			login,
 			appName,
 			appVersion,
 			unixTime,
 			contentType,
-			entityType: 'file',
+			entityType: entityTypeValues.FILE,
 			driveId,
 			parentFolderId,
 			fileId,
@@ -152,16 +150,9 @@ async function queueFile(filePath: string, login: string, driveId: string, drive
 			fileVersion: 0,
 			isPublic,
 			isLocal: 1,
-			metaDataTxId: '0',
-			dataTxId: '0',
-			permaWebLink: '',
 			fileDataSyncStatus: 1, // Sync status of 1 requires a data tx
-			fileMetaDataSyncStatus: 1, // Sync status of 1 requires a metadata tx
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		};
+			fileMetaDataSyncStatus: 1 // Sync status of 1 requires a metadata tx
+		});
 		addFileToSyncTable(newFileToQueue);
 		return;
 	}
@@ -205,12 +196,10 @@ async function queueFolder(
 		const folderHash = await hashElement(folderPath, options);
 
 		// Get the Drive ID and Privacy status
-		let isPublic = 0;
+		let isPublic: YesNoInteger = yesNoIntegerValues.NO;
 		if (drivePrivacy === 'public') {
 			// File is in the public drive.
-			isPublic = 1;
-		} else if (drivePrivacy === 'private') {
-			isPublic = 0;
+			isPublic = yesNoIntegerValues.YES;
 		}
 
 		const unixTime = Math.round(Date.now() / 1000);
@@ -247,8 +236,7 @@ async function queueFolder(
 			fileId = renamedFolder.fileId;
 		}
 
-		const folderToQueue: ArFSFileMetaData = {
-			id: 0,
+		const folderToQueue: ArFSFileMetaData = new ArFSFileMetaData({
 			login,
 			appName,
 			appVersion,
@@ -266,16 +254,9 @@ async function queueFolder(
 			fileVersion: 0,
 			isPublic,
 			isLocal: 1,
-			metaDataTxId: '0',
-			dataTxId: '0',
-			permaWebLink: '',
 			fileDataSyncStatus: 0, // Folders do not require a data tx
-			fileMetaDataSyncStatus, // Sync status of 1 requries a metadata tx
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		};
+			fileMetaDataSyncStatus // Sync status of 1 requries a metadata tx
+		});
 		await addFileToSyncTable(folderToQueue);
 	}
 }

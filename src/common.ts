@@ -12,6 +12,13 @@ import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
 import { ArDriveUser } from './types/base_Types';
 import { cipher } from './constants';
+import {
+	driveAuthModeValues,
+	drivePrivacyValues,
+	driveSharingValues,
+	syncStatusValues,
+	yesNoIntegerValues
+} from './types/type_guards';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -329,25 +336,21 @@ export async function createNewPublicDrive(login: string, driveName: string): Pr
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
-	const drive: types.ArFSDriveMetaData = {
-		id: 0,
+	const drive: types.ArFSDriveMetaData = new types.ArFSDriveMetaData({
 		login,
 		appName: appName,
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher: '',
-		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,
 		driveId,
-		driveSharing: 'personal',
-		drivePrivacy: 'public',
-		driveAuthMode: '',
+		driveSharing: driveSharingValues.PERSONAL,
+		drivePrivacy: drivePrivacyValues.PUBLIC,
 		metaDataTxId: '0',
-		metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
-		isLocal: 1
-	};
+		metaDataSyncStatus: syncStatusValues.READY_TO_DOWNLOAD, // Drives are lazily created once the user performs an initial upload
+		isLocal: yesNoIntegerValues.YES
+	});
 	console.log('Creating a new public drive for %s, %s | %s', login, driveName, driveId);
 	return drive;
 }
@@ -357,25 +360,23 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
-	const drive: types.ArFSDriveMetaData = {
-		id: 0,
+	const drive: types.ArFSDriveMetaData = new types.ArFSDriveMetaData({
 		login,
 		appName: appName,
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
 		cipher,
-		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,
 		driveId,
-		driveSharing: 'personal',
-		drivePrivacy: 'private',
-		driveAuthMode: 'password',
+		driveSharing: driveSharingValues.PERSONAL,
+		drivePrivacy: drivePrivacyValues.PRIVATE,
+		driveAuthMode: driveAuthModeValues.PASSWORD,
 		metaDataTxId: '0',
 		metaDataSyncStatus: 0, // Drives are lazily created once the user performs an initial upload
-		isLocal: 1
-	};
+		isLocal: yesNoIntegerValues.YES
+	});
 	console.log('Creating a new private drive for %s, %s | %s', login, driveName, driveId);
 	return drive;
 }

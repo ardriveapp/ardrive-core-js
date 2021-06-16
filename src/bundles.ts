@@ -12,7 +12,7 @@ import {
 	uploadArFSFileData,
 	uploadArFSFileMetaData
 } from './public/arfs';
-import { ArFSFileData, ArFSFileFolderEntity, JWKInterface } from './types/arfs_Types';
+import { ArFSFileData, ArFSPublicFileFolderEntity, JWKInterface } from './types/arfs_Types';
 import Transaction from 'arweave/node/lib/transaction';
 import { appName, appVersion, arFSVersion } from './constants';
 import Arweave from 'arweave';
@@ -275,7 +275,7 @@ export async function createFileDataItemTransaction(
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
 export async function createFileFolderMetaDataItemTransaction(
-	metaData: ArFSFileFolderEntity,
+	metaData: ArFSPublicFileFolderEntity,
 	secondaryFileMetaData: string,
 	walletPrivateKey: JWKInterface
 ): Promise<DataItemJson | string> {
