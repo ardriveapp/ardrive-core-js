@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { deriveDriveKey, driveEncrypt } from '../crypto';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
-import { appName, appVersion, arFSVersion, cipher } from '../constants';
+import { appName, appVersion, arFSVersion, defaultCipher } from '../constants';
 import { createDataUploader } from '../transactions';
 import { ArFSPrivateDriveEntity } from '../types/arfs_Types';
 import { syncStatusValues, yesNoIntegerValues } from '../types/type_guards';
@@ -81,7 +81,7 @@ export async function newArFSPrivateDrive(driveName: string, login?: string): Pr
 			syncStatus: syncStatusValues.READY_TO_DOWNLOAD,
 			txId: '0',
 			unixTime,
-			cipher,
+			cipher: defaultCipher,
 			driveAuthMode: 'password'
 		})
 	});
