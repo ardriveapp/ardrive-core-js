@@ -14,7 +14,6 @@ import {
 	ContentType,
 	DriveAuthMode,
 	driveAuthModeValues,
-	DrivePrivacy,
 	drivePrivacyValues,
 	driveSharingValues,
 	EntityType,
