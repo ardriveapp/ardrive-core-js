@@ -9,6 +9,7 @@ import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
 
 import Arweave from 'arweave';
+import { CipherType, DriveAuthMode, DrivePrivacy, EntityType } from './types/type_guards';
 
 const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -1720,7 +1721,7 @@ export async function getSharedPublicDrive(driveId: string): Promise<types.ArFSD
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						drive.drivePrivacy = value as DrivePrivacy;
 						break;
 					default:
 						break;
@@ -1840,7 +1841,7 @@ export async function getPrivateDriveRootFolderTxId(
 				const { value } = tag;
 				switch (key) {
 					case 'Cipher':
-						rootFolderMetaData.cipher = value;
+						rootFolderMetaData.cipher = value as CipherType;
 						break;
 					case 'Cipher-IV':
 						rootFolderMetaData.cipherIV = value;
@@ -1946,7 +1947,7 @@ export async function getAllMyPublicArDriveIds(
 						drive.arFS = value;
 						break;
 					case 'Drive-Privacy':
-						drive.drivePrivacy = value;
+						drive.drivePrivacy = value as DrivePrivacy;
 						break;
 					default:
 						break;
@@ -2069,13 +2070,13 @@ export async function getAllMyPrivateArDriveIds(
 					drive.arFS = value;
 					break;
 				case 'Drive-Privacy':
-					drive.drivePrivacy = value;
+					drive.drivePrivacy = value as DrivePrivacy;
 					break;
 				case 'Drive-Auth-Mode':
-					drive.driveAuthMode = value;
+					drive.driveAuthMode = value as DriveAuthMode;
 					break;
 				case 'Cipher':
-					drive.cipher = value;
+					drive.cipher = value as CipherType;
 					break;
 				case 'Cipher-IV':
 					drive.cipherIV = value;
@@ -2321,7 +2322,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.contentType = value;
 					break;
 				case 'Entity-Type':
-					fileToSync.entityType = value;
+					fileToSync.entityType = value as EntityType;
 					break;
 				case 'Drive-Id':
 					fileToSync.driveId = value;
@@ -2336,7 +2337,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 					fileToSync.parentFolderId = value;
 					break;
 				case 'Cipher':
-					fileToSync.cipher = value;
+					fileToSync.cipher = value as CipherType;
 					break;
 				case 'Cipher-IV':
 					fileToSync.metaDataCipherIV = value;
