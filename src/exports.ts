@@ -4,6 +4,14 @@ export * from './db/db_delete';
 export * from './db/db_get';
 export * from './db/db_update';
 
+//Loki
+export * from './loki/drives_dao';
+export * from './loki/private_drives_dao';
+export * from './loki/files_dao';
+export * from './loki/private_files_dao';
+export * from './loki/folders_dao';
+export * from './loki/private_folders_dao';
+
 //Types
 export * from './types/arfs_Types';
 export * from './types/base_Types';
