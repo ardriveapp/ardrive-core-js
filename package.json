@@ -72,6 +72,7 @@
 		"lintfix": "eslint . --ext .ts --fix",
 		"test": "nyc mocha",
 		"coverage": "nyc --reporter text mocha",
+		"power-assert": "mocha --parallel false --r espower-typescript/guess ./**/*test.ts",
 		"typecheck": "tsc --noemit",
 		"build": "yarn clean && tsc",
 		"version": "yarn run format && git add -A src",

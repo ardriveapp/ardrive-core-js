@@ -1,7 +1,9 @@
-// The `test` directory is where the integration tests will be
-
 import { expect } from 'chai';
 import { mock, spy, stub } from 'sinon';
+
+// Power-assert must be imported this way to work
+import assert = require('assert');
+
 import * as gateway from '../src/gateway';
 
 /**
@@ -25,8 +27,8 @@ describe('The getTransactionData function', () => {
 	// 'ArConnect Archives' transaction id
 	const arConnectArchivesTxId = 'rsRzKeNeQUdgOaG4SYyRAcB8cnnOp_E4uo56DtKon8E';
 
-	it('returns transaction data checked by Sinon spy', async () => {
-		// Sinon spy
+	// Sinon spy
+	it('returns correct transaction data checked by Sinon spy', async () => {
 		const sinonSpy = spy(gateway, 'getTransactionData');
 		const transaction = await gateway.getTransactionData(arConnectArchivesTxId);
 
@@ -36,21 +38,29 @@ describe('The getTransactionData function', () => {
 		return expect(sinonSpy.calledOnce).to.be.ok;
 	});
 
+	// Sinon stub
 	it('can be stubbed by a Sinon stub', async () => {
-		// Sinon stub
 		stub(gateway, 'getTransactionData').callsFake(async () => 'a sinon stub');
 		const stubbedTransaction = await gateway.getTransactionData(arConnectArchivesTxId);
 
 		return expect(stubbedTransaction).to.equal('a sinon stub');
 	});
 
+	// Sinon mock
 	it('can be used in a Sinon mock', async () => {
-		// Sinon mock
 		const sinonMock = mock(gateway);
 		sinonMock.expects('getTransactionData').once().returns('a sinon mock');
 		const mockedTransaction = await gateway.getTransactionData(arConnectArchivesTxId);
 
 		expect(mockedTransaction).to.equal('a sinon mock');
 		return sinonMock.verify();
+	});
+
+	// Power-assert
+	it('can provide detailed error output when used with the power-assert library', async () => {
+		const transaction = await gateway.getTransactionData(arConnectArchivesTxId);
+		// For detailed error output, change to `notDeepStrictEqual` and use:
+		// yarn power-assert -g 'power-assert'
+		return assert.deepStrictEqual(transaction, expectedOutput);
 	});
 });
