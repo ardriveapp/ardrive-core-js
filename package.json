@@ -71,6 +71,7 @@
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",
 		"test": "nyc mocha",
+		"coverage": "nyc --reporter text mocha",
 		"typecheck": "tsc --noemit",
 		"build": "yarn clean && tsc",
 		"version": "yarn run format && git add -A src",
