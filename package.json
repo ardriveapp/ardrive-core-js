@@ -41,6 +41,7 @@
 		"@types/progress": "^2.0.3",
 		"@types/prompt-sync": "^4.1.0",
 		"@types/prompts": "^2.0.9",
+		"@types/source-map-support": "^0.5.3",
 		"@types/utf8": "^2.1.6",
 		"@types/uuid": "^8.3.0",
 		"@typescript-eslint/eslint-plugin": "^4.18.0",
@@ -52,9 +53,11 @@
 		"husky": "^=6",
 		"lint-staged": "^11.0.0",
 		"mocha": "^8.3.1",
+		"nyc": "^15.1.0",
 		"prettier": "^2.2.1",
 		"rimraf": "^3.0.2",
-		"ts-node": "^9.1.1",
+		"source-map-support": "^0.5.19",
+		"ts-node": "^10.0.0",
 		"tsc-files": "^1.1.2"
 	},
 	"scripts": {
