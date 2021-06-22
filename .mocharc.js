@@ -5,7 +5,8 @@
 module.exports = {
 	extension: ['ts'],
 	spec: ['src/**/*.test.ts', 'test/**/*.test.ts'],
-	require: 'ts-node/register',
+	require: ['ts-node/register/transpile-only', 'source-map-support/register'],
 	timeout: '3000',
-	parallel: true
+	parallel: true,
+	recursive: true
 };
