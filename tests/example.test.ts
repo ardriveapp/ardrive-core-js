@@ -1,66 +1,100 @@
-import { expect } from 'chai';
-import { mock, spy, stub } from 'sinon';
-
-// Power-assert must be imported this way to work
-import assert = require('assert');
-
-import * as gateway from '../src/gateway';
-
 /**
- * This is just a placeholder example test to ensure the following are functional:
+ * This is an example integration test used to showcase the testing libraries
  *
- * Asynchronous mocha testing
- * Sinon -- spies / stubs / mocks
- * Power-assert
+ * To run this example on it's own, use: yarn test -g 'basicIntegrationExample'
+ *
+ * For more examples, visit the unit test example file at: src/example.test.ts
  */
-describe('The getTransactionData function', () => {
-	// prettier-ignore
-	const expectedOutput = new Uint8Array([
-    // 'ArConnect Archives' transaction data
-    123,  34, 110,  97, 109, 101,  34,  58,  34,  65, 114,  67, 111, 110, 110, 101,  99,
-    116,  32,  65, 114,  99, 104, 105, 118, 101, 115,  34,  44,  34, 114, 111, 111, 116,
-     70, 111, 108, 100, 101, 114,  73, 100,  34,  58,  34,  49,  51, 100,  53,  99,  57,
-    102,  49,  45,  50, 100,  49,  56,  45,  52,  98,  48,  97,  45,  97,  52, 102,  49,
-     45,  99,  57, 101,  54, 102,  98,  57,  99,  53,  98, 101,  98,  34, 125,
-  ]);
 
-	// 'ArConnect Archives' transaction id
-	const arConnectArchivesTxId = 'rsRzKeNeQUdgOaG4SYyRAcB8cnnOp_E4uo56DtKon8E';
+import { expect } from 'chai';
+import { mock, spy } from 'sinon';
+import { sleep } from '../src/common';
 
-	// Sinon spy
-	it('returns correct transaction data checked by Sinon spy', async () => {
-		const sinonSpy = spy(gateway, 'getTransactionData');
-		const transaction = await gateway.getTransactionData(arConnectArchivesTxId);
+// Independently defined example types to avoid conflict with future type changes
+type ExampleUser = { login: string; walletPrivateKey: string; walletPublicKey: string };
+type ExampleDrive = { txId: string; driveId: string };
 
-		expect(transaction).to.deep.equal(expectedOutput);
+// Example API for integration testing, normally this would be imported into the test file
+const basicIntegrationExample = {
+	login: async (login: string): Promise<ExampleUser | null> => {
+		await sleep(100); // Wait 100ms for fake async
 
-		// Returning anything to a Mocha test will conclude an async test
-		return expect(sinonSpy.calledOnce).to.be.ok;
+		if (!login) {
+			return null;
+		} else {
+			return {
+				login: login,
+				walletPrivateKey: `${login}_walletPriv`,
+				walletPublicKey: `${login}_walletPub`
+			};
+		}
+	},
+
+	getDrives: async (user: ExampleUser): Promise<ExampleDrive[] | null> => {
+		await sleep(100); // Wait 100ms for fake async
+
+		if (user.walletPrivateKey !== `${user.login}_walletPriv`) {
+			return null;
+		} else {
+			return [{ txId: `${user.login}_transaction_id`, driveId: `${user.login}_best_drive_id` }];
+		}
+	}
+};
+
+describe('Using the basicIntegrationExample api', () => {
+	// Basic Mocha/Chai integration test
+	it('users can login and retrieve their drives', async () => {
+		const { login, getDrives } = basicIntegrationExample;
+
+		// Login to API
+		const user = await login('steve');
+		expect(user.walletPrivateKey).to.equal('steve_walletPriv');
+
+		// Get the drives
+		const drives = await getDrives(user);
+		expect(drives[0].txId).to.equal('steve_transaction_id');
+
+		// Return anything to conclude async test
+		return;
 	});
 
-	// Sinon stub
-	it('can be stubbed by a Sinon stub', async () => {
-		stub(gateway, 'getTransactionData').callsFake(async () => 'a sinon stub');
-		const stubbedTransaction = await gateway.getTransactionData(arConnectArchivesTxId);
+	// Sinon Spy
+	it('users that are incorrectly logged in cannot get drives', async () => {
+		// Define spy
+		const sinonSpy = spy(basicIntegrationExample, 'getDrives');
 
-		return expect(stubbedTransaction).to.equal('a sinon stub');
+		const incorrectUser: ExampleUser = {
+			login: 'greg',
+			walletPrivateKey: 'wrong_key',
+			walletPublicKey: 'wrong_key'
+		};
+
+		const drives = await basicIntegrationExample.getDrives(incorrectUser);
+		expect(drives).to.be.null;
+
+		// Verify spy calls
+		expect(sinonSpy.calledOnce).to.be.ok;
+		expect(sinonSpy.calledWith(incorrectUser)).to.be.ok;
+
+		return;
 	});
 
 	// Sinon mock
 	it('can be used in a Sinon mock', async () => {
-		const sinonMock = mock(gateway);
-		sinonMock.expects('getTransactionData').once().returns('a sinon mock');
-		const mockedTransaction = await gateway.getTransactionData(arConnectArchivesTxId);
+		// Create mock
+		const sinonMock = mock(basicIntegrationExample);
 
-		expect(mockedTransaction).to.equal('a sinon mock');
+		// Setup mock expectations
+		sinonMock.expects('login').once().alwaysCalledWithExactly('tim');
+		sinonMock.expects('getDrives').once().returns('a sinon mock');
+
+		const user = await basicIntegrationExample.login('tim');
+		const drives = await basicIntegrationExample.getDrives(user);
+
+		// Expect mocked response
+		expect(drives).to.equal('a sinon mock');
+
+		// Verify mock expectations
 		return sinonMock.verify();
-	});
-
-	// Power-assert
-	it('can provide detailed error output when used with the power-assert library', async () => {
-		const transaction = await gateway.getTransactionData(arConnectArchivesTxId);
-		// For detailed error output, change to `notDeepStrictEqual` and use:
-		// yarn power-assert -g 'power-assert'
-		return assert.deepStrictEqual(transaction, expectedOutput);
 	});
 });
