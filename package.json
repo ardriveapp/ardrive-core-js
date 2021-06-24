@@ -79,6 +79,9 @@
 		"postversion": "git push && git push --tags",
 		"ci": "yarn test && yarn build"
 	},
+	"directories": {
+		"test": "./"
+	},
 	"husky": {
 		"hooks": {
 			"pre-commit": "lint-staged"
