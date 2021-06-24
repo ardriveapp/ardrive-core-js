@@ -16,25 +16,21 @@ type ExampleDrive = { txId: string; driveId: string };
 
 // Example API for integration testing, normally this would be imported into the test file
 const basicIntegrationExample = {
-	login: async (login: string): Promise<ExampleUser | null> => {
+	login: async (login: string): Promise<ExampleUser> => {
 		await sleep(100); // Wait 100ms for fake async
 
-		if (!login) {
-			return null;
-		} else {
-			return {
-				login: login,
-				walletPrivateKey: `${login}_walletPriv`,
-				walletPublicKey: `${login}_walletPub`
-			};
-		}
+		return {
+			login: login,
+			walletPrivateKey: `${login}_walletPriv`,
+			walletPublicKey: `${login}_walletPub`
+		};
 	},
 
-	getDrives: async (user: ExampleUser): Promise<ExampleDrive[] | null> => {
+	getDrives: async (user: ExampleUser): Promise<ExampleDrive[]> => {
 		await sleep(100); // Wait 100ms for fake async
 
 		if (user.walletPrivateKey !== `${user.login}_walletPriv`) {
-			return null;
+			return [];
 		} else {
 			return [{ txId: `${user.login}_transaction_id`, driveId: `${user.login}_best_drive_id` }];
 		}
@@ -48,6 +44,7 @@ describe('Using the basicIntegrationExample api', () => {
 
 		// Login to API
 		const user = await login('steve');
+
 		expect(user.walletPrivateKey).to.equal('steve_walletPriv');
 
 		// Get the drives
@@ -70,7 +67,7 @@ describe('Using the basicIntegrationExample api', () => {
 		};
 
 		const drives = await basicIntegrationExample.getDrives(incorrectUser);
-		expect(drives).to.be.null;
+		expect(drives).to.have.length(0);
 
 		// Verify spy calls
 		expect(sinonSpy.calledOnce).to.be.ok;
