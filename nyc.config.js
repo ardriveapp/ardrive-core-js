@@ -3,7 +3,7 @@
 // Istanbul `nyc` configuration file
 
 // Note: The nyc package is locked to v14.1.1 due to a TypeScript related
-// coverage issue here: https://github.com/istanbuljs/nyc/issues/1406
+// coverage issue here: https://github.com/istanbuljs/nyc/issues/1351
 
 // Reference for config options: https://github.com/istanbuljs/nyc#common-configuration-options
 module.exports = {
