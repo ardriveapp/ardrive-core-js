@@ -41,6 +41,7 @@ export interface Wallet {
 // The primary ArFS entity that all other entities inherit from.
 
 export interface IEntity {
+	[key: string]: number | string | undefined;
 	appName?: string;
 	appVersion?: string;
 	arFS?: string;
@@ -100,6 +101,7 @@ export class ArFSEntity<T extends IEntity>
 	// extends ValidateArguments
 	implements IEntity
 {
+	[key: string]: number | string | undefined;
 	appName = ''; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
 	appVersion = ''; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
 	arFS = ''; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
