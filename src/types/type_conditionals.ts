@@ -10,6 +10,10 @@ import {
 } from './arfs_Types';
 import { DrivePrivacy, PrivateType } from './type_guards';
 
+export type Instantiable<T, A> = {
+	new (a?: A): T;
+};
+
 export type PrivacyToDriveEntity<P extends DrivePrivacy> = ArFSDriveEntity<
 	P extends PrivateType ? ArFSPrivateDriveEntity : ArFSPublicDriveEntity
 >;
