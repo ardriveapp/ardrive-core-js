@@ -130,24 +130,24 @@ export class ArFSEntity<T extends IEntity>
 // When creating a Drive, a corresponding folder must be created as well. This folder will act as the Drive Root Folder.
 // This seperation of drive and folder entity enables features such as folder view queries.
 export class ArFSDriveEntity<T extends IDriveEntity> extends ArFSEntity<T> implements IDriveEntity {
-	entityType = entityTypeValues.DRIVE;
+	readonly entityType = entityTypeValues.DRIVE;
 	driveId = '';
-	drivePrivacy: DrivePrivacy = drivePrivacyValues.PRIVATE; // identifies if this drive is public or private (and encrypted)  can only be "public" or "private"
+	readonly drivePrivacy: DrivePrivacy = drivePrivacyValues.PRIVATE; // identifies if this drive is public or private (and encrypted)  can only be "public" or "private"
 	rootFolderId = ''; // the uuid of the related drive root folder, stored in the JSON data that is uploaded with each Drive Entity metadata transaction
 }
 
 // An entity for a Private Drive entity with the extra privacy tags
 export class ArFSPrivateDriveEntity extends ArFSDriveEntity<IPrivateDriveEntity> implements IPrivateDriveEntity {
-	drivePrivacy = drivePrivacyValues.PRIVATE;
-	contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
+	readonly drivePrivacy = drivePrivacyValues.PRIVATE;
+	readonly contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
 	driveAuthMode?: DriveAuthMode; // used for future authentication schemes.  the only allowable value is "password"
 	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
 	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
 }
 
 export class ArFSPublicDriveEntity extends ArFSDriveEntity<IPublicDriveEntity> implements IPublicDriveEntity {
-	drivePrivacy = drivePrivacyValues.PUBLIC;
-	contentType = contentTypeValues.APPLICATION_JSON;
+	readonly drivePrivacy = drivePrivacyValues.PUBLIC;
+	readonly contentType = contentTypeValues.APPLICATION_JSON;
 }
 
 // A Folder is a logical group of folders and files.  It contains a parent folder ID used to reference where this folder lives in the Drive hierarchy.
@@ -168,7 +168,7 @@ export class ArFSPublicFileFolderEntity
 	extends ArFSFileFolderEntity<IPublicFileFolderEntity>
 	implements IPublicFileFolderEntity
 {
-	contentType = contentTypeValues.APPLICATION_JSON;
+	readonly contentType = contentTypeValues.APPLICATION_JSON;
 }
 
 // Used for private Files/Folders only.
@@ -176,7 +176,7 @@ export class ArFSPrivateFileFolderEntity
 	extends ArFSFileFolderEntity<IFileFolderEntity & IPrivate>
 	implements IFileFolderEntity, IPrivate
 {
-	contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
+	readonly contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
 	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
 	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
 }
