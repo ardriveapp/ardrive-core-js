@@ -114,6 +114,8 @@ export class ArFSEntity<T extends IEntity>
 	unixTime = this.template.unixTime || 0; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
 
 	constructor(protected template: T = {} as T) {
+		this.syncStatus = Number(this.syncStatus) as SyncStatus;
+		this.unixTime = Number(this.unixTime);
 		// super();
 		// Object.assign(this, args);
 		// this.setValidators([
@@ -162,6 +164,11 @@ export class ArFSFileFolderEntity<T extends IFileFolderEntity> extends ArFSEntit
 	parentFolderId = this.template.parentFolderId || ''; // the uuid of the parent folder that this entity sits within.  Folder Entities used for the drive root must not have a parent folder ID, eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
 	entityId = this.template.entityId || ''; // the unique folder identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
 	lastModifiedDate = this.template.lastModifiedDate || 0; // the last modified date of the file or folder as seconds since unix epoch
+
+	constructor(template: T = {} as T) {
+		super(template);
+		this.lastModifiedDate = Number(this.lastModifiedDate);
+	}
 }
 
 export class ArFSPublicFileFolderEntity
