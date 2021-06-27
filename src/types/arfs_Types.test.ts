@@ -30,20 +30,24 @@ function checkInstanceHierarchy<T extends arfsTypes.IEntity>(classes: Instantiab
 	const derivatedClasses = classes.slice(1);
 	derivatedClasses.forEach((entityClass) => {
 		it(`Check instance hierarchy of ${entityClass.name}`, () => {
-			const instance = new entityClass({} as T);
+			const instance = new entityClass();
+			expect(instance).to.be.instanceOf(theBaseClass);
+		});
+		it(`Check instance hierarchy of ${entityClass.name}`, () => {
+			const instance = new entityClass();
 			expect(instance).to.be.instanceOf(theBaseClass);
 		});
 	});
 }
 
-const checkInstantiation = function <T extends InstantiableEntity>(entityClass: T): void {
+const checkInstantiation = function <T extends arfsTypes.IEntity>(entityClass: InstantiableEntity<T>): void {
 	it(`Instantiate empty ${entityClass.name}`, () => {
-		const instance = new entityClass({});
+		const instance = new entityClass();
 		expect(instance.appName).to.equal('');
 	});
 	it(`Instantiate partial ${entityClass.name}`, () => {
 		const appName = 'ArDrive Core Test';
-		const instance = new entityClass({ appName });
+		const instance = new entityClass({ appName } as T);
 		expect(instance.appName).to.equal(appName);
 	});
 };
@@ -51,16 +55,17 @@ const checkInstantiation = function <T extends InstantiableEntity>(entityClass: 
 function assertNumberPropertiesType(entityTemplate: arfsTypes.IEntity, entityClass: InstantiableEntity): void {
 	describe(`Check properties of ${entityClass.name}`, () => {
 		const numericProperties = Object.keys(entityTemplate).filter((key) => typeof entityTemplate[key] === 'number');
+		const numberToStringMap = numericProperties.map((prop) => `${entityTemplate[prop]}`);
+		const theBrokenTemplate: arfsTypes.IEntity = numericProperties.reduce((accumulator, propertyName, index) => {
+			return Object.assign(accumulator, { [propertyName]: numberToStringMap[index] });
+		}, {});
+		let entity: arfsTypes.IEntity;
+		before(() => {
+			entity = new entityClass(theBrokenTemplate);
+		});
 		numericProperties.forEach((propertyName) =>
 			it(`Property ${propertyName} preserves its numeric type`, () => {
-				const numberToStringMap = numericProperties.map((prop) => `${entityTemplate[prop]}`);
-				const theBrokenTemplate: arfsTypes.IEntity = numericProperties.reduce(
-					(accumulator, propertyName, index) => {
-						return Object.assign(accumulator, { [propertyName]: numberToStringMap[index] });
-					},
-					{}
-				);
-				const entity = new entityClass(theBrokenTemplate);
+				// if (propertyName === 'lastModifiedDate') debugger;
 				expect(typeof entity[propertyName]).to.equal('number');
 			})
 		);
@@ -78,6 +83,7 @@ describe('ArFSEntity classes', () => {
 
 	describe('Instantiation', () => {
 		DRIVE_ENTITY_CLASSES.forEach(checkInstantiation);
+		FILE_FOLDER_ENTITY_CLASSES.forEach(checkInstantiation);
 	});
 
 	describe('InstanceOf checking', () => {
@@ -92,5 +98,19 @@ describe('ArFSEntity classes', () => {
 				e.constructor as { new <T extends arfsTypes.IEntity>(args?: T | undefined): arfsTypes.ArFSEntity<T> }
 			)
 		);
+	});
+
+	describe('Immutable properties', () => {
+		EMPTY_ENTITIES.forEach((entity) => {
+			const currentPrivacy = entity.drivePrivacy;
+			const wrongPrivacy = currentPrivacy === 'private' ? 'public' : 'private';
+			it(`Immutable drivePrivacy on ${entity.constructor.name}`, () => {
+				// entity.drivePrivacy = wrongPrivacy;
+				const temporalEntity = new (entity.constructor as {
+					new <T extends arfsTypes.IEntity>(args?: T | undefined): arfsTypes.ArFSEntity<T>;
+				})({ drivePrivacy: wrongPrivacy });
+				expect(temporalEntity.drivePrivacy).to.equal(currentPrivacy);
+			});
+		});
 	});
 });
