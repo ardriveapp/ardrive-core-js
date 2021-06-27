@@ -41,7 +41,7 @@ export interface Wallet {
 // The primary ArFS entity that all other entities inherit from.
 
 export interface IEntity {
-	[key: string]: number | string | undefined;
+	[key: string]: unknown;
 	appName?: string;
 	appVersion?: string;
 	arFS?: string;
@@ -84,7 +84,7 @@ export type IPublicFileFolderEntity = IFileFolderEntity;
 
 export type IPrivateFileFolderEntity = IFileFolderEntity & IPrivate;
 
-export interface IFileData {
+export interface IFileData extends IPrivate {
 	appName?: string;
 	appVersion?: string;
 	contentType?: ContentType;
@@ -101,21 +101,21 @@ export class ArFSEntity<T extends IEntity>
 	// extends ValidateArguments
 	implements IEntity
 {
-	[key: string]: number | string | undefined;
-	appName = ''; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
-	appVersion = ''; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
-	arFS = ''; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
-	contentType: ContentType = contentTypeValues.APPLICATION_JSON; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
+	[key: string]: unknown;
+	appName = this.template.appName || ''; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
+	appVersion = this.template.appVersion || ''; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
+	arFS = this.template.arFS || ''; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
+	contentType: ContentType = this.template.contentType || contentTypeValues.APPLICATION_JSON; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
 	// driveId?: string; // the unique drive identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
-	entityType: EntityType = entityTypeValues.FILE; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
-	name = ''; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction
-	syncStatus: SyncStatus = syncStatusValues.READY_TO_DOWNLOAD; // the status of this transaction.  0 = 'ready to download', 1 = 'ready to upload', 2 = 'getting mined', 3 = 'successfully uploaded'
-	txId = ''; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
-	unixTime = 0; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
+	entityType: EntityType = this.template.entityType || entityTypeValues.FILE; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
+	name = this.template.name || ''; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction
+	syncStatus: SyncStatus = this.template.syncStatus || syncStatusValues.READY_TO_DOWNLOAD; // the status of this transaction.  0 = 'ready to download', 1 = 'ready to upload', 2 = 'getting mined', 3 = 'successfully uploaded'
+	txId = this.template.txId || ''; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
+	unixTime = this.template.unixTime || 0; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
 
-	constructor(args?: T) {
+	constructor(protected template: T = {} as T) {
 		// super();
-		Object.assign(this, args);
+		// Object.assign(this, args);
 		// this.setValidators([
 		// 	ValidateArguments.newValidator(stringValidator, 'appName'),
 		// 	ValidateArguments.newValidator(lengthValidatorFactory({ min: 1, max: 64 }), 'appName'),
@@ -131,18 +131,18 @@ export class ArFSEntity<T extends IEntity>
 // This seperation of drive and folder entity enables features such as folder view queries.
 export class ArFSDriveEntity<T extends IDriveEntity> extends ArFSEntity<T> implements IDriveEntity {
 	readonly entityType = entityTypeValues.DRIVE;
-	driveId = '';
+	driveId = this.template.driveId || '';
 	readonly drivePrivacy: DrivePrivacy = drivePrivacyValues.PRIVATE; // identifies if this drive is public or private (and encrypted)  can only be "public" or "private"
-	rootFolderId = ''; // the uuid of the related drive root folder, stored in the JSON data that is uploaded with each Drive Entity metadata transaction
+	rootFolderId = this.template.rootFolderId || ''; // the uuid of the related drive root folder, stored in the JSON data that is uploaded with each Drive Entity metadata transaction
 }
 
 // An entity for a Private Drive entity with the extra privacy tags
 export class ArFSPrivateDriveEntity extends ArFSDriveEntity<IPrivateDriveEntity> implements IPrivateDriveEntity {
 	readonly drivePrivacy = drivePrivacyValues.PRIVATE;
 	readonly contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
-	driveAuthMode?: DriveAuthMode; // used for future authentication schemes.  the only allowable value is "password"
-	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
-	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
+	driveAuthMode?: DriveAuthMode = this.template.driveAuthMode; // used for future authentication schemes.  the only allowable value is "password"
+	cipher: CipherType = this.template.cipher || cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
+	cipherIV = this.template.cipherIV || ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
 }
 
 export class ArFSPublicDriveEntity extends ArFSDriveEntity<IPublicDriveEntity> implements IPublicDriveEntity {
@@ -157,11 +157,11 @@ export class ArFSPublicDriveEntity extends ArFSDriveEntity<IPublicDriveEntity> i
 // This separation allows for file metadata to be updated without requiring the file data to be reuploaded.
 // NOTE: Files and Folders leverage the same entity type since they have the same properties
 export class ArFSFileFolderEntity<T extends IFileFolderEntity> extends ArFSEntity<T> implements IFileFolderEntity {
-	driveId = '';
-	entityType: FileFolderEntityType = entityTypeValues.FILE;
-	parentFolderId = ''; // the uuid of the parent folder that this entity sits within.  Folder Entities used for the drive root must not have a parent folder ID, eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
-	entityId = ''; // the unique folder identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
-	lastModifiedDate = 0; // the last modified date of the file or folder as seconds since unix epoch
+	driveId = this.template.driveId || '';
+	entityType: FileFolderEntityType = this.template.entityType || entityTypeValues.FILE;
+	parentFolderId = this.template.parentFolderId || ''; // the uuid of the parent folder that this entity sits within.  Folder Entities used for the drive root must not have a parent folder ID, eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
+	entityId = this.template.entityId || ''; // the unique folder identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
+	lastModifiedDate = this.template.lastModifiedDate || 0; // the last modified date of the file or folder as seconds since unix epoch
 }
 
 export class ArFSPublicFileFolderEntity
@@ -177,28 +177,28 @@ export class ArFSPrivateFileFolderEntity
 	implements IFileFolderEntity, IPrivate
 {
 	readonly contentType = contentTypeValues.APPLICATION_OCTET_STREAM;
-	cipher: CipherType = cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
-	cipherIV = ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
+	cipher: CipherType = this.template.cipher || cipherTypeValues.AES_256_GCM; // The ArFS Cipher used.  Only available cipher is AES256-GCM
+	cipherIV = this.template.cipherIV || ''; // The cipher initialization vector used for encryption, 12 bytes as base 64, 16 characters. eg YJxNOmlg0RWuMHij
 }
 
 // File entity metadata transactions do not include the actual File data they represent.
 // Instead, the File data must be uploaded as a separate transaction, called the File data transaction.
 export class ArFSFileData implements IFileData {
-	appName = '';
-	appVersion = '';
-	contentType: ContentType = contentTypeValues.APPLICATION_JSON;
-	syncStatus: SyncStatus = syncStatusValues.READY_TO_DOWNLOAD;
-	txId = '';
-	unixTime = 0;
+	appName = this.template.appName || '';
+	appVersion = this.template.appVersion || '';
+	contentType: ContentType = this.template.contentType || contentTypeValues.APPLICATION_JSON;
+	syncStatus: SyncStatus = this.template.syncStatus || syncStatusValues.READY_TO_DOWNLOAD;
+	txId = this.template.txId || '';
+	unixTime = this.template.unixTime || 0;
 
-	constructor(args: IFileData = {}) {
-		Object.assign(this, args);
+	constructor(protected template: IFileData = {}) {
+		// Object.assign(this, args);
 	}
 }
 
 export class ArFSPublicFileData extends ArFSFileData {}
 
 export class ArFSPrivateFileData extends ArFSFileData implements IPrivate {
-	cipher: CipherType = cipherTypeValues.AES_256_GCM;
-	cipherIV = '';
+	cipher: CipherType = this.template.cipher || cipherTypeValues.AES_256_GCM;
+	cipherIV = this.template.cipherIV || '';
 }
