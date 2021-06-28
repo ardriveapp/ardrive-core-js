@@ -1,46 +1,54 @@
 import { expect } from 'chai';
-import * as arfsTypes from './arfs_Types';
-import { InstantiableEntity } from './type_conditionals';
+import {
+	ArFSPublicFileFolderEntity,
+	ArFSPrivateFileFolderEntity,
+	ArFSPrivateDriveEntity,
+	ArFSPublicDriveEntity,
+	ArFSDriveEntity,
+	IEntity,
+	ArFSEntity,
+	ArFSFileFolderEntity,
+	IPublicFileFolderEntity,
+	IPrivateFileFolderEntity
+} from './arfs_Types';
+import { Instantiable, InstantiableEntity } from './type_conditionals';
+import { PrivateType, PublicType } from './type_guards';
+// import { DrivePrivacy } from './type_guards';
 
-const DRIVE_ENTITY_CLASSES: InstantiableEntity[] = [
-	arfsTypes.ArFSDriveEntity,
-	arfsTypes.ArFSPrivateDriveEntity,
-	arfsTypes.ArFSPublicDriveEntity
+const DRIVE_ENTITY_CLASSES = [
+	// arfsTypes.ArFSDriveEntity,
+	ArFSPrivateDriveEntity,
+	ArFSPublicDriveEntity
 ];
 
 // The casting here is made to avoid the compiler complaining for ArFSFileFolderEntity not allowing 'drive' on its entityType
-const FILE_FOLDER_ENTITY_CLASSES: InstantiableEntity<arfsTypes.IFileFolderEntity>[] = [
-	arfsTypes.ArFSFileFolderEntity,
-	arfsTypes.ArFSPrivateFileFolderEntity,
-	arfsTypes.ArFSPublicFileFolderEntity
+const FILE_FOLDER_ENTITY_CLASSES = [
+	// arfsTypes.ArFSFileFolderEntity,
+	ArFSPrivateFileFolderEntity,
+	ArFSPublicFileFolderEntity
 ];
 
 const ALL_ENTITY_CLASSES = [...DRIVE_ENTITY_CLASSES, ...FILE_FOLDER_ENTITY_CLASSES];
 
 const EMPTY_ENTITIES = [
 	// the non generic exports
-	new arfsTypes.ArFSPrivateDriveEntity(),
-	new arfsTypes.ArFSPublicDriveEntity(),
-	new arfsTypes.ArFSPrivateFileFolderEntity(),
-	new arfsTypes.ArFSPublicFileFolderEntity()
+	new ArFSPrivateDriveEntity(),
+	new ArFSPublicDriveEntity(),
+	new ArFSPrivateFileFolderEntity(),
+	new ArFSPublicFileFolderEntity()
 ];
 
-function checkInstanceHierarchy<T extends arfsTypes.IEntity>(classes: InstantiableEntity<T>[]): void {
-	const theBaseClass = classes[0];
-	const derivatedClasses = classes.slice(1);
-	derivatedClasses.forEach((entityClass) => {
-		it(`Check instance hierarchy of ${entityClass.name}`, () => {
-			const instance = new entityClass();
-			expect(instance).to.be.instanceOf(theBaseClass);
-		});
-		it(`Check instance hierarchy of ${entityClass.name}`, () => {
-			const instance = new entityClass();
-			expect(instance).to.be.instanceOf(theBaseClass);
-		});
+function instanceOfChecking<T extends IEntity>(
+	theBaseClass: InstantiableEntity<T>,
+	entityClass: InstantiableEntity<T>
+): void {
+	it(`Check ${entityClass.name} is instance of ${theBaseClass.name}`, () => {
+		const instance = new entityClass();
+		expect(instance).to.be.instanceOf(theBaseClass);
 	});
 }
 
-const checkInstantiation = function <T extends arfsTypes.IEntity>(entityClass: InstantiableEntity<T>): void {
+const checkInstantiation = function <T extends IEntity>(entityClass: InstantiableEntity<T>): void {
 	it(`Instantiate empty ${entityClass.name}`, () => {
 		const instance = new entityClass();
 		expect(instance.appName).to.equal('');
@@ -52,14 +60,14 @@ const checkInstantiation = function <T extends arfsTypes.IEntity>(entityClass: I
 	});
 };
 
-function assertNumberPropertiesType(entityTemplate: arfsTypes.IEntity, entityClass: InstantiableEntity): void {
+function assertNumberPropertiesType(entityTemplate: IEntity, entityClass: InstantiableEntity): void {
 	describe(`Check properties of ${entityClass.name}`, () => {
 		const numericProperties = Object.keys(entityTemplate).filter((key) => typeof entityTemplate[key] === 'number');
 		const numberToStringMap = numericProperties.map((prop) => `${entityTemplate[prop]}`);
-		const theBrokenTemplate: arfsTypes.IEntity = numericProperties.reduce((accumulator, propertyName, index) => {
+		const theBrokenTemplate: IEntity = numericProperties.reduce((accumulator, propertyName, index) => {
 			return Object.assign(accumulator, { [propertyName]: numberToStringMap[index] });
 		}, {});
-		let entity: arfsTypes.IEntity;
+		let entity: IEntity;
 		before(() => {
 			entity = new entityClass(theBrokenTemplate);
 		});
@@ -82,20 +90,30 @@ describe('ArFSEntity classes', () => {
 	});
 
 	describe('Instantiation', () => {
-		DRIVE_ENTITY_CLASSES.forEach(checkInstantiation);
-		FILE_FOLDER_ENTITY_CLASSES.forEach(checkInstantiation);
+		checkInstantiation(ArFSPublicDriveEntity);
+		checkInstantiation(ArFSPrivateDriveEntity);
+		checkInstantiation(ArFSPublicFileFolderEntity);
+		checkInstantiation(ArFSPrivateFileFolderEntity);
 	});
 
 	describe('InstanceOf checking', () => {
-		checkInstanceHierarchy(DRIVE_ENTITY_CLASSES);
-		checkInstanceHierarchy<arfsTypes.IFileFolderEntity>(FILE_FOLDER_ENTITY_CLASSES);
+		instanceOfChecking(ArFSDriveEntity as { new (): ArFSDriveEntity<PublicType> }, ArFSPublicDriveEntity);
+		instanceOfChecking(ArFSDriveEntity as { new (): ArFSDriveEntity<PrivateType> }, ArFSPrivateDriveEntity);
+		instanceOfChecking(
+			ArFSFileFolderEntity as Instantiable<ArFSFileFolderEntity<PublicType>, IPublicFileFolderEntity>,
+			ArFSPublicFileFolderEntity
+		);
+		instanceOfChecking(
+			ArFSFileFolderEntity as Instantiable<ArFSFileFolderEntity<PrivateType>, IPrivateFileFolderEntity>,
+			ArFSPrivateFileFolderEntity
+		);
 	});
 
 	describe('Property numeric type checking', () => {
 		EMPTY_ENTITIES.forEach((e) =>
 			assertNumberPropertiesType(
 				e,
-				e.constructor as { new <T extends arfsTypes.IEntity>(args?: T | undefined): arfsTypes.ArFSEntity<T> }
+				e.constructor as { new <T extends IEntity>(args?: T | undefined): ArFSEntity<T> }
 			)
 		);
 	});
@@ -107,7 +125,7 @@ describe('ArFSEntity classes', () => {
 			it(`Immutable drivePrivacy on ${entity.constructor.name}`, () => {
 				// entity.drivePrivacy = wrongPrivacy;
 				const temporalEntity = new (entity.constructor as {
-					new <T extends arfsTypes.IEntity>(args?: T | undefined): arfsTypes.ArFSEntity<T>;
+					new <T extends IEntity>(args?: T | undefined): ArFSEntity<T>;
 				})({ drivePrivacy: wrongPrivacy });
 				expect(temporalEntity.drivePrivacy).to.equal(currentPrivacy);
 			});

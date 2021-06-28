@@ -50,5 +50,8 @@ export type YesNoInteger = UnionOfObjectPropertiesType<typeof yesNoIntegerValues
 
 export type FileFolderEntityType = typeof entityTypeValues.FILE | typeof entityTypeValues.FOLDER;
 
+export type JSONContentType = typeof contentTypeValues.APPLICATION_JSON;
+export type OctetStreamContentType = typeof contentTypeValues.APPLICATION_OCTET_STREAM;
+
 export type PrivateType = typeof drivePrivacyValues.PRIVATE;
 export type PublicType = typeof drivePrivacyValues.PUBLIC;

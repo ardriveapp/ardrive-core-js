@@ -21,24 +21,22 @@ export interface ILocalDriveEntity<P extends DrivePrivacy> {
 	isLocal?: YesNoInteger; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
 }
 
-export class ArFSLocalDriveEntity<P extends DrivePrivacy> implements ILocalDriveEntity<P> {
-	id = 0;
-	driveId = '';
-	owner = '';
-	entity: PrivacyToDriveEntity<P> = new ArFSPublicDriveEntity({}); // fixme: it's a placeholder
-	isLocal: YesNoInteger = yesNoIntegerValues.NO;
+export abstract class ArFSLocalDriveEntity<P extends DrivePrivacy> implements ILocalDriveEntity<P> {
+	id = this.template.id || 0;
+	driveId = this.template.driveId || '';
+	owner = this.template.owner || '';
+	abstract entity: PrivacyToDriveEntity<P>;
+	isLocal: YesNoInteger = this.template.isLocal || yesNoIntegerValues.NO;
 
-	constructor(args: ILocalDriveEntity<P>) {
-		Object.assign(this, args);
-	}
+	constructor(protected readonly template: ILocalDriveEntity<P> = {}) {}
 }
 
 export class ArFSLocalPublicDriveEntity extends ArFSLocalDriveEntity<PublicType> {
-	entity: ArFSPublicDriveEntity = new ArFSPublicDriveEntity({});
+	entity: ArFSPublicDriveEntity = this.template.entity || new ArFSPublicDriveEntity();
 }
 
 export class ArFSLocalPrivateDriveEntity extends ArFSLocalDriveEntity<PrivateType> {
-	entity: ArFSPrivateDriveEntity = new ArFSPrivateDriveEntity({}); // The underlying ArFS Drive entity and metadata
+	entity: ArFSPrivateDriveEntity = (this.template.entity as ArFSPrivateDriveEntity) || new ArFSPrivateDriveEntity(); // The underlying ArFS Drive entity and metadata
 }
 
 // Contains all of the metadata needed to for an ArFS client to sync a file or folder
@@ -62,7 +60,7 @@ export class ArFSLocalMetaData<P extends DrivePrivacy> implements ILocalMetaData
 	size = 0; // The size in bytes of the underlying file data
 	version = 0; // The version number of the underlying file data.  Should be incremented by 1 for each version found for a given fileId.
 	isLocal = yesNoIntegerValues.NO; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
-	entity?: PrivacyToFileFolderEntity<P>;
+	// entity?: PrivacyToFileFolderEntity<P>;
 	data?: PrivacyToData<P>;
 
 	constructor(args: ILocalMetaData<P>) {
