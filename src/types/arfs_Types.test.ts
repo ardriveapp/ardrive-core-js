@@ -54,13 +54,18 @@ function instanceOfChecking<T extends IEntity>(
 	theBaseClass: InstantiableEntity<T>,
 	entityClass: InstantiableEntity<T>
 ): void {
-	it(`Check ${entityClass.name} is instance of ${theBaseClass.name}`, () => {
+	class AnUnrelatedClass {}
+	it(`${entityClass.name} is instance of ${theBaseClass.name}`, () => {
 		const instance = new entityClass();
 		expect(instance).to.be.instanceOf(theBaseClass);
 	});
+	it(`${entityClass.name} is not instance of a wrong class`, () => {
+		const wrongInstance = new AnUnrelatedClass();
+		expect(wrongInstance).to.not.be.instanceOf(theBaseClass);
+	});
 }
 
-const checkInstantiation = function <T extends IEntity>(entityClass: InstantiableEntity<T>): void {
+function checkInstantiation<T extends IEntity>(entityClass: InstantiableEntity<T>): void {
 	it(`Instantiate empty ${entityClass.name}`, () => {
 		const instance = new entityClass();
 		expect(instance.appName).to.equal('');
@@ -70,7 +75,7 @@ const checkInstantiation = function <T extends IEntity>(entityClass: Instantiabl
 		const instance = new entityClass({ appName } as T);
 		expect(instance.appName).to.equal(appName);
 	});
-};
+}
 
 function assertNumberPropertiesType(entityTemplate: IEntity, entityClass: InstantiableEntity): void {
 	describe(`Check properties of ${entityClass.name}`, () => {
