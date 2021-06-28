@@ -12,23 +12,35 @@ import {
 	IPrivateFileFolderEntity
 } from './arfs_Types';
 import { Instantiable, InstantiableEntity } from './type_conditionals';
-import { PrivateType, PublicType } from './type_guards';
-// import { DrivePrivacy } from './type_guards';
+import {
+	cipherTypeValues,
+	contentTypeValues,
+	driveAuthModeValues,
+	drivePrivacyValues,
+	driveSharingValues,
+	entityTypeValues,
+	PrivateType,
+	PublicType,
+	syncStatusValues,
+	yesNoIntegerValues
+} from './type_guards';
+import {
+	isCorrectCipherType,
+	isCorrectContentType,
+	isCorrectDriveAuthMode,
+	isCorrectDrivePrivacy,
+	isCorrectDriveSharing,
+	isCorrectEntityType,
+	isCorrectSyncStatus,
+	isCorrectYesNoInteger
+} from './type_guard_functions';
 
-const DRIVE_ENTITY_CLASSES = [
-	// arfsTypes.ArFSDriveEntity,
+const ALL_ENTITY_CLASSES = [
 	ArFSPrivateDriveEntity,
-	ArFSPublicDriveEntity
-];
-
-// The casting here is made to avoid the compiler complaining for ArFSFileFolderEntity not allowing 'drive' on its entityType
-const FILE_FOLDER_ENTITY_CLASSES = [
-	// arfsTypes.ArFSFileFolderEntity,
+	ArFSPublicDriveEntity,
 	ArFSPrivateFileFolderEntity,
 	ArFSPublicFileFolderEntity
 ];
-
-const ALL_ENTITY_CLASSES = [...DRIVE_ENTITY_CLASSES, ...FILE_FOLDER_ENTITY_CLASSES];
 
 const EMPTY_ENTITIES = [
 	// the non generic exports
@@ -79,6 +91,27 @@ function assertNumberPropertiesType(entityTemplate: IEntity, entityClass: Instan
 		);
 	});
 }
+
+function isCorrectCheck<T>(typeName: string, value: unknown, checker: (v: unknown) => v is T): void {
+	const aWrongValue = 'This is a wong value for any guarded type';
+	it(`Correct ${typeName} type`, () => {
+		expect(checker(value)).to.be.true;
+	});
+	it(`Wrong ${typeName} value returns false`, () => {
+		expect(checker(aWrongValue)).to.be.false;
+	});
+}
+
+describe('Type guard functions', () => {
+	isCorrectCheck('CipherType', cipherTypeValues.AES_256_GCM, isCorrectCipherType);
+	isCorrectCheck('EntityType', entityTypeValues.DRIVE, isCorrectEntityType);
+	isCorrectCheck('ContentType', contentTypeValues.APPLICATION_JSON, isCorrectContentType);
+	isCorrectCheck('DrivePrivacy', drivePrivacyValues.PRIVATE, isCorrectDrivePrivacy);
+	isCorrectCheck('DriveAuthMode', driveAuthModeValues.PASSWORD, isCorrectDriveAuthMode);
+	isCorrectCheck('DriveSharing', driveSharingValues.PERSONAL, isCorrectDriveSharing);
+	isCorrectCheck('SyncStatus', syncStatusValues.READY_TO_UPLOAD, isCorrectSyncStatus);
+	isCorrectCheck('YesNoInteger', yesNoIntegerValues.YES, isCorrectYesNoInteger);
+});
 
 describe('ArFSEntity classes', () => {
 	describe('All entities are defined', () => {
