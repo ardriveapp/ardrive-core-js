@@ -18,6 +18,7 @@ import { appName, appVersion, arFSVersion } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import { getWinston } from './node';
+import { PublicType } from './types/type_guards';
 
 // Initialize the arweave-bundles API used for ANS102 Transactions
 const deps = {
@@ -250,7 +251,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
 export async function createFileDataItemTransaction(
 	fileData: Buffer,
-	fileMetaData: ArFSFileData,
+	fileMetaData: ArFSFileData<PublicType>,
 	walletPrivateKey: JWKInterface
 ): Promise<DataItemJson | string> {
 	try {

@@ -13,11 +13,11 @@ import {
 	CipherType,
 	ContentType,
 	DriveAuthMode,
-	driveAuthModeValues,
 	drivePrivacyValues,
 	driveSharingValues,
 	EntityType,
 	entityTypeValues,
+	PublicType,
 	syncStatusValues
 } from './types/type_guards';
 
@@ -173,7 +173,7 @@ export async function getPrivateDriveEntity(driveId: string): Promise<arfsTypes.
 						break;
 					case 'Drive-Auth-Mode':
 						if (value !== '') {
-							drive.driveAuthMode = driveAuthModeValues.PASSWORD;
+							// drive.driveAuthMode = driveAuthModeValues.PASSWORD;
 						}
 						break;
 					case 'Drive-Id':
@@ -709,7 +709,7 @@ export async function getAllPrivateDriveEntities(
 						break;
 					case 'Drive-Auth-Mode':
 						if (value !== '') {
-							drive.driveAuthMode = driveAuthModeValues.PASSWORD;
+							// drive.driveAuthMode = driveAuthModeValues.PASSWORD;
 						}
 						break;
 					case 'Drive-Id':
@@ -1302,9 +1302,9 @@ export async function getAllPrivateFileFolderEntities(
 }
 
 // Gets the the tags for a file entity data transaction
-export async function getPublicFileData(txid: string): Promise<arfsTypes.ArFSFileData | string> {
+export async function getPublicFileData(txid: string): Promise<arfsTypes.ArFSFileData<PublicType> | string> {
 	let graphQLURL = primaryGraphQLURL;
-	const fileData: arfsTypes.ArFSFileData = new arfsTypes.ArFSFileData({});
+	const fileData: arfsTypes.ArFSFileData<PublicType> = new arfsTypes.ArFSFileData({});
 	let tries = 0;
 	const query = {
 		query: `query {
