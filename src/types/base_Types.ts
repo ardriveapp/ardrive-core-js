@@ -39,7 +39,6 @@ export interface ArDriveBundle {
 export type IDriveMetaData = Partial<ArFSDriveMetaData>;
 
 export class ArDriveUser {
-	[key: string]: unknown;
 	login: string = this.template.login || '';
 	dataProtectionKey: string = this.template.dataProtectionKey || '';
 	walletPrivateKey: string = this.template.walletPrivateKey || '';
@@ -53,7 +52,6 @@ export class ArDriveUser {
 }
 
 export class ArFSRootFolderMetaData {
-	[key: string]: unknown;
 	metaDataTxId: string = this.template.metaDataTxId || '';
 	cipher: CipherType = this.template.cipher || cipherTypeValues.AES_256_GCM;
 	cipherIV: string = this.template.cipherIV || '';
@@ -62,7 +60,6 @@ export class ArFSRootFolderMetaData {
 }
 
 export class ArFSDriveMetaData {
-	[key: string]: unknown;
 	id: number = this.template.id || 0;
 	login: string = this.template.login || '';
 	appName: string = this.template.appName || '';
@@ -92,7 +89,6 @@ export class ArFSDriveMetaData {
 export type IFileMetaData = Partial<ArFSFileMetaData>;
 
 export class ArFSFileMetaData {
-	[key: string]: unknown;
 	id: number = this.template.id || 0;
 	login: string = this.template.login || '';
 	appName: string = this.template.appName || '';
