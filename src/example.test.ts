@@ -49,16 +49,16 @@ describe('The basicInputOutputExample function', () => {
 
 	// Basic Mocha/Chai unit test example
 	it('returns the expected output', () => {
-		const output = basicInputOutputExample(input);
-		expect(output).to.equal(expectedOutput);
+		const actual = basicInputOutputExample(input);
+		expect(actual).to.equal(expectedOutput);
 	});
 
 	// Asynchronous mocha/chai example
 	it('asynchronously returns the expected output', async () => {
-		const output = await asyncInputOutputExample(input);
+		const actual = await asyncInputOutputExample(input);
 
 		// Returning anything to `it()` will conclude an async test
-		return expect(output).to.equal(expectedOutput);
+		return expect(actual).to.equal(expectedOutput);
 	});
 
 	// To more easily be used with Sinon, use test function inside of an object
@@ -70,8 +70,8 @@ describe('The basicInputOutputExample function', () => {
 		const sinonSpy = spy(objectWithExampleFunctions, 'basicInputOutputExample');
 
 		// Run test as normal
-		const output = objectWithExampleFunctions.basicInputOutputExample(input);
-		expect(output).to.equal(expectedOutput);
+		const actual = objectWithExampleFunctions.basicInputOutputExample(input);
+		expect(actual).to.equal(expectedOutput);
 
 		// Verify spy calls with Chai
 		expect(sinonSpy.calledWith(input)).to.be.ok;
@@ -83,10 +83,10 @@ describe('The basicInputOutputExample function', () => {
 		// Stub in a fake function
 		stub(objectWithExampleFunctions, 'basicInputOutputExample').callsFake(() => 1337);
 
-		const output = objectWithExampleFunctions.basicInputOutputExample(input);
+		const actual = objectWithExampleFunctions.basicInputOutputExample(input);
 
 		// Verify stubbed output
-		return expect(output).to.equal(1337);
+		expect(actual).to.equal(1337);
 	});
 
 	// Sinon mock example
@@ -97,10 +97,10 @@ describe('The basicInputOutputExample function', () => {
 		// Setup mock expectations
 		sinonMock.expects('basicInputOutputExample').once().returns(10101);
 
-		const output = objectWithExampleFunctions.basicInputOutputExample(input);
+		const actual = objectWithExampleFunctions.basicInputOutputExample(input);
 
 		// Confirm output with Chai
-		expect(output).to.equal(10101);
+		expect(actual).to.equal(10101);
 
 		// Verify mock expectations
 		sinonMock.verify();
@@ -110,7 +110,7 @@ describe('The basicInputOutputExample function', () => {
 	it('can provide detailed error output when used with the power-assert library', () => {
 		// Comment out the regular Chai test
 		// const output = basicInputOutputExample(input);
-		// expect(output).to.equal(expectedOutput)
+		// expect(output).to.equal(expectedOutput);
 
 		// Put everything relevant inside a power-assert assertion
 		// More info inside the assertion results in a more detailed output
