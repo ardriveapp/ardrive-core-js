@@ -82,7 +82,7 @@ ardrive-core-js/
 
 ### Using Sinon
 
-Sinon can be used to create spies, mocks, fakes, stubs, and more. There are some basic examples of using the library shown files shared above.
+Sinon can be used to create spies, mocks, fakes, stubs, and more. There are some basic examples of using the library shown in the example test files shared above.
 
 For more information on what you can do with Sinon, visit their [documentation][sinon-doc].
 
