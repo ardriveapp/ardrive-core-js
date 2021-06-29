@@ -11,14 +11,7 @@ import {
 } from './arfs_Types';
 import { assertNumberPropertiesType, checkInstantiationDefaults, instanceOfChecking } from './common.test';
 import { Instantiable } from './type_conditionals';
-import { PrivateType, PublicType } from './type_guards';
-
-// const ALL_ENTITY_CLASSES = [
-// 	ArFSPrivateDriveEntity,
-// 	ArFSPublicDriveEntity,
-// 	ArFSPrivateFileFolderEntity,
-// 	ArFSPublicFileFolderEntity
-// ];
+import { contentTypeValues, PrivateType, PublicType } from './type_guards';
 
 const EMPTY_ENTITIES = [
 	// the non generic exports
@@ -51,24 +44,24 @@ describe('ArFSEntity classes', () => {
 	});
 
 	describe('Property numeric type checking', () => {
-		EMPTY_ENTITIES.forEach((e) =>
-			assertNumberPropertiesType(
-				e,
-				e.constructor as { new <T extends IEntity>(args?: T | undefined): ArFSEntity<T> }
-			)
-		);
+		assertNumberPropertiesType(new ArFSPublicDriveEntity(), ArFSPublicDriveEntity);
+		assertNumberPropertiesType(new ArFSPrivateDriveEntity(), ArFSPrivateDriveEntity);
+		assertNumberPropertiesType(new ArFSPublicFileFolderEntity(), ArFSPublicFileFolderEntity);
+		assertNumberPropertiesType(new ArFSPrivateFileFolderEntity(), ArFSPrivateFileFolderEntity);
 	});
 
 	describe('Immutable properties', () => {
 		EMPTY_ENTITIES.forEach((entity) => {
-			const currentPrivacy = entity.drivePrivacy;
-			const wrongPrivacy = currentPrivacy === 'private' ? 'public' : 'private';
+			const currentContentType = entity.contentType;
+			const wrongContentType =
+				currentContentType === contentTypeValues.APPLICATION_JSON
+					? contentTypeValues.APPLICATION_OCTET_STREAM
+					: contentTypeValues.APPLICATION_JSON;
 			it(`Immutable drivePrivacy on ${entity.constructor.name}`, () => {
-				// entity.drivePrivacy = wrongPrivacy;
 				const temporalEntity = new (entity.constructor as {
 					new <T extends IEntity>(args?: T | undefined): ArFSEntity<T>;
-				})({ drivePrivacy: wrongPrivacy });
-				expect(temporalEntity.drivePrivacy).to.equal(currentPrivacy);
+				})({ contentType: wrongContentType });
+				expect(temporalEntity.contentType).to.equal(currentContentType);
 			});
 		});
 	});
