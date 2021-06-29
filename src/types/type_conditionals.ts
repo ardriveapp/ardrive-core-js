@@ -1,23 +1,31 @@
 import {
 	ArFSDriveEntity,
+	ArFSEntity,
 	ArFSFileFolderEntity,
-	ArFSPrivateDriveEntity,
 	ArFSPrivateFileData,
-	ArFSPrivateFileFolderEntity,
-	ArFSPublicDriveEntity,
 	ArFSPublicFileData,
-	ArFSPublicFileFolderEntity
+	IEntity
 } from './arfs_Types';
-import { DrivePrivacy, PrivateType } from './type_guards';
+import { DrivePrivacy, JSONContentType, OctetStreamContentType, PrivateType } from './type_guards';
 
-export type PrivacyToDriveEntity<P extends DrivePrivacy> = ArFSDriveEntity<
-	P extends PrivateType ? ArFSPrivateDriveEntity : ArFSPublicDriveEntity
->;
+export type Instantiable<T> = {
+	new (a?: Partial<T>): T;
+};
 
-export type PrivacyToFileFolderEntity<P extends DrivePrivacy> = ArFSFileFolderEntity<
-	P extends PrivateType ? ArFSPrivateFileFolderEntity : ArFSPublicFileFolderEntity
->;
+export type InstantiableEntity<T extends IEntity = IEntity> = Instantiable<ArFSEntity<T>>;
+
+export type PrivacyToDriveEntity<P extends DrivePrivacy> = ArFSDriveEntity<P>;
+
+export type PrivacyToFileFolderEntity<P extends DrivePrivacy> = ArFSFileFolderEntity<P>;
 
 export type PrivacyToData<P extends DrivePrivacy> = P extends PrivateType ? ArFSPrivateFileData : ArFSPublicFileData;
+
+export type PrivacyOfEntity<T extends { drivePrivacy?: DrivePrivacy }> = T['drivePrivacy'];
+
+export type PrivacyToContentType<P extends DrivePrivacy> = P extends PrivateType
+	? OctetStreamContentType
+	: JSONContentType;
+
+export type TypeIfPrivateOrNever<T, P extends DrivePrivacy> = P extends PrivateType ? T : never;
 
 export type UnionOfObjectPropertiesType<T extends { [key: string]: string | number }> = T[keyof T];
