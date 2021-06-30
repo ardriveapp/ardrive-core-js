@@ -1,13 +1,5 @@
 import { ArDriveUser, ArFSRootFolderMetaData, ArFSDriveMetaData, ArFSFileMetaData } from './base_Types';
 import { assertNumberPropertiesType, checkInstantiationDefaults } from './common.test';
-import { Instantiable } from './type_conditionals';
-
-const ALL_TYPES = <Instantiable<{ [key: string]: unknown }>[]>[
-	ArDriveUser,
-	ArFSRootFolderMetaData,
-	ArFSDriveMetaData,
-	ArFSFileMetaData
-];
 
 describe('Base type classes', () => {
 	describe('Instantiation', () => {
@@ -18,6 +10,9 @@ describe('Base type classes', () => {
 	});
 
 	describe('Property numeric type checking', () => {
-		ALL_TYPES.forEach((type) => assertNumberPropertiesType(new type(), type));
+		assertNumberPropertiesType(new ArDriveUser(), ArDriveUser);
+		assertNumberPropertiesType(new ArFSRootFolderMetaData(), ArFSRootFolderMetaData);
+		assertNumberPropertiesType(new ArFSDriveMetaData(), ArFSDriveMetaData);
+		assertNumberPropertiesType(new ArFSFileMetaData(), ArFSFileMetaData);
 	});
 });

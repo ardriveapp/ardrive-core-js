@@ -17,7 +17,6 @@ import { DrivePrivacy, PrivateType, PublicType, YesNoInteger, yesNoIntegerValues
 export type ILocalDriveEntity<P extends DrivePrivacy> = Partial<ArFSLocalDriveEntity<P>>;
 
 export abstract class ArFSLocalDriveEntity<P extends DrivePrivacy> {
-	[k: string]: unknown;
 	id: number = this.template.id || 0;
 	driveId: string = this.template.driveId || '';
 	owner: string = this.template.owner || '';
@@ -31,7 +30,6 @@ export abstract class ArFSLocalDriveEntity<P extends DrivePrivacy> {
 }
 
 export class ArFSLocalPublicDriveEntity extends ArFSLocalDriveEntity<PublicType> {
-	[k: string]: unknown;
 	entity: ArFSPublicDriveEntity = this.template.entity || new ArFSPublicDriveEntity();
 }
 
@@ -43,7 +41,6 @@ export class ArFSLocalPrivateDriveEntity extends ArFSLocalDriveEntity<PrivateTyp
 export type ILocalMetaData<P extends DrivePrivacy> = Partial<ArFSLocalMetaData<P>>;
 
 export abstract class ArFSLocalMetaData<P extends DrivePrivacy> {
-	[k: string]: unknown;
 	id: number = this.template.id || 0; // an identifier that can be used in any underlying database, eg. 1, 2, 3 etc.
 	owner: string = this.template.owner || ''; // the public arweave wallet address that owns this drive eg. FAxDUPlFfJrLDl6BvUlPw3EJOEEeg6WQbhiWidU7ueY
 	hash: string = this.template.hash || ''; // A SHA512 hash of a the file or a hash of a folder's contents using the folder-hash package, https://www.npmjs.com/package/folder-hash

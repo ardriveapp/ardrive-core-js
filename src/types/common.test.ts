@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { IEntity } from './arfs_Types';
 import { Instantiable } from './type_conditionals';
 
 export function instanceOfChecking<T>(theBaseClass: Instantiable<T>, entityClass: Instantiable<T>): void {
@@ -31,17 +30,16 @@ export function checkInstantiationDefaults<T>(entityClass = {} as Instantiable<T
 	});
 }
 
-export function assertNumberPropertiesType(
-	entityTemplate: { [k: string]: unknown },
-	entityClass: Instantiable<any>
-): void {
+export function assertNumberPropertiesType<T>(entityTemplate: T, entityClass: Instantiable<T>): void {
 	describe(`Check properties of ${entityClass.name}`, () => {
-		const numericProperties = Object.keys(entityTemplate).filter((key) => typeof entityTemplate[key] === 'number');
+		const numericProperties = (Object.keys(entityTemplate) as (keyof T)[]).filter(
+			(key) => typeof entityTemplate[key] === 'number'
+		);
 		const numberToStringMap = numericProperties.map((prop) => `${entityTemplate[prop]}`);
-		const theBrokenTemplate: IEntity = numericProperties.reduce((accumulator, propertyName, index) => {
+		const theBrokenTemplate: Partial<T> = numericProperties.reduce((accumulator, propertyName, index) => {
 			return Object.assign(accumulator, { [propertyName]: numberToStringMap[index] });
 		}, {});
-		let entity: IEntity;
+		let entity: T;
 		before(() => {
 			entity = new entityClass(theBrokenTemplate);
 		});
