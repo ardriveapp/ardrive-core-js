@@ -1,339 +1,83 @@
-import * as arfsTypes from './arfs_Types';
+import {
+	ArFSFileFolderEntity,
+	ArFSPrivateDriveEntity,
+	ArFSPrivateFileData,
+	ArFSPrivateFileFolderEntity,
+	ArFSPublicDriveEntity,
+	ArFSPublicFileData,
+	ArFSPublicFileFolderEntity
+} from './arfs_Types';
+import { PrivacyToData, PrivacyToDriveEntity } from './type_conditionals';
+import { DrivePrivacy, PrivateType, PublicType, YesNoInteger, yesNoIntegerValues } from './type_guards';
 
 // These types are used by ArDrive Clients.
 // They contain the core ArFS Entity metadata as well as additional details like file hash, file path, sync status etc.
 
 // Contains all of the metadata needed for an ArFS client to sync a drive
-export interface ArFSLocalDriveEntity {
-	id: number; // an identifier that can be used in any underlying database
-	owner: string; // the public arweave wallet address that owns this drive
-	entity: arfsTypes.ArFSDriveEntity; // The underlying ArFS Drive entity and metadata
-	isLocal: number; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
+export type ILocalDriveEntity<P extends DrivePrivacy> = Partial<ArFSLocalDriveEntity<P>>;
+
+export abstract class ArFSLocalDriveEntity<P extends DrivePrivacy> {
+	id: number = this.template.id || 0;
+	driveId: string = this.template.driveId || '';
+	owner: string = this.template.owner || '';
+	abstract entity: PrivacyToDriveEntity<P>;
+	isLocal: YesNoInteger = this.template.isLocal || yesNoIntegerValues.NO;
+
+	constructor(protected readonly template: ILocalDriveEntity<P> = {}) {
+		this.id = Number(this.id);
+		this.isLocal = Number(this.isLocal) as YesNoInteger;
+	}
 }
 
-export interface ArFSLocalPrivateDriveEntity {
-	id: number; // an identifier that can be used in any underlying database
-	owner: string; // the public arweave wallet address that owns this drive
-	entity: arfsTypes.ArFSPrivateDriveEntity; // The underlying ArFS Drive entity and metadata
-	isLocal: number; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
+export class ArFSLocalPublicDriveEntity extends ArFSLocalDriveEntity<PublicType> {
+	entity: ArFSPublicDriveEntity = this.template.entity || new ArFSPublicDriveEntity();
+}
+
+export class ArFSLocalPrivateDriveEntity extends ArFSLocalDriveEntity<PrivateType> {
+	entity: ArFSPrivateDriveEntity = (this.template.entity as ArFSPrivateDriveEntity) || new ArFSPrivateDriveEntity(); // The underlying ArFS Drive entity and metadata
 }
 
 // Contains all of the metadata needed to for an ArFS client to sync a file or folder
-export interface ArFSLocalMetaDataArguments {
-	id?: number;
-	owner?: string;
-	hash?: string;
-	path?: string;
-	size?: number;
-	version?: number;
-	isLocal?: number;
-}
-export class ArFSLocalMetaData {
-	id: number; // an identifier that can be used in any underlying database, eg. 1, 2, 3 etc.
-	owner: string; // the public arweave wallet address that owns this drive eg. FAxDUPlFfJrLDl6BvUlPw3EJOEEeg6WQbhiWidU7ueY
-	hash: string; // A SHA512 hash of a the file or a hash of a folder's contents using the folder-hash package, https://www.npmjs.com/package/folder-hash
-	path: string; // The local OS path of the file.  Should this be a path object?
-	size: number; // The size in bytes of the underlying file data
-	version: number; // The version number of the underlying file data.  Should be incremented by 1 for each version found for a given fileId.
-	isLocal: number; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
+export type ILocalMetaData<P extends DrivePrivacy> = Partial<ArFSLocalMetaData<P>>;
 
-	constructor(id: number, owner: string, hash: string, path: string, size: number, version: number, isLocal: number) {
-		this.id = id;
-		this.owner = owner;
-		this.hash = hash;
-		this.path = path;
-		this.size = size;
-		this.version = version;
-		this.isLocal = isLocal;
-	}
+export abstract class ArFSLocalMetaData<P extends DrivePrivacy> {
+	id: number = this.template.id || 0; // an identifier that can be used in any underlying database, eg. 1, 2, 3 etc.
+	owner: string = this.template.owner || ''; // the public arweave wallet address that owns this drive eg. FAxDUPlFfJrLDl6BvUlPw3EJOEEeg6WQbhiWidU7ueY
+	hash: string = this.template.hash || ''; // A SHA512 hash of a the file or a hash of a folder's contents using the folder-hash package, https://www.npmjs.com/package/folder-hash
+	path: string = this.template.path || ''; // The local OS path of the file.  Should this be a path object?
+	size: number = this.template.size || 0; // The size in bytes of the underlying file data
+	version: number = this.template.version || 0; // The version number of the underlying file data.  Should be incremented by 1 for each version found for a given fileId.
+	isLocal: YesNoInteger = this.template.isLocal || yesNoIntegerValues.NO; // Indicates if the drive is being synchronized locally or not.  0 for "no", 1 for "yes"
 
-	static From({ id, owner, hash, path, size, version, isLocal }: ArFSLocalMetaDataArguments) {
-		return new ArFSLocalMetaData(
-			id ?? 0,
-			owner ?? '',
-			hash ?? '',
-			path ?? '',
-			size ?? 0,
-			version ?? 0,
-			isLocal ?? 1
-		);
+	abstract entity?: ArFSFileFolderEntity<P>;
+	data?: PrivacyToData<P>;
+
+	constructor(protected readonly template: ILocalMetaData<P> = {}) {
+		this.id = Number(this.id);
+		this.size = Number(this.size);
+		this.version = Number(this.version);
+		this.isLocal = Number(this.isLocal) as YesNoInteger;
 	}
 }
 
 // Contains metadata needed to synchronize folder's metadata
-export interface ArFSLocalFolder extends ArFSLocalMetaData {
-	entity: arfsTypes.ArFSFileFolderEntity; // The underlying ArFS Entity
+export class ArFSLocalPublicFolder extends ArFSLocalMetaData<PublicType> {
+	entity: ArFSPublicFileFolderEntity = new ArFSPublicFileFolderEntity(); // The underlying ArFS Entity
 }
 
-export interface ArFSLocalPrivateFolder extends ArFSLocalMetaData {
-	entity: arfsTypes.ArFSPrivateFileFolderEntity; // The underlying ArFS Entity
+export class ArFSLocalPrivateFolder extends ArFSLocalMetaData<PrivateType> {
+	entity: ArFSPrivateFileFolderEntity = new ArFSPrivateFileFolderEntity(); // The underlying ArFS Entity
 }
-export interface ArFSLocalFileArguments {
-	id?: number;
-	owner?: string;
-	hash?: string;
-	path?: string;
-	size?: number;
-	version?: number;
-	isLocal?: number;
-	entityId?: string;
-	parentFolderId?: string;
-	appName?: string;
-	appVersion?: string;
-	arFS?: string;
-	contentType?: string;
-	driveId?: string;
-	entityType?: string;
-	name?: string;
-	syncStatus?: number;
-	txId?: string;
-	unixTime?: number;
-	dataContentType?: string;
-	dataSyncStatus?: number;
-	dataTxId?: string;
-	dataUnixTime?: number;
-	lastModifiedDate?: number;
-}
+
 // Contains metadata needed to synchronize a file's metadata and its data
-export class ArFSLocalFile extends ArFSLocalMetaData {
-	entity: arfsTypes.ArFSFileFolderEntity;
-	data: arfsTypes.ArFSFileData;
-
-	constructor(
-		id: number,
-		owner: string,
-		hash: string,
-		path: string,
-		size: number,
-		version: number,
-		isLocal: number,
-		entityId: string,
-		parentFolderId: string,
-		appName: string,
-		appVersion: string,
-		arFS: string,
-		contentType: string,
-		driveId: string,
-		entityType: string,
-		name: string,
-		syncStatus: number,
-		txId: string,
-		unixTime: number,
-		dataContentType: string,
-		dataSyncStatus: number,
-		dataTxId: string,
-		dataUnixTime: number,
-		lastModifiedDate: number
-	) {
-		super(id, owner, hash, path, size, version, isLocal);
-		this.entity = {
-			appName,
-			appVersion,
-			arFS,
-			contentType,
-			driveId,
-			entityId,
-			entityType,
-			name,
-			parentFolderId,
-			syncStatus,
-			txId,
-			unixTime,
-			lastModifiedDate
-		};
-		this.data = {
-			appName,
-			appVersion,
-			contentType: dataContentType,
-			syncStatus: dataSyncStatus,
-			txId: dataTxId,
-			unixTime: dataUnixTime
-		};
-	}
-
-	static From({
-		id,
-		owner,
-		hash,
-		path,
-		size,
-		version,
-		isLocal,
-		entityId,
-		parentFolderId,
-		appName,
-		appVersion,
-		arFS,
-		contentType,
-		driveId,
-		entityType,
-		name,
-		syncStatus,
-		txId,
-		unixTime,
-		dataContentType,
-		dataSyncStatus,
-		dataTxId,
-		dataUnixTime,
-		lastModifiedDate
-	}: ArFSLocalFileArguments): ArFSLocalFile {
-		return new ArFSLocalFile(
-			id ?? 0,
-			owner ?? '',
-			hash ?? '',
-			path ?? '',
-			size ?? 0,
-			version ?? 0,
-			isLocal ?? 0,
-			entityId ?? '',
-			parentFolderId ?? '',
-			appName ?? '',
-			appVersion ?? '',
-			arFS ?? '',
-			contentType ?? '',
-			driveId ?? '',
-			entityType ?? '',
-			name ?? '',
-			syncStatus ?? 0,
-			txId ?? '',
-			unixTime ?? 0,
-			dataContentType ?? '',
-			dataSyncStatus ?? 0,
-			dataTxId ?? '',
-			dataUnixTime ?? 0,
-			lastModifiedDate ?? 0
-		);
-	}
+export class ArFSLocalPublicFile extends ArFSLocalMetaData<PublicType> {
+	entity: ArFSPublicFileFolderEntity = new ArFSPublicFileFolderEntity();
+	data: ArFSPublicFileData = new ArFSPublicFileData();
 }
-export interface ArFSLocalPrivateFileArguments extends ArFSLocalFileArguments {
-	cipher?: string;
-	cipherIV?: string;
-	dataCipher?: string;
-	dataCipherIV?: string;
-}
-export class ArFSLocalPrivateFile extends ArFSLocalMetaData {
-	entity: arfsTypes.ArFSPrivateFileFolderEntity;
-	data: arfsTypes.ArFSPrivateFileData;
-	constructor(
-		id: number,
-		owner: string,
-		hash: string,
-		path: string,
-		size: number,
-		version: number,
-		isLocal: number,
-		entityId: string,
-		parentFolderId: string,
-		appName: string,
-		appVersion: string,
-		arFS: string,
-		contentType: string,
-		driveId: string,
-		entityType: string,
-		name: string,
-		syncStatus: number,
-		txId: string,
-		unixTime: number,
-		dataContentType: string,
-		dataSyncStatus: number,
-		dataTxId: string,
-		dataUnixTime: number,
-		cipher: string,
-		cipherIV: string,
-		dataCipher: string,
-		dataCipherIV: string,
-		lastModifiedDate: number
-	) {
-		super(id, owner, hash, path, size, version, isLocal);
-		this.entity = {
-			appName,
-			appVersion,
-			arFS,
-			contentType,
-			driveId,
-			entityId,
-			entityType,
-			name,
-			parentFolderId,
-			syncStatus,
-			txId,
-			unixTime,
-			cipher,
-			cipherIV,
-			lastModifiedDate
-		};
-		this.data = {
-			appName,
-			appVersion,
-			contentType: dataContentType,
-			syncStatus: dataSyncStatus,
-			txId: dataTxId,
-			unixTime: dataUnixTime,
-			cipher: dataCipher,
-			cipherIV: dataCipherIV
-		};
-	}
-	static From({
-		id,
-		owner,
-		hash,
-		path,
-		size,
-		version,
-		isLocal,
-		entityId,
-		parentFolderId,
-		appName,
-		appVersion,
-		arFS,
-		contentType,
-		driveId,
-		entityType,
-		name,
-		syncStatus,
-		txId,
-		unixTime,
-		dataContentType,
-		dataSyncStatus,
-		dataTxId,
-		dataUnixTime,
-		cipher,
-		cipherIV,
-		dataCipher,
-		dataCipherIV,
-		lastModifiedDate
-	}: ArFSLocalPrivateFileArguments): ArFSLocalPrivateFile {
-		return new ArFSLocalPrivateFile(
-			id ?? 0,
-			owner ?? '',
-			hash ?? '',
-			path ?? '',
-			size ?? 0,
-			version ?? 0,
-			isLocal ?? 0,
-			entityId ?? '',
-			parentFolderId ?? '',
-			appName ?? '',
-			appVersion ?? '',
-			arFS ?? '',
-			contentType ?? '',
-			driveId ?? '',
-			entityType ?? '',
-			name ?? '',
-			syncStatus ?? 0,
-			txId ?? '',
-			unixTime ?? 0,
-			dataContentType ?? '',
-			dataSyncStatus ?? 0,
-			dataTxId ?? '',
-			dataUnixTime ?? 0,
-			cipher ?? '',
-			cipherIV ?? '',
-			dataCipher ?? '',
-			dataCipherIV ?? '',
-			lastModifiedDate ?? 0
-		);
-	}
+
+export class ArFSLocalPrivateFile extends ArFSLocalMetaData<PrivateType> {
+	entity: ArFSPrivateFileFolderEntity = new ArFSPrivateFileFolderEntity();
+	data: ArFSPrivateFileData = new ArFSPrivateFileData();
 }
 
 // ArFSBundles are only uploaded.  Once a bundle is uploaded, it is unpacked into individual transactions and graphQL objects.  ArDrive clients synchronize with thos individual objects, and not the bundle itself.  This means that less information is required for an ArFSBundle

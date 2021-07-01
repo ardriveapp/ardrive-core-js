@@ -51,7 +51,7 @@ export async function createPrivateDriveTransaction(
 	// Tag file with Content-Type, Cipher and Cipher-IV and Drive-Auth-Mode
 	transaction.addTag('Cipher', driveMetaData.cipher);
 	transaction.addTag('Cipher-IV', driveMetaData.cipherIV);
-	transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode);
+	transaction.addTag('Drive-Auth-Mode', driveMetaData.driveAuthMode || '');
 	transaction.addTag('ArFS', driveMetaData.arFS);
 	transaction.addTag('Entity-Type', 'drive');
 

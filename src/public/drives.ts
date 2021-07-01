@@ -4,7 +4,7 @@ import path from 'path';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
-import { ArFSLocalFile, ArFSLocalDriveEntity } from '../types/client_Types';
+import { ArFSLocalPublicFile, ArFSLocalPublicDriveEntity } from '../types/client_Types';
 import { newArFSFileMetaData } from './arfs';
 import { v4 as uuidv4 } from 'uuid';
 import { JWKInterface } from 'arweave/node/lib/wallet';
@@ -12,12 +12,14 @@ import { appName, appVersion, arFSVersion } from '../constants';
 import { getPublicDriveRootFolderTxId, getSharedPublicDrive } from '../gql';
 import { addDriveToDriveTable, addFileToSyncTable, setDriveToSync } from '../db/db_update';
 import { createDataUploader, createDriveTransaction } from '../transactions';
+import { ArFSFileData, ArFSPublicDriveEntity, ArFSPublicFileFolderEntity } from '../types/arfs_Types';
+import { contentTypeValues, entityTypeValues, syncStatusValues, yesNoIntegerValues } from '../types/type_guards';
 
 // Creates an new Drive transaction and uploader using ArFS Metadata
 export async function newArFSDriveMetaData(
 	walletPrivateKey: JWKInterface,
-	driveMetaData: ArFSLocalDriveEntity
-): Promise<{ driveMetaData: ArFSLocalDriveEntity; uploader: TransactionUploader } | null> {
+	driveMetaData: ArFSLocalPublicDriveEntity
+): Promise<{ driveMetaData: ArFSLocalPublicDriveEntity; uploader: TransactionUploader } | null> {
 	try {
 		// Create a JSON file, containing necessary drive metadata
 		const driveMetaDataTags = {
@@ -48,32 +50,28 @@ export async function newArFSDriveMetaData(
 
 // Creates a new drive depending on the privacy
 // This should be in the Drive class
-export async function newArFSDrive(driveName: string, login: string): Promise<ArFSLocalDriveEntity> {
+export async function newArFSDrive(driveName: string, login: string): Promise<ArFSLocalPublicDriveEntity> {
 	const driveId = uuidv4();
 	const rootFolderId = uuidv4();
 	const unixTime = Math.round(Date.now() / 1000);
 
 	// Drive is public
 	console.log('Creating a new public drive %s | %s', driveName, driveId);
-	const drive: ArFSLocalDriveEntity = {
+	const drive: ArFSLocalPublicDriveEntity = new ArFSLocalPublicDriveEntity({
 		id: 0,
 		owner: login,
 		isLocal: 1,
-		entity: {
+		entity: new ArFSPublicDriveEntity({
 			appName: appName,
 			appVersion: appVersion,
 			arFS: arFSVersion,
-			contentType: '',
 			driveId: driveId,
-			drivePrivacy: 'public',
 			rootFolderId: rootFolderId,
 			syncStatus: 0,
 			txId: '0',
-			unixTime: unixTime,
-			name: '',
-			entityType: ''
-		}
-	};
+			unixTime: unixTime
+		})
+	});
 
 	return drive;
 }
@@ -93,31 +91,34 @@ export async function createAndUploadArFSDriveAndRootFolder(
 		const preppedDrive = await newArFSDriveMetaData(walletPrivateKey, newDrive);
 
 		// Create a new ArFS Drive Root Folder entity
-		const newRootFolderMetaData: ArFSLocalFile = {
+		const newRootFolderMetaData: ArFSLocalPublicFile = new ArFSLocalPublicFile({
 			id: 0,
 			owner: user.walletPublicKey,
 			hash: '',
-			isLocal: 1,
+			isLocal: yesNoIntegerValues.YES,
 			path: '',
 			size: 0,
 			version: 0,
-			entity: {
+			entity: new ArFSPublicFileFolderEntity({
 				appName: appName,
 				appVersion: appVersion,
 				unixTime: Math.round(Date.now() / 1000),
-				contentType: 'application/json',
-				entityType: 'folder',
+				contentType: contentTypeValues.APPLICATION_JSON,
+				entityType: entityTypeValues.FOLDER,
 				driveId: newDrive.entity.driveId,
 				parentFolderId: '0', // Must be set to 0 to indicate it is a root folder
 				entityId: newDrive.entity.rootFolderId,
 				name: driveName,
-				syncStatus: 0,
+				syncStatus: syncStatusValues.READY_TO_DOWNLOAD,
 				txId: '0',
 				arFS: arFSVersion,
 				lastModifiedDate: 0
-			},
-			data: { appName: appName, appVersion: appVersion, contentType: '', syncStatus: 0, txId: '0', unixTime: 0 }
-		};
+			}),
+			data: new ArFSFileData({
+				appName: appName,
+				appVersion: appVersion
+			})
+		});
 
 		// Prepare the root folder transaction.  It will encrypt the data if necessary.
 		const preppedRootFolder = await newArFSFileMetaData(walletPrivateKey, newRootFolderMetaData);
@@ -172,35 +173,30 @@ export async function addSharedPublicDrive(user: ArDriveUser, driveId: string): 
 		);
 
 		// Setup Drive Root Folder
-		const driveRootFolderToAdd: ArFSFileMetaData = {
+		const driveRootFolderToAdd: ArFSFileMetaData = new ArFSFileMetaData({
 			id: 0,
 			login: user.login,
 			appName: sharedPublicDrive.appName,
 			appVersion: sharedPublicDrive.appVersion,
 			unixTime: sharedPublicDrive.unixTime,
-			contentType: 'application/json',
-			entityType: 'folder',
+			contentType: contentTypeValues.APPLICATION_JSON,
+			entityType: entityTypeValues.FOLDER,
 			driveId: sharedPublicDrive.driveId,
 			parentFolderId: '0', // Root folders have no parent folder ID.
 			fileId: sharedPublicDrive.rootFolderId,
 			filePath: drivePath,
 			fileName: sharedPublicDrive.driveName,
 			fileHash: '0',
-			fileSize: 0,
 			lastModifiedDate: sharedPublicDrive.unixTime,
 			fileVersion: 0,
 			isPublic: 1,
 			isLocal: 1,
 			metaDataTxId,
 			dataTxId: '0',
-			permaWebLink: '',
-			fileDataSyncStatus: 0, // Folders do not require a data tx
-			fileMetaDataSyncStatus: 3,
-			cipher: '',
-			dataCipherIV: '',
-			metaDataCipherIV: '',
-			cloudOnly: 0
-		};
+			// fileDataSyncStatus: 0, // Folders do not require a data tx
+			fileMetaDataSyncStatus: syncStatusValues.SUCCESSFULLY_UPLOADED,
+			cloudOnly: yesNoIntegerValues.NO
+		});
 
 		// Add Drive to Drive Table
 		await addDriveToDriveTable(sharedPublicDrive);

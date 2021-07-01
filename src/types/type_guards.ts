@@ -35,6 +35,8 @@ export const yesNoIntegerValues = {
 	YES: 1
 } as const;
 
+// main type guards
+
 export type CipherType = UnionOfObjectPropertiesType<typeof cipherTypeValues>;
 export type EntityType = UnionOfObjectPropertiesType<typeof entityTypeValues>;
 export type ContentType = UnionOfObjectPropertiesType<typeof contentTypeValues>;
@@ -43,3 +45,13 @@ export type DriveAuthMode = UnionOfObjectPropertiesType<typeof driveAuthModeValu
 export type DriveSharing = UnionOfObjectPropertiesType<typeof driveSharingValues>;
 export type SyncStatus = UnionOfObjectPropertiesType<typeof syncStatusValues>;
 export type YesNoInteger = UnionOfObjectPropertiesType<typeof yesNoIntegerValues>;
+
+// more specific types
+
+export type FileFolderEntityType = typeof entityTypeValues.FILE | typeof entityTypeValues.FOLDER;
+
+export type JSONContentType = typeof contentTypeValues.APPLICATION_JSON;
+export type OctetStreamContentType = typeof contentTypeValues.APPLICATION_OCTET_STREAM;
+
+export type PrivateType = typeof drivePrivacyValues.PRIVATE;
+export type PublicType = typeof drivePrivacyValues.PUBLIC;

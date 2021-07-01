@@ -1,12 +1,18 @@
 import { arweave } from './public/arweave';
 import Transaction from 'arweave/node/lib/transaction';
-import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, JWKInterface } from './types/arfs_Types';
+import {
+	ArFSFileFolderEntity,
+	ArFSPublicDriveEntity,
+	ArFSPublicFileFolderEntity,
+	JWKInterface
+} from './types/arfs_Types';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
+import { PublicType } from './types/type_guards';
 
 // Creates an arweave transaction to upload a drive entity
 export async function createDriveTransaction(
 	driveJSON: string,
-	driveMetaData: ArFSDriveEntity,
+	driveMetaData: ArFSPublicDriveEntity,
 	walletPrivateKey?: JWKInterface
 ): Promise<Transaction> {
 	// Create transaction
@@ -38,7 +44,7 @@ export async function createDriveTransaction(
 // This will prepare and sign v2 data transaction using ArFS File Data Tags
 export async function createFileDataTransaction(
 	fileData: Buffer,
-	fileMetaData: ArFSFileData,
+	fileMetaData: ArFSFileFolderEntity<PublicType>,
 	walletPrivateKey?: JWKInterface
 ): Promise<Transaction> {
 	let transaction: Transaction;
@@ -66,7 +72,7 @@ export async function createFileDataTransaction(
 
 // This will prepare and sign a v2 data transaction using ArFS File Metadata Tags
 export async function createFileFolderMetaDataTransaction(
-	metaData: ArFSFileFolderEntity,
+	metaData: ArFSPublicFileFolderEntity,
 	secondaryFileMetaData: string,
 	walletPrivateKey?: JWKInterface
 ): Promise<Transaction> {

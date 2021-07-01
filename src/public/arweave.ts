@@ -115,7 +115,7 @@ export async function prepareArFSDriveTransaction(
 	transaction.addTag('Unix-Time', driveMetaData.unixTime.toString());
 	transaction.addTag('Drive-Id', driveMetaData.driveId);
 	transaction.addTag('Drive-Privacy', driveMetaData.drivePrivacy);
-	if (driveMetaData.drivePrivacy === 'private') {
+	if (driveMetaData.drivePrivacy === 'private' && driveMetaData.driveAuthMode) {
 		// If the file is private, we use extra tags
 		// Tag file with Content-Type, Cipher and Cipher-IV and Drive-Auth-Mode
 		transaction.addTag('Content-Type', 'application/octet-stream');
