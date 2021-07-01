@@ -18,7 +18,96 @@ We use nvm to manage our Node engine version and, if necessary, to install an np
 </ol>
 
 ## Building the Library
+
 Simply run `yarn build`. This will clean the project and compile the TypeScript library.
+
+## Testing the Library
+
+This library is setup for [Mocha] testing with [Chai] and [Sinon]. Configuration for Mocha can be found in `.mocharc.js`
+
+To run all of the tests use:
+
+```shell
+yarn test
+```
+
+To run a specific test, use Mocha's [grep] command. This will cause Mocha to only run the tests that contain the provided RegExp.
+
+The `-g` command will **only** match the characters used in the `describe()` and `it()` title arguments. It will **not** match files names or folders.
+
+For example:
+
+```shell
+yarn test -g 'My specific unit test'
+```
+
+Will run this test:
+
+```ts
+describe('My specific unit test', () => {
+    it('functions correctly', () => {
+        // ...
+    });
+});
+```
+
+### Coverage
+
+[Istanbul.js (nyc)][nyc] has been added for code coverage reporting. Configuration for the nyc package can be found in `nyc.config.js`
+
+On each `yarn test` command, nyc will output a code coverage summary in the terminal. In addition, a more detailed HTML version will output to the `/coverage` directory. Simply run `/coverage/index.html` in your browser to view the HTML version.
+
+Alternatively, you can view a verbose coverage output in the terminal by running:
+
+```shell
+yarn coverage
+```
+
+### Adding tests
+
+There are many different syntax options available with the Chai library, which can be found in their [documentation][chai-doc]. For examples on unit testing, visit `src/example.test.ts`, and for integration testing: `tests/example.test.ts`.
+
+Unit tests should be located adjacent (or right next to) the file they are referencing. They should also be named the same with the `.test.ts` extension. In contrast, integration tests will live in the `/tests` directory.
+
+For example:
+
+```shell
+ardrive-core-js/
+├── src
+│   ├── fileToTest.ts
+│   └── fileToTest.test.ts   <-- Unit test
+└── tests
+    └── bestApi.test.ts   <----- Integration test
+```
+
+### Using Sinon
+
+Sinon can be used to create spies, mocks, fakes, stubs, and more. There are some basic examples of using the library shown in the example test files shared above.
+
+For more information on what you can do with Sinon, visit their [documentation][sinon-doc].
+
+### Debugging with Power-Assert
+
+[Power-Assert] is setup as another testing tool. The library can be used to provide a very detailed output of your failing test cases. This can become super useful while debugging a test.
+
+To use this tool, it must be imported using this syntax:
+
+```ts
+import assert = require('assert');
+```
+
+Then use `assert` in your error throwing test case. Commenting out the Chai assertion will produce a cleaner output:
+
+```ts
+// expect(failingOutput).to.equal(expectedOutput);
+assert(failingOutput === expectedOutput);
+```
+
+And finally, to view the detailed error messages in your terminal:
+
+```shell
+yarn power-assert -g 'My test case'
+```
 
 ### VSCode/VSCodium integration:
 
@@ -48,3 +137,12 @@ Npm package:
 npm add ardrive-core-js
 
 [![Gitopia](https://img.shields.io/endpoint?style=&url=https://gitopia.org/mirror-badge.json)](gitopia-repo)
+
+[mocha]: https://github.com/mochajs/mocha
+[chai]: https://github.com/chaijs/chai
+[sinon]: https://github.com/sinonjs/sinon
+[power-assert]: https://github.com/power-assert-js/power-assert
+[nyc]: https://github.com/istanbuljs/nyc
+[grep]: https://mochajs.org/#-grep-regexp-g-regexp
+[chai-doc]: https://www.chaijs.com/api/bdd/
+[sinon-doc]: https://sinonjs.org/releases/latest
