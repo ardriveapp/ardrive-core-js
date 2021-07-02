@@ -279,7 +279,7 @@ export async function getAllMyPersonalDrives(user: ArDriveUser): Promise<ArFSDri
 				}
 			});
 		}
-		publicDrives = await gql.getAllMyPublicArDriveIds(user.login, user.walletPublicKey, lastBlockHeight);
+		publicDrives = await gql.getAllMyPublicArDriveIds(user, lastBlockHeight);
 		if (publicDrives.length > 0) {
 			await common.asyncForEach(publicDrives, async (publicDrive: ArFSDriveMetaData) => {
 				const isDriveMetaDataSynced = await getDb.getDriveFromDriveTable(publicDrive.driveId);
