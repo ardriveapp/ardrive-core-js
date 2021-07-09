@@ -273,7 +273,7 @@ export async function createArFSFileMetaDataItem(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		if (fileToUpload.isPublic === 1) {
-			// Public file, do not s
+			// Public file, do not encrypt
 			dataItem = await arweave.prepareArFSMetaDataItemTransaction(user, fileToUpload, secondaryFileMetaDataJSON);
 		} else {
 			// Private file, so it must be encrypted
@@ -282,8 +282,15 @@ export async function createArFSFileMetaDataItem(
 				fileToUpload.driveId,
 				user.walletPrivateKey
 			);
-			const fileKey: Buffer = await deriveFileKey(fileToUpload.fileId, driveKey);
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataJSON));
+
+			// Private folders encrypt with driveKey, private files encrypt with fileKey
+			const encryptionKey: Buffer =
+				fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
+
+			const encryptedData: ArFSEncryptedData = await fileEncrypt(
+				encryptionKey,
+				Buffer.from(secondaryFileMetaDataJSON)
+			);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
@@ -443,8 +450,15 @@ export async function uploadArFSFileMetaData(user: ArDriveUser, fileToUpload: Ar
 				fileToUpload.driveId,
 				user.walletPrivateKey
 			);
-			const fileKey: Buffer = await deriveFileKey(fileToUpload.fileId, driveKey);
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataJSON));
+
+			// Private folders encrypt with driveKey, private files encrypt with fileKey
+			const encryptionKey: Buffer =
+				fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
+
+			const encryptedData: ArFSEncryptedData = await fileEncrypt(
+				encryptionKey,
+				Buffer.from(secondaryFileMetaDataJSON)
+			);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
