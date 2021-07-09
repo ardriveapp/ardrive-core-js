@@ -397,9 +397,6 @@ export async function uploadArFSFileData(
 		if (uploader.isComplete) {
 			const currentTime = Math.round(Date.now() / 1000);
 			await updateDb.updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime);
-
-			// Send the ArDrive Profit Sharing Community Fee
-			await arweave.sendArDriveFee(user.walletPrivateKey, arPrice);
 		}
 		dataTxId = fileToUpload.dataTxId;
 		return { dataTxId, arPrice };
