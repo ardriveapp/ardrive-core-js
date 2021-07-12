@@ -11,6 +11,8 @@ import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEnc
 import { getWinston } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
+import { getArDriveFee } from '../smartweave';
+import { minimumArDriveARFee } from '../constants';
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -325,6 +327,9 @@ export async function uploadArFSFileData(
 	try {
 		const winston = await getWinston(fileToUpload.fileSize);
 		arPrice = +winston * 0.000000000001;
+		// Add ArDrive Fee estimation
+		const arDriveFee = arPrice * (await getArDriveFee());
+		arPrice += arDriveFee >= minimumArDriveARFee ? arDriveFee : minimumArDriveARFee;
 
 		if (fileToUpload.isPublic === 0) {
 			// The file is private and we must encrypt
