@@ -328,7 +328,7 @@ export async function uploadArFSFileData(
 		const winston = await getWinston(fileToUpload.fileSize);
 		arPrice = +winston * 0.000000000001;
 		// Add ArDrive Fee estimation
-		const arDriveFee = arPrice * (await getArDriveFee());
+		const arDriveFee = arPrice * ((await getArDriveFee()) / 100);
 		arPrice += arDriveFee >= minimumArDriveARFee ? arDriveFee : minimumArDriveARFee;
 
 		if (fileToUpload.isPublic === 0) {

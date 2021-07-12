@@ -14,7 +14,7 @@ export async function getArDriveFee(): Promise<number> {
 		);
 		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
 	} catch {
-		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
+		return 15; // Default fee of 15% if we cannot pull it from the community contract
 	}
 }
 
