@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { formatBytes } from './common';
+import { formatBytes, winstonToAr } from './common';
 
 /**
  * formatBytes main test cases:
@@ -68,5 +68,15 @@ describe('The formatBytes function ', () => {
 	it('returns values as "1024.000 MB" instead of "1.000 GB" when rounded up', () => {
 		// Max range on MB: 1073741823
 		expect(formatBytes(1073741823)).to.equal('1024.000 MB');
+	});
+});
+
+/** Winston to AR multiplies by 0.000000000001*/
+describe('The winstonToAr function', () => {
+	it('correctly converts winston data price to AR token price', () => {
+		expect(winstonToAr(62345548231)).to.equal(0.062345548231);
+	});
+	it('correctly removes trailing 0s', () => {
+		expect(winstonToAr(868380000)).to.equal(0.00086838);
 	});
 });

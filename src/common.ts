@@ -514,3 +514,7 @@ export async function getArUSDPrice(): Promise<number> {
 		return 0;
 	}
 }
+
+export function winstonToAr(winston: number): number {
+	return winston * 0.000000000001;
+}
