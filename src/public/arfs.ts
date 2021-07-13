@@ -13,6 +13,7 @@ import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction 
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
 import { getArDriveTipPercentage } from '../smartweave';
 import { minimumArDriveCommunityTip } from '../constants';
+import { winstonToAr } from '../common';
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -326,7 +327,7 @@ export async function uploadArFSFileData(
 	let arPrice = 0;
 	try {
 		const winston = await getWinston(fileToUpload.fileSize);
-		arPrice = +winston * 0.000000000001;
+		arPrice = winstonToAr(+winston);
 		// Add ArDrive Community Tip estimation
 		const arDriveFee = arPrice * (await getArDriveTipPercentage());
 		arPrice += arDriveFee >= minimumArDriveCommunityTip ? arDriveFee : minimumArDriveCommunityTip;
