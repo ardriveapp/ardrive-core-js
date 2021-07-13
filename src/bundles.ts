@@ -1,4 +1,4 @@
-import { arweave, sendArDriveFee } from './public/arweave';
+import { arweave, sendArDriveCommunityTip } from './public/arweave';
 import * as types from './types/base_Types';
 import * as updateDb from './db/db_update';
 import * as getDb from './db/db_get';
@@ -111,7 +111,7 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 		// If any bundles or large files have been uploaded, we send the ArDrive Profit Sharing Tip and create drive transaction if necessary
 		if (bundledFilesUploaded > 0 || filesUploaded > 0) {
 			// Send the tip to a random ArDrive community member
-			await sendArDriveFee(user.walletPrivateKey, totalARPrice);
+			await sendArDriveCommunityTip(user.walletPrivateKey, totalARPrice);
 			const totalUSDPrice = totalARPrice * (await common.getArUSDPrice());
 			console.log(
 				'Uploaded %s file(s) (totaling %s AR, %s USD) to your ArDrive!',
@@ -216,7 +216,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 				}
 
 				// Send the tip to the ArDrive community
-				await sendArDriveFee(user.walletPrivateKey, totalPrice);
+				await sendArDriveCommunityTip(user.walletPrivateKey, totalPrice);
 				console.log('Uploaded %s file(s) (totaling %s AR) to your ArDrive!', filesUploaded, totalPrice);
 			}
 

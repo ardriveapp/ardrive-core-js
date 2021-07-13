@@ -54,23 +54,23 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 	}
 }
 
-// Sends a fee to ArDrive Profit Sharing Community holders
-export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
+// Sends a tip to ArDrive Profit Sharing Community holders
+export async function sendArDriveCommunityTip(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let fee = arPrice * (await getArDriveTipPercentage());
+		let tip = arPrice * (await getArDriveTipPercentage());
 
-		// If the fee is too small, we assign a minimum
-		if (fee < minimumArDriveCommunityTip) {
-			fee = minimumArDriveCommunityTip;
+		// If the tip is too small, we assign a minimum
+		if (tip < minimumArDriveCommunityTip) {
+			tip = minimumArDriveCommunityTip;
 		}
 
 		// Probabilistically select the PST token holder
 		const holder = await selectTokenHolder();
 
-		// send a fee. You should inform the user about this fee and amount.
+		// send a tip. You should inform the user about this tip and amount.
 		const transaction = await arweave.createTransaction(
-			{ target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
+			{ target: holder, quantity: arweave.ar.arToWinston(tip.toString()) },
 			JSON.parse(walletPrivateKey)
 		);
 
@@ -93,7 +93,7 @@ export async function sendArDriveFee(walletPrivateKey: string, arPrice: number):
 		return transaction.id;
 	} catch (err) {
 		console.log(err);
-		return 'ERROR sending ArDrive fee';
+		return 'ERROR sending ArDrive community tip';
 	}
 }
 
@@ -465,7 +465,7 @@ export async function uploadArDriveFiles(user: ArDriveUser): Promise<string> {
 		}
 		if (filesUploaded > 0) {
 			// Send the tip to the ArDrive community
-			await sendArDriveFee(user.walletPrivateKey, totalPrice);
+			await sendArDriveCommunityTip(user.walletPrivateKey, totalPrice);
 			console.log('Uploaded %s files to your ArDrive!', filesUploaded);
 
 			// Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
