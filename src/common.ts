@@ -514,7 +514,7 @@ export async function getArUSDPrice(): Promise<number> {
 		return 0;
 	}
 }
-
 export function winstonToAr(winston: number): number {
-	return winston * 0.000000000001;
+	if (!Number.isInteger(winston)) throw new Error(`Winston value not an integer: ${winston}`);
+	return winston * 0.000_000_000_001;
 }
