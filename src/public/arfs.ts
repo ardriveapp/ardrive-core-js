@@ -11,7 +11,7 @@ import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEnc
 import { getWinston } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
-import { getArDriveFee } from '../smartweave';
+import { getArDriveTipPercentage } from '../smartweave';
 import { minimumArDriveCommunityTip } from '../constants';
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
@@ -328,7 +328,7 @@ export async function uploadArFSFileData(
 		const winston = await getWinston(fileToUpload.fileSize);
 		arPrice = +winston * 0.000000000001;
 		// Add ArDrive Community Tip estimation
-		const arDriveFee = arPrice * (await getArDriveFee());
+		const arDriveFee = arPrice * (await getArDriveTipPercentage());
 		arPrice += arDriveFee >= minimumArDriveCommunityTip ? arDriveFee : minimumArDriveCommunityTip;
 
 		if (fileToUpload.isPublic === 0) {

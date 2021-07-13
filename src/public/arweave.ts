@@ -21,7 +21,7 @@ import Axios from 'axios';
 import ProgressBar from 'progress';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
 import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './arfs';
-import { getArDriveFee, selectTokenHolder } from './../smartweave';
+import { getArDriveTipPercentage, selectTokenHolder } from './../smartweave';
 // Initialize Arweave
 export const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -58,7 +58,7 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let fee = arPrice * (await getArDriveFee());
+		let fee = arPrice * (await getArDriveTipPercentage());
 
 		// If the fee is too small, we assign a minimum
 		if (fee < minimumArDriveCommunityTip) {
