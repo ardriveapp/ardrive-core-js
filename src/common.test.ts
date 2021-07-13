@@ -71,12 +71,37 @@ describe('The formatBytes function ', () => {
 	});
 });
 
-/** Winston to AR multiplies by 0.000000000001*/
+/**
+ * winstonToAr multiplies by 0.000000000001
+ *
+ * Test cases:
+ *
+ * Converts correctly
+ * Works with negative Winston values
+ * Correctly represents 1 AR
+ * Correctly represents 0.999999999999 AR
+ * Removes trailing 0s
+ * Works with a Winston value of 0
+ * Throws error when Winston value is a decimal
+ */
 describe('The winstonToAr function', () => {
 	it('correctly converts winston data price to AR token price', () => {
-		expect(winstonToAr(62345548231)).to.equal(0.062345548231);
+		expect(winstonToAr(62_345_548_231)).to.equal(0.062_345_548_231);
 	});
-	it('correctly removes trailing 0s', () => {
-		expect(winstonToAr(868380000)).to.equal(0.00086838);
+	it('correctly coverts with negative winston values', () => {
+		expect(winstonToAr(-27_853_438)).to.equal(-0.000_027_853_438);
+	});
+	it('correctly converts into 1 AR from winston, and removes all trailing 0s', () => {
+		expect(winstonToAr(1_000_000_000_000)).to.equal(1);
+	});
+	it('correctly converts into 0.999999999999 AR from winston', () => {
+		expect(winstonToAr(999_999_999_999)).to.equal(0.999_999_999_999);
+	});
+	it('works with zero winston', () => {
+		expect(winstonToAr(0)).to.equal(0);
+	});
+	it('throws errors when winston is represented as a decimal value', () => {
+		const input = 72_427_931.32;
+		expect(() => winstonToAr(input)).to.throw(`Winston value not an integer: ${input}`);
 	});
 });
