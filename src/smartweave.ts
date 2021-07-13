@@ -4,21 +4,46 @@ import { arweave } from './public/arweave';
 
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
+const communityTipBlockHeight = 578358;
 
 // Default tip of 15% if we cannot pull it from the community contract
 const defaultArDriveTipPercentage = 0.15;
+let arDriveTipPercentage = 0;
+let isTipPercentageFromSettings = false;
 
 // Calls the ArDrive Community Smart Contract to pull the tip
 export async function getArDriveTipPercentage(): Promise<number> {
 	try {
-		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
-			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] / 100 : defaultArDriveTipPercentage;
-	} catch {
+		if (arDriveTipPercentage === 0) {
+			// Tip has not been calculated, read from contract (4-6 seconds)
+			const contract = await readContract(arweave, communityTxId, communityTipBlockHeight);
+			const communityTipValue = contract.votes[contract.votes.length - 1].value;
+
+			if (communityTipValue && typeof communityTipValue === 'number') {
+				arDriveTipPercentage = communityTipValue / 100;
+				return arDriveTipPercentage;
+			} else {
+				return defaultArDriveTipPercentage;
+			}
+		} else {
+			if (!isTipPercentageFromSettings) getExactArDriveTipSetting();
+			return arDriveTipPercentage;
+		}
+	} catch (err) {
 		return defaultArDriveTipPercentage;
 	}
+}
+
+/** Derives the exact setting from smartweave contract (35-50 seconds) */
+async function getExactArDriveTipSetting() {
+	const contract = await readContract(arweave, communityTxId);
+
+	const arDriveCommunityFee = contract.settings.find(
+		(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
+	);
+
+	arDriveTipPercentage = arDriveCommunityFee;
+	isTipPercentageFromSettings = true;
 }
 
 // Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
