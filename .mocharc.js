@@ -6,7 +6,7 @@ module.exports = {
 	extension: ['ts'],
 	spec: ['**/*.test.ts'],
 	require: ['ts-node/register/transpile-only', 'source-map-support/register', 'tests/testSetup.ts'],
-	timeout: '3000',
+	timeout: '10000', // 10 seconds for smartweave contract reading
 	parallel: true,
 	recursive: true
 };
