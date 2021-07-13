@@ -6,7 +6,7 @@ import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
 import { getArDriveFee } from './smartweave';
 import fetch from 'node-fetch';
-import { minimumArDriveARFee } from './constants';
+import { minimumArDriveCommunityTip } from './constants';
 
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
@@ -237,8 +237,8 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 
 		// Add the ArDrive community fee
 		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * ((await getArDriveFee()) / 100);
-		if (arDriveFee < minimumArDriveARFee && totalArweaveDataPrice > 0) {
-			arDriveFee = minimumArDriveARFee;
+		if (arDriveFee < minimumArDriveCommunityTip && totalArweaveDataPrice > 0) {
+			arDriveFee = minimumArDriveCommunityTip;
 		}
 
 		// Prepare the upload batch

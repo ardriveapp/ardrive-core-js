@@ -11,7 +11,14 @@ export const appVersion = '0.1.0';
 export const arFSVersion = '0.11';
 export const defaultCipher: CipherType = 'AES256-GCM';
 
-export const minimumArDriveARFee = 0.00001; // AR
+/**
+ * Minimum ArDrive community tip from the Community Improvement Proposal Doc:
+ * https://arweave.net/Yop13NrLwqlm36P_FDCdMaTBwSlj0sdNGAC4FqfRUgo
+ *
+ * Voted on by the ArDrive community (vote #82):
+ * https://community.xyz/#-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ/votes/
+ */
+export const minimumArDriveCommunityTip = 0.00001; // AR
 
 //Note: Just to easily copy paste later where it's needed
 //import {prodAppUrl,stagingAppUrl,gatewayURL,appName,webAppName,appVersion,arFSVersion,cipher} from './constants';

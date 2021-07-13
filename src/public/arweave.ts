@@ -8,7 +8,7 @@ import {
 } from './../db/db_get';
 import { setFilePath } from './../db/db_update';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { appName, appVersion, arFSVersion, gatewayURL } from './../constants';
+import { appName, appVersion, arFSVersion, gatewayURL, minimumArDriveCommunityTip } from './../constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
@@ -61,8 +61,8 @@ export async function sendArDriveFee(walletPrivateKey: string, arPrice: number):
 		let fee = arPrice * ((await getArDriveFee()) / 100);
 
 		// If the fee is too small, we assign a minimum
-		if (fee < 0.00001) {
-			fee = 0.00001;
+		if (fee < minimumArDriveCommunityTip) {
+			fee = minimumArDriveCommunityTip;
 		}
 
 		// Probabilistically select the PST token holder
