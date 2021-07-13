@@ -71,19 +71,7 @@ describe('The formatBytes function ', () => {
 	});
 });
 
-/**
- * winstonToAr multiplies by 0.000000000001
- *
- * Test cases:
- *
- * Converts correctly
- * Works with negative Winston values
- * Correctly represents 1 AR
- * Correctly represents 0.999999999999 AR
- * Removes trailing 0s
- * Works with a Winston value of 0
- * Throws error when Winston value is a decimal
- */
+// winstonToAr multiplies by 0.000000000001
 describe('The winstonToAr function', () => {
 	it('correctly converts winston data price to AR token price', () => {
 		expect(winstonToAr(62_345_548_231)).to.equal(0.062_345_548_231);
