@@ -58,7 +58,7 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let fee = arPrice * ((await getArDriveFee()) / 100);
+		let fee = arPrice * (await getArDriveFee());
 
 		// If the fee is too small, we assign a minimum
 		if (fee < minimumArDriveCommunityTip) {

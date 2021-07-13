@@ -236,7 +236,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 		const totalArweaveDataPrice = common.winstonToAr(totalWinstonData);
 
 		// Add the ArDrive community fee
-		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * ((await getArDriveFee()) / 100);
+		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * (await getArDriveFee());
 		if (arDriveFee < minimumArDriveCommunityTip && totalArweaveDataPrice > 0) {
 			arDriveFee = minimumArDriveCommunityTip;
 		}

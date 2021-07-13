@@ -5,16 +5,19 @@ import { arweave } from './public/arweave';
 // ArDrive Profit Sharing Community Smart Contract
 const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 
-// Calls the ArDrive Community Smart Contract to pull the fee
+// Default fee of 15% if we cannot pull it from the community contract
+const defaultArDriveTipPercentage = 0.15;
+
+// Calls the ArDrive Community Smart Contract to pull the tip
 export async function getArDriveFee(): Promise<number> {
 	try {
 		const contract = await readContract(arweave, communityTxId);
 		const arDriveCommunityFee = contract.settings.find(
 			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
 		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
+		return arDriveCommunityFee ? arDriveCommunityFee[1] / 100 : defaultArDriveTipPercentage;
 	} catch {
-		return 15; // Default fee of 15% if we cannot pull it from the community contract
+		return defaultArDriveTipPercentage;
 	}
 }
 
