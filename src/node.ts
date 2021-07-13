@@ -170,13 +170,11 @@ export async function checkUploadStatus(login: string): Promise<string> {
 
 // Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
 export async function getPriceOfNextUploadBatch(login: string): Promise<types.UploadBatch> {
-	let totalWinstonData = 0;
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
-	let winston = 0;
 
-	/** Estimated price for most metadata transactions */
-	const assumedMetadataTxPrice = 0.0000005;
+	/** Estimated AR price for most metadata transactions */
+	const assumedMetadataTxPrice = 0.000_002_500_000;
 
 	const uploadBatch: types.UploadBatch = {
 		totalArDrivePrice: 0,
@@ -190,14 +188,9 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 	// Get all files that are ready to be uploaded
 	const filesToUpload: types.ArFSFileMetaData[] = getDb.getFilesToUploadFromSyncTable(login);
 	if (Object.keys(filesToUpload).length > 0) {
-		// Estimate the price more consistently by getting the size of 1MB
-		const bytesPerMB = 1048576;
-		const priceFor1MB = await getWinston(bytesPerMB);
-		const pricePerByte = priceFor1MB / bytesPerMB;
-
 		// Calculate the size/price for each file/folder
 		await common.asyncForEach(filesToUpload, async (fileToUpload: types.ArFSFileMetaData) => {
-			// If the file doesnt exist, we must remove it from the Sync table and not include it in our upload price
+			// If the file doesn't exist, we must remove it from the Sync table and not include it in our upload price
 			if (!common.checkFileExistsSync(fileToUpload.filePath)) {
 				console.log('%s is not local anymore.  Removing from the queue.', fileToUpload.filePath);
 				await deleteFromSyncTable(fileToUpload.id);
@@ -210,21 +203,17 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 				uploadBatch.totalNumberOfFolderUploads += 1;
 			}
 
-			// If this is a file we calculate the cost and add up the size.
-			// We do not bundle/approve more than 2GB of data at a time
+			// Entity is file, add up the sizes -- we do not bundle/approve more than 2GB of data at a time
 			if (
 				+fileToUpload.fileDataSyncStatus === 1 &&
 				fileToUpload.entityType === 'file' &&
 				totalSize <= 2000000000
 			) {
-				/** Extra bytes added to the header of a data upload */
-				const headerByteSize = 3210;
-
 				totalSize += +fileToUpload.fileSize;
-				winston = (fileToUpload.fileSize + headerByteSize) * pricePerByte;
-				totalWinstonData += +winston + assumedMetadataTxPrice;
 				uploadBatch.totalNumberOfFileUploads += 1;
 			}
+
+			// Add in MetaData TX for a file
 			if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
 				totalArweaveMetadataPrice += assumedMetadataTxPrice;
 				uploadBatch.totalNumberOfMetaDataUploads += 1;
@@ -232,21 +221,36 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 			return 'Calculated price';
 		});
 
-		// Convert the total winston data into total AR price for all files/folders
-		const totalArweaveDataPrice = common.winstonToAr(totalWinstonData);
+		// Get estimated AR cost from gateway, and convert to AR for all files/folders to be uploaded
+		let totalArweaveDataPrice = await estimateArCost(totalSize, uploadBatch.totalNumberOfFileUploads);
 
-		// Add the ArDrive community fee
-		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * (await getArDriveTipPercentage());
-		if (arDriveFee < minimumArDriveCommunityTip && totalArweaveDataPrice > 0) {
-			arDriveFee = minimumArDriveCommunityTip;
-		}
+		// Finalize total price with assumed metadata price
+		totalArweaveDataPrice += totalArweaveMetadataPrice;
 
 		// Prepare the upload batch
-		uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
+		uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(12);
 		uploadBatch.totalUSDPrice = uploadBatch.totalArDrivePrice * (await common.getArUSDPrice());
 		uploadBatch.totalSize = common.formatBytes(totalSize);
 
 		return uploadBatch;
 	}
 	return uploadBatch;
+}
+
+export async function estimateArCost(totalSize: number, numberOfFiles = 1): Promise<number> {
+	// Extra bytes added to the header of data uploads
+	const headerByteSize = 3210;
+	const sizeWithHeaders = totalSize + numberOfFiles * headerByteSize;
+	// Get Winston value from gateway, and convert to AR for all files/folders to be uploaded
+	const arCost = common.winstonToAr(await getWinston(sizeWithHeaders));
+	// Return cost, with added community tip
+	return arCost + (await getArDriveCommunityTip(arCost));
+}
+
+export async function getArDriveCommunityTip(dataPrice: number): Promise<number> {
+	let arDriveCommunityTip = dataPrice * (await getArDriveTipPercentage());
+	if (arDriveCommunityTip < minimumArDriveCommunityTip && dataPrice > 0) {
+		arDriveCommunityTip = minimumArDriveCommunityTip;
+	}
+	return arDriveCommunityTip;
 }
