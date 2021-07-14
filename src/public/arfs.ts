@@ -8,12 +8,10 @@ import { JWKInterface } from './../types/arfs_Types';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData } from './../types/base_Types';
 import * as updateDb from './../db/db_update';
 import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from '../crypto';
-import { getWinston } from '../node';
+import { estimateArCost } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
-import { getArDriveTipPercentage } from '../smartweave';
-import { minimumArDriveCommunityTip } from '../constants';
-import { winstonToAr } from '../common';
+
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -326,11 +324,7 @@ export async function uploadArFSFileData(
 	let dataTxId = '';
 	let arPrice = 0;
 	try {
-		const winston = await getWinston(fileToUpload.fileSize);
-		arPrice = winstonToAr(+winston);
-		// Add ArDrive Community Tip estimation
-		const arDriveFee = arPrice * (await getArDriveTipPercentage());
-		arPrice += arDriveFee >= minimumArDriveCommunityTip ? arDriveFee : minimumArDriveCommunityTip;
+		arPrice = await estimateArCost(fileToUpload.fileSize);
 
 		if (fileToUpload.isPublic === 0) {
 			// The file is private and we must encrypt
