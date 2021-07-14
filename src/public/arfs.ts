@@ -11,6 +11,7 @@ import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEnc
 import { estimateArCost } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
+import { assumedMetadataTxPrice } from '../constants';
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
@@ -325,6 +326,7 @@ export async function uploadArFSFileData(
 	let arPrice = 0;
 	try {
 		arPrice = await estimateArCost(fileToUpload.fileSize);
+		arPrice += assumedMetadataTxPrice;
 
 		if (fileToUpload.isPublic === 0) {
 			// The file is private and we must encrypt

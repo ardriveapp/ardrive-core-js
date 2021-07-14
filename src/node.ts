@@ -6,7 +6,7 @@ import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
 import { getArDriveTipPercentage } from './smartweave';
 import fetch from 'node-fetch';
-import { minimumArDriveCommunityTip } from './constants';
+import { assumedMetadataTxPrice, minimumArDriveCommunityTip } from './constants';
 
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
@@ -172,9 +172,6 @@ export async function checkUploadStatus(login: string): Promise<string> {
 export async function getPriceOfNextUploadBatch(login: string): Promise<types.UploadBatch> {
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
-
-	/** Estimated AR price for most metadata transactions */
-	const assumedMetadataTxPrice = 0.000_002_500_000;
 
 	const uploadBatch: types.UploadBatch = {
 		totalArDrivePrice: 0,
