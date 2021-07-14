@@ -8,7 +8,7 @@ import {
 } from './../db/db_get';
 import { setFilePath } from './../db/db_update';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { appName, appVersion, arFSVersion, gatewayURL, minimumArDriveCommunityTip } from './../constants';
+import { appName, appVersion, arFSVersion, gatewayURL } from './../constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
@@ -21,7 +21,8 @@ import Axios from 'axios';
 import ProgressBar from 'progress';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
 import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './arfs';
-import { getArDriveTipPercentage, selectTokenHolder } from './../smartweave';
+import { selectTokenHolder } from './../smartweave';
+import { getArDriveCommunityTip } from '../node';
 // Initialize Arweave
 export const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -58,10 +59,7 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 export async function sendArDriveCommunityTip(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let tip = arPrice * (await getArDriveTipPercentage());
-
-		// If the tip is too small, we assign a minimum
-		tip = Math.max(tip, minimumArDriveCommunityTip);
+		const tip = await getArDriveCommunityTip(arPrice);
 
 		// Probabilistically select the PST token holder
 		const holder = await selectTokenHolder();
