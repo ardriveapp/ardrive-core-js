@@ -61,9 +61,7 @@ export async function sendArDriveCommunityTip(walletPrivateKey: string, arPrice:
 		let tip = arPrice * (await getArDriveTipPercentage());
 
 		// If the tip is too small, we assign a minimum
-		if (tip < minimumArDriveCommunityTip) {
-			tip = minimumArDriveCommunityTip;
-		}
+		tip = Math.max(tip, minimumArDriveCommunityTip);
 
 		// Probabilistically select the PST token holder
 		const holder = await selectTokenHolder();

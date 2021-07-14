@@ -249,8 +249,6 @@ export async function estimateArCost(totalSize: number, numberOfFiles = 1): Prom
 
 export async function getArDriveCommunityTip(dataPrice: number): Promise<number> {
 	let arDriveCommunityTip = dataPrice * (await getArDriveTipPercentage());
-	if (arDriveCommunityTip < minimumArDriveCommunityTip && dataPrice > 0) {
-		arDriveCommunityTip = minimumArDriveCommunityTip;
-	}
+	arDriveCommunityTip = Math.max(arDriveCommunityTip, minimumArDriveCommunityTip);
 	return arDriveCommunityTip;
 }
