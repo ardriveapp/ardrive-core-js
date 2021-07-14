@@ -71,7 +71,6 @@ describe('The formatBytes function ', () => {
 	});
 });
 
-// winstonToAr multiplies by 0.000000000001
 describe('The winstonToAr function', () => {
 	it('correctly converts winston data price to AR token price', () => {
 		expect(winstonToAr(62_345_548_231)).to.equal(0.062_345_548_231);
