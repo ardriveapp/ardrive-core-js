@@ -7,7 +7,7 @@ import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import { JWKInterface } from './../types/arfs_Types';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData } from './../types/base_Types';
 import * as updateDb from './../db/db_update';
-import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from '../crypto';
+import { deriveDriveKey, deriveFileKey, driveEncrypt, getFileAndEncrypt } from '../crypto';
 import { getWinston } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
