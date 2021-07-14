@@ -6,7 +6,7 @@ import * as getDb from './db/db_get';
 import * as updateDb from './db/db_update';
 import fetch from 'node-fetch';
 import path, { dirname } from 'path';
-import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
@@ -513,4 +513,20 @@ export async function getArUSDPrice(): Promise<number> {
 		console.log('Error getting AR/USD price from Coingecko');
 		return 0;
 	}
+}
+
+// Returns encrypted data using driveKey for folders, and fileKey for files
+export async function getFolderOrFileEncryptedData(
+	fileToUpload: types.ArFSFileMetaData,
+	driveKey: Buffer,
+	secondaryFileMetaDataJSON: string
+): Promise<types.ArFSEncryptedData> {
+	const encryptionKey =
+		fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
+	const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
+		encryptionKey,
+		Buffer.from(secondaryFileMetaDataJSON)
+	);
+
+	return encryptedData;
 }

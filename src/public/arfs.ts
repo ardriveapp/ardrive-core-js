@@ -11,6 +11,8 @@ import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEnc
 import { getWinston } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
+import { getFolderOrFileEncryptedData } from '../common';
+
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -284,13 +286,7 @@ export async function createArFSFileMetaDataItem(
 			);
 
 			// Private folders encrypt with driveKey, private files encrypt with fileKey
-			const encryptionKey: Buffer =
-				fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
-
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(
-				encryptionKey,
-				Buffer.from(secondaryFileMetaDataJSON)
-			);
+			const encryptedData = await getFolderOrFileEncryptedData(fileToUpload, driveKey, secondaryFileMetaDataJSON);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
@@ -452,13 +448,7 @@ export async function uploadArFSFileMetaData(user: ArDriveUser, fileToUpload: Ar
 			);
 
 			// Private folders encrypt with driveKey, private files encrypt with fileKey
-			const encryptionKey: Buffer =
-				fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
-
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(
-				encryptionKey,
-				Buffer.from(secondaryFileMetaDataJSON)
-			);
+			const encryptedData = await getFolderOrFileEncryptedData(fileToUpload, driveKey, secondaryFileMetaDataJSON);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
