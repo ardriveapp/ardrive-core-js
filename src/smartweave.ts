@@ -13,6 +13,8 @@ let isTipPercentageFromSettings = false;
 
 // Calls the ArDrive Community Smart Contract to pull the tip
 export async function getArDriveTipPercentage(): Promise<number> {
+	// If tip was not gathered from exact setting, send background task to gather, do not await
+	if (!isTipPercentageFromSettings) getExactArDriveTipSetting();
 	try {
 		if (arDriveTipPercentage === 0) {
 			// Tip has not been calculated, read from contract (4-6 seconds)
@@ -20,13 +22,14 @@ export async function getArDriveTipPercentage(): Promise<number> {
 			const communityTipValue = contract.votes[contract.votes.length - 1].value;
 
 			if (communityTipValue && typeof communityTipValue === 'number') {
+				// Set percentage in cache to avoid repeat checks
 				arDriveTipPercentage = communityTipValue / 100;
 				return arDriveTipPercentage;
 			} else {
 				return defaultArDriveTipPercentage;
 			}
 		} else {
-			if (!isTipPercentageFromSettings) getExactArDriveTipSetting();
+			// Tip percentage already calculated, return value
 			return arDriveTipPercentage;
 		}
 	} catch (err) {
@@ -34,16 +37,25 @@ export async function getArDriveTipPercentage(): Promise<number> {
 	}
 }
 
+let isTipFromSettingsLoading = false;
 /** Derives the exact setting from smartweave contract (35-50 seconds) */
 async function getExactArDriveTipSetting() {
-	const contract = await readContract(arweave, communityTxId);
+	// Do not run if contract is currently being read
+	if (isTipFromSettingsLoading) return;
+	isTipFromSettingsLoading = true;
+	try {
+		const contract = await readContract(arweave, communityTxId);
+		const arDriveCommunityFee = contract.settings.find(
+			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
+		);
 
-	const arDriveCommunityFee = contract.settings.find(
-		(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-	);
-
-	arDriveTipPercentage = arDriveCommunityFee;
-	isTipPercentageFromSettings = true;
+		arDriveTipPercentage = arDriveCommunityFee;
+		isTipPercentageFromSettings = true;
+		isTipFromSettingsLoading = false;
+	} catch (err) {
+		isTipFromSettingsLoading = false;
+		console.log(err);
+	}
 }
 
 // Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
