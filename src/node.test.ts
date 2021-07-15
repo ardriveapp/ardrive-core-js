@@ -1,14 +1,33 @@
 import { expect } from 'chai';
 import { estimateArCost } from './node';
+import { ArweaveOracle } from './public/arweave_oracle';
+import { stubInterface } from 'ts-sinon';
+import { CommunityOracle } from './public/community_oracle';
+import { minArDriveCommunityARTip } from './constants';
 
 describe('The estimateArCost function', function () {
-	// Set timeout to 10 seconds for smartweave contract reading
-	this.timeout(10000);
-	it('returns an estimation as an AR decimal', async () => {
-		const output = await estimateArCost(234564, 5);
+	const arweaveOracleStub = stubInterface<ArweaveOracle>();
+	arweaveOracleStub.getWinstonPriceForByteCount.returns(
+		new Promise((resolve) => {
+			resolve(12_345_678);
+		})
+	);
 
-		expect(output).to.be.a('number');
-		expect(Number.isInteger(output)).to.be.false;
+	const communityOracleStub = stubInterface<CommunityOracle>();
+	communityOracleStub.getCommunityARTip.returns(
+		new Promise((resolve) => {
+			resolve(minArDriveCommunityARTip);
+		})
+	);
+
+	it('calculates an estimation and returns an AR value', async () => {
+		const output = await estimateArCost(23_456, 5, arweaveOracleStub, communityOracleStub);
+
+		expect(output).to.equal(0.000_022_345_678);
+
+		// Verify calls
+		expect(arweaveOracleStub.getWinstonPriceForByteCount.calledOnceWithExactly(39_506)).to.be.true;
+		expect(communityOracleStub.getCommunityARTip.calledOnceWithExactly(0.000_012_345_678)).to.be.true;
 
 		return;
 	});
