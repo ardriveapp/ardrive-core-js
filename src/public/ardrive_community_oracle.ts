@@ -8,8 +8,8 @@ import { CommunityOracle } from './community_oracle';
 const defaultArDriveTipPercentage = 0.15;
 let arDriveTipPercentage: number | undefined = undefined;
 
-let isTipPercentageFromSettings = false;
-let isTipFromSettingsLoading = false;
+let isTipPercentageLatestFromSmartWeave = false;
+let isFetchingTipSetting = false;
 
 const communityTipBlockHeight = 578358;
 
@@ -21,27 +21,27 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 	// Calls the ArDrive Community Smart Contract to pull the tip percentage
 	async getArDriveTipPercentage(): Promise<number> {
-		if (!isTipPercentageFromSettings) {
+		if (!isTipPercentageLatestFromSmartWeave) {
 			// If tip was not gathered from exact setting, start background task to gather, do not await
 			this.setExactTipSettingInBackground();
 		}
 
 		try {
-			if (arDriveTipPercentage === undefined) {
-				// Tip has not been calculated, read from contract (4-6 seconds)
-				const contract = await readContract(arweave, communityTxId, communityTipBlockHeight);
-				const communityTipValue = contract.votes[contract.votes.length - 1].value;
-
-				if (communityTipValue) {
-					// Set percentage in cache to avoid repeat checks
-					arDriveTipPercentage = communityTipValue / 100; // Converts to percentage
-					return arDriveTipPercentage;
-				} else {
-					return defaultArDriveTipPercentage;
-				}
-			} else {
+			if (arDriveTipPercentage !== undefined) {
 				// Tip percentage has already been fetched, return the value
 				return arDriveTipPercentage;
+			}
+
+			// Tip has not been calculated, read from contract (4-6 seconds)
+			const contract = await readContract(arweave, communityTxId, communityTipBlockHeight);
+			const communityTipValue = contract.votes[contract.votes.length - 1].value;
+
+			if (communityTipValue) {
+				// Set percentage in cache to avoid repeat checks
+				arDriveTipPercentage = communityTipValue / 100; // Converts to percentage
+				return arDriveTipPercentage;
+			} else {
+				return defaultArDriveTipPercentage;
 			}
 		} catch (err) {
 			// If function errors out, return default percentage
@@ -58,17 +58,17 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	 *       chance of retrieving the exact value before the user needs it
 	 */
 	async setExactTipSettingInBackground(): Promise<void> {
-		while (isTipFromSettingsLoading) {
+		while (isFetchingTipSetting) {
 			// Do not run if contract is currently being read
 			await sleep(500);
 		}
 
-		if (isTipPercentageFromSettings) {
+		if (isTipPercentageLatestFromSmartWeave) {
 			// Exact tip percentage has already been derived, return early
 			return;
 		}
 
-		isTipFromSettingsLoading = true;
+		isFetchingTipSetting = true;
 
 		try {
 			const contract = await readContract(arweave, communityTxId);
@@ -78,12 +78,12 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 			if (arDriveCommTipFromSettings) {
 				// Exact tip percentage has been retrieved from settings, set in cache
 				arDriveTipPercentage = arDriveCommTipFromSettings;
-				isTipPercentageFromSettings = true;
+				isTipPercentageLatestFromSmartWeave = true;
 			}
 		} catch (err) {
 			console.log(err);
 		} finally {
-			isTipFromSettingsLoading = false;
+			isFetchingTipSetting = false;
 		}
 	}
 }
