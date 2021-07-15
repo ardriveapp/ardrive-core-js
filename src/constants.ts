@@ -20,6 +20,9 @@ export const defaultCipher: CipherType = 'AES256-GCM';
  */
 export const minArDriveCommunityARTip = 0.000_010_000_000;
 
+// ArDrive Profit Sharing Community Smart Contract
+export const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
+
 /** Estimated AR price for most metadata transactions */
 export const assumedMetadataTxARPrice = 0.000_002_500_000;
 
