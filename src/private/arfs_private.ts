@@ -129,15 +129,14 @@ export async function newArFSPrivateFolderMetaDataItem(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 
-		// Private file, so it must be encrypted
+		// Private folder, so it must be encrypted with the driveKey
 		const driveKey: Buffer = await deriveDriveKey(
 			user.dataProtectionKey,
 			folder.entity.driveId,
 			user.walletPrivateKey
 		);
-		const fileKey: Buffer = await deriveFileKey(folder.entity.entityId, driveKey);
 		const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
-			fileKey,
+			driveKey,
 			Buffer.from(secondaryFileMetaDataJSON)
 		);
 

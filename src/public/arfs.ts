@@ -7,10 +7,12 @@ import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import { JWKInterface } from './../types/arfs_Types';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData } from './../types/base_Types';
 import * as updateDb from './../db/db_update';
-import { deriveDriveKey, deriveFileKey, driveEncrypt, fileEncrypt, getFileAndEncrypt } from '../crypto';
+import { deriveDriveKey, deriveFileKey, driveEncrypt, getFileAndEncrypt } from '../crypto';
 import { getWinston } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
+import { encryptFileOrFolderData } from '../common';
+
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
 export async function newArFSFileDataItem(
 	walletPrivateKey: JWKInterface,
@@ -273,7 +275,7 @@ export async function createArFSFileMetaDataItem(
 		// Convert to JSON string
 		const secondaryFileMetaDataJSON = JSON.stringify(secondaryFileMetaDataTags);
 		if (fileToUpload.isPublic === 1) {
-			// Public file, do not s
+			// Public file, do not encrypt
 			dataItem = await arweave.prepareArFSMetaDataItemTransaction(user, fileToUpload, secondaryFileMetaDataJSON);
 		} else {
 			// Private file, so it must be encrypted
@@ -282,8 +284,9 @@ export async function createArFSFileMetaDataItem(
 				fileToUpload.driveId,
 				user.walletPrivateKey
 			);
-			const fileKey: Buffer = await deriveFileKey(fileToUpload.fileId, driveKey);
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataJSON));
+
+			// Private folders encrypt with driveKey, private files encrypt with fileKey
+			const encryptedData = await encryptFileOrFolderData(fileToUpload, driveKey, secondaryFileMetaDataJSON);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
@@ -443,8 +446,9 @@ export async function uploadArFSFileMetaData(user: ArDriveUser, fileToUpload: Ar
 				fileToUpload.driveId,
 				user.walletPrivateKey
 			);
-			const fileKey: Buffer = await deriveFileKey(fileToUpload.fileId, driveKey);
-			const encryptedData: ArFSEncryptedData = await fileEncrypt(fileKey, Buffer.from(secondaryFileMetaDataJSON));
+
+			// Private folders encrypt with driveKey, private files encrypt with fileKey
+			const encryptedData = await encryptFileOrFolderData(fileToUpload, driveKey, secondaryFileMetaDataJSON);
 
 			// Update the file privacy metadata
 			fileToUpload.metaDataCipherIV = encryptedData.cipherIV;
