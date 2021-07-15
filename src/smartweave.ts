@@ -13,8 +13,10 @@ let isTipPercentageFromSettings = false;
 
 // Calls the ArDrive Community Smart Contract to pull the tip
 export async function getArDriveTipPercentage(): Promise<number> {
-	// If tip was not gathered from exact setting, send background task to gather, do not await
-	if (!isTipPercentageFromSettings) getExactArDriveTipSetting();
+	if (!isTipPercentageFromSettings) {
+		// If tip was not gathered from exact setting, send background task to gather, do not await
+		getExactArDriveTipSetting();
+	}
 	try {
 		if (arDriveTipPercentage === 0) {
 			// Tip has not been calculated, read from contract (4-6 seconds)
@@ -45,16 +47,16 @@ async function getExactArDriveTipSetting() {
 	isTipFromSettingsLoading = true;
 	try {
 		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
+		const arDriveCommTipFromSettings = contract.settings.find(
 			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
 		);
 
-		arDriveTipPercentage = arDriveCommunityFee;
+		arDriveTipPercentage = arDriveCommTipFromSettings;
 		isTipPercentageFromSettings = true;
-		isTipFromSettingsLoading = false;
 	} catch (err) {
-		isTipFromSettingsLoading = false;
 		console.log(err);
+	} finally {
+		isTipFromSettingsLoading = false;
 	}
 }
 
