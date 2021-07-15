@@ -18,10 +18,10 @@ export const defaultCipher: CipherType = 'AES256-GCM';
  * Voted on by the ArDrive community (vote #82):
  * https://community.xyz/#-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ/votes/
  */
-export const minimumArDriveCommunityTip = 0.000_010_000_000;
+export const minArDriveCommunityARTip = 0.000_010_000_000;
 
 /** Estimated AR price for most metadata transactions */
-export const assumedMetadataTxPrice = 0.000_002_500_000;
+export const assumedMetadataTxARPrice = 0.000_002_500_000;
 
 //Note: Just to easily copy paste later where it's needed
 //import {prodAppUrl,stagingAppUrl,gatewayURL,appName,webAppName,appVersion,arFSVersion,cipher} from './constants';

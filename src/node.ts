@@ -6,7 +6,7 @@ import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
 import { getArDriveTipPercentage } from './smartweave';
 import fetch from 'node-fetch';
-import { assumedMetadataTxPrice, minimumArDriveCommunityTip } from './constants';
+import { assumedMetadataTxARPrice, minArDriveCommunityARTip } from './constants';
 
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
@@ -196,7 +196,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 
 			// Calculate folders that are ready to be uploaded, but have no TX already
 			if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'folder') {
-				totalArweaveMetadataPrice += assumedMetadataTxPrice;
+				totalArweaveMetadataPrice += assumedMetadataTxARPrice;
 				uploadBatch.totalNumberOfFolderUploads += 1;
 			}
 
@@ -212,7 +212,7 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 
 			// Add in MetaData TX for a file
 			if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
-				totalArweaveMetadataPrice += assumedMetadataTxPrice;
+				totalArweaveMetadataPrice += assumedMetadataTxARPrice;
 				uploadBatch.totalNumberOfMetaDataUploads += 1;
 			}
 			return 'Calculated price';
@@ -238,6 +238,7 @@ export async function estimateArCost(totalSize: number, numberOfFiles = 1): Prom
 	// Extra bytes added to the header of data uploads
 	const headerByteSize = 3210;
 	const sizeWithHeaders = totalSize + numberOfFiles * headerByteSize;
+
 	// Get Winston value from gateway, and convert to AR for all files/folders to be uploaded
 	const arCost = common.winstonToAr(await getWinston(sizeWithHeaders));
 	// Return cost, with added community tip
@@ -246,6 +247,6 @@ export async function estimateArCost(totalSize: number, numberOfFiles = 1): Prom
 
 export async function getArDriveCommunityTip(dataPrice: number): Promise<number> {
 	let arDriveCommunityTip = dataPrice * (await getArDriveTipPercentage());
-	arDriveCommunityTip = Math.max(arDriveCommunityTip, minimumArDriveCommunityTip);
+	arDriveCommunityTip = Math.max(arDriveCommunityTip, minArDriveCommunityARTip);
 	return arDriveCommunityTip;
 }
