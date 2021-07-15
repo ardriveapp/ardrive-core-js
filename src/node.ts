@@ -4,9 +4,12 @@ import * as getDb from './db/db_get';
 import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
-import { getArDriveTipPercentage } from './smartweave';
 import fetch from 'node-fetch';
-import { assumedMetadataTxARPrice, minArDriveCommunityARTip } from './constants';
+import { assumedMetadataTxARPrice } from './constants';
+import { GatewayOracle } from './public/gateway_oracle';
+import { ArweaveOracle } from './public/arweave_oracle';
+import { CommunityOracle } from './public/community_oracle';
+import { ArDriveCommunityOracle } from './public/ardrive_community_oracle';
 
 // Gets the price of AR based on amount of data
 export async function getWinston(bytes: number): Promise<number> {
@@ -234,19 +237,20 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 	return uploadBatch;
 }
 
-export async function estimateArCost(totalSize: number, numberOfFiles = 1): Promise<number> {
+export async function estimateArCost(
+	totalFileDataByteCount: number,
+	numberOfFiles = 1,
+	arweaveOracle: ArweaveOracle = new GatewayOracle(),
+	communityOracle: CommunityOracle = new ArDriveCommunityOracle()
+): Promise<number> {
 	// Extra bytes added to the header of data uploads
 	const headerByteSize = 3210;
-	const sizeWithHeaders = totalSize + numberOfFiles * headerByteSize;
+	const totalUploadByteCount = totalFileDataByteCount + numberOfFiles * headerByteSize;
 
 	// Get Winston value from gateway, and convert to AR for all files/folders to be uploaded
-	const arCost = common.winstonToAr(await getWinston(sizeWithHeaders));
-	// Return cost, with added community tip
-	return arCost + (await getArDriveCommunityTip(arCost));
-}
+	const winstonCost = await arweaveOracle.getWinstonPriceForByteCount(totalUploadByteCount);
+	const arCost = common.winstonToAr(winstonCost);
 
-export async function getArDriveCommunityTip(dataPrice: number): Promise<number> {
-	let arDriveCommunityTip = dataPrice * (await getArDriveTipPercentage());
-	arDriveCommunityTip = Math.max(arDriveCommunityTip, minArDriveCommunityARTip);
-	return arDriveCommunityTip;
+	// Return cost, with added community tip
+	return arCost + (await communityOracle.getCommunityARTip(arCost));
 }

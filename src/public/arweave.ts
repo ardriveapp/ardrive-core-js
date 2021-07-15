@@ -22,7 +22,8 @@ import ProgressBar from 'progress';
 import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
 import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './arfs';
 import { selectTokenHolder } from './../smartweave';
-import { getArDriveCommunityTip } from '../node';
+import { ArDriveCommunityOracle } from './ardrive_community_oracle';
+
 // Initialize Arweave
 export const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
@@ -59,7 +60,7 @@ export async function uploadDataChunk(uploader: TransactionUploader): Promise<Tr
 export async function sendArDriveCommunityTip(walletPrivateKey: string, arPrice: number): Promise<string> {
 	try {
 		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		const tip = await getArDriveCommunityTip(arPrice);
+		const tip = await new ArDriveCommunityOracle().getCommunityARTip(arPrice);
 
 		// Probabilistically select the PST token holder
 		const holder = await selectTokenHolder();
