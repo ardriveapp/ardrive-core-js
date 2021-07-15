@@ -516,13 +516,13 @@ export async function getArUSDPrice(): Promise<number> {
 }
 
 // Returns encrypted data using driveKey for folders, and fileKey for files
-export async function getFolderOrFileEncryptedData(
-	fileToUpload: types.ArFSFileMetaData,
+export async function encryptFileOrFolderData(
+	itemToUpload: types.ArFSFileMetaData,
 	driveKey: Buffer,
 	secondaryFileMetaDataJSON: string
 ): Promise<types.ArFSEncryptedData> {
 	const encryptionKey =
-		fileToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(fileToUpload.fileId, driveKey);
+		itemToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(itemToUpload.fileId, driveKey);
 	const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
 		encryptionKey,
 		Buffer.from(secondaryFileMetaDataJSON)
