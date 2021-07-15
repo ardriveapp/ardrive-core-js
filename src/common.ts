@@ -6,7 +6,7 @@ import * as getDb from './db/db_get';
 import * as updateDb from './db/db_update';
 import fetch from 'node-fetch';
 import path, { dirname } from 'path';
-import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { hashElement, HashElementOptions } from 'folder-hash';
 import { Wallet } from './types/arfs_Types';
@@ -517,4 +517,20 @@ export async function getArUSDPrice(): Promise<number> {
 export function winstonToAr(winston: number): number {
 	if (!Number.isInteger(winston)) throw new Error(`Winston value not an integer: ${winston}`);
 	return winston * 0.000_000_000_001;
+}
+
+// Returns encrypted data using driveKey for folders, and fileKey for files
+export async function encryptFileOrFolderData(
+	itemToUpload: types.ArFSFileMetaData,
+	driveKey: Buffer,
+	secondaryFileMetaDataJSON: string
+): Promise<types.ArFSEncryptedData> {
+	const encryptionKey =
+		itemToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(itemToUpload.fileId, driveKey);
+	const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
+		encryptionKey,
+		Buffer.from(secondaryFileMetaDataJSON)
+	);
+
+	return encryptedData;
 }
