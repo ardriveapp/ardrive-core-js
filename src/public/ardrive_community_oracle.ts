@@ -26,12 +26,12 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 			this.setExactTipSettingInBackground();
 		}
 
-		try {
-			if (arDriveTipPercentage !== undefined) {
-				// Tip percentage has already been fetched, return the value
-				return arDriveTipPercentage;
-			}
+		if (arDriveTipPercentage !== undefined) {
+			// Tip percentage has already been fetched, return the value
+			return arDriveTipPercentage;
+		}
 
+		try {
 			// Tip has not been calculated, read from contract (4-6 seconds)
 			const contract = await readContract(arweave, communityTxId, communityTipBlockHeight);
 
