@@ -75,7 +75,7 @@ describe('The winstonToAr function', () => {
 	it('correctly converts winston data price to AR token price', () => {
 		expect(winstonToAr(62_345_548_231)).to.equal(0.062_345_548_231);
 	});
-	it('correctly coverts with negative winston values', () => {
+	it('correctly converts with negative winston values', () => {
 		expect(winstonToAr(-27_853_438)).to.equal(-0.000_027_853_438);
 	});
 	it('correctly converts into 1 AR from winston, and removes all trailing 0s', () => {
