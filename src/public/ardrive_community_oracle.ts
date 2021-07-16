@@ -11,6 +11,7 @@ let arDriveTipPercentage: number | undefined = undefined;
 let isTipPercentageLatestFromSmartWeave = false;
 let isFetchingTipSetting = false;
 
+// Exact block height of the community vote that set the ArDrive Community Fee
 const communityTipBlockHeight = 578358;
 
 export class ArDriveCommunityOracle implements CommunityOracle {
