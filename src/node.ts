@@ -4,20 +4,11 @@ import * as getDb from './db/db_get';
 import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
-import fetch from 'node-fetch';
 import { assumedMetadataTxARPrice } from './constants';
 import { GatewayOracle } from './public/gateway_oracle';
 import { ArweaveOracle } from './public/arweave_oracle';
 import { CommunityOracle } from './public/community_oracle';
 import { ArDriveCommunityOracle } from './public/ardrive_community_oracle';
-
-// Gets the price of AR based on amount of data
-export async function getWinston(bytes: number): Promise<number> {
-	const response = await fetch(`https://arweave.net/price/${bytes}`);
-	// const response = await fetch(`https://perma.online/price/${bytes}`);
-	const winston = await response.json();
-	return winston;
-}
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
 export async function checkUploadStatus(login: string): Promise<string> {

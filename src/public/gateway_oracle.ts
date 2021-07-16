@@ -1,8 +1,9 @@
-import { getWinston } from '../node';
 import { ArweaveOracle } from './arweave_oracle';
+import fetch from 'node-fetch';
 
 export class GatewayOracle implements ArweaveOracle {
-	getWinstonPriceForByteCount(byteCount: number): Promise<number> {
-		return getWinston(byteCount);
+	async getWinstonPriceForByteCount(byteCount: number): Promise<number> {
+		const response = await fetch(`https://arweave.net/price/${byteCount}`);
+		return response.json();
 	}
 }

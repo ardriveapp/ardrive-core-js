@@ -17,7 +17,7 @@ import Transaction from 'arweave/node/lib/transaction';
 import { appName, appVersion, arFSVersion } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
-import { getWinston } from './node';
+import { GatewayOracle } from './public/gateway_oracle';
 
 // Initialize the arweave-bundles API used for ANS102 Transactions
 const deps = {
@@ -60,7 +60,9 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 					const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, filesToUpload[n]);
 					if (fileDataItem !== null) {
 						// Get the price of this upload
-						const winston = await getWinston(filesToUpload[n].fileSize);
+						const winston = await new GatewayOracle().getWinstonPriceForByteCount(
+							filesToUpload[n].fileSize
+						);
 						totalSize += filesToUpload[n].fileSize;
 						totalARPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 						filesToUpload[n].dataTxId = fileDataItem.id;
@@ -173,7 +175,9 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 						const fileDataItem: DataItemJson | null = await createArFSFileDataItem(user, fileToUpload);
 						if (fileDataItem !== null) {
 							// Get the price of this upload
-							const winston = await getWinston(fileToUpload.fileSize);
+							const winston = await new GatewayOracle().getWinstonPriceForByteCount(
+								fileToUpload.fileSize
+							);
 							totalSize += fileToUpload.fileSize;
 							totalPrice += +winston * 0.000000000001; // Sum up all of the fees paid
 							fileToUpload.dataTxId = fileDataItem.id;
