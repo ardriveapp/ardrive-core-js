@@ -34,6 +34,8 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 			// Tip has not been calculated, read from contract (4-6 seconds)
 			const contract = await readContract(arweave, communityTxId, communityTipBlockHeight);
+
+			// Grabs last vote from block height of community vote setting the community fee value
 			const communityTipValue = contract.votes[contract.votes.length - 1].value;
 
 			if (communityTipValue) {
@@ -72,12 +74,13 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 		try {
 			const contract = await readContract(arweave, communityTxId);
-			const arDriveCommTipFromSettings: number = contract.settings.find(
+			const arDriveCommTipFromSettings: ['fee', number] = contract.settings.find(
 				(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
 			);
+
 			if (arDriveCommTipFromSettings) {
 				// Exact tip percentage has been retrieved from settings, set in cache
-				arDriveTipPercentage = arDriveCommTipFromSettings;
+				arDriveTipPercentage = arDriveCommTipFromSettings[1];
 				isTipPercentageLatestFromSmartWeave = true;
 			}
 		} catch (err) {
