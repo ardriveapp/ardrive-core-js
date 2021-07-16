@@ -1,5 +1,4 @@
 import { readContract } from 'smartweave';
-import { sleep } from '../common';
 import { communityTxId, minArDriveCommunityARTip } from '../constants';
 import { arweave } from './arweave';
 import { CommunityOracle } from './community_oracle';
@@ -61,13 +60,9 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	 *       chance of retrieving the exact value before the user needs it
 	 */
 	async setExactTipSettingInBackground(): Promise<void> {
-		while (isFetchingTipSetting) {
-			// Do not run if contract is currently being read
-			await sleep(500);
-		}
-
-		if (isTipPercentageLatestFromSmartWeave) {
-			// Exact tip percentage has already been derived, return early
+		if (isTipPercentageLatestFromSmartWeave || isFetchingTipSetting) {
+			// Exact tip percentage has already been derived or
+			// the contract is currently being read, return early
 			return;
 		}
 

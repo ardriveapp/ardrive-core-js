@@ -3,7 +3,6 @@ import { estimateArCost } from './node';
 import { ArweaveOracle } from './public/arweave_oracle';
 import { stubInterface } from 'ts-sinon';
 import { CommunityOracle } from './public/community_oracle';
-import { minArDriveCommunityARTip } from './constants';
 
 describe('The estimateArCost function', function () {
 	const arweaveOracleStub = stubInterface<ArweaveOracle>();
