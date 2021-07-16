@@ -16,7 +16,7 @@ describe('The estimateArCost function', function () {
 	const communityOracleStub = stubInterface<CommunityOracle>();
 	communityOracleStub.getCommunityARTip.returns(
 		new Promise((resolve) => {
-			resolve(minArDriveCommunityARTip);
+			resolve(0.000_010_000_000);
 		})
 	);
 
