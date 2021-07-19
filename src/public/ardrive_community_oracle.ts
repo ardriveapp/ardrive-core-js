@@ -76,7 +76,7 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 			if (arDriveCommTipFromSettings) {
 				// Exact tip percentage has been retrieved from settings, set in cache
-				arDriveTipPercentage = arDriveCommTipFromSettings[1];
+				arDriveTipPercentage = arDriveCommTipFromSettings[1] / 100;
 				isTipPercentageLatestFromSmartWeave = true;
 			}
 		} catch (err) {
