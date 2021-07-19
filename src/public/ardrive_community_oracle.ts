@@ -27,6 +27,10 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 			const communityTipValue = await contractOracle.getTipSetting(communityTipBlockHeight);
 
 			if (communityTipValue) {
+				if (arDriveTipPercentage !== undefined) {
+					// Percentage was set in the background during the contract read, return value
+					return arDriveTipPercentage;
+				}
 				// Set percentage in cache to avoid repeat checks
 				arDriveTipPercentage = communityTipValue / 100; // Converts to percentage
 				return arDriveTipPercentage;
