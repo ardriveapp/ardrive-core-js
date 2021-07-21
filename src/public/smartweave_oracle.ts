@@ -18,11 +18,13 @@ export class SmartWeaveContractOracle implements ContractOracle {
 
 		if (!arDriveCommTipFromVotes) {
 			throw new Error('Fee does exist on smart contract community fee vote');
-		} else if (typeof arDriveCommTipFromVotes !== 'number') {
-			throw new Error('Fee on smart contract community fee vote is not a number');
-		} else {
-			return arDriveCommTipFromVotes;
 		}
+
+		if (typeof arDriveCommTipFromVotes !== 'number') {
+			throw new Error('Fee on smart contract community fee vote is not a number');
+		}
+
+		return arDriveCommTipFromVotes;
 	}
 
 	/* Grabs fee directly from the settings at the bottom of the contract */
@@ -31,11 +33,13 @@ export class SmartWeaveContractOracle implements ContractOracle {
 
 		if (!arDriveCommTipFromSettings) {
 			throw new Error('Fee does exist on smart contract settings');
-		} else if (typeof arDriveCommTipFromSettings[1] !== 'number') {
-			throw new Error('Fee on smart contract settings is not a number');
-		} else {
-			return arDriveCommTipFromSettings[1];
 		}
+
+		if (typeof arDriveCommTipFromSettings[1] !== 'number') {
+			throw new Error('Fee on smart contract settings is not a number');
+		}
+
+		return arDriveCommTipFromSettings[1];
 	}
 
 	/**
