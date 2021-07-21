@@ -8,7 +8,7 @@ const defaultArDriveTipPercentage = 0.15;
 let arDriveTipPercentage: number | undefined = undefined;
 
 // Exact block height of the community vote that set the ArDrive Community Fee
-const communityTipBlockHeight = 578358;
+export const communityTipBlockHeight = 578358;
 
 export class ArDriveCommunityOracle implements CommunityOracle {
 	async getCommunityARTip(arCost: number): Promise<number> {
