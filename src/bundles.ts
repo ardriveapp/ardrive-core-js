@@ -64,7 +64,7 @@ export async function uploadArDriveFilesAndBundles(user: types.ArDriveUser): Pro
 							filesToUpload[n].fileSize
 						);
 						totalSize += filesToUpload[n].fileSize;
-						totalARPrice += common.winstonToAr(+winston); // Sum up all of the fees paid
+						totalARPrice += common.winstonToAr(winston); // Sum up all of the fees paid
 						filesToUpload[n].dataTxId = fileDataItem.id;
 						items.push(fileDataItem);
 						bundledFilesUploaded += 1;
@@ -179,7 +179,7 @@ export async function uploadArDriveBundles(user: types.ArDriveUser): Promise<str
 								fileToUpload.fileSize
 							);
 							totalSize += fileToUpload.fileSize;
-							totalPrice += common.winstonToAr(+winston); // Sum up all of the fees paid
+							totalPrice += common.winstonToAr(winston); // Sum up all of the fees paid
 							fileToUpload.dataTxId = fileDataItem.id;
 							items.push(fileDataItem);
 							filesUploaded += 1;
