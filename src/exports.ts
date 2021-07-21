@@ -17,6 +17,10 @@ export * from './public/arweave';
 export * from './public/drives';
 export * from './public/sharing';
 
+export * from './public/ardrive_community_oracle';
+export * from './public/smartweave_oracle';
+export * from './public/gateway_oracle';
+
 //Private
 export * from './private/arfs_private';
 export * from './private/drives_private';
