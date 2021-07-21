@@ -17,7 +17,7 @@ export class SmartWeaveContractOracle implements ContractOracle {
 		const arDriveCommTipFromVotes = contract.votes[contract.votes.length - 1].value;
 
 		if (!arDriveCommTipFromVotes) {
-			throw new Error('Fee does exist on smart contract community fee vote');
+			throw new Error('Fee does not exist on the smart contract community fee vote');
 		}
 
 		if (typeof arDriveCommTipFromVotes !== 'number') {
@@ -32,7 +32,7 @@ export class SmartWeaveContractOracle implements ContractOracle {
 		const arDriveCommTipFromSettings = contract.settings.find((setting) => setting[0] === 'fee');
 
 		if (!arDriveCommTipFromSettings) {
-			throw new Error('Fee does exist on smart contract settings');
+			throw new Error('Fee does not exist on smart contract settings');
 		}
 
 		if (typeof arDriveCommTipFromSettings[1] !== 'number') {
