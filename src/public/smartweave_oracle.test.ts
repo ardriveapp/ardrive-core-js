@@ -15,7 +15,7 @@ describe('The SmartWeaveContractOracle class', () => {
 		settings: [['fee', 555]]
 	};
 
-	it('retrieves tip setting from votes when a block height is provided', async () => {
+	it('getCommunityTipSetting function retrieves tip setting from votes when a block height is provided', async () => {
 		const readContractSpy = stub(smartWeaveContractOracle, 'readContract').callsFake(() =>
 			Promise.resolve(stubContractData)
 		);
@@ -31,7 +31,7 @@ describe('The SmartWeaveContractOracle class', () => {
 		return;
 	});
 
-	it('retrieves tip setting from contract settings when a block height is NOT provided', async () => {
+	it('getCommunityTipSetting function retrieves tip setting from contract settings when a block height is NOT provided', async () => {
 		const readContractSpy = stub(smartWeaveContractOracle, 'readContract').callsFake(() =>
 			Promise.resolve(stubContractData)
 		);
@@ -45,5 +45,13 @@ describe('The SmartWeaveContractOracle class', () => {
 		expect(exactSettingSpy.calledOnceWithExactly(stubContractData)).to.be.true;
 
 		return;
+	});
+
+	it('getTipSettingFromContractVotes function retrieves the correct votes value', () => {
+		expect(smartWeaveContractOracle.getTipSettingFromContractVotes(stubContractData)).to.equal(999);
+	});
+
+	it('getTipSettingFromContractSettings function retrieves the correct settings value', () => {
+		expect(smartWeaveContractOracle.getTipSettingFromContractSettings(stubContractData)).to.equal(555);
 	});
 });
