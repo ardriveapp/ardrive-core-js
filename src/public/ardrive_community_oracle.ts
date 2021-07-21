@@ -5,12 +5,13 @@ import { SmartWeaveContractOracle } from './smartweave_oracle';
 
 // Default tip of 15% if we cannot pull it from the community contract
 const defaultArDriveTipPercentage = 0.15;
-let arDriveTipPercentage: number | undefined = undefined;
+let cachedArDriveTipPercentage: number | undefined = undefined;
 
 // Exact block height of the community vote that set the ArDrive Community Fee
 export const communityTipBlockHeight = 578358;
 
 export class ArDriveCommunityOracle implements CommunityOracle {
+	/** Given an AR data cost, returns a calculated ArDrive community tip amount in AR */
 	async getCommunityARTip(arCost: number): Promise<number> {
 		const arDriveCommunityTip = arCost * (await this.getArDriveTipPercentage());
 		return Math.max(arDriveCommunityTip, minArDriveCommunityARTip);
@@ -26,9 +27,9 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	 * vote that set the ArDrive community tip
 	 */
 	async getArDriveTipPercentage(contractOracle: ContractOracle = new SmartWeaveContractOracle()): Promise<number> {
-		if (arDriveTipPercentage !== undefined) {
+		if (cachedArDriveTipPercentage !== undefined) {
 			// Tip percentage has already been fetched, return that value
-			return arDriveTipPercentage;
+			return cachedArDriveTipPercentage;
 		}
 
 		try {
@@ -36,13 +37,13 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 			const communityTipValue = await contractOracle.getCommunityTipSetting(communityTipBlockHeight);
 
 			if (communityTipValue) {
-				if (arDriveTipPercentage !== undefined) {
+				if (cachedArDriveTipPercentage !== undefined) {
 					// Percentage was set in the background during the contract read, return that value
-					return arDriveTipPercentage;
+					return cachedArDriveTipPercentage;
 				}
 				// Convert to percentage and set in cache to avoid repeat contract reads
-				arDriveTipPercentage = this.convertToPercentage(communityTipValue);
-				return arDriveTipPercentage;
+				cachedArDriveTipPercentage = this.convertToPercentage(communityTipValue);
+				return cachedArDriveTipPercentage;
 			} else {
 				return defaultArDriveTipPercentage;
 			}
@@ -54,9 +55,8 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	}
 
 	/**
-	 * Derives the exact setting from smartweave contract (35-50+ seconds)
+	 * Fetches and caches the exact setting from SmartWeave contract (35-50+ seconds)
 	 * This function is to be used in the background and not awaited on
-	 * When the setting is derived, it will set it in the cache (arDriveTipPercentage)
 	 */
 	async setExactTipSettingInBackground(
 		contractOracle: ContractOracle = new SmartWeaveContractOracle()
@@ -65,23 +65,12 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 			// Reads full smart contract, returns community tip value (35-50 seconds)
 			const arDriveCommTipFromSettings = await contractOracle.getCommunityTipSetting();
 
-			if (arDriveCommTipFromSettings) {
-				// Exact tip percentage has been retrieved from settings, set in cache
-				arDriveTipPercentage = this.convertToPercentage(arDriveCommTipFromSettings);
-				return arDriveTipPercentage;
-			} else {
-				return 0;
-			}
+			// Exact tip percentage has been retrieved from settings, set in cache
+			cachedArDriveTipPercentage = this.convertToPercentage(arDriveCommTipFromSettings);
+			return cachedArDriveTipPercentage;
 		} catch (err) {
 			console.log(err);
 			return 0;
 		}
 	}
-}
-
-if (process.env.NODE_ENV !== 'test') {
-	// Sends background task after initial startup, but not during testing
-	setTimeout(() => {
-		new ArDriveCommunityOracle().setExactTipSettingInBackground();
-	}, 500);
 }
