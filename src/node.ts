@@ -8,7 +8,7 @@ import { assumedMetadataTxARPrice } from './constants';
 import { GatewayOracle } from './public/gateway_oracle';
 import { ArweaveOracle } from './public/arweave_oracle';
 import { CommunityOracle } from './public/community_oracle';
-import { ArDriveCommunityOracle } from './public/ardrive_community_oracle';
+import { arDriveCommunityOracle } from './public/ardrive_community_oracle';
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
 export async function checkUploadStatus(login: string): Promise<string> {
@@ -232,7 +232,7 @@ export async function estimateArCost(
 	totalFileDataByteCount: number,
 	numberOfFiles = 1,
 	arweaveOracle: ArweaveOracle = new GatewayOracle(),
-	communityOracle: CommunityOracle = new ArDriveCommunityOracle()
+	communityOracle: CommunityOracle = arDriveCommunityOracle
 ): Promise<number> {
 	// Extra bytes added to the header of data uploads
 	const headerByteSize = 3210;
