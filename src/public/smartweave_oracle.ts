@@ -17,7 +17,7 @@ export class SmartWeaveContractOracle implements ContractOracle {
 	getTipSettingFromContractVotes(contract: CommunityContractData): number {
 		const arDriveCommTipFromVotes = contract.votes[contract.votes.length - 1].value;
 
-		if (arDriveCommTipFromVotes !== undefined) {
+		if (arDriveCommTipFromVotes === undefined) {
 			throw new Error('Value does not exist on the smart contract community fee vote');
 		}
 
