@@ -6,7 +6,7 @@ import { ArDriveCommunityOracle, communityTipBlockHeight } from './ardrive_commu
 import { ContractOracle } from './contract_oracle';
 
 describe('The ArDriveCommunityOracle class', () => {
-	it('returns a decimal to be used as a percentage using the `getArDriveTipPercentage` function', async () => {
+	it('`getArDriveTipPercentage` function returns a decimal to be used as a percentage', async () => {
 		const smartWeaveOracleStub = stubInterface<ContractOracle>();
 		smartWeaveOracleStub.getCommunityTipSetting.returns(
 			new Promise((resolve) => {
@@ -22,7 +22,7 @@ describe('The ArDriveCommunityOracle class', () => {
 		return;
 	});
 
-	it('returns a decimal to be used as a percentage using the `setExactTipSettingInBackground` function', async () => {
+	it('`setExactTipSettingInBackground` returns a decimal to be used as a percentage', async () => {
 		const smartWeaveOracleStub = stubInterface<ContractOracle>();
 		smartWeaveOracleStub.getCommunityTipSetting.returns(
 			new Promise((resolve) => {
@@ -38,7 +38,7 @@ describe('The ArDriveCommunityOracle class', () => {
 		return;
 	});
 
-	it('returns the `minArDriveCommunityARTip` if the calculated community tip is a smaller value', async () => {
+	it('`getCommunityARTip` function returns the `minArDriveCommunityARTip` if the calculated community tip is a smaller value', async () => {
 		const arDriveCommunityOracle = new ArDriveCommunityOracle();
 
 		const getArDriveTipSpy = stub(arDriveCommunityOracle, 'getArDriveTipPercentage').callsFake(() =>
