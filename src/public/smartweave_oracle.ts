@@ -7,6 +7,7 @@ export interface CommunityContractData {
 	votes: [Record<string, unknown>];
 	settings: [string, unknown][];
 }
+
 export class SmartWeaveContractOracle implements ContractOracle {
 	async readContract(txId: string, blockHeight?: number): Promise<CommunityContractData> {
 		return readContract(arweave, txId, blockHeight);
@@ -16,12 +17,16 @@ export class SmartWeaveContractOracle implements ContractOracle {
 	getTipSettingFromContractVotes(contract: CommunityContractData): number {
 		const arDriveCommTipFromVotes = contract.votes[contract.votes.length - 1].value;
 
-		if (!arDriveCommTipFromVotes) {
-			throw new Error('Fee does not exist on the smart contract community fee vote');
+		if (arDriveCommTipFromVotes !== undefined) {
+			throw new Error('Value does not exist on the smart contract community fee vote');
 		}
 
 		if (typeof arDriveCommTipFromVotes !== 'number') {
-			throw new Error('Fee on smart contract community fee vote is not a number');
+			throw new Error('Value on smart contract community fee vote is not a number');
+		}
+
+		if (arDriveCommTipFromVotes < 0) {
+			throw new Error('Value on smart contract community fee vote is set to a negative number');
 		}
 
 		return arDriveCommTipFromVotes;
@@ -29,7 +34,9 @@ export class SmartWeaveContractOracle implements ContractOracle {
 
 	/* Grabs fee directly from the settings at the bottom of the contract */
 	getTipSettingFromContractSettings(contract: CommunityContractData): number {
-		const arDriveCommTipFromSettings = contract.settings.find((setting) => setting[0] === 'fee');
+		const arDriveCommTipFromSettings: [string, unknown] | undefined = contract.settings.find(
+			(setting) => setting[0] === 'fee'
+		);
 
 		if (!arDriveCommTipFromSettings) {
 			throw new Error('Fee does not exist on smart contract settings');
@@ -37,6 +44,10 @@ export class SmartWeaveContractOracle implements ContractOracle {
 
 		if (typeof arDriveCommTipFromSettings[1] !== 'number') {
 			throw new Error('Fee on smart contract settings is not a number');
+		}
+
+		if (arDriveCommTipFromSettings[1] < 0) {
+			throw new Error('Fee on smart contract community settings is set to a negative number');
 		}
 
 		return arDriveCommTipFromSettings[1];
