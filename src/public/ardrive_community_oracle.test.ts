@@ -38,18 +38,36 @@ describe('The ArDriveCommunityOracle class', () => {
 		return;
 	});
 
-	it('`getCommunityARTip` function returns the `minArDriveCommunityARTip` if the calculated community tip is a smaller value', async () => {
-		const arDriveCommunityOracle = new ArDriveCommunityOracle();
+	describe('`getCommunityARTip` function', () => {
+		it('returns the `minArDriveCommunityARTip` if the calculated community tip is a smaller value', async () => {
+			const arDriveCommunityOracle = new ArDriveCommunityOracle();
 
-		const getArDriveTipSpy = stub(arDriveCommunityOracle, 'getArDriveTipPercentage').callsFake(() =>
-			Promise.resolve(1)
-		);
+			const getArDriveTipSpy = stub(arDriveCommunityOracle, 'getArDriveTipPercentage').callsFake(() =>
+				Promise.resolve(1)
+			);
 
-		const output = await arDriveCommunityOracle.getCommunityARTip(minArDriveCommunityARTip - 0.000_000_000_001);
+			const output = await arDriveCommunityOracle.getCommunityARTip(minArDriveCommunityARTip - 0.000_000_000_001);
 
-		expect(output).to.equal(minArDriveCommunityARTip);
-		expect(getArDriveTipSpy.calledOnce).to.be.true;
+			expect(output).to.equal(minArDriveCommunityARTip);
+			expect(getArDriveTipSpy.calledOnce).to.be.true;
 
-		return;
+			return;
+		});
+
+		it('returns the calculated community tip value if it is larger than `minArDriveCommunityARTip`', async () => {
+			const arDriveCommunityOracle = new ArDriveCommunityOracle();
+
+			const getArDriveTipSpy = stub(arDriveCommunityOracle, 'getArDriveTipPercentage').callsFake(() =>
+				Promise.resolve(1)
+			);
+
+			const input = minArDriveCommunityARTip + 0.000_000_000_001;
+			const output = await arDriveCommunityOracle.getCommunityARTip(input);
+
+			expect(output).to.equal(input);
+			expect(getArDriveTipSpy.calledOnce).to.be.true;
+
+			return;
+		});
 	});
 });
