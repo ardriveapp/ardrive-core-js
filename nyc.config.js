@@ -7,6 +7,7 @@
 
 // Reference for config options: https://github.com/istanbuljs/nyc#common-configuration-options
 module.exports = {
+	extends: '@istanbuljs/nyc-config-typescript',
 	extension: ['.ts'],
 	include: ['src/**/*.ts'],
 	exclude: ['**/*.d.ts', '**/*.test.ts'],
