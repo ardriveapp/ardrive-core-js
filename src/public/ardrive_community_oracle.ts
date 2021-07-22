@@ -56,8 +56,8 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	async setExactTipSettingInBackground(
 		contractOracle: ContractOracle = new SmartWeaveContractOracle()
 	): Promise<number> {
-		if (this.isCommTipFromExactSettings) {
-			return 0;
+		if (this.isCommTipFromExactSettings && this.cachedArDriveTipPercentage) {
+			return this.cachedArDriveTipPercentage;
 		}
 
 		try {
