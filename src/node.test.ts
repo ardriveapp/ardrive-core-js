@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { estimateArCost } from './node';
-import { ArweaveOracle } from './public/arweave_oracle';
+import { ArweaveOracle } from './arweave_oracle';
 import { stubInterface } from 'ts-sinon';
-import { CommunityOracle } from './public/community_oracle';
+import { CommunityOracle } from './community_oracle';
 
 describe('The estimateArCost function', function () {
 	const arweaveOracleStub = stubInterface<ArweaveOracle>();

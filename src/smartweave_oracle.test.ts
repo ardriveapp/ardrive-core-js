@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { spy, stub } from 'sinon';
-import { communityTxId } from '../constants';
+import { communityTxId } from './constants';
 import { CommunityContractData, SmartWeaveContractOracle } from './smartweave_oracle';
 
 describe('The SmartWeaveContractOracle class', () => {

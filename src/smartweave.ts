@@ -1,7 +1,7 @@
 import { readContract } from 'smartweave';
 import { weightedRandom } from './common';
 import { communityTxId } from './constants';
-import { arweave } from './public/arweave';
+import { arweave } from './arweave';
 
 // Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
 export async function selectTokenHolder(): Promise<string | undefined> {

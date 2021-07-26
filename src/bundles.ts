@@ -1,4 +1,4 @@
-import { arweave, sendArDriveCommunityTip } from './public/arweave';
+import { arweave, sendArDriveCommunityTip } from './arweave';
 import * as types from './types/base_Types';
 import * as updateDb from './db/db_update';
 import * as getDb from './db/db_get';
@@ -17,7 +17,7 @@ import Transaction from 'arweave/node/lib/transaction';
 import { appName, appVersion, arFSVersion } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
-import { GatewayOracle } from './public/gateway_oracle';
+import { GatewayOracle } from './gateway_oracle';
 
 // Initialize the arweave-bundles API used for ANS102 Transactions
 const deps = {

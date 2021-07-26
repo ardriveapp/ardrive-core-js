@@ -1,7 +1,7 @@
 import { ContractOracle } from './contract_oracle';
 import { readContract } from 'smartweave';
 import { arweave } from './arweave';
-import { communityTxId } from '../constants';
+import { communityTxId } from './constants';
 
 export interface CommunityContractData {
 	votes: [Record<string, unknown>];

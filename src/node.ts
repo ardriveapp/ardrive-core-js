@@ -5,10 +5,10 @@ import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
 import { assumedMetadataTxARPrice } from './constants';
-import { GatewayOracle } from './public/gateway_oracle';
-import { ArweaveOracle } from './public/arweave_oracle';
-import { CommunityOracle } from './public/community_oracle';
-import { arDriveCommunityOracle } from './public/ardrive_community_oracle';
+import { GatewayOracle } from './gateway_oracle';
+import { ArweaveOracle } from './arweave_oracle';
+import { CommunityOracle } from './community_oracle';
+import { arDriveCommunityOracle } from './ardrive_community_oracle';
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
 export async function checkUploadStatus(login: string): Promise<string> {

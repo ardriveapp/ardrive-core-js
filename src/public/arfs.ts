@@ -1,5 +1,5 @@
 // arfs.js
-import * as arweave from './arweave';
+import * as arweave from '../arweave';
 import * as fs from 'fs';
 import * as clientTypes from '../types/client_Types';
 import { DataItemJson } from 'arweave-bundles';

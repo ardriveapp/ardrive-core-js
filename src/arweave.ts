@@ -1,14 +1,14 @@
-import { asyncForEach, sleep } from './../common';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './../types/base_Types';
+import { asyncForEach, sleep } from './common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
 import {
 	getDriveRootFolderFromSyncTable,
 	getFilesToUploadFromSyncTable,
 	getLatestFolderVersionFromSyncTable,
 	getNewDrivesFromDriveTable
-} from './../db/db_get';
-import { setFilePath } from './../db/db_update';
+} from './db/db_get';
+import { setFilePath } from './db/db_update';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { appName, appVersion, arFSVersion, gatewayURL } from './../constants';
+import { appName, appVersion, arFSVersion, gatewayURL } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
@@ -19,9 +19,9 @@ import path, { dirname } from 'path';
 import { createWriteStream } from 'fs';
 import Axios from 'axios';
 import ProgressBar from 'progress';
-import { deriveDriveKey, deriveFileKey, fileDecrypt } from '../crypto';
-import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './arfs';
-import { selectTokenHolder } from './../smartweave';
+import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
+import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './public/arfs';
+import { selectTokenHolder } from './smartweave';
 import { arDriveCommunityOracle } from './ardrive_community_oracle';
 
 // Initialize Arweave

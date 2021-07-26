@@ -1,4 +1,4 @@
-import { minArDriveCommunityARTip } from '../constants';
+import { minArDriveCommunityARTip } from './constants';
 import { CommunityOracle } from './community_oracle';
 import { ContractOracle } from './contract_oracle';
 import { SmartWeaveContractOracle } from './smartweave_oracle';

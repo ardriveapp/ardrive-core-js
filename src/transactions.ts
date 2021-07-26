@@ -1,4 +1,4 @@
-import { arweave } from './public/arweave';
+import { arweave } from './arweave';
 import Transaction from 'arweave/node/lib/transaction';
 import { ArFSDriveEntity, ArFSFileData, ArFSFileFolderEntity, JWKInterface } from './types/arfs_Types';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';

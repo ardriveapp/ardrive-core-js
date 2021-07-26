@@ -1,4 +1,4 @@
-import { arweave } from './public/arweave';
+import { arweave } from './arweave';
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
 export async function getTransactionData(txid: string): Promise<string | Uint8Array> {

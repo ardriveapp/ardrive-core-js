@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { stubInterface } from 'ts-sinon';
-import { sleep } from '../common';
-import { minArDriveCommunityARTip } from '../constants';
+import { sleep } from './common';
+import { minArDriveCommunityARTip } from './constants';
 import { ArDriveCommunityOracle, communityTipBlockHeight } from './ardrive_community_oracle';
 import { ContractOracle } from './contract_oracle';
 

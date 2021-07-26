@@ -13,13 +13,8 @@ export * from './types/type_guards';
 
 //Public
 export * from './public/arfs';
-export * from './public/arweave';
 export * from './public/drives';
 export * from './public/sharing';
-
-export * from './public/ardrive_community_oracle';
-export * from './public/smartweave_oracle';
-export * from './public/gateway_oracle';
 
 //Private
 export * from './private/arfs_private';
@@ -37,6 +32,11 @@ export * from './node';
 export * from './smartweave';
 export * from './transactions';
 export * from './wallet';
+export * from './arweave';
+
+export * from './ardrive_community_oracle';
+export * from './smartweave_oracle';
+export * from './gateway_oracle';
 
 // Moving to Daemon
 export * from './toDaemon/files';
