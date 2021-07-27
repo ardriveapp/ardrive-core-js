@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { stubInterface } from 'ts-sinon';
-import { sleep } from './common';
 import { minArDriveCommunityARTip } from './constants';
 import { ArDriveCommunityOracle, communityTipBlockHeight } from './ardrive_community_oracle';
 import { ContractOracle } from './contract_oracle';
@@ -37,29 +36,23 @@ describe('The ArDriveCommunityOracle class', () => {
 
 		it('will not overwrite `cachedArDriveTipPercentage` if it has already been defined during the async call', async () => {
 			const smartWeaveOracleStub = stubInterface<ContractOracle>();
-
-			smartWeaveOracleStub.getCommunityTipSetting.callsFake(async () => {
-				await sleep(10);
-				return 123;
-			});
+			smartWeaveOracleStub.getCommunityTipSetting.callsFake(() => Promise.resolve(123));
 
 			const arDriveCommunityOracle = new ArDriveCommunityOracle();
 
 			// Non-awaited call to trigger gathering percentage
-			arDriveCommunityOracle.getArDriveTipPercentage(smartWeaveOracleStub);
+			const promiseFromInitialCall = arDriveCommunityOracle.getArDriveTipPercentage(smartWeaveOracleStub);
 
-			// Set tip in cache during call
+			// Cached percentage still undefined, getArDriveTipPercentage has not finished
+			expect(arDriveCommunityOracle.cachedArDriveTipPercentage).to.be.undefined;
+
+			// Set tip in cache still during async call
 			arDriveCommunityOracle.cachedArDriveTipPercentage = 2;
 
-			// Wait for call to finish
-			await sleep(15);
+			// Initial call has returned with manually set cached percentage, not the stubbed 123 response
+			expect(await promiseFromInitialCall).to.equal(2);
 
-			// Run again to grab the cached percentage
-			const output = await arDriveCommunityOracle.getArDriveTipPercentage(smartWeaveOracleStub);
-
-			// Expect value which was assigned during async call
-			expect(output).to.equal(2);
-
+			// Ensure `getCommunityTipSetting` was called only once
 			expect(smartWeaveOracleStub.getCommunityTipSetting.calledOnceWithExactly(communityTipBlockHeight)).to.be
 				.true;
 
