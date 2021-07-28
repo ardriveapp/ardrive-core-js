@@ -91,4 +91,7 @@ describe('The winstonToAr function', () => {
 		const input = 72_427_931.32;
 		expect(() => winstonToAr(input)).to.throw(`Winston value not an integer: ${input}`);
 	});
+	it("correctly converts winston data price to AR token price using the JavaScript's maximum safe integer", () => {
+		expect(winstonToAr(Number.MAX_SAFE_INTEGER)).to.equal(9_007.199_254_740_99);
+	});
 });
