@@ -8,7 +8,16 @@ export interface CommunityContractData {
 	settings: [string, unknown][];
 }
 
+/**
+ * The SmartWeaveContractOracle handles reading the ArDrive Community Contract
+ * and returning the community tip as a value
+ *
+ * Thrown errors from this class are all to be caught in ardrive_community_oracle
+ *
+ * @TODO Discuss a standard way to handle errors moving forward
+ */
 export class SmartWeaveContractOracle implements ContractOracle {
+	/** @TODO Add timeout to check for readContract calls that take too long and gracefully handles errors */
 	async readContract(txId: string, blockHeight?: number): Promise<CommunityContractData> {
 		return readContract(arweave, txId, blockHeight);
 	}
