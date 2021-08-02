@@ -514,6 +514,17 @@ export async function getArUSDPrice(): Promise<number> {
 		return 0;
 	}
 }
+/**
+ * Converts Winston value into AR
+ *
+ * @throws Error when Winston value is not an integer
+ *
+ * @TODO Handle integer overflow
+ */
+export function winstonToAr(winston: number): number {
+	if (!Number.isInteger(winston)) throw new Error(`Winston value not an integer: ${winston}`);
+	return winston * 0.000_000_000_001;
+}
 
 // Returns encrypted data using driveKey for folders, and fileKey for files
 export async function encryptFileOrFolderData(

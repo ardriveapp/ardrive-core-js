@@ -64,6 +64,7 @@
 		"sinon": "^11.1.1",
 		"source-map-support": "^0.5.19",
 		"ts-node": "^10.1.0",
+		"ts-sinon": "^2.0.1",
 		"tsc-files": "^1.1.2"
 	},
 	"scripts": {

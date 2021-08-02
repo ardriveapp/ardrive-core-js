@@ -4,16 +4,11 @@ import * as getDb from './db/db_get';
 import * as common from './common';
 import { deleteFromSyncTable } from './db/db_delete';
 import { getTransactionStatus } from './gateway';
-import { getArDriveFee } from './smartweave';
-import fetch from 'node-fetch';
-
-// Gets the price of AR based on amount of data
-export async function getWinston(bytes: number): Promise<number> {
-	const response = await fetch(`https://arweave.net/price/${bytes}`);
-	// const response = await fetch(`https://perma.online/price/${bytes}`);
-	const winston = await response.json();
-	return winston;
-}
+import { assumedMetadataTxARPrice } from './constants';
+import { GatewayOracle } from './gateway_oracle';
+import { ArweaveOracle } from './arweave_oracle';
+import { CommunityOracle } from './community_oracle';
+import { arDriveCommunityOracle } from './ardrive_community_oracle';
 
 // Scans through the queue & checks if a file has been mined, and if it has moves to Completed Table. If a file is not on the permaweb it will be uploaded
 export async function checkUploadStatus(login: string): Promise<string> {
@@ -169,10 +164,9 @@ export async function checkUploadStatus(login: string): Promise<string> {
 
 // Grabs all files in the database for a user and determines the cost of all files/folders ready to be uploaded
 export async function getPriceOfNextUploadBatch(login: string): Promise<types.UploadBatch> {
-	let totalWinstonData = 0;
 	let totalArweaveMetadataPrice = 0;
 	let totalSize = 0;
-	let winston = 0;
+
 	const uploadBatch: types.UploadBatch = {
 		totalArDrivePrice: 0,
 		totalUSDPrice: 0,
@@ -185,57 +179,69 @@ export async function getPriceOfNextUploadBatch(login: string): Promise<types.Up
 	// Get all files that are ready to be uploaded
 	const filesToUpload: types.ArFSFileMetaData[] = getDb.getFilesToUploadFromSyncTable(login);
 	if (Object.keys(filesToUpload).length > 0) {
-		// Estimate the size by getting the size of 1MB
-		const priceFor1MB = await getWinston(1000000);
-		const pricePerByte = priceFor1MB / 1003210;
-
 		// Calculate the size/price for each file/folder
 		await common.asyncForEach(filesToUpload, async (fileToUpload: types.ArFSFileMetaData) => {
-			// If the file doesnt exist, we must remove it from the Sync table and not include it in our upload price
+			// If the file doesn't exist, we must remove it from the Sync table and not include it in our upload price
 			if (!common.checkFileExistsSync(fileToUpload.filePath)) {
 				console.log('%s is not local anymore.  Removing from the queue.', fileToUpload.filePath);
 				await deleteFromSyncTable(fileToUpload.id);
 				return 'File not local anymore';
 			}
+
 			// Calculate folders that are ready to be uploaded, but have no TX already
 			if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'folder') {
-				totalArweaveMetadataPrice += 0.0000005; // Ths is the price we assume it costs for a metadata tx
+				totalArweaveMetadataPrice += assumedMetadataTxARPrice;
 				uploadBatch.totalNumberOfFolderUploads += 1;
 			}
-			// If this is a file we calculate the cost and add up the size.  We do not bundle/approve more than 2GB of data at a time
+
+			// Entity is file, add up the sizes -- we do not bundle/approve more than 2GB of data at a time
 			if (
 				+fileToUpload.fileDataSyncStatus === 1 &&
 				fileToUpload.entityType === 'file' &&
 				totalSize <= 2000000000
 			) {
 				totalSize += +fileToUpload.fileSize;
-				//winston = await getWinston(fileToUpload.fileSize);
-				winston = (fileToUpload.fileSize + 3210) * pricePerByte;
-				totalWinstonData += +winston + 0.0000005;
 				uploadBatch.totalNumberOfFileUploads += 1;
 			}
+
+			// Add in MetaData TX for a file
 			if (+fileToUpload.fileMetaDataSyncStatus === 1 && fileToUpload.entityType === 'file') {
-				totalArweaveMetadataPrice += 0.0000005;
+				totalArweaveMetadataPrice += assumedMetadataTxARPrice;
 				uploadBatch.totalNumberOfMetaDataUploads += 1;
 			}
 			return 'Calculated price';
 		});
 
-		// Calculate the total price for all files/folders
-		const totalArweaveDataPrice = totalWinstonData * 0.000000000001;
+		// Get estimated AR cost from gateway, and convert to AR for all files/folders to be uploaded
+		let totalArweaveDataPrice = await estimateArCost(totalSize, uploadBatch.totalNumberOfFileUploads);
 
-		// Add the ArDrive fee
-		let arDriveFee = +totalArweaveDataPrice.toFixed(9) * ((await getArDriveFee()) / 100);
-		if (arDriveFee < 0.00001 && totalArweaveDataPrice > 0) {
-			arDriveFee = 0.00001;
-		}
+		// Finalize total price with assumed metadata price
+		totalArweaveDataPrice += totalArweaveMetadataPrice;
 
 		// Prepare the upload batch
-		uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(9) + arDriveFee + totalArweaveMetadataPrice;
+		uploadBatch.totalArDrivePrice = +totalArweaveDataPrice.toFixed(12);
 		uploadBatch.totalUSDPrice = uploadBatch.totalArDrivePrice * (await common.getArUSDPrice());
 		uploadBatch.totalSize = common.formatBytes(totalSize);
 
 		return uploadBatch;
 	}
 	return uploadBatch;
+}
+
+export async function estimateArCost(
+	totalFileDataByteCount: number,
+	numberOfFiles = 1,
+	arweaveOracle: ArweaveOracle = new GatewayOracle(),
+	communityOracle: CommunityOracle = arDriveCommunityOracle
+): Promise<number> {
+	// Extra bytes added to the header of data uploads
+	const headerByteSize = 3210;
+	const totalUploadByteCount = totalFileDataByteCount + numberOfFiles * headerByteSize;
+
+	// Get Winston value from gateway, and convert to AR for all files/folders to be uploaded
+	const winstonCost = await arweaveOracle.getWinstonPriceForByteCount(totalUploadByteCount);
+	const arCost = common.winstonToAr(winstonCost);
+
+	// Return cost, with added community tip
+	return arCost + (await communityOracle.getCommunityARTip(arCost));
 }

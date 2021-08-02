@@ -1,22 +1,7 @@
 import { readContract } from 'smartweave';
 import { weightedRandom } from './common';
-import { arweave } from './public/arweave';
-
-// ArDrive Profit Sharing Community Smart Contract
-const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
-
-// Calls the ArDrive Community Smart Contract to pull the fee
-export async function getArDriveFee(): Promise<number> {
-	try {
-		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
-			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
-	} catch {
-		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
-	}
-}
+import { communityTxId } from './constants';
+import { arweave } from './arweave';
 
 // Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
 export async function selectTokenHolder(): Promise<string | undefined> {

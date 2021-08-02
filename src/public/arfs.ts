@@ -1,5 +1,5 @@
 // arfs.js
-import * as arweave from './arweave';
+import * as arweave from '../arweave';
 import * as fs from 'fs';
 import * as clientTypes from '../types/client_Types';
 import { DataItemJson } from 'arweave-bundles';
@@ -8,9 +8,10 @@ import { JWKInterface } from './../types/arfs_Types';
 import { ArDriveUser, ArFSDriveMetaData, ArFSEncryptedData, ArFSFileMetaData } from './../types/base_Types';
 import * as updateDb from './../db/db_update';
 import { deriveDriveKey, deriveFileKey, driveEncrypt, getFileAndEncrypt } from '../crypto';
-import { getWinston } from '../node';
+import { estimateArCost } from '../node';
 import { createFileDataItemTransaction, createFileFolderMetaDataItemTransaction } from '../bundles';
 import { createDataUploader, createFileDataTransaction, createFileFolderMetaDataTransaction } from './../transactions';
+import { assumedMetadataTxARPrice } from '../constants';
 import { encryptFileOrFolderData } from '../common';
 
 // Tags and creates a new data item (ANS-102) to be bundled and uploaded
@@ -326,8 +327,8 @@ export async function uploadArFSFileData(
 	let dataTxId = '';
 	let arPrice = 0;
 	try {
-		const winston = await getWinston(fileToUpload.fileSize);
-		arPrice = +winston * 0.000000000001;
+		arPrice = await estimateArCost(fileToUpload.fileSize);
+		arPrice += assumedMetadataTxARPrice;
 
 		if (fileToUpload.isPublic === 0) {
 			// The file is private and we must encrypt
@@ -400,9 +401,6 @@ export async function uploadArFSFileData(
 		if (uploader.isComplete) {
 			const currentTime = Math.round(Date.now() / 1000);
 			await updateDb.updateFileUploadTimeInSyncTable(fileToUpload.id, currentTime);
-
-			// Send the ArDrive Profit Sharing Community Fee
-			await arweave.sendArDriveFee(user.walletPrivateKey, arPrice);
 		}
 		dataTxId = fileToUpload.dataTxId;
 		return { dataTxId, arPrice };
