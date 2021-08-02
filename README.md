@@ -6,16 +6,25 @@ ArDrive Core is a TypeScript library that contains the essential back end applic
 
 We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.
 
-<ol>
-<li>Install nvm [using the instructions here](https://github.com/nvm-sh/nvm).</li>
-<li>Ensure that the correct Node version is installed and activated by performing `nvm install` and then `nvm use`</li>
-<li>We use Yarn 2.x please [follow the installation guidelines here](https://yarnpkg.com/getting-started/install)</li>
-<li>We use husky 6.x to manage the git commit hooks that help to improve the quality of our commits. Please run:
-  `yarn husky install`
-  to enable git hooks for this local repository. Without doing so, you risk committing non-compliant code to the repository.
-</li>
-<li>Install all node package dependencies by running `yarn install --check-cache`</li>
-</ol>
+Note for Windows: **We recommend using WSL** for setting up NVM on Windows using the [instructions described here][wsl-install] then continue the steps below.
+
+1. Install nvm [using their instructions][nvm-install].
+2. Ensure that the correct Node version is installed and activated by performing `nvm install` and then `nvm use`
+3. We use Yarn 2.x please [follow the installation guidelines here][yarn-install]
+4. We use husky 6.x to manage the git commit hooks that help to improve the quality of our commits. Please run:
+   `yarn husky install`
+   to enable git hooks for this local repository. Without doing so, you risk committing non-compliant code to the repository.
+
+5. Install all node package dependencies by running `yarn install --check-cache`
+
+### Recommended Visual Studio Code extensions
+
+To ensure your environment is compatible, we also recommend the following VSCode extensions:
+
+-   [ES-Lint][eslint-vscode]
+-   [Editor-Config][editor-config-vscode]
+-   [Prettier][prettier-vscode]
+-   [ZipFS][zipfs-vscode]
 
 ## Building the Library
 
@@ -138,6 +147,13 @@ npm add ardrive-core-js
 
 [![Gitopia](https://img.shields.io/endpoint?style=&url=https://gitopia.org/mirror-badge.json)](gitopia-repo)
 
+[yarn-install]: https://yarnpkg.com/getting-started/install
+[nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
+[wsl-install]: https://code.visualstudio.com/docs/remote/wsl
+[editor-config-vscode]: https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig
+[prettier-vscode]: https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode
+[zipfs-vscode]: https://marketplace.visualstudio.com/items?itemName=arcanis.vscode-zipfs
+[eslint-vscode]: https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint
 [mocha]: https://github.com/mochajs/mocha
 [chai]: https://github.com/chaijs/chai
 [sinon]: https://github.com/sinonjs/sinon
