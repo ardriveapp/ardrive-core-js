@@ -1,20 +1,31 @@
-import * as fs from 'fs';
-import { JWKInterface } from 'arweave/node/lib/wallet';
-import { appName, appVersion, arFSVersion, weightedRandom } from './common';
-import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData, Wallet } from './types';
-import { readContract } from 'smartweave';
+import { asyncForEach, sleep } from './common';
+import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from './types/base_Types';
+import {
+	getDriveRootFolderFromSyncTable,
+	getFilesToUploadFromSyncTable,
+	getLatestFolderVersionFromSyncTable,
+	getNewDrivesFromDriveTable
+} from './db/db_get';
+import { setFilePath } from './db/db_update';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { appName, appVersion, arFSVersion, gatewayURL } from './constants';
 import Arweave from 'arweave';
 import deepHash from 'arweave/node/lib/deepHash';
 import ArweaveBundles from 'arweave-bundles';
 import { DataItemJson } from 'arweave-bundles';
 import { TransactionUploader } from 'arweave/node/lib/transaction-uploader';
 import Transaction from 'arweave/node/lib/transaction';
-
-// ArDrive Profit Sharing Community Smart Contract
-const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
+import path, { dirname } from 'path';
+import { createWriteStream } from 'fs';
+import Axios from 'axios';
+import ProgressBar from 'progress';
+import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
+import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './public/arfs';
+import { selectTokenHolder } from './smartweave';
+import { arDriveCommunityOracle } from './ardrive_community_oracle';
 
 // Initialize Arweave
-const arweave = Arweave.init({
+export const arweave = Arweave.init({
 	host: 'arweave.net', // Arweave Gateway
 	//host: 'arweave.dev', // Arweave Dev Gateway
 	port: 443,
@@ -32,89 +43,61 @@ const deps = {
 // Arweave Bundles are used for ANS102 Transactions
 const arBundles = ArweaveBundles(deps);
 
-// Gets a public key for a given JWK
-export async function getAddressForWallet(walletPrivateKey: JWKInterface): Promise<string> {
-	return arweave.wallets.jwkToAddress(walletPrivateKey);
-}
-
-// Imports an existing wallet as a JWK from a user's local harddrive
-export async function getLocalWallet(
-	existingWalletPath: string
-): Promise<{ walletPrivateKey: JWKInterface; walletPublicKey: string }> {
-	const walletPrivateKey: JWKInterface = JSON.parse(fs.readFileSync(existingWalletPath).toString());
-	const walletPublicKey = await getAddressForWallet(walletPrivateKey);
-	return { walletPrivateKey, walletPublicKey };
-}
-
-// Get the balance of an Arweave wallet
-export async function getWalletBalance(walletPublicKey: string): Promise<number> {
+// Creates an arweave transaction to upload file data (and no metadata) to arweave
+// Saves the upload chunk of the object in case the upload has to be restarted
+export async function uploadDataChunk(uploader: TransactionUploader): Promise<TransactionUploader | null> {
 	try {
-		let balance = await arweave.wallets.getBalance(walletPublicKey);
-		balance = await arweave.ar.winstonToAr(balance);
-		return +balance;
+		await uploader.uploadChunk();
+		return uploader;
+	} catch (err) {
+		console.log('Uploading this chunk has failed');
+		console.log(err);
+		return null;
+	}
+}
+
+// Sends a tip to ArDrive Profit Sharing Community holders
+export async function sendArDriveCommunityTip(walletPrivateKey: string, arPrice: number): Promise<string> {
+	try {
+		// Get the latest ArDrive Community Fee from the Community Smart Contract
+		const tip = await arDriveCommunityOracle.getCommunityARTip(arPrice);
+
+		// Probabilistically select the PST token holder
+		const holder = await selectTokenHolder();
+
+		// send a tip. You should inform the user about this tip and amount.
+		const transaction = await arweave.createTransaction(
+			{ target: holder, quantity: arweave.ar.arToWinston(tip.toString()) },
+			JSON.parse(walletPrivateKey)
+		);
+
+		// Tag file with data upload Tipping metadata
+		transaction.addTag('App-Name', appName);
+		transaction.addTag('App-Version', appVersion);
+		transaction.addTag('Type', 'fee');
+		transaction.addTag('Tip-Type', 'data upload');
+
+		// Sign file
+		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
+
+		// Submit the transaction
+		const response = await arweave.transactions.post(transaction);
+		if (response.status === 200 || response.status === 202) {
+			// console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
+		} else {
+			// console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
+		}
+		return transaction.id;
 	} catch (err) {
 		console.log(err);
-		return 0;
+		return 'ERROR sending ArDrive community tip';
 	}
 }
 
-// Gets the price of AR based on amount of data
-export async function getWinston(bytes: number): Promise<number> {
-	const response = await fetch(`https://arweave.net/price/${bytes}`);
-	// const response = await fetch(`https://perma.online/price/${bytes}`);
-	const winston = await response.json();
-	return winston;
-}
-
-// Creates a new Arweave wallet JWK comprised of a private key and public key
-export async function createArDriveWallet(): Promise<Wallet> {
-	try {
-		const walletPrivateKey = await arweave.wallets.generate();
-		const walletPublicKey = await getAddressForWallet(walletPrivateKey);
-		console.log('SUCCESS! Your new wallet public address is %s', walletPublicKey);
-		return { walletPrivateKey, walletPublicKey };
-	} catch (err) {
-		console.error('Cannot create Wallet');
-		console.error(err);
-		return Promise.reject(err);
-	}
-}
-
-// Gets only the data of a given ArDrive Data transaction (U8IntArray)
-export async function getTransactionData(txid: string): Promise<string | Uint8Array> {
-	try {
-		const data = await arweave.transactions.getData(txid, { decode: true });
-		return data;
-	} catch (err) {
-		console.log('Error getting transaction data for Txid %s', txid);
-		console.log(err);
-		return Promise.reject(err);
-	}
-}
-
-// Get the latest status of a transaction
-export async function getTransactionStatus(txid: string): Promise<number> {
-	try {
-		const response = await arweave.transactions.getStatus(txid);
-		return response.status;
-	} catch (err) {
-		// console.log(err);
-		return 0;
-	}
-}
-
-// Get the latest block height
-export async function getLatestBlockHeight(): Promise<number> {
-	try {
-		const info = await arweave.network.getInfo();
-		return info.height;
-	} catch (err) {
-		console.log('Failed getting latest block height');
-		return 0;
-	}
-}
+//Old functions
 
 // Creates an arweave transaction to upload encrypted private ardrive metadata
+// SPLIT INTO createPrivateDriveTransaction and createDriveTransaction
 export async function prepareArFSDriveTransaction(
 	user: ArDriveUser,
 	driveJSON: string | Buffer,
@@ -149,6 +132,7 @@ export async function prepareArFSDriveTransaction(
 }
 
 // This will prepare and sign v2 data transaction using ArFS File Data Tags
+// SPLIT INTO createPrivateFileDataTransaction and createFileDataTransaction
 export async function prepareArFSDataTransaction(
 	user: ArDriveUser,
 	fileData: Buffer,
@@ -178,6 +162,7 @@ export async function prepareArFSDataTransaction(
 }
 
 // This will prepare and sign v2 data transaction using ArFS File Metadata Tags
+// SPLIT INTO createPrivateFileFolderMetaDataItemTransaction and createFileFolderMetaDataItemTransaction
 export async function prepareArFSMetaDataTransaction(
 	user: ArDriveUser,
 	fileMetaData: ArFSFileMetaData,
@@ -225,6 +210,7 @@ export async function prepareArFSMetaDataTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
+// SPLIT INTO createPrivateFileDataItemTransaction and createFileDataItemTransaction
 export async function prepareArFSDataItemTransaction(
 	user: ArDriveUser,
 	fileData: Buffer,
@@ -259,6 +245,7 @@ export async function prepareArFSDataItemTransaction(
 }
 
 // Creates an arweave data item transaction (ANS-102) using ArFS Tags
+// SPLIT INTO createPrivateFileMetaDataItemTransaction and createFileMetaDataItemTransaction
 export async function prepareArFSMetaDataItemTransaction(
 	user: ArDriveUser,
 	fileMetaData: ArFSFileMetaData,
@@ -307,6 +294,7 @@ export async function prepareArFSMetaDataItemTransaction(
 }
 
 // Creates a bundled data transaction
+// MOVED TO createBundledDataTransaction
 export async function prepareArFSBundledDataTransaction(
 	user: ArDriveUser,
 	items: DataItemJson[]
@@ -335,119 +323,172 @@ export async function prepareArFSBundledDataTransaction(
 		return null;
 	}
 }
-
-// Creates a Transaction uploader object for a given arweave transaction
-export async function createDataUploader(transaction: Transaction): Promise<TransactionUploader> {
-	// Create an uploader object
-	const uploader = await arweave.transactions.getUploader(transaction);
-	return uploader;
-}
-
-// Creates an arweave transaction to upload file data (and no metadata) to arweave
-// Saves the upload chunk of the object in case the upload has to be restarted
-export async function uploadDataChunk(uploader: TransactionUploader): Promise<TransactionUploader | null> {
+// Downloads a single file from ArDrive by transaction
+export async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload: ArFSFileMetaData) {
 	try {
-		await uploader.uploadChunk();
-		return uploader;
-	} catch (err) {
-		console.log('Uploading this chunk has failed');
-		console.log(err);
-		return null;
-	}
-}
+		// Get the parent folder's path
+		const parentFolder: ArFSFileMetaData = await getLatestFolderVersionFromSyncTable(fileToDownload.parentFolderId);
 
-// Sends a fee to ArDrive Profit Sharing Community holders
-export async function sendArDriveFee(walletPrivateKey: string, arPrice: number): Promise<string> {
-	try {
-		// Get the latest ArDrive Community Fee from the Community Smart Contract
-		let fee = arPrice * ((await getArDriveFee()) / 100);
-
-		// If the fee is too small, we assign a minimum
-		if (fee < 0.00001) {
-			fee = 0.00001;
+		// Check if this file's path has the right path from its parent folder.  This ensures folders moved on the web are properly moved locally
+		if (parentFolder.filePath !== path.dirname(fileToDownload.filePath)) {
+			// Update the file path in the database
+			console.log('Fixing file path to ', parentFolder.filePath);
+			fileToDownload.filePath = path.join(parentFolder.filePath, fileToDownload.fileName);
+			await setFilePath(fileToDownload.filePath, fileToDownload.id);
 		}
 
-		// Probabilistically select the PST token holder
-		const holder = await selectTokenHolder();
+		// Check if this is a folder.  If it is, we dont need to download anything and we create the folder.
+		const folderPath = dirname(fileToDownload.filePath);
+		if (!existsSync(folderPath)) {
+			mkdirSync(folderPath, { recursive: true });
+			await sleep(100);
+		}
 
-		// send a fee. You should inform the user about this fee and amount.
-		const transaction = await arweave.createTransaction(
-			{ target: holder, quantity: arweave.ar.arToWinston(fee.toString()) },
-			JSON.parse(walletPrivateKey)
-		);
+		const dataTxUrl = gatewayURL.concat(fileToDownload.dataTxId);
+		// Public files do not need decryption
+		if (+fileToDownload.isPublic === 1) {
+			console.log('Downloading %s', fileToDownload.filePath);
+			const writer = createWriteStream(fileToDownload.filePath);
+			const response = await Axios({
+				method: 'get',
+				url: dataTxUrl,
+				responseType: 'stream'
+			});
+			const totalLength = response.headers['content-length'];
+			const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+				width: 40,
+				complete: '=',
+				incomplete: ' ',
+				renderThrottle: 1,
+				total: parseInt(totalLength)
+			});
 
-		// Tag file with data upload Tipping metadata
-		transaction.addTag('App-Name', appName);
-		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Type', 'fee');
-		transaction.addTag('Tip-Type', 'data upload');
+			response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length));
+			response.data.pipe(writer);
 
-		// Sign file
-		await arweave.transactions.sign(transaction, JSON.parse(walletPrivateKey));
-
-		// Submit the transaction
-		const response = await arweave.transactions.post(transaction);
-		if (response.status === 200 || response.status === 202) {
-			// console.log('SUCCESS ArDrive fee of %s was submitted with TX %s to %s', fee.toFixed(9), transaction.id, holder);
+			return new Promise((resolve, reject) => {
+				writer.on('error', (err) => {
+					writer.close();
+					reject(err);
+				});
+				writer.on('close', () => {
+					console.log('   Completed!', fileToDownload.filePath);
+					resolve(true);
+				});
+			});
 		} else {
-			// console.log('ERROR submitting ArDrive fee with TX %s', transaction.id);
+			// File is private and we must decrypt it
+			console.log('Downloading and decrypting %s', fileToDownload.filePath);
+			const writer = createWriteStream(fileToDownload.filePath);
+			const response = await Axios({
+				method: 'get',
+				url: dataTxUrl,
+				responseType: 'stream'
+			});
+			const totalLength = response.headers['content-length'];
+			const progressBar = new ProgressBar('-> [:bar] :rate/bps :percent :etas', {
+				width: 40,
+				complete: '=',
+				incomplete: ' ',
+				renderThrottle: 1,
+				total: parseInt(totalLength)
+			});
+
+			response.data.on('data', (chunk: string | any[]) => progressBar.tick(chunk.length));
+			response.data.pipe(writer);
+
+			return new Promise((resolve, reject) => {
+				writer.on('error', (err) => {
+					writer.close();
+					console.log(user);
+					reject(err);
+				});
+				writer.on('close', async () => {
+					// Once the file is finished being streamed, we read it and decrypt it.
+					const data = readFileSync(fileToDownload.filePath);
+					const dataBuffer = Buffer.from(data);
+					const driveKey: Buffer = await deriveDriveKey(
+						user.dataProtectionKey,
+						fileToDownload.driveId,
+						user.walletPrivateKey
+					);
+					const fileKey: Buffer = await deriveFileKey(fileToDownload.fileId, driveKey);
+					const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
+
+					// Overwrite the file with the decrypted version
+					writeFileSync(fileToDownload.filePath, decryptedData);
+					console.log('   Completed!', fileToDownload.filePath);
+					resolve(true);
+				});
+			});
 		}
-		return transaction.id;
+	} catch (err) {
+		//console.log(err);
+		console.log('Error downloading file data %s to %s', fileToDownload.fileName, fileToDownload.filePath);
+		return 'Error downloading file';
+
+		// Uploads all queued files as V2 transactions ONLY with no data bundles
+	}
+}
+export async function uploadArDriveFiles(user: ArDriveUser): Promise<string> {
+	try {
+		let filesUploaded = 0;
+		let totalPrice = 0;
+		console.log('---Uploading All Queued Files and Folders---');
+		const filesToUpload = getFilesToUploadFromSyncTable(user.login);
+		if (Object.keys(filesToUpload).length > 0) {
+			// Ready to upload
+			await asyncForEach(filesToUpload, async (fileToUpload: ArFSFileMetaData) => {
+				if (fileToUpload.entityType === 'file') {
+					// console.log ("Uploading file - %s", fileToUpload.fileName)
+					// Check to see if we have to upload the File Data and Metadata
+					// If not, we just check to see if we have to update metadata.
+					if (+fileToUpload.fileDataSyncStatus === 1) {
+						console.log('Uploading file data and metadata - %s', fileToUpload.fileName);
+						const uploadedFile = await uploadArFSFileData(user, fileToUpload);
+						fileToUpload.dataTxId = uploadedFile.dataTxId;
+						totalPrice += uploadedFile.arPrice; // Sum up all of the fees paid
+						await uploadArFSFileMetaData(user, fileToUpload);
+					} else if (+fileToUpload.fileMetaDataSyncStatus === 1) {
+						console.log('Uploading file metadata only - %s', fileToUpload.fileName);
+						await uploadArFSFileMetaData(user, fileToUpload);
+					}
+				} else if (fileToUpload.entityType === 'folder') {
+					console.log('Uploading folder - %s', fileToUpload.fileName);
+					await uploadArFSFileMetaData(user, fileToUpload);
+				}
+				filesUploaded += 1;
+			});
+		}
+		if (filesUploaded > 0) {
+			// Send the tip to the ArDrive community
+			await sendArDriveCommunityTip(user.walletPrivateKey, totalPrice);
+			console.log('Uploaded %s files to your ArDrive!', filesUploaded);
+
+			// Check if this was the first upload of the user's drive, if it was then upload a Drive transaction as well
+			// Check for unsynced drive entities and create if necessary
+			const newDrives: ArFSFileMetaData[] = getNewDrivesFromDriveTable(user.login);
+			if (newDrives.length > 0) {
+				console.log('   Wow that was your first ARDRIVE Transaction!  Congrats!');
+				console.log(
+					'   Lets finish setting up your profile by submitting a few more small transactions to the network.'
+				);
+				await asyncForEach(newDrives, async (newDrive: ArFSDriveMetaData) => {
+					// Create the Drive metadata transaction as submit as V2
+					const success = await uploadArFSDriveMetaData(user, newDrive);
+					if (success) {
+						// Create the Drive Root folder and submit as V2 transaction
+						const driveRootFolder: ArFSFileMetaData = await getDriveRootFolderFromSyncTable(
+							newDrive.rootFolderId
+						);
+						await uploadArFSFileMetaData(user, driveRootFolder);
+					}
+				});
+			}
+		}
+		return 'SUCCESS';
 	} catch (err) {
 		console.log(err);
-		return 'ERROR sending ArDrive fee';
+		return 'ERROR processing files';
 	}
-}
-
-// Calls the ArDrive Community Smart Contract to pull the fee
-export async function getArDriveFee(): Promise<number> {
-	try {
-		const contract = await readContract(arweave, communityTxId);
-		const arDriveCommunityFee = contract.settings.find(
-			(setting: (string | number)[]) => setting[0].toString().toLowerCase() === 'fee'
-		);
-		return arDriveCommunityFee ? arDriveCommunityFee[1] : 15;
-	} catch {
-		return 0.15; // Default fee of 15% if we cannot pull it from the community contract
-	}
-}
-
-// Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
-export async function selectTokenHolder(): Promise<string | undefined> {
-	// Read the ArDrive Smart Contract to get the latest state
-	const state = await readContract(arweave, communityTxId);
-	const balances = state.balances;
-	const vault = state.vault;
-
-	// Get the total number of token holders
-	let total = 0;
-	for (const addr of Object.keys(balances)) {
-		total += balances[addr];
-	}
-
-	// Check for how many tokens the user has staked/vaulted
-	for (const addr of Object.keys(vault)) {
-		if (!vault[addr].length) continue;
-
-		const vaultBalance = vault[addr]
-			.map((a: { balance: number; start: number; end: number }) => a.balance)
-			.reduce((a: number, b: number) => a + b, 0);
-
-		total += vaultBalance;
-
-		if (addr in balances) {
-			balances[addr] += vaultBalance;
-		} else {
-			balances[addr] = vaultBalance;
-		}
-	}
-
-	// Create a weighted list of token holders
-	const weighted: { [addr: string]: number } = {};
-	for (const addr of Object.keys(balances)) {
-		weighted[addr] = balances[addr] / total;
-	}
-	// Get a random holder based off of the weighted list of holders
-	const randomHolder = weightedRandom(weighted);
-	return randomHolder;
 }

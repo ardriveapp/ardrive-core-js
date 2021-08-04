@@ -3,3 +3,5 @@ node_modules
 lib/*
 .yarn
 .github
+.vscode
+nyc.config.js

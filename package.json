@@ -2,8 +2,8 @@
 	"name": "ardrive-core-js",
 	"version": "0.4.0",
 	"description": "ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.",
-	"main": "./lib/index.js",
-	"types": "./lib/index.d.ts",
+	"main": "./lib/exports.js",
+	"types": "./lib/exports.d.ts",
 	"dependencies": {
 		"arweave": "^1.10.11",
 		"arweave-bundles": "^1.0.3",
@@ -27,6 +27,9 @@
 		"uuid": "^8.3.2"
 	},
 	"devDependencies": {
+		"@commitlint/cli": "^12.1.4",
+		"@commitlint/config-conventional": "^12.1.4",
+		"@istanbuljs/nyc-config-typescript": "^1.0.1",
 		"@types/better-sqlite3": "^5.4.1",
 		"@types/chai": "^4.2.15",
 		"@types/folder-hash": "^4.0.0",
@@ -36,9 +39,12 @@
 		"@types/mocha": "^8.2.1",
 		"@types/node": "^14.14.32",
 		"@types/node-fetch": "^2.5.8",
+		"@types/power-assert": "^1",
 		"@types/progress": "^2.0.3",
 		"@types/prompt-sync": "^4.1.0",
 		"@types/prompts": "^2.0.9",
+		"@types/sinon": "^10.0.2",
+		"@types/source-map-support": "^0.5.3",
 		"@types/utf8": "^2.1.6",
 		"@types/uuid": "^8.3.0",
 		"@typescript-eslint/eslint-plugin": "^4.18.0",
@@ -47,22 +53,36 @@
 		"eslint": "^7.23.0",
 		"eslint-config-prettier": "^8.1.0",
 		"eslint-plugin-prettier": "latest",
-		"husky": "=4",
-		"lint-staged": ">=10",
+		"espower-typescript": "^10.0.0",
+		"husky": "^=6",
+		"lint-staged": "^11.0.0",
 		"mocha": "^8.3.1",
+		"nyc": "^15.1.0",
+		"power-assert": "^1.6.1",
 		"prettier": "^2.2.1",
-		"ts-node": "^9.1.1"
+		"rimraf": "^3.0.2",
+		"sinon": "^11.1.1",
+		"source-map-support": "^0.5.19",
+		"ts-node": "^10.1.0",
+		"ts-sinon": "^2.0.1",
+		"tsc-files": "^1.1.2"
 	},
 	"scripts": {
+		"clean": "rimraf [lib .nyc_output node_modules]",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",
-		"test": "mocha -r ts-node/register tests/**/*.test.ts",
-		"build": "tsc",
-		"prepare": "yarn run build",
-		"preversion": "yarn run lint",
+		"test": "nyc mocha",
+		"coverage": "nyc --reporter text mocha",
+		"power-assert": "mocha --parallel false --r espower-typescript/guess ./**/*test.ts",
+		"typecheck": "tsc --noemit",
+		"build": "yarn clean && tsc",
 		"version": "yarn run format && git add -A src",
-		"postversion": "git push && git push --tags"
+		"postversion": "git push && git push --tags",
+		"ci": "yarn test && yarn build"
+	},
+	"directories": {
+		"test": "./"
 	},
 	"husky": {
 		"hooks": {
@@ -81,11 +101,5 @@
 	},
 	"files": [
 		"lib/**/*"
-	],
-	"lint-staged": {
-		"*.ts": [
-			"prettier --write",
-			"eslint --cache --fix"
-		]
-	}
+	]
 }

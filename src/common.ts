@@ -1,14 +1,17 @@
 // index.js
 import * as mime from 'mime-types';
 import * as fs from 'fs';
-import * as types from './types';
-import * as getDb from './db_get';
-import * as updateDb from './db_update';
+import * as types from './types/base_Types';
+import * as getDb from './db/db_get';
+import * as updateDb from './db/db_update';
 import fetch from 'node-fetch';
 import path, { dirname } from 'path';
-import { checksumFile, deriveDriveKey, deriveFileKey } from './crypto';
+import { checksumFile, deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { hashElement, HashElementOptions } from 'folder-hash';
+import { Wallet } from './types/arfs_Types';
+import { ArDriveUser } from './types/base_Types';
+import { defaultCipher } from './constants';
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
@@ -19,7 +22,6 @@ export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
 export const appVersion = '0.1.0';
 export const arFSVersion = '0.11';
-export const cipher = 'AES256-GCM';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -178,7 +180,7 @@ export async function checkForMissingLocalFiles(): Promise<string> {
 }
 
 // Takes the ArDrive User's JWK Private Key file and backs it up as a JSON to a folder specified by the user.
-export async function backupWallet(backupWalletPath: string, wallet: types.Wallet, owner: string): Promise<string> {
+export async function backupWallet(backupWalletPath: string, wallet: Wallet, owner: string): Promise<string> {
 	try {
 		const backupFileName = 'ArDrive_Backup_' + owner + '.json';
 		const backupWalletFile = path.join(backupWalletPath, backupFileName);
@@ -362,7 +364,7 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 		appVersion: appVersion,
 		driveName,
 		rootFolderId,
-		cipher: cipher,
+		cipher: defaultCipher,
 		cipherIV: '',
 		unixTime,
 		arFS: arFSVersion,
@@ -380,7 +382,7 @@ export async function createNewPrivateDrive(login: string, driveName: string): P
 
 // Derives a file key from the drive key and formats it into a Private file sharing link using the file id
 export async function createPrivateFileSharingLink(
-	user: types.ArDriveUser,
+	user: ArDriveUser,
 	fileToShare: types.ArFSFileMetaData
 ): Promise<string> {
 	let fileSharingUrl = '';
@@ -511,4 +513,31 @@ export async function getArUSDPrice(): Promise<number> {
 		console.log('Error getting AR/USD price from Coingecko');
 		return 0;
 	}
+}
+/**
+ * Converts Winston value into AR
+ *
+ * @throws Error when Winston value is not an integer
+ *
+ * @TODO Handle integer overflow
+ */
+export function winstonToAr(winston: number): number {
+	if (!Number.isInteger(winston)) throw new Error(`Winston value not an integer: ${winston}`);
+	return winston * 0.000_000_000_001;
+}
+
+// Returns encrypted data using driveKey for folders, and fileKey for files
+export async function encryptFileOrFolderData(
+	itemToUpload: types.ArFSFileMetaData,
+	driveKey: Buffer,
+	secondaryFileMetaDataJSON: string
+): Promise<types.ArFSEncryptedData> {
+	const encryptionKey =
+		itemToUpload.entityType === 'folder' ? driveKey : await deriveFileKey(itemToUpload.fileId, driveKey);
+	const encryptedData: types.ArFSEncryptedData = await fileEncrypt(
+		encryptionKey,
+		Buffer.from(secondaryFileMetaDataJSON)
+	);
+
+	return encryptedData;
 }

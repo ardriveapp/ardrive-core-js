@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { parse } from 'uuid';
-import { ArFSEncryptedData } from './types';
+import { ArFSEncryptedData } from './types/base_Types';
 
 import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
@@ -9,7 +9,7 @@ import jwkToPem, { JWK } from 'jwk-to-pem';
 
 const authTagLength = 16;
 const keyByteLength = 32;
-const algo = 'aes-256-gcm';
+const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
 const keyHash = 'SHA-256';
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file
