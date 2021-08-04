@@ -7,7 +7,7 @@ export const gatewayURL = 'https://arweave.net/';
 
 export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
-export const appVersion = '0.4.0';
+export const appVersion = '0.5.0';
 export const arFSVersion = '0.11';
 export const defaultCipher: CipherType = 'AES256-GCM';
 
