@@ -13,6 +13,30 @@ import { getLatestBlockHeight } from '../gateway';
 import { checksumFile } from '../crypto';
 import { ArDriveUser, ArFSDriveMetaData, ArFSFileMetaData } from '../types/base_Types';
 
+// Gets all files for a list of drives from Arweave and loads them into the database.
+// A closure to actually query for the relevant txids must be passed as argument,
+// so this can be reused between personal and shared drives.
+async function getDriveFilesFromPermaWeb(
+	user: ArDriveUser,
+	drives: ArFSDriveMetaData[],
+	getTxids: (driveId: string, lastBlockHeight: number) => Promise<GQLEdgeInterface[]>
+): Promise<void> {
+	await common.asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
+		// Get the last block height that has been synced
+		let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
+		lastBlockHeight = lastBlockHeight.lastBlockHeight;
+		const txIds = await getTxids(drive.driveId, lastBlockHeight);
+		if (txIds !== undefined) {
+			await common.asyncForEach(txIds, async (txId: GQLEdgeInterface) => {
+				await gql.getFileMetaDataFromTx(txId, user);
+			});
+		}
+		// Get and set the latest block height for each drive synced
+		const latestBlockHeight: number = await getLatestBlockHeight();
+		await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
+	});
+}
+
 // Gets all of the files from your ArDrive (via ARQL) and loads them into the database.
 export async function getMyArDriveFilesFromPermaWeb(user: ArDriveUser): Promise<string> {
 	// Get your private files
@@ -22,56 +46,20 @@ export async function getMyArDriveFilesFromPermaWeb(user: ArDriveUser): Promise<
 		'personal',
 		'private'
 	);
-	await common.asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-		// Get the last block height that has been synced
-		let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
-		lastBlockHeight = lastBlockHeight.lastBlockHeight;
-		const privateTxIds = await gql.getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
-		if (privateTxIds !== undefined) {
-			await common.asyncForEach(privateTxIds, async (privateTxId: GQLEdgeInterface) => {
-				await gql.getFileMetaDataFromTx(privateTxId, user);
-			});
-		}
-		// Get and set the latest block height for each drive synced
-		const latestBlockHeight: number = await getLatestBlockHeight();
-		await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
-	});
+	async function getPersonalDataFileTxs(driveId: string, lastBlockHeight: number): Promise<GQLEdgeInterface[]> {
+		return await gql.getAllMyDataFileTxs(user.walletPublicKey, driveId, lastBlockHeight);
+	}
+	await getDriveFilesFromPermaWeb(user, drives, getPersonalDataFileTxs);
 
 	// Get your public files
 	console.log('---Getting all your Public ArDrive files---');
 	drives = await getDb.getAllDrivesByPrivacyFromDriveTable(user.login, 'personal', 'public');
-	await common.asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-		// Get the last block height that has been synced
-		let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
-		lastBlockHeight = lastBlockHeight.lastBlockHeight;
-		const publicTxIds = await gql.getAllMyDataFileTxs(user.walletPublicKey, drive.driveId, lastBlockHeight);
-		if (publicTxIds !== undefined) {
-			await common.asyncForEach(publicTxIds, async (publicTxId: GQLEdgeInterface) => {
-				await gql.getFileMetaDataFromTx(publicTxId, user);
-			});
-		}
-		// Get and set the latest block height for each drive synced
-		const latestBlockHeight: number = await getLatestBlockHeight();
-		await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
-	});
+	await getDriveFilesFromPermaWeb(user, drives, getPersonalDataFileTxs);
 
 	// Get your shared public files
 	console.log('---Getting all your Shared Public ArDrive files---');
 	drives = await getDb.getAllDrivesByPrivacyFromDriveTable(user.login, 'shared', 'public');
-	await common.asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-		// Get the last block height that has been synced
-		let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
-		lastBlockHeight = lastBlockHeight.lastBlockHeight;
-		const sharedPublicTxIds = await gql.getAllMySharedDataFileTxs(drive.driveId, lastBlockHeight);
-		if (sharedPublicTxIds !== undefined) {
-			await common.asyncForEach(sharedPublicTxIds, async (sharedPublicTxId: GQLEdgeInterface) => {
-				await gql.getFileMetaDataFromTx(sharedPublicTxId, user);
-			});
-		}
-		// Get and set the latest block height for each drive synced
-		const latestBlockHeight: number = await getLatestBlockHeight();
-		await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
-	});
+	await getDriveFilesFromPermaWeb(user, drives, gql.getAllMySharedDataFileTxs);
 
 	// File path is not present by default, so we must generate them for each new file, folder or drive found
 	await common.setNewFilePaths();
