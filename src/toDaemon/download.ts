@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as common from '../common';
 import * as getDb from '../db/db_get';
 import * as updateDb from '../db/db_update';
+import * as commonDb from '../db/db_common';
 import * as gql from '../gql';
 import { GQLEdgeInterface } from '../types/gql_Types';
 import { downloadArDriveFileByTx } from '../arweave';
@@ -22,18 +23,20 @@ async function getDriveFilesFromPermaWeb(
 	getTxids: (driveId: string, lastBlockHeight: number) => Promise<GQLEdgeInterface[]>
 ): Promise<void> {
 	await common.asyncForEach(drives, async (drive: ArFSDriveMetaData) => {
-		// Get the last block height that has been synced
-		let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
-		lastBlockHeight = lastBlockHeight.lastBlockHeight;
-		const txIds = await getTxids(drive.driveId, lastBlockHeight);
-		if (txIds !== undefined) {
-			await common.asyncForEach(txIds, async (txId: GQLEdgeInterface) => {
-				await gql.getFileMetaDataFromTx(txId, user);
-			});
-		}
-		// Get and set the latest block height for each drive synced
-		const latestBlockHeight: number = await getLatestBlockHeight();
-		await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
+		await commonDb.executeWithSavepoint(async () => {
+			// Get the last block height that has been synced
+			let lastBlockHeight = await getDb.getDriveLastBlockHeight(drive.driveId);
+			lastBlockHeight = lastBlockHeight.lastBlockHeight;
+			const txIds = await getTxids(drive.driveId, lastBlockHeight);
+			if (txIds !== undefined) {
+				await common.asyncForEach(txIds, async (txId: GQLEdgeInterface) => {
+					await gql.getFileMetaDataFromTx(txId, user);
+				});
+			}
+			// Get and set the latest block height for each drive synced
+			const latestBlockHeight: number = await getLatestBlockHeight();
+			await updateDb.setDriveLastBlockHeight(latestBlockHeight, drive.driveId);
+		});
 	});
 }
 
@@ -62,7 +65,9 @@ export async function getMyArDriveFilesFromPermaWeb(user: ArDriveUser): Promise<
 	await getDriveFilesFromPermaWeb(user, drives, gql.getAllMySharedDataFileTxs);
 
 	// File path is not present by default, so we must generate them for each new file, folder or drive found
-	await common.setNewFilePaths();
+	await commonDb.executeWithSavepoint(async () => {
+		await common.setNewFilePaths();
+	});
 	return 'Success';
 }
 

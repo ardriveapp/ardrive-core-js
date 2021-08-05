@@ -52,6 +52,22 @@ export const all = (sql: any, params: any[] = []): any[] => {
 	}
 };
 
+// Executes a closure with a savepoint applied to the database, so all changes
+// made by the closure are atomic (also avoids excessive disk writes).
+// If an exception is thrown, the savepoint gets reverted instead.
+export async function executeWithSavepoint(closure: () => any): Promise<any> {
+	run(`SAVEPOINT executeWithSavepoint`);
+	try {
+		const result = await closure ();
+		run(`RELEASE SAVEPOINT executeWithSavepoint`);
+		return result;
+	} catch (err) {
+		run(`ROLLBACK TO SAVEPOINT executeWithSavepoint`);
+		run(`RELEASE SAVEPOINT executeWithSavepoint`);
+		throw err;
+	}
+}
+
 ////////////////////////
 // DB SETUP FUNCTIONS //
 ////////////////////////
