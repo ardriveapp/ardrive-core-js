@@ -1,15 +1,57 @@
 import { arweave } from './arweave';
+import Axios from 'axios';
+
+// List (in order of initial preference) of the gateways for requests.
+const gateways = [
+	"https://arweave.net",
+	"https://arweave.live",
+	"https://arweave.dev"
+];
+
+// Index of the currently used gateway into gateways.
+let currentGateway: number = 0;
+
+// Switches to the next gateway.
+function switchGateway() {
+	currentGateway = (currentGateway + 1) % gateways.length;
+	console.log("Switched gateway to " + gateways[currentGateway]);
+}
+
+// Chooses the current gateway and runs a callback with it.
+// If an error occurs, the call is retried and the gateway
+// switched automatically.
+export async function queryGateway(query: (url: string) => Promise<any>): Promise<any> {
+	const initialGatewayIndex = currentGateway;
+	let tries: number = 0;
+	while (true) {
+		try {
+			return await query(gateways[currentGateway]);
+		} catch (err) {
+			console.log(err);
+			console.log("Gateway error with " + gateways[currentGateway] + ", retrying...");
+			tries += 1;
+			if (tries >= 5) {
+			    tries = 0;
+			    switchGateway ();
+			    if (currentGateway === initialGatewayIndex) {
+				    // We've tried all gateways, nothing left to do.
+				    return Promise.reject(err);
+			    }
+			}
+		}
+	}
+}
 
 // Gets only the data of a given ArDrive Data transaction (U8IntArray)
-export async function getTransactionData(txid: string): Promise<string | Uint8Array> {
-	try {
-		const data = await arweave.transactions.getData(txid, { decode: true });
-		return data;
-	} catch (err) {
-		console.log('Error getting transaction data for Txid %s', txid);
-		console.log(err);
-		return Promise.reject(err);
-	}
+export function getTransactionData(txid: string): Promise<Uint8Array> {
+	return queryGateway(async (url: string): Promise<Uint8Array> => {
+		const response = await Axios({
+			method: 'get',
+			url: url + "/" + txid,
+			responseType: 'arraybuffer'
+		});
+		return response.data;
+	});
 }
 
 // Get the latest status of a transaction

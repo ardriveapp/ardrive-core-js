@@ -4,6 +4,7 @@ import * as arfsTypes from './types/arfs_Types';
 import * as gqlTypes from './types/gql_Types';
 import * as getDb from './db/db_get';
 import * as updateDb from './db/db_update';
+import { queryGateway } from './gateway';
 
 import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
@@ -1613,10 +1614,8 @@ export async function getPrivateFileData(txid: string): Promise<arfsTypes.ArFSPr
 }
 
 // Gets the CipherIV tag of a private data transaction
+// FIXME: Maybe this could just look up by txid rather than GQL?
 export async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
-	let graphQLURL = primaryGraphQLURL;
-	let tries = 0;
-	let dataCipherIV = '';
 	const query = {
 		query: `query {
       transactions(ids: ["${txid}"]) {
@@ -1632,41 +1631,33 @@ export async function getPrivateTransactionCipherIV(txid: string): Promise<strin
     }
   }`
 	};
-	// We will only attempt this 10 times
-	while (tries < 10) {
-		try {
-			// Call the Arweave Graphql Endpoint
-			const response = await arweave.api.request().post(graphQLURL, query);
-			const { data } = response.data;
-			const { transactions } = data;
-			const { edges } = transactions;
-			const { node } = edges[0];
-			const { tags } = node;
-			tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-				const key = tag.name;
-				const { value } = tag;
-				switch (key) {
-					case 'Cipher-IV':
-						dataCipherIV = value;
-						break;
-					default:
-						break;
-				}
-			});
-			return dataCipherIV;
-		} catch (err) {
-			console.log(err);
-			console.log('Error getting private transaction cipherIV for txid %s, trying again', txid);
-			if (tries < 5) {
-				tries += 1;
-			} else {
-				tries += 1;
-				console.log('Primary gateway is having issues, switching to backup and trying again');
-				graphQLURL = backupGraphQLURL; // Change to the backup URL and try 5 times
+
+	return await queryGateway(async (url: string) => {
+		const response = await arweave.api.request().post(url + "/graphql", query);
+		const { data } = response.data;
+		const { transactions } = data;
+		const { edges } = transactions;
+		const { node } = edges[0];
+		const { tags } = node;
+		let cipherIV: string = "";
+		tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+			const key = tag.name;
+			const { value } = tag;
+			switch (key) {
+				case 'Cipher-IV':
+					cipherIV = value;
+					break;
+				default:
+					break;
 			}
-		}
-	}
-	return 'CORE GQL ERROR: Cannot get file data Cipher IV';
+		});
+
+		if (cipherIV !== "")
+			return cipherIV;
+
+		console.log("Failed to find data cipher IV for " + txid);
+		return "Error";
+	});
 }
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives
@@ -2302,7 +2293,7 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 		}
 
 		// Download the File's Metadata using the metadata transaction ID
-		const data: string | Uint8Array = await getTransactionData(fileToSync.metaDataTxId);
+		const data: Uint8Array = await getTransactionData(fileToSync.metaDataTxId);
 
 		// Enumerate through each tag to pull the data
 		tags.forEach((tag: gqlTypes.GQLTagInterface) => {
