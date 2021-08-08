@@ -23,6 +23,7 @@ import { deriveDriveKey, deriveFileKey, fileDecrypt } from './crypto';
 import { uploadArFSDriveMetaData, uploadArFSFileData, uploadArFSFileMetaData } from './public/arfs';
 import { selectTokenHolder } from './smartweave';
 import { arDriveCommunityOracle } from './ardrive_community_oracle';
+import { getPrivateTransactionCipherIV } from './gql';
 
 // Initialize Arweave
 export const arweave = Arweave.init({
@@ -413,7 +414,8 @@ export async function downloadArDriveFileByTx(user: ArDriveUser, fileToDownload:
 						user.walletPrivateKey
 					);
 					const fileKey: Buffer = await deriveFileKey(fileToDownload.fileId, driveKey);
-					const decryptedData = await fileDecrypt(fileToDownload.dataCipherIV, fileKey, dataBuffer);
+					const cipherIV = await getPrivateTransactionCipherIV(fileToDownload.dataTxId);
+					const decryptedData = await fileDecrypt(cipherIV, fileKey, dataBuffer);
 
 					// Overwrite the file with the decrypted version
 					writeFileSync(fileToDownload.filePath, decryptedData);

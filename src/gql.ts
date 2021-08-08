@@ -2375,11 +2375,6 @@ export async function getFileMetaDataFromTx(fileDataTx: gqlTypes.GQLEdgeInterfac
 			fileToSync.contentType = common.extToMime(dataJSON.name);
 			fileToSync.permaWebLink = common.gatewayURL.concat(dataJSON.dataTxId);
 
-			if (fileToSync.isPublic === 0) {
-				// if this is a private file, the CipherIV of the Data transaction should also be captured
-				fileToSync.dataCipherIV = await getPrivateTransactionCipherIV(fileToSync.dataTxId);
-			}
-
 			// Check to see if a previous version exists, and if so, increment the version.
 			// Versions are determined by comparing old/new file hash.
 			const latestFile = await getDb.getLatestFileVersionFromSyncTable(fileToSync.fileId);
