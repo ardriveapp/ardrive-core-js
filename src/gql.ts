@@ -4,7 +4,7 @@ import * as arfsTypes from './types/arfs_Types';
 import * as gqlTypes from './types/gql_Types';
 import * as getDb from './db/db_get';
 import * as updateDb from './db/db_update';
-import { queryGateway } from './gateway';
+import { getTransactionMetadata } from './gateway';
 
 import { getTransactionData } from './gateway';
 import { deriveDriveKey, driveDecrypt, deriveFileKey, fileDecrypt } from './crypto';
@@ -1614,50 +1614,21 @@ export async function getPrivateFileData(txid: string): Promise<arfsTypes.ArFSPr
 }
 
 // Gets the CipherIV tag of a private data transaction
-// FIXME: Maybe this could just look up by txid rather than GQL?
 export async function getPrivateTransactionCipherIV(txid: string): Promise<string> {
-	const query = {
-		query: `query {
-      transactions(ids: ["${txid}"]) {
-      edges {
-        node {
-          id
-          tags {
-            name
-            value
-          }
-        }
-      }
-    }
-  }`
-	};
+	const metadata = await getTransactionMetadata(txid);
 
-	return await queryGateway(async (url: string) => {
-		const response = await arweave.api.request().post(url + "/graphql", query);
-		const { data } = response.data;
-		const { transactions } = data;
-		const { edges } = transactions;
-		const { node } = edges[0];
-		const { tags } = node;
-		let cipherIV: string = "";
-		tags.forEach((tag: gqlTypes.GQLTagInterface) => {
-			const key = tag.name;
-			const { value } = tag;
-			switch (key) {
-				case 'Cipher-IV':
-					cipherIV = value;
-					break;
-				default:
-					break;
-			}
-		});
-
-		if (cipherIV !== "")
-			return cipherIV;
-
-		console.log("Failed to find data cipher IV for " + txid);
-		return "Error";
+	let cipherIV: string = "";
+	const tagName: string = Buffer.from("Cipher-IV", "ascii").toString("base64");
+	metadata.tags.forEach((tag: gqlTypes.GQLTagInterface) => {
+		if (tag.name === tagName)
+			cipherIV = Buffer.from(tag.value, "base64").toString("ascii");
 	});
+
+	if (cipherIV !== "")
+		return cipherIV;
+
+	console.log("Failed to find data cipher IV for " + txid);
+	return "Error";
 }
 
 // Uses GraphQl to pull necessary drive information from another user's Shared Public Drives

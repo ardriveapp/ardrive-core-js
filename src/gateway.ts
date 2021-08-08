@@ -1,4 +1,5 @@
 import { arweave } from './arweave';
+import { GQLNodeInterface } from './types/gql_Types';
 import Axios from 'axios';
 
 // List (in order of initial preference) of the gateways for requests.
@@ -49,6 +50,18 @@ export function getTransactionData(txid: string): Promise<Uint8Array> {
 			method: 'get',
 			url: url + "/" + txid,
 			responseType: 'arraybuffer'
+		});
+		return response.data;
+	});
+}
+
+// Gets metadata (in particular, tags) of a transaction as JSON.
+export function getTransactionMetadata(txid: string): Promise<GQLNodeInterface> {
+	return queryGateway(async (url: string): Promise<GQLNodeInterface> => {
+		const response = await Axios({
+			method: 'get',
+			url: url + "/tx/" + txid,
+			responseType: 'json'
 		});
 		return response.data;
 	});
