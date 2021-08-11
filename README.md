@@ -118,18 +118,6 @@ And finally, to view the detailed error messages in your terminal:
 yarn power-assert -g 'My test case'
 ```
 
-### VSCode/VSCodium integration:
-
--   Make sure to open ardrive-core.code-workspace
--   Install recomended extensions (
-
-arcanis.vscode-zipfs
-
-dbaeumer.vscode-eslint
-
-esbenp.prettier-vscode
-
-
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
 [wsl-install]: https://code.visualstudio.com/docs/remote/wsl
