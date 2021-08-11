@@ -139,11 +139,6 @@ yarn install --check-cache
 
 for external PR
 
-## Package:
-
-Npm package:
-
-npm add ardrive-core-js
 
 [![Gitopia](https://img.shields.io/endpoint?style=&url=https://gitopia.org/mirror-badge.json)](gitopia-repo)
 
