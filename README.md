@@ -129,15 +129,6 @@ dbaeumer.vscode-eslint
 
 esbenp.prettier-vscode
 
-On repo main folder run: `yarn`
-
-Remember to use
-
-```
-yarn install --check-cache
-```
-
-for external PR
 
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
