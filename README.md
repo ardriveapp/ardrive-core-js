@@ -139,9 +139,6 @@ yarn install --check-cache
 
 for external PR
 
-
-[![Gitopia](https://img.shields.io/endpoint?style=&url=https://gitopia.org/mirror-badge.json)](gitopia-repo)
-
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
 [wsl-install]: https://code.visualstudio.com/docs/remote/wsl
