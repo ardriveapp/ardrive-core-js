@@ -4,7 +4,7 @@ import { get, all } from './db_common';
 // GET SINGLE ITEM FUNCTIONS //
 ///////////////////////////////
 export const getFolderFromSyncTable = (driveId: string, filePath: string) => {
-	return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? AND entityType = 'folder'`, [driveId, filePath]);
+	return get(`SELECT * FROM Sync WHERE driveId = ? AND filePath = ? AND entityType = 'folder' ORDER BY unixTime DESC`, [driveId, filePath]);
 };
 
 export const checkIfExistsInSyncTable = (fileHash: string, fileName: string, fileId: string) => {
