@@ -15,7 +15,13 @@
         ]
     ],
     "branches": [
-        "master",
-        "staging"
+        {
+            "name": "master",
+            "prerelease": true
+        },
+        {
+            "name": "staging",
+            "prerelease": true
+        }
     ]
 }
