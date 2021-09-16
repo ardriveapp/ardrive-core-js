@@ -186,7 +186,7 @@ export async function prepareArFSMetaDataTransaction(
 		transaction.addTag('Cipher-IV', fileMetaData.metaDataCipherIV);
 	} else {
 		// Tag file with public tags only
-		transaction.addTag('Content-Type', fileMetaData.contentType);
+		transaction.addTag('Content-Type', 'application/json');
 	}
 	transaction.addTag('ArFS', arFSVersion);
 	transaction.addTag('Entity-Type', fileMetaData.entityType);
