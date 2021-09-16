@@ -1,6 +1,6 @@
 name: Node.js CI
 
-on: [ push, pull_request ]
+on: [ push ]
 jobs:
   build:
 
@@ -23,3 +23,10 @@ jobs:
 
       - name: Test and Build Codebase
         run: yarn ci
+
+			- name: Release
+				if: ${{ github.ref == 'refs/heads/master' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
