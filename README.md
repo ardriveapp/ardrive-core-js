@@ -1,3 +1,14 @@
+# Version 1.0 Is Coming!
+
+Version 0.x will be retired in favor of a major version update whose enhacements include:
+
+-   Improved type safety
+-   More user-friendly ArDrive and ArFS APIs
+-   Excision of database-related code
+-   Excision of file-sync-related code
+
+We believe these improvements will promote extensibility and decouple key building blocks from unnecessary dependencies. Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more information.
+
 # ardrive-core-js
 
 ArDrive Core is a TypeScript library that contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management, and other common functions.
