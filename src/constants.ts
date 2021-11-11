@@ -1,14 +1,22 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: DEFAULT_APP_VERSION } = require('../package.json');
 import { CipherType } from './types/type_guards';
+
+export const ArFS_O_11 = '0.11';
+export const CURRENT_ARFS_VERSION = ArFS_O_11;
+export const DEFAULT_APP_NAME = 'ArDrive-Core';
+export { DEFAULT_APP_VERSION };
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 export const gatewayURL = 'https://arweave.net/';
 //export const gatewayURL = 'https://arweave.dev/';
 
+export const graphQLURL = 'https://arweave.net/graphql';
+
 export const appName = 'ArDrive-Desktop';
 export const webAppName = 'ArDrive-Web';
-export const appVersion = '0.5.1';
-export const arFSVersion = '0.11';
+
 export const defaultCipher: CipherType = 'AES256-GCM';
 
 /**

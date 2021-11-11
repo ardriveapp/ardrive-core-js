@@ -12,14 +12,13 @@
  * For an integration test example, visit `/tests/example.test.ts`
  */
 
-import { sleep } from './common';
-
 // Common imports with chai/sinon
 import { expect } from 'chai';
 import { mock, spy, stub } from 'sinon';
 
 // Power-assert must be imported with require to work
 import assert = require('assert');
+import { sleep } from './utils/common';
 
 /**
  * Normally we would not define our test functions here. Unit
@@ -34,8 +33,8 @@ function basicInputOutputExample(input: number) {
 
 // Async input/output example function
 async function asyncInputOutputExample(input: number) {
-	// Waits 100ms to simulate async call
-	await sleep(100);
+	// Waits 1ms to simulate async call
+	await sleep(1);
 	return basicInputOutputExample(input);
 }
 

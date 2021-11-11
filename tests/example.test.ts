@@ -8,7 +8,7 @@
 
 import { expect } from 'chai';
 import { mock, spy } from 'sinon';
-import { sleep } from '../src/common';
+import { sleep } from '../src/utils/common';
 
 // Independently defined example types to avoid conflict with future type changes
 type ExampleUser = { login: string; walletPrivateKey: string; walletPublicKey: string };
@@ -17,7 +17,7 @@ type ExampleDrive = { txId: string; driveId: string };
 // Example API for integration testing, normally this would be imported into the test file
 const basicIntegrationExample = {
 	login: async (login: string): Promise<ExampleUser> => {
-		await sleep(100); // Wait 100ms for fake async
+		await sleep(1); // Wait 1ms for fake async
 
 		return {
 			login: login,
@@ -27,7 +27,7 @@ const basicIntegrationExample = {
 	},
 
 	getDrives: async (user: ExampleUser): Promise<ExampleDrive[]> => {
-		await sleep(100); // Wait 100ms for fake async
+		await sleep(1); // Wait 1ms for fake async
 
 		if (user.walletPrivateKey !== `${user.login}_walletPriv`) {
 			return [];
