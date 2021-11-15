@@ -69,9 +69,18 @@ import {
 import { FolderHierarchy } from './arfs/folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from './constants';
-import { deriveDriveKey } from './crypto';
+import { deriveDriveKey, driveDecrypt } from './crypto';
 import { PrivateKeyData } from './private_key_data';
-import { EID, ArweaveAddress, TxID, W, GQLTagInterface, GQLEdgeInterface, GQLNodeInterface } from './types';
+import {
+	EID,
+	ArweaveAddress,
+	TxID,
+	W,
+	GQLTagInterface,
+	GQLEdgeInterface,
+	GQLNodeInterface,
+	DrivePrivacy
+} from './types';
 import { ListPrivateFolderParams } from './types';
 import { DriveID, DriveKey, FolderID, RewardSettings, FileID } from './types/types';
 import { latestRevisionFilter, fileFilter, folderFilter } from './utils/filter_methods';
@@ -871,6 +880,57 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folderId,
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })
 		);
+	}
+
+	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
+		const gqlQuery = buildQuery({
+			tags: [
+				{ name: 'Entity-Type', value: 'drive' },
+				{ name: 'Drive-Id', value: `${driveId}` }
+			],
+			sort: ASCENDING_ORDER
+		});
+		const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+		const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
+
+		if (!edges.length) {
+			throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+		}
+
+		const edgeOfFirstDrive = edges[0];
+
+		const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
+		const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
+
+		if (!drivePrivacyFromTag) {
+			throw new Error('Target drive has no "Drive-Privacy" tag!');
+		}
+
+		if (drivePrivacyFromTag.value !== drivePrivacy) {
+			throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
+		}
+
+		if (driveKey) {
+			const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
+			if (!cipherIVFromTag) {
+				throw new Error('Target private drive has no "Cipher-IV" tag!');
+			}
+
+			const driveDataBuffer = Buffer.from(
+				await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
+			);
+
+			try {
+				// Attempt to decrypt drive to assert drive key is correct
+				await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
+			} catch {
+				throw new Error('Provided drive key or password could not decrypt target private drive!');
+			}
+		}
+
+		const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+
+		return new ArweaveAddress(driveOwnerAddress);
 	}
 
 	/**
