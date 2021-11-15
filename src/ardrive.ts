@@ -74,7 +74,9 @@ import {
 import { urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { stubEntityID } from './utils/stubs';
-import { Wallet, WalletDAO, JWKWallet } from './wallet';
+import { Wallet } from './wallet';
+import { JWKWallet } from './jwk_wallet';
+import { WalletDAO } from './wallet_dao';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(

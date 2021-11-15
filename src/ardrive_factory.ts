@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Wallet, WalletDAO } from './wallet';
+import { Wallet } from './wallet';
 import Arweave from 'arweave';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
 import { ArFSDAO } from './arfs/arfsdao';
@@ -12,6 +12,7 @@ import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
+import { WalletDAO } from './wallet_dao';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 

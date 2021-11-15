@@ -27,7 +27,8 @@ import {
 	stubPrivateFile
 } from '../../src/utils/stubs';
 import { expectAsyncErrorThrow } from '../../src/utils/test_helpers';
-import { JWKWallet, WalletDAO } from '../../src/wallet';
+import { JWKWallet } from '../../src/jwk_wallet';
+import { WalletDAO } from '../../src/wallet_dao';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;

@@ -1,7 +1,7 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { CipherIV, DriveID, DriveKey, EntityID } from '../types';
 import { Utf8ArrayToStr } from '../utils/common';
-import { JWKWallet } from '../wallet';
+import { JWKWallet } from '../jwk_wallet';
 
 type DriveIdKeyPair = { [key: string /* DriveID */]: DriveKey };
 

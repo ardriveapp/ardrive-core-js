@@ -95,7 +95,8 @@ import {
 	folderToNameAndIdMap
 } from '../utils/mapper_functions';
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
-import { Wallet, JWKWallet } from '../wallet';
+import { Wallet } from '../wallet';
+import { JWKWallet } from '../jwk_wallet';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}

@@ -8,7 +8,8 @@ import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
 import { stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import { JWKWallet, Wallet } from '../wallet';
+import { Wallet } from '../wallet';
+import { JWKWallet } from '../jwk_wallet';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
