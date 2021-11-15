@@ -1,9 +1,9 @@
 import { TransactionID, AnyEntityID, MakeOptional, ArweaveAddress, Winston, FolderID, DriveID, FileID } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper';
-import { PrivateDriveKeyData } from '../arfsdao';
-import { ArFSListPublicFolderParams } from '../arfsdao_anonymous';
-import { PrivateKeyData } from '../private_key_data';
+import { PrivateDriveKeyData } from '../arfs/arfsdao';
+import { ArFSListPublicFolderParams } from '../arfs/arfsdao_anonymous';
+import { PrivateKeyData } from '../arfs/private_key_data';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file';
 

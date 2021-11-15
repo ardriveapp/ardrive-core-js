@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version: DEFAULT_APP_VERSION } = require('../package.json');
-import { CipherType } from './types/type_guards';
+const { version: DEFAULT_APP_VERSION } = require('../../package.json');
+import { CipherType } from '../types/type_guards';
 
 export const ArFS_O_11 = '0.11';
 export const CURRENT_ARFS_VERSION = ArFS_O_11;

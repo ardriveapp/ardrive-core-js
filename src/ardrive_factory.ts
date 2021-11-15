@@ -3,12 +3,12 @@
 import { Wallet, WalletDAO } from './wallet';
 import Arweave from 'arweave';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
-import { ArFSDAO } from './arfsdao';
+import { ArFSDAO } from './arfs/arfsdao';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regression_estimator';
 import { CommunityOracle } from './community/community_oracle';
-import { ArFSDAOAnonymous } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './constants';
+import { ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';

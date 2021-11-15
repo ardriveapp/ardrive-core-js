@@ -4,9 +4,9 @@ import * as fs from 'fs';
 import * as types from '../types/base_Types';
 import fetch from 'node-fetch';
 import path from 'path';
-import { deriveDriveKey, deriveFileKey, fileEncrypt } from '../crypto';
+import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import { stagingAppUrl } from '../constants';
+import { stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { JWKWallet, Wallet } from '../wallet';
 

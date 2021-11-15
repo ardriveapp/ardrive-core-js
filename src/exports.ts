@@ -6,13 +6,11 @@ export * from './ardrive';
 export * from './ardrive_anonymous';
 export * from './ardrive_factory';
 
-// ArFSDao
-export * from './arfsdao';
-export * from './arfsdao_anonymous';
-
-export * from './private_key_data';
-export * from './crypto';
 export * from './wallet';
+
+// ArFSDao
+export * from './arfs/arfsdao';
+export * from './arfs/arfsdao_anonymous';
 
 // ArFS
 export * from './arfs/arfs_entities';
@@ -26,6 +24,7 @@ export * from './arfs/arfs_builders/arfs_builders';
 export * from './arfs/arfs_builders/arfs_drive_builders';
 export * from './arfs/arfs_builders/arfs_file_builders';
 export * from './arfs/arfs_builders/arfs_folder_builders';
+export * from './arfs/private_key_data';
 
 // Community
 export * from './community/ardrive_community_oracle';
@@ -50,6 +49,7 @@ export * from './utils/error_message';
 export * from './utils/filter_methods';
 export * from './utils/mapper_functions';
 export * from './utils/query';
+export * from './utils/crypto';
 export * from './utils/sort_functions';
 export * from './utils/stubs';
 export * from './utils/test_helpers';

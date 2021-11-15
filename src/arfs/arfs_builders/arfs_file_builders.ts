@@ -1,5 +1,5 @@
 import Arweave from 'arweave';
-import { deriveFileKey, fileDecrypt } from '../../crypto';
+import { deriveFileKey, fileDecrypt } from '../../utils/crypto';
 import {
 	ArweaveAddress,
 	CipherIV,

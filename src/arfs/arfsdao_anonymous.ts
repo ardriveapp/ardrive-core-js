@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { GQLEdgeInterface } from './types';
-import { ASCENDING_ORDER, buildQuery } from './utils/query';
+import { GQLEdgeInterface } from '../types';
+import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import {
 	DriveID,
 	FolderID,
@@ -12,19 +12,19 @@ import {
 	ArweaveAddress,
 	EID,
 	ADDR
-} from './types';
-import { latestRevisionFilter, latestRevisionFilterForDrives } from './utils/filter_methods';
-import { FolderHierarchy } from './arfs/folderHierarchy';
-import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs/arfs_builders/arfs_drive_builders';
-import { ArFSPublicFolderBuilder } from './arfs/arfs_builders/arfs_folder_builders';
-import { ArFSPublicFileBuilder } from './arfs/arfs_builders/arfs_file_builders';
+} from '../types';
+import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
+import { FolderHierarchy } from './folderHierarchy';
+import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
+import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
+import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import {
 	ArFSDriveEntity,
 	ArFSPublicDrive,
 	ArFSPublicFile,
 	ArFSPublicFileOrFolderWithPaths,
 	ArFSPublicFolder
-} from './arfs/arfs_entities';
+} from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
 
 export const graphQLURL = 'https://arweave.net/graphql';

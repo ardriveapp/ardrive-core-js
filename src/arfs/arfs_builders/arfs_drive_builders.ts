@@ -1,6 +1,6 @@
 import Arweave from 'arweave';
-import { driveDecrypt } from '../../crypto';
-import { EntityMetaDataTransactionData, PrivateKeyData } from '../../private_key_data';
+import { driveDecrypt } from '../../utils/crypto';
+import { EntityMetaDataTransactionData, PrivateKeyData } from '../private_key_data';
 import {
 	CipherIV,
 	DriveKey,

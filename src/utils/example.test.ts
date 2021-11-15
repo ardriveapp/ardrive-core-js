@@ -18,7 +18,7 @@ import { mock, spy, stub } from 'sinon';
 
 // Power-assert must be imported with require to work
 import assert = require('assert');
-import { sleep } from './utils/common';
+import { sleep } from './common';
 
 /**
  * Normally we would not define our test functions here. Unit

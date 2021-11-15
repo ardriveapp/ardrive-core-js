@@ -1,5 +1,5 @@
 import Arweave from 'arweave';
-import { graphQLURL } from '../../constants';
+import { graphQLURL } from '../../utils/constants';
 import { ArFSEntity, ArFSFileOrFolderEntity } from '../arfs_entities';
 import { buildQuery } from '../../utils/query';
 import {

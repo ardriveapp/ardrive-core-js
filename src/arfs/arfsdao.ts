@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreateTransactionInterface } from 'arweave/node/common';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import Transaction from 'arweave/node/lib/transaction';
-import { ArFSFileOrFolderBuilder } from './arfs/arfs_builders/arfs_builders';
-import { ArFSPrivateDriveBuilder, SafeArFSDriveBuilder } from './arfs/arfs_builders/arfs_drive_builders';
-import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs/arfs_builders/arfs_file_builders';
-import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs/arfs_builders/arfs_folder_builders';
+import { ArFSFileOrFolderBuilder } from './arfs_builders/arfs_builders';
+import { ArFSPrivateDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
+import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
+import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import {
 	ArFSFileOrFolderEntity,
 	ArFSPublicDrive,
@@ -17,7 +17,7 @@ import {
 	ArFSPrivateFolder,
 	ArFSPrivateFileOrFolderWithPaths,
 	ENCRYPTED_DATA_PLACEHOLDER
-} from './arfs/arfs_entities';
+} from './arfs_entities';
 import {
 	ArFSCreateFolderResult,
 	WithDriveKey,
@@ -33,8 +33,8 @@ import {
 	ArFSUploadFileResult,
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
-} from './arfs/arfs_entity_result_factory';
-import { ArFSFileToUpload } from './arfs/arfs_file_wrapper';
+} from './arfs_entity_result_factory';
+import { ArFSFileToUpload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -42,7 +42,7 @@ import {
 	FileDataPrototypeFactory,
 	FileMetadataTrxDataFactory,
 	FileMetaDataFactory
-} from './arfs/arfs_meta_data_factory';
+} from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPrivateFolderMetaDataPrototype,
@@ -53,7 +53,7 @@ import {
 	ArFSPublicFileDataPrototype,
 	ArFSPrivateFileDataPrototype,
 	ArFSObjectMetadataPrototype
-} from './arfs/arfs_prototypes';
+} from './arfs_prototypes';
 import {
 	ArFSObjectTransactionData,
 	ArFSPublicFolderTransactionData,
@@ -65,11 +65,11 @@ import {
 	ArFSFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData
-} from './arfs/arfs_trx_data_types';
-import { FolderHierarchy } from './arfs/folderHierarchy';
+} from './arfs_trx_data_types';
+import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from './constants';
-import { deriveDriveKey, driveDecrypt } from './crypto';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
+import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -79,19 +79,23 @@ import {
 	GQLTagInterface,
 	GQLEdgeInterface,
 	GQLNodeInterface,
-	DrivePrivacy
-} from './types';
-import { ListPrivateFolderParams } from './types';
-import { DriveID, DriveKey, FolderID, RewardSettings, FileID } from './types/types';
-import { latestRevisionFilter, fileFilter, folderFilter } from './utils/filter_methods';
+	DrivePrivacy,
+	ListPrivateFolderParams,
+	DriveID,
+	DriveKey,
+	FolderID,
+	RewardSettings,
+	FileID
+} from '../types';
+import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
 	entityToNameMap,
 	EntityNamesAndIds,
 	fileConflictInfoMap,
 	folderToNameAndIdMap
-} from './utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER } from './utils/query';
-import { Wallet, JWKWallet } from './wallet';
+} from '../utils/mapper_functions';
+import { buildQuery, ASCENDING_ORDER } from '../utils/query';
+import { Wallet, JWKWallet } from '../wallet';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}

@@ -1,4 +1,4 @@
-import { driveEncrypt, fileEncrypt, deriveFileKey } from '../crypto';
+import { driveEncrypt, fileEncrypt, deriveFileKey } from '../utils/crypto';
 import {
 	CipherIV,
 	DataContentType,
