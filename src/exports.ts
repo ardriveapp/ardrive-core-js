@@ -7,6 +7,8 @@ export * from './ardrive_anonymous';
 export * from './ardrive_factory';
 
 export * from './wallet';
+export * from './wallet_dao';
+export * from './jwk_wallet';
 
 // ArFSDao
 export * from './arfs/arfsdao';
@@ -53,3 +55,4 @@ export * from './utils/crypto';
 export * from './utils/sort_functions';
 export * from './utils/stubs';
 export * from './utils/test_helpers';
+export * from './utils/wallet_utils';
