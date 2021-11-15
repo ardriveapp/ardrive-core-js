@@ -37,6 +37,10 @@ export interface ArFSResult {
 	fees: ArFSFees;
 }
 
+export interface ArFSManifestResult extends ArFSResult {
+	links: string[];
+}
+
 export const emptyArFSResult: ArFSResult = {
 	created: [],
 	tips: [],
@@ -68,6 +72,12 @@ export interface RecursivePublicBulkUploadParams {
 }
 export type RecursivePrivateBulkUploadParams = RecursivePublicBulkUploadParams & WithDriveKey;
 
+export interface UploadPublicManifestParams {
+	driveId?: DriveID;
+	folderId?: FolderID;
+	maxDepth?: number;
+	destManifestName?: string;
+}
 export interface CreatePublicFolderParams {
 	folderName: string;
 	driveId: DriveID;
@@ -147,4 +157,17 @@ export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
 export interface GetAllDrivesForAddressParams {
 	address: ArweaveAddress;
 	privateKeyData: PrivateKeyData;
+}
+
+// These manifest interfaces taken from arweave-deploy
+export interface ManifestPathMap {
+	[index: string]: { id: string };
+}
+export interface Manifest {
+	manifest: 'arweave/paths';
+	version: '0.1.0';
+	index?: {
+		path: string;
+	};
+	paths: ManifestPathMap;
 }

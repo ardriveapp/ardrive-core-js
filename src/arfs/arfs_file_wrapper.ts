@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
-import { ByteCount, DataContentType, UnixTime, FileID, FolderID } from '../types';
+import { ByteCount, DataContentType, UnixTime, FileID, FolderID, MANIFEST_CONTENT_TYPE, Manifest } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
@@ -52,8 +52,36 @@ export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload |
 export function isFolder(fileOrFolder: ArFSFileToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
 	return fileOrFolder instanceof ArFSFolderToUpload;
 }
+export interface ArFSEntityToUpload {
+	gatherFileInfo: () => FileInfo;
+	getFileDataBuffer: () => Buffer;
+	getBaseFileName: () => BaseFileName;
+}
 
-export class ArFSFileToUpload {
+export class ArFSManifestToUpload implements ArFSEntityToUpload {
+	constructor(public readonly manifest: Manifest) {}
+
+	public gatherFileInfo(): FileInfo {
+		const dataContentType = MANIFEST_CONTENT_TYPE;
+		const lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000)); // new unix time
+
+		return { dataContentType, lastModifiedDateMS, fileSize: this.size };
+	}
+
+	public getBaseFileName(): BaseFileName {
+		return 'DriveManifest.json';
+	}
+
+	public getFileDataBuffer(): Buffer {
+		return Buffer.from(JSON.stringify(this.manifest));
+	}
+
+	public get size(): ByteCount {
+		return new ByteCount(Buffer.byteLength(JSON.stringify(this.manifest)));
+	}
+}
+
+export class ArFSFileToUpload implements ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
 		if (+this.fileStats.size >= +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);

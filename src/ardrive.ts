@@ -3,9 +3,15 @@ import {
 	ArFSPrivateDrive,
 	ArFSPrivateFolder,
 	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths
+	ArFSPrivateFileOrFolderWithPaths,
+	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
+import {
+	ArFSFolderToUpload,
+	ArFSFileToUpload,
+	ArFSEntityToUpload,
+	ArFSManifestToUpload
+} from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -39,7 +45,11 @@ import {
 	DriveID,
 	stubTransactionID,
 	UploadPublicFileParams,
-	UploadPrivateFileParams
+	UploadPrivateFileParams,
+	ArFSManifestResult,
+	ManifestPathMap,
+	MANIFEST_CONTENT_TYPE,
+	UploadPublicManifestParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -77,6 +87,7 @@ import { stubEntityID } from './utils/stubs';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
+import { alphabeticalOrder } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1002,6 +1013,133 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
+	async uploadPublicManifest({
+		folderId,
+		driveId,
+		destManifestName = 'DriveManifest.json',
+		maxDepth = Number.MAX_SAFE_INTEGER
+	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
+		if (!driveId) {
+			if (!folderId) {
+				throw new Error('Must provide either a drive ID or a folder ID to!');
+			}
+
+			driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
+		}
+
+		const owner = await this.getOwnerForDriveId(driveId);
+		await this.assertOwnerAddress(owner);
+
+		const drive = await this.arFsDao.getPublicDrive(driveId, owner);
+
+		folderId ??= drive.rootFolderId;
+
+		// TODO: Handle collision with existing manifest. New manifest will always be a new file, with
+		// upsert by default this means it will only skip here on --skip conflict
+		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
+
+		// Manifest becomes a new revision if the destination name
+		// conflicts with an existing file in the destination folder
+		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
+
+		const children = await this.arFsDao.listPublicFolder({
+			folderId,
+			maxDepth,
+			includeRoot: true,
+			owner
+		});
+
+		const sortedChildren = children.sort((a, b) => alphabeticalOrder(a.path, b.path));
+
+		// Slice and replace path to compare above pattern
+		const baseFolderPath = sortedChildren[0].path;
+
+		const castedChildren = sortedChildren as (
+			| Partial<ArFSPrivateFileOrFolderWithPaths>
+			| Partial<ArFSPublicFileOrFolderWithPaths>
+		)[];
+
+		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
+		castedChildren.map((fileOrFolderMetaData) => {
+			if (fileOrFolderMetaData.entityType === 'folder') {
+				delete fileOrFolderMetaData.lastModifiedDate;
+				delete fileOrFolderMetaData.size;
+				delete fileOrFolderMetaData.dataTxId;
+				delete fileOrFolderMetaData.dataContentType;
+			}
+		});
+
+		// TURN SORTED CHILDREN INTO MANIFEST
+		const pathMap: ManifestPathMap = {};
+		castedChildren.forEach((child) => {
+			if (child.dataTxId && child.path && child.dataContentType !== MANIFEST_CONTENT_TYPE) {
+				const path = child.path
+					// Slice off base folder path and the leading "/" so manifest URLs path correctly
+					.slice(baseFolderPath.length + 1)
+					// Replace spaces with underscores for sharing links
+					.replace(/ /g, '_');
+
+				pathMap[path] = { id: `${child.dataTxId}` };
+			}
+		});
+
+		// Use index.html in the specified folder if it exists, otherwise show first file found
+		const indexPath = Object.keys(pathMap).includes(`index.html`) ? `index.html` : Object.keys(pathMap)[0];
+
+		const arweaveManifest = new ArFSManifestToUpload({
+			manifest: 'arweave/paths',
+			version: '0.1.0',
+			index: {
+				path: indexPath
+			},
+			paths: pathMap
+		});
+
+		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
+			arweaveManifest.size,
+			this.stubPublicFileMetadata(arweaveManifest, destManifestName),
+			'public'
+		);
+		const fileDataRewardSettings = { reward: uploadBaseCosts.fileDataBaseReward, feeMultiple: this.feeMultiple };
+		const metadataRewardSettings = { reward: uploadBaseCosts.metaDataBaseReward, feeMultiple: this.feeMultiple };
+
+		const uploadFileResult = await this.arFsDao.uploadPublicFile({
+			parentFolderId: folderId,
+			wrappedFile: arweaveManifest,
+			driveId,
+			fileDataRewardSettings,
+			metadataRewardSettings,
+			destFileName: destManifestName,
+			existingFileId
+		});
+
+		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			communityWinstonTip: uploadBaseCosts.communityWinstonTip
+		});
+
+		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
+			(path) => `arweave.net/${uploadFileResult.dataTrxId}/${path}`
+		);
+
+		return Promise.resolve({
+			created: [
+				{
+					type: 'file',
+					metadataTxId: uploadFileResult.metaDataTrxId,
+					dataTxId: uploadFileResult.dataTrxId,
+					entityId: uploadFileResult.fileId
+				}
+			],
+			tips: [tipData],
+			fees: {
+				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
+				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
+				[`${tipData.txId}`]: communityTipTrxReward
+			},
+			links: [`arweave.net/${uploadFileResult.dataTrxId}`, ...fileLinks]
+		});
+	}
+
 	public async createPublicFolder({
 		folderName,
 		driveId,
@@ -1487,7 +1625,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 	// Provides for stubbing metadata during cost estimations since the data trx ID won't yet be known
 	private stubPublicFileMetadata(
-		wrappedFile: ArFSFileToUpload,
+		wrappedFile: ArFSEntityToUpload,
 		destinationFileName?: string
 	): ArFSPublicFileMetadataTransactionData {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
