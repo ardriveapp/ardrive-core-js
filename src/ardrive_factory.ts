@@ -44,17 +44,17 @@ export function arDriveFactory({
 	priceEstimator = new ARDataPriceRegressionEstimator(),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	wallet,
-	walletDao = new WalletDAO(arweave),
+	walletDao,
 	dryRun,
 	feeMultiple,
-	arfsDao = new ArFSDAO(wallet, arweave, dryRun),
+	arfsDao,
 	appName = DEFAULT_APP_NAME,
 	appVersion = DEFAULT_APP_VERSION
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
-		walletDao,
-		arfsDao,
+		walletDao ?? new WalletDAO(arweave, appName, appVersion),
+		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion),
 		communityOracle,
 		appName,
 		appVersion,
