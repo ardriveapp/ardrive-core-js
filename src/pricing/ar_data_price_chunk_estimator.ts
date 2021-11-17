@@ -120,7 +120,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 			const numberOfChunks = Math.floor(
 				+winston.minus(this.pricingInfo.baseWinstonPrice) / +this.pricingInfo.perChunkWinstonPrice
 			);
-			return new ByteCount(numberOfChunks * +winston);
+			return new ByteCount(+byteCountOfChunk * numberOfChunks);
 		}
 
 		// Return 0 if winston price given does not cover the base winston price for a 1 byte transaction
