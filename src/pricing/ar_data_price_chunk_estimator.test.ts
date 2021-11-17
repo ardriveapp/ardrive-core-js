@@ -15,12 +15,10 @@ describe('ARDataPriceChunkEstimator class', () => {
 	const arDriveCommunityTip: ArDriveCommunityTip = { minWinstonFee: W(10), tipPercentage: 0.15 };
 
 	beforeEach(() => {
-		// Set pricing algo up as x = y (bytes = Winston)
-		// TODO: Get ts-sinon working with snowpack so we don't have to use a concrete type here
-
+		// Simulate actual AR pricing
 		spyedOracle = stub(new GatewayOracle());
-		spyedOracle.getWinstonPriceForByteCount.callsFake(
-			(input) => Promise.resolve(W(Math.ceil(+input / chunkSize) * marginalFeePerChunk + baseFee)) // Simulate AR pricing
+		spyedOracle.getWinstonPriceForByteCount.callsFake((input) =>
+			Promise.resolve(W(Math.ceil(+input / chunkSize) * marginalFeePerChunk + baseFee))
 		);
 		calculator = new ARDataPriceChunkEstimator(true, spyedOracle);
 	});

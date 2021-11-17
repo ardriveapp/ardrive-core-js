@@ -13,7 +13,6 @@ describe('ARDataPriceEstimator class', () => {
 
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
-		// TODO: Get ts-sinon working with snowpack so we don't have to use a concrete type here
 		spyedOracle = stub(new GatewayOracle());
 		spyedOracle.getWinstonPriceForByteCount.callsFake((input) => Promise.resolve(W(+input)));
 		calculator = new ARDataPriceRegressionEstimator(true, spyedOracle);
