@@ -12,15 +12,16 @@ import {
 } from '../../types';
 import { fileDecrypt } from '../../utils/crypto';
 import { Utf8ArrayToStr } from '../../utils/common';
-import { stubEntityID } from '../../utils/stubs';
+
 import { ArFSPublicFolder, ArFSPrivateFolder } from '../arfs_entities';
+import { fakeEntityId } from '../../utils/constants';
 
 export const ROOT_FOLDER_ID_PLACEHOLDER = 'root folder';
 
 // A utility type to provide a FolderID placeholder for root folders (which never have a parentFolderId)
 export class RootFolderID extends EntityID {
 	constructor() {
-		super(`${stubEntityID}`); // Unused after next line
+		super(`${fakeEntityId}`); // Unused after next line
 		this.entityId = ROOT_FOLDER_ID_PLACEHOLDER;
 	}
 }

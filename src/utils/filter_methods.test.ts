@@ -2,7 +2,13 @@ import { expect } from 'chai';
 import { ArFSPublicDrive } from '../arfs/arfs_entities';
 import { Mutable, TxID } from '../types';
 import { fileFilter, folderFilter, latestRevisionFilter, latestRevisionFilterForDrives } from './filter_methods';
-import { stubPrivateFile, stubPrivateFolder, stubPublicDrive, stubPublicFile, stubPublicFolder } from './stubs';
+import {
+	stubPrivateFile,
+	stubPrivateFolder,
+	stubPublicDrive,
+	stubPublicFile,
+	stubPublicFolder
+} from '../../tests/stubs';
 
 describe('The latestRevisionFilter function', () => {
 	it('returns true when only entry in array matches the search entry', () => {

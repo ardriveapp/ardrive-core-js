@@ -13,7 +13,7 @@ import {
 	GQLTagInterface
 } from '../../types';
 import { Utf8ArrayToStr } from '../../utils/common';
-import { stubEntityID } from '../../utils/stubs';
+import { fakeEntityId } from '../../utils/constants';
 import { ArFSPublicDrive, ArFSPrivateDrive, ENCRYPTED_DATA_PLACEHOLDER, ArFSDriveEntity } from '../arfs_entities';
 import {
 	ArFSMetadataEntityBuilder,
@@ -216,7 +216,7 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 // A utility type to assist with fail-safe decryption of private entities
 export class EncryptedEntityID extends EntityID {
 	constructor() {
-		super(`${stubEntityID}`); // Unused after next line
+		super(`${fakeEntityId}`); // Unused after next line
 		this.entityId = ENCRYPTED_DATA_PLACEHOLDER;
 	}
 }
