@@ -30,6 +30,10 @@ export class Winston {
 		return this.amount.isGreaterThan(winston.amount);
 	}
 
+	isGreaterThanOrEqualTo(winston: Winston): boolean {
+		return this.amount.isGreaterThanOrEqualTo(winston.amount);
+	}
+
 	static difference(a: Winston, b: Winston): string {
 		return a.amount.minus(b.amount).toString();
 	}
