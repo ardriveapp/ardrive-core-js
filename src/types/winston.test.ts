@@ -118,6 +118,20 @@ describe('Winston class', () => {
 		});
 	});
 
+	describe('isGreaterThanOrEqualTo function', () => {
+		it('returns false when other Winston is greater', () => {
+			expect(new Winston(1).isGreaterThanOrEqualTo(new Winston(2))).to.be.false;
+		});
+
+		it('returns true when other Winston is lesser', () => {
+			expect(new Winston(2).isGreaterThanOrEqualTo(new Winston(1))).to.be.true;
+		});
+
+		it('returns true when other Winston is equal', () => {
+			expect(new Winston(2).isGreaterThanOrEqualTo(new Winston(2))).to.be.true;
+		});
+	});
+
 	describe('difference function', () => {
 		it('can return a positive difference between Winstons', () => {
 			expect(Winston.difference(new Winston(2), new Winston(1))).to.equal('1');
