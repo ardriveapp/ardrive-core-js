@@ -86,7 +86,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly communityOracle: CommunityOracle,
 		private readonly appName: string,
 		private readonly appVersion: string,
-		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(),
+		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false
 	) {

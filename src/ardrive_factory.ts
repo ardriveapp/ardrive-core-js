@@ -41,7 +41,7 @@ const defaultArweave = Arweave.init({
 
 export function arDriveFactory({
 	arweave = defaultArweave,
-	priceEstimator = new ARDataPriceChunkEstimator(),
+	priceEstimator = new ARDataPriceChunkEstimator(true),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	wallet,
 	walletDao,
