@@ -44,7 +44,6 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 			return this.setupPromise;
 		}
 
-		// Fetch the price for all values in byteVolume array and feed them into a linear regression
 		this.setupPromise = (async () => {
 			const basePrice = await this.oracle.getWinstonPriceForByteCount(new ByteCount(0));
 			const oneChunkPrice = await this.oracle.getWinstonPriceForByteCount(new ByteCount(1));
