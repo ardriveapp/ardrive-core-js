@@ -26,7 +26,7 @@ import {
 	stubPublicFile,
 	stubPrivateFile
 } from '../../src/utils/stubs';
-import { expectAsyncErrorThrow } from '../../src/utils/test_helpers';
+import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 

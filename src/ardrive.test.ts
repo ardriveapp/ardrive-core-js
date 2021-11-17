@@ -16,7 +16,7 @@ import { GatewayOracle } from './pricing/gateway_oracle';
 import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple, TipType } from './types';
 import { readJWKFile } from './utils/common';
 import { stubEntityID } from './utils/stubs';
-import { expectAsyncErrorThrow } from './utils/test_helpers';
+import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 
 describe('ArDrive class', () => {

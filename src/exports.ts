@@ -54,5 +54,4 @@ export * from './utils/query';
 export * from './utils/crypto';
 export * from './utils/sort_functions';
 export * from './utils/stubs';
-export * from './utils/test_helpers';
 export * from './utils/wallet_utils';
