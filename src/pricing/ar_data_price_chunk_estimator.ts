@@ -3,7 +3,7 @@ import type { ArweaveOracle } from './arweave_oracle';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
 import { ArDriveCommunityTip, AR, ByteCount, Winston } from '../types';
 
-const byteCountOfChunk = new ByteCount(262144);
+const byteCountOfChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
 
 interface ChunkPricingInfo {
 	baseWinstonPrice: Winston;
