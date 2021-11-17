@@ -11,7 +11,6 @@ describe('ARDataPriceChunkEstimator class', () => {
 	const chunkSize = 256 * Math.pow(2, 10);
 	const baseFee = 100;
 	const marginalFeePerChunk = 1000;
-	const oneChunkPrice = baseFee + marginalFeePerChunk;
 
 	const arDriveCommunityTip: ArDriveCommunityTip = { minWinstonFee: W(10), tipPercentage: 0.15 };
 
@@ -26,6 +25,7 @@ describe('ARDataPriceChunkEstimator class', () => {
 		calculator = new ARDataPriceChunkEstimator(true, spyedOracle);
 	});
 
+	// This test is less trustworthy now that we don't use Promise.all on the batch of oracle requests
 	it('can be instantiated without making oracle calls', async () => {
 		const gatewayOracleStub = stub(new GatewayOracle());
 		gatewayOracleStub.getWinstonPriceForByteCount.callsFake(() => Promise.resolve(W(123)));
@@ -56,30 +56,55 @@ describe('ARDataPriceChunkEstimator class', () => {
 	});
 
 	it('getWinstonPriceForByteCount function returns the expected value', async () => {
-		const actualWinstonPriceEstimation = await calculator.getBaseWinstonPriceForByteCount(new ByteCount(100));
-		expect(`${actualWinstonPriceEstimation}`).to.equal('1100');
+		/* Validating that this works in the following scenarios:
+		• 0 bytes: base AR transmission fee
+		• 1 bytes: base fee + marginal chunk fee
+		• 1 chunk of bytes: base fee + marginal chunk fee
+		• 1 chunk of bytes plus 1 byte: base fee + (marginal chunk fee * 2)
+		• 2 chunks of bytes: base fee + (marginal chunk fee * 2)
+		 */
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(0))}`).to.equal('100');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(1))}`).to.equal('1100');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize))}`).to.equal('1100');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize + 1))}`).to.equal('2100');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 2))}`).to.equal('2100');
 	});
 
 	describe('getByteCountForWinston function', () => {
 		it('returns the expected value', async () => {
-			const actualByteCountEstimation = await calculator.getByteCountForWinston(W(1100));
-			expect(actualByteCountEstimation.equals(new ByteCount(chunkSize))).to.be.true;
+			/* Validating that this works in the following scenarios:
+			• 0 Winston: 0 bytes
+			• 1 Winston: 0 bytes
+			• Base fee Winston: 0 bytes
+			• Base fee + 1 Winston: 0 bytes
+			• Base fee + marginal chunk price Winston: chunksize bytes
+			• Base fee + marginal chunk price + 1 Winston: chunksize bytes
+			• Base fee + (2 * marginal chunk price) Winston: 2 * chunksize bytes
+			*/
+			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
+			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
+			expect((await calculator.getByteCountForWinston(W(baseFee))).equals(new ByteCount(0))).to.be.true;
+			expect((await calculator.getByteCountForWinston(W(baseFee + 1))).equals(new ByteCount(0))).to.be.true;
+			expect(
+				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk))).equals(
+					new ByteCount(chunkSize)
+				)
+			).to.be.true;
+			expect(
+				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))).equals(
+					new ByteCount(chunkSize)
+				)
+			).to.be.true;
+			expect(
+				(await calculator.getByteCountForWinston(W(baseFee + 2 * marginalFeePerChunk))).equals(
+					new ByteCount(2 * chunkSize)
+				)
+			).to.be.true;
 		});
 
 		it('makes two oracle calls after the first price estimation request', async () => {
 			await calculator.getByteCountForWinston(W(0));
 			expect(spyedOracle.getWinstonPriceForByteCount.calledTwice).to.be.true;
-		});
-
-		it('returns 0 if provided winston value does not cover baseWinstonPrice', async () => {
-			const priceEstimator = new ARDataPriceChunkEstimator(true, spyedOracle);
-
-			// Stub out the returned prices for each byte value to arrive at base price 5 and marginal price 1
-			spyedOracle.getWinstonPriceForByteCount.onFirstCall().callsFake(() => Promise.resolve(W(baseFee)));
-			spyedOracle.getWinstonPriceForByteCount.onSecondCall().callsFake(() => Promise.resolve(W(oneChunkPrice)));
-
-			expect((await priceEstimator.getByteCountForWinston(W(oneChunkPrice - 1))).equals(new ByteCount(0))).to.be
-				.true;
 		});
 	});
 
@@ -97,7 +122,7 @@ describe('ARDataPriceChunkEstimator class', () => {
 				AR.from(0.000_000_000_010),
 				arDriveCommunityTip
 			);
-			expect(actualByteCountEstimation.equals(new ByteCount(0))).to.be.true;
+			expect(+actualByteCountEstimation).to.equal(0);
 		});
 	});
 
