@@ -22,8 +22,8 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	/**
 	 * Creates a new estimator. Fetches pricing data proactively unless `skipSetup` is true.
 	 *
-	 * @param skipSetup allows for instantiation without prefetching pricing data from the oracle
-	 * @param oracle a datasource for Arweave data pricing
+	 * @param skipSetup allows for instantiation without pre-fetching pricing data from the oracle
+	 * @param oracle a data source for Arweave data pricing
 	 */
 	constructor(skipSetup = false, private readonly oracle: ArweaveOracle = new GatewayOracle()) {
 		super();
@@ -34,9 +34,9 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	}
 
 	/**
-	 * Updates the regression model with fresh data from the pricing oracle
+	 * Updates the pricing info with updated data from the pricing oracle
 	 *
-	 * @returns Promise for an {@link ARDataPriceRegression}
+	 * @returns Promise for a ChunkPricingInfo
 	 */
 	public async refreshPriceData(): Promise<ChunkPricingInfo> {
 		// Don't kick off another refresh while refresh is in progress
@@ -74,7 +74,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	 *
 	 * @returns Promise for the price of an upload of size `byteCount` in Winston
 	 *
-	 * @remarks Will fetch pricing data for regression modeling if a regression has not yet been run.
+	 * @remarks Will fetch pricing data if it has not been fetched
 	 */
 	public async getBaseWinstonPriceForByteCount(byteCount: ByteCount): Promise<Winston> {
 		// Lazily generate the price predictor
@@ -104,7 +104,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	 *
 	 * @throws On invalid winston values and on any issues generating pricing models
 	 *
-	 * @remarks Will fetch pricing data for regression modeling if a data has not yet been fetched.
+	 * @remarks Will fetch pricing data if it has not been fetched
 	 * @remarks The ArDrive community fee is not considered in this estimation
 	 */
 	public async getByteCountForWinston(winston: Winston): Promise<ByteCount> {
@@ -131,7 +131,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	/**
 	 * Estimates the number of bytes that can be stored for a given amount of AR
 	 *
-	 * @remarks Will fetch pricing data for regression modeling if a regression has not yet been run.
+	 * @remarks Will fetch pricing data if it has not been fetched
 	 * @remarks Returns 0 bytes when the price does not cover minimum ArDrive community fee
 	 */
 	public async getByteCountForAR(
