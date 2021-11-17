@@ -84,7 +84,7 @@ describe('Winston class', () => {
 	});
 
 	describe('dividedBy function', () => {
-		it('correctly divides Winston values by whole and fractional numbres', () => {
+		it('correctly divides Winston values by whole and fractional numbers', () => {
 			expect(new Winston(6).dividedBy(3).toString()).to.equal('2');
 			expect(new Winston(6).dividedBy(1.5).toString()).to.equal('4');
 		});
@@ -94,8 +94,13 @@ describe('Winston class', () => {
 			expect(new Winston('36028797018963965').dividedBy('18014398509481982.5').toString()).to.equal('2');
 		});
 
-		it('rounds up divisions that result in fractional numbers', () => {
+		it('rounds up divisions that result in fractional numbers by default', () => {
 			expect(new Winston(3).dividedBy(2).toString()).to.equal('2');
+			expect(new Winston('13510798882111487').dividedBy(2).toString()).to.equal('6755399441055744');
+		});
+
+		it('rounds down divisions that result in fractional numbers when ROUND_DOWN is specified', () => {
+			expect(new Winston(3).dividedBy(2, 'ROUND_DOWN').toString()).to.equal('1');
 			expect(new Winston('13510798882111487').dividedBy(2).toString()).to.equal('6755399441055744');
 		});
 

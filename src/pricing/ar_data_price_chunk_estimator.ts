@@ -117,9 +117,10 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 
 		if (winston.isGreaterThanOrEqualTo(this.pricingInfo.oneChunkWinstonPrice)) {
 			// TODO: TEST THIS UPDATED ALGO!
-			const numberOfChunks = Math.floor(
-				+winston.minus(this.pricingInfo.baseWinstonPrice) / +this.pricingInfo.perChunkWinstonPrice
-			);
+			const numberOfChunks = +winston
+				.minus(this.pricingInfo.baseWinstonPrice)
+				.dividedBy(+this.pricingInfo.perChunkWinstonPrice, 'ROUND_DOWN');
+
 			return new ByteCount(+byteCountOfChunk * numberOfChunks);
 		}
 
