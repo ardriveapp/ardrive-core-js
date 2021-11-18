@@ -80,7 +80,6 @@ describe('ARDataPriceChunkEstimator class', () => {
 			• Base fee + (2 * marginal chunk price) Winston: 2 * chunksize bytes
 			*/
 			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
-			console.log('await calculator.getByteCountForWinston(W(0)', await calculator.getByteCountForWinston(W(0)));
 			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(baseFee))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(baseFee + 1))).equals(new ByteCount(0))).to.be.true;
