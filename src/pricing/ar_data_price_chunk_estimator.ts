@@ -91,9 +91,13 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 
 		const numberOfChunksToUpload = Math.ceil(byteCount.valueOf() / byteCountOfChunk.valueOf());
 
+		// Every 5th chunk, arweave.net pricing adds 1 winston
+		const mysteriousExtraWinston = W(Math.floor(numberOfChunksToUpload / 5));
+
 		const predictedPrice = this.pricingInfo.perChunkWinstonPrice
 			.times(numberOfChunksToUpload)
-			.plus(this.pricingInfo.baseWinstonPrice);
+			.plus(this.pricingInfo.baseWinstonPrice)
+			.plus(mysteriousExtraWinston);
 
 		return predictedPrice;
 	}
