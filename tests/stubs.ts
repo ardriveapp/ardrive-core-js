@@ -5,7 +5,7 @@ import {
 	ArFSPrivateFolder,
 	ArFSPublicFile,
 	ArFSPrivateFile
-} from '../arfs/arfs_entities';
+} from '../src/arfs/arfs_entities';
 import {
 	ADDR,
 	ArFS_O_11,
@@ -19,7 +19,7 @@ import {
 	stubTransactionID,
 	TransactionID,
 	UnixTime
-} from '../types';
+} from '../src/types';
 
 export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'): ArweaveAddress => {
 	return ADDR(address);
