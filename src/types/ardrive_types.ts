@@ -4,6 +4,7 @@ import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper'
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { ArFSListPublicFolderParams } from '../arfs/arfsdao_anonymous';
 import { PrivateKeyData } from '../arfs/private_key_data';
+import { CipherIV } from './types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file';
 
@@ -147,4 +148,9 @@ export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
 export interface GetAllDrivesForAddressParams {
 	address: ArweaveAddress;
 	privateKeyData: PrivateKeyData;
+}
+
+export interface CipherIVQueryResult {
+	txId: TransactionID;
+	cipherIV: CipherIV;
 }

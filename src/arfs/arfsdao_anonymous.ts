@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { GQLEdgeInterface } from '../types';
+import { GQLEdgeInterface, TransactionID } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import {
 	DriveID,
@@ -26,6 +26,9 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
+import { Readable } from 'stream';
+import { gatewayURL } from '../utils/constants';
+import axios from 'axios';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
@@ -283,5 +286,15 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		const entitiesWithPath = children.map((entity) => new ArFSPublicFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
+	}
+
+	async downloadFileData(fileTxId: TransactionID): Promise<Readable> {
+		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const response = await axios({
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream'
+		});
+		return response.data;
 	}
 }

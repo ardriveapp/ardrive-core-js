@@ -20,7 +20,7 @@ import {
 } from './arfs/arfs_trx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
-import { deriveDriveKey } from './utils/crypto';
+import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regression_estimator';
 import {
@@ -39,7 +39,8 @@ import {
 	DriveID,
 	stubTransactionID,
 	UploadPublicFileParams,
-	UploadPrivateFileParams
+	UploadPrivateFileParams,
+	CipherIV
 } from './types';
 import {
 	CommunityTipParams,
@@ -77,6 +78,16 @@ import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
+import { proceedWritingFile, proceedWritingFolder } from './utils/local_storage_conflict_resolution';
+import { createWriteStream, mkdir, utimes } from 'fs';
+import { StreamDecrypt } from './utils/stream_decrypt';
+import { join as joinPath } from 'path';
+import { promisify } from 'util';
+import { pipeline } from 'stream';
+
+const pipelinePromise = promisify(pipeline);
+const mkdirPromise = promisify(mkdir);
+const utimesPromise = promisify(utimes);
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1525,5 +1536,80 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async assertValidPassword(password: string): Promise<void> {
 		await this.arFsDao.assertValidPassword(password);
+	}
+
+	/**
+	 *
+	 * @param folderId - the ID of the folder to be download
+	 * @returns - the array of streams to write
+	 */
+	async downloadPrivateFolder(
+		folderId: FolderID,
+		maxDepth: number,
+		path: string,
+		driveKey: DriveKey,
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+	): Promise<void> {
+		const folderEntityDump = await this.listPrivateFolder({ folderId, maxDepth, includeRoot: true, driveKey });
+		const rootFolder = folderEntityDump[0];
+		const rootFolderPath = rootFolder.path;
+		const basePath = rootFolderPath.replace(/\/[^/]+$/, '');
+		const allFileDataTransactionIDs = folderEntityDump
+			.filter((entity) => entity.entityType === 'file')
+			.map((entity) => entity.dataTxId);
+		const allCipherIVs = await this.arFsDao.getCipherIVOfPrivateTransactionIDs(allFileDataTransactionIDs);
+		for (const entity of folderEntityDump) {
+			const relativePath = entity.path.replace(new RegExp(`^${basePath}/`), '');
+			const fullPath = joinPath(path, relativePath);
+			if (entity.entityType === 'folder') {
+				const proceedWriting = await proceedWritingFolder(fullPath, conflictResolutionStrategy);
+				if (proceedWriting) {
+					await mkdirPromise(fullPath);
+				}
+			} else if (entity.entityType === 'file') {
+				const cipherIVresult = allCipherIVs.find(
+					(queryResult) => `${queryResult.txId}` === `${entity.dataTxId}`
+				);
+				if (!cipherIVresult) {
+					throw new Error(`The transaction data of the file with txID "${entity.txId}" has no cipher IV!`);
+				}
+				await this.downloadPrivateFile(
+					entity.getEntity(),
+					fullPath,
+					driveKey,
+					cipherIVresult.cipherIV,
+					conflictResolutionStrategy
+				);
+			} else {
+				throw new Error(`Unsupported entity type: ${entity.entityType}`);
+			}
+		}
+	}
+
+	async downloadPrivateFile(
+		privateFile: ArFSPrivateFile,
+		path: string,
+		driveKey: DriveKey,
+		cipherIV?: CipherIV,
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+	): Promise<void> {
+		const remoteFileLastModifiedDate = Math.ceil(+privateFile.lastModifiedDate / 1000);
+		const proceedWriting = await proceedWritingFile(path, privateFile, conflictResolutionStrategy);
+		if (proceedWriting) {
+			const fileTxId = privateFile.dataTxId;
+			const encryptedDataStream = await this.arFsDao.downloadFileData(fileTxId);
+			const writeStream = createWriteStream(path);
+			const fileKey = await deriveFileKey(`${privateFile.fileId}`, driveKey);
+			if (!cipherIV) {
+				// Only fetch the data if no CipherIV was provided
+				cipherIV = await this.arFsDao.getPrivateTransactionCipherIV(fileTxId);
+			}
+			const decryptingStream = new StreamDecrypt(cipherIV, fileKey);
+			return pipelinePromise(encryptedDataStream.pipe(decryptingStream), writeStream).finally(() => {
+				// update the last-modified-date
+				console.debug(`Updating the utimes for ${path}: ${remoteFileLastModifiedDate}`);
+				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
+			});
+		}
 	}
 }

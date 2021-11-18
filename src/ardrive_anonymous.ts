@@ -6,7 +6,7 @@ import {
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress } from './types';
+import { DriveID, ArweaveAddress, upsertOnConflicts, FileNameConflictResolution, FolderID } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -14,6 +14,15 @@ import {
 	GetAllDrivesForAddressParams,
 	ListPublicFolderParams
 } from './types';
+import { join as joinPath } from 'path';
+import { proceedWritingFile, proceedWritingFolder } from './utils/local_storage_conflict_resolution';
+import { promisify } from 'util';
+import { createWriteStream, mkdir, utimes } from 'fs';
+import { pipeline } from 'stream';
+
+const mkdirPromise = promisify(mkdir);
+const utimesPromise = promisify(utimes);
+const pipelinePromise = promisify(pipeline);
 
 export abstract class ArDriveType {
 	protected abstract readonly arFsDao: ArFSDAOType;
@@ -76,5 +85,55 @@ export class ArDriveAnonymous extends ArDriveType {
 
 		const children = await this.arFsDao.listPublicFolder({ folderId, maxDepth, includeRoot, owner });
 		return children;
+	}
+
+	/**
+	 *
+	 * @param folderId - the ID of the folder to be download
+	 * @returns - the array of streams to write
+	 */
+	async downloadPublicFolder(
+		folderId: FolderID,
+		maxDepth: number,
+		path: string,
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+	): Promise<void> {
+		const folderEntityDump = await this.listPublicFolder({ folderId, maxDepth, includeRoot: true });
+		const rootFolder = folderEntityDump[0];
+		const rootFolderPath = rootFolder.path;
+		const basePath = rootFolderPath.replace(/\/[^/]+$/, '');
+		for (const entity of folderEntityDump) {
+			const relativePath = entity.path.replace(new RegExp(`^${basePath}/`), '');
+			const fullPath = joinPath(path, relativePath);
+			if (entity.entityType === 'folder') {
+				const proceedWriting = await proceedWritingFolder(fullPath, conflictResolutionStrategy);
+				if (proceedWriting) {
+					await mkdirPromise(fullPath);
+				}
+			} else if (entity.entityType === 'file') {
+				await this.downloadPublicFile(entity.getEntity(), fullPath, conflictResolutionStrategy);
+			} else {
+				throw new Error(`Unsupported entity type: ${entity.entityType}`);
+			}
+		}
+	}
+
+	async downloadPublicFile(
+		privateFile: ArFSPublicFile,
+		path: string,
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+	): Promise<void> {
+		const remoteFileLastModifiedDate = Math.ceil(+privateFile.lastModifiedDate / 1000);
+		const proceedWriting = await proceedWritingFile(path, privateFile, conflictResolutionStrategy);
+		if (proceedWriting) {
+			const fileTxId = privateFile.dataTxId;
+			const encryptedDataStream = await this.arFsDao.downloadFileData(fileTxId);
+			const writeStream = createWriteStream(path);
+			return pipelinePromise(encryptedDataStream, writeStream).finally(() => {
+				// update the last-modified-date
+				console.debug(`Updating the utimes for ${path}: ${remoteFileLastModifiedDate}`);
+				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
+			});
+		}
 	}
 }
