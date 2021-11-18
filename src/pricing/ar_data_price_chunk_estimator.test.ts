@@ -61,11 +61,11 @@ describe('ARDataPriceChunkEstimator class', () => {
 		• 1 chunk of bytes plus 1 byte: base fee + (marginal chunk fee * 2)
 		• 2 chunks of bytes: base fee + (marginal chunk fee * 2)
 		 */
-		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(0))}`).to.equal('100');
-		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(1))}`).to.equal('1100');
-		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize))}`).to.equal('1100');
-		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize + 1))}`).to.equal('2100');
-		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 2))}`).to.equal('2100');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(0))}`).to.equal('102');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(1))}`).to.equal('1102');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize))}`).to.equal('1102');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize + 1))}`).to.equal('2102');
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 2))}`).to.equal('2102');
 	});
 
 	describe('getByteCountForWinston function', () => {
@@ -80,21 +80,22 @@ describe('ARDataPriceChunkEstimator class', () => {
 			• Base fee + (2 * marginal chunk price) Winston: 2 * chunksize bytes
 			*/
 			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
+			console.log('await calculator.getByteCountForWinston(W(0)', await calculator.getByteCountForWinston(W(0)));
 			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(baseFee))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(baseFee + 1))).equals(new ByteCount(0))).to.be.true;
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + marginalFeePerChunk))).equals(
 					new ByteCount(chunkSize)
 				)
 			).to.be.true;
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + marginalFeePerChunk + 1))).equals(
 					new ByteCount(chunkSize)
 				)
 			).to.be.true;
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + 2 * marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 2 * marginalFeePerChunk))).equals(
 					new ByteCount(2 * chunkSize)
 				)
 			).to.be.true;
@@ -109,7 +110,7 @@ describe('ARDataPriceChunkEstimator class', () => {
 	describe('getByteCountForAR function', () => {
 		it('returns the expected value', async () => {
 			const actualByteCountEstimation = await calculator.getByteCountForAR(
-				AR.from(0.000_000_001_265),
+				AR.from(0.000_000_001_267),
 				arDriveCommunityTip
 			);
 			expect(actualByteCountEstimation.equals(new ByteCount(chunkSize))).to.be.true;
@@ -130,7 +131,7 @@ describe('ARDataPriceChunkEstimator class', () => {
 			arDriveCommunityTip
 		);
 
-		expect(`${actualARPriceEstimation}`).to.equal('0.000000001265');
+		expect(`${actualARPriceEstimation}`).to.equal('0.000000001267');
 	});
 
 	describe('refreshPriceData function', () => {
