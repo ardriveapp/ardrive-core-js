@@ -87,6 +87,8 @@ describe('ARDataPriceChunkEstimator class', () => {
 			• Base fee + (5 * marginal chunk price) + 1 Winston: 5 * chunksize bytes
 			• Base fee + (10 * marginal chunk price) + 2 Winston: 10 * chunksize bytes
 			• Base fee + (10 * marginal chunk price) + 1 Winston: 9 * chunksize bytes
+			• Base fee + (8000 * marginal chunk price) + 1599 Winston: 7999 * chunksize bytes
+			• Base fee + (8000 * marginal chunk price) + 1600 Winston: 8000 * chunksize bytes
 			*/
 			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
