@@ -2,7 +2,7 @@ import { GatewayOracle } from './gateway_oracle';
 import type { ArweaveOracle } from './arweave_oracle';
 import { expect } from 'chai';
 import { SinonStubbedInstance, stub } from 'sinon';
-import { ArDriveCommunityTip, W, AR, ByteCount } from '../types';
+import { W, AR, ByteCount, ArDriveCommunityTip } from '../types';
 import { ARDataPriceChunkEstimator } from './ar_data_price_chunk_estimator';
 
 describe('ARDataPriceChunkEstimator class', () => {
@@ -60,12 +60,18 @@ describe('ARDataPriceChunkEstimator class', () => {
 		• 1 chunk of bytes: base fee + marginal chunk fee
 		• 1 chunk of bytes plus 1 byte: base fee + (marginal chunk fee * 2)
 		• 2 chunks of bytes: base fee + (marginal chunk fee * 2)
+		• 5 chunks of bytes: base fee + (marginal chunk fee * 2) + 1
+		• 10 chunks of bytes: base fee + (marginal chunk fee * 2) + 2
 		 */
 		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(0))}`).to.equal('102');
 		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(1))}`).to.equal('1102');
 		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize))}`).to.equal('1102');
 		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize + 1))}`).to.equal('2102');
 		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 2))}`).to.equal('2102');
+		// Extra winston for 5th chunk
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 5))}`).to.equal('5103');
+		// Two extra winston for 10th chunk
+		expect(`${await calculator.getBaseWinstonPriceForByteCount(new ByteCount(chunkSize * 10))}`).to.equal('10104');
 	});
 
 	describe('getByteCountForWinston function', () => {
@@ -78,6 +84,11 @@ describe('ARDataPriceChunkEstimator class', () => {
 			• Base fee + marginal chunk price Winston: chunksize bytes
 			• Base fee + marginal chunk price + 1 Winston: chunksize bytes
 			• Base fee + (2 * marginal chunk price) Winston: 2 * chunksize bytes
+			• Base fee + (5 * marginal chunk price) + 1 Winston: 5 * chunksize bytes
+			• Base fee + (10 * marginal chunk price) + 2 Winston: 10 * chunksize bytes
+			• Base fee + (10 * marginal chunk price) + 1 Winston: 9 * chunksize bytes
+			• Base fee + (8000 * marginal chunk price) + 1599 Winston: 7999 * chunksize bytes
+			• Base fee + (8000 * marginal chunk price) + 1600 Winston: 8000 * chunksize bytes
 			*/
 			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
@@ -96,6 +107,40 @@ describe('ARDataPriceChunkEstimator class', () => {
 			expect(
 				(await calculator.getByteCountForWinston(W(baseFee + 2 + 2 * marginalFeePerChunk))).equals(
 					new ByteCount(2 * chunkSize)
+				)
+			).to.be.true;
+			expect(
+				// Add one extra winston for the 5th chunk
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 5 * marginalFeePerChunk + 1))).equals(
+					new ByteCount(5 * chunkSize)
+				)
+			).to.be.true;
+
+			expect(
+				// Add two extra winston for the 10th chunk
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 10 * marginalFeePerChunk + 2))).equals(
+					new ByteCount(10 * chunkSize)
+				)
+			).to.be.true;
+
+			expect(
+				// But expect 9 chunks when only 1 extra winston is added
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 10 * marginalFeePerChunk + 1))).equals(
+					new ByteCount(9 * chunkSize)
+				)
+			).to.be.true;
+
+			expect(
+				// Expect winston for 8000 chunks but only 1599 extra winston to equal 7999 chunks
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 8000 * marginalFeePerChunk + 1599))).equals(
+					new ByteCount(7999 * chunkSize)
+				)
+			).to.be.true;
+
+			expect(
+				// But 1600 extra winston will return 8000 chunks
+				(await calculator.getByteCountForWinston(W(baseFee + 2 + 8000 * marginalFeePerChunk + 1600))).equals(
+					new ByteCount(8000 * chunkSize)
 				)
 			).to.be.true;
 		});
