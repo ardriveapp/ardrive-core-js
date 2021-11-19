@@ -22,7 +22,6 @@ import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
-import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regression_estimator';
 import {
 	FeeMultiple,
 	ArweaveAddress,
@@ -78,6 +77,7 @@ import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
+import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { proceedWritingFile, proceedWritingFolder } from './utils/local_storage_conflict_resolution';
 import { createWriteStream, mkdir, utimes } from 'fs';
 import { StreamDecrypt } from './utils/stream_decrypt';
@@ -97,7 +97,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly communityOracle: CommunityOracle,
 		private readonly appName: string,
 		private readonly appVersion: string,
-		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceRegressionEstimator(true),
+		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false
 	) {
