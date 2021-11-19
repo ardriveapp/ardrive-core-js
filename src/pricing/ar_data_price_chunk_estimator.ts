@@ -1,7 +1,7 @@
 import { GatewayOracle } from './gateway_oracle';
 import type { ArweaveOracle } from './arweave_oracle';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
-import { ArDriveCommunityTip, AR, ByteCount, Winston, W } from '../types';
+import { AR, ByteCount, Winston, W, ArDriveCommunityTip } from '../types';
 
 const byteCountOfChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
 
@@ -119,17 +119,22 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 				throw Error('Failed to generate pricing model!');
 			}
 		}
+		const { oneChunkWinstonPrice, baseWinstonPrice, perChunkWinstonPrice } = this.pricingInfo;
 
-		if (winston.isGreaterThanOrEqualTo(this.pricingInfo.oneChunkWinstonPrice)) {
-			// TODO: TEST THIS UPDATED ALGO!
-			const numberOfChunks = +winston
-				.minus(this.pricingInfo.baseWinstonPrice)
-				.dividedBy(+this.pricingInfo.perChunkWinstonPrice, 'ROUND_DOWN');
+		if (winston.isGreaterThanOrEqualTo(oneChunkWinstonPrice)) {
+			const winstonToSpend = winston.minus(baseWinstonPrice);
 
-			return new ByteCount(+byteCountOfChunk * numberOfChunks);
+			const fifthChunks = winstonToSpend
+				.dividedBy(perChunkWinstonPrice.toString(), 'ROUND_DOWN')
+				.dividedBy(5, 'ROUND_DOWN');
+			const actualWinstonToSpend = winstonToSpend.minus(fifthChunks);
+
+			const numChunks = actualWinstonToSpend.dividedBy(perChunkWinstonPrice.toString(), 'ROUND_DOWN');
+
+			return new ByteCount(+numChunks.times(byteCountOfChunk.toString()));
 		}
 
-		// Return 0 if winston price given does not cover the base winston price for a 1 byte transaction
+		// Return 0 if winston price given does not cover the base winston price for a 1 chunk transaction
 		return new ByteCount(0);
 	}
 
@@ -151,7 +156,6 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 			}
 		}
 
-		// TODO: CHANGE AND/OR TEST THIS ALGO
 		return super.getByteCountForAR(arPrice, { minWinstonFee, tipPercentage });
 	}
 }
