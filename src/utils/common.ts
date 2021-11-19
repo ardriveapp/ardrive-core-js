@@ -2,7 +2,6 @@
 import * as mime from 'mime-types';
 import * as fs from 'fs';
 import * as types from '../types/base_Types';
-import fetch from 'node-fetch';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
@@ -10,6 +9,7 @@ import { stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import axios from 'axios';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -492,17 +492,17 @@ export async function sanitizePath(path: string): Promise<string> {
 	}
 }
 
-export async function getArUSDPrice(): Promise<number> {
-	let usdPrice = 0;
-	try {
-		const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd');
-		usdPrice = (await res.clone().json()).arweave.usd;
-		return usdPrice;
-	} catch (err) {
-		console.log('Error getting AR/USD price from Coingecko');
-		return 0;
-	}
-}
+// export async function getArUSDPrice(): Promise<number> {
+// 	let usdPrice = 0;
+// 	try {
+// 		const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd');
+// 		usdPrice = (await res.clone().json()).arweave.usd;
+// 		return usdPrice;
+// 	} catch (err) {
+// 		console.log('Error getting AR/USD price from Coingecko');
+// 		return 0;
+// 	}
+// }
 /**
  * Converts Winston value into AR
  *
@@ -540,8 +540,8 @@ export function readJWKFile(path: string): Wallet {
 }
 
 export async function fetchMempool(): Promise<string[]> {
-	const response = await fetch('https://arweave.net/tx/pending');
-	return response.json();
+	const response = await axios.get('https://arweave.net/tx/pending');
+	return response.data;
 }
 
 export function urlEncodeHashKey(keyBuffer: Buffer): string {
