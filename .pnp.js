@@ -45,7 +45,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.17.5"],
-            ["@types/node-fetch", "npm:2.5.8"],
             ["@types/power-assert", "npm:1.5.3"],
             ["@types/regression", "npm:2.0.2"],
             ["@types/sinon", "npm:10.0.2"],
@@ -72,7 +71,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["lodash", "npm:4.17.21"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
-            ["node-fetch", "npm:2.6.1"],
             ["nyc", "npm:15.1.0"],
             ["power-assert", "npm:1.6.1"],
             ["prettier", "npm:2.2.1"],
@@ -832,17 +830,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
-      ["@types/node-fetch", [
-        ["npm:2.5.8", {
-          "packageLocation": "./.yarn/cache/@types-node-fetch-npm-2.5.8-d946aa06c6-608cdd6aed.zip/node_modules/@types/node-fetch/",
-          "packageDependencies": [
-            ["@types/node-fetch", "npm:2.5.8"],
-            ["@types/node", "npm:16.11.7"],
-            ["form-data", "npm:3.0.1"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
       ["@types/parse-json", [
         ["npm:4.0.0", {
           "packageLocation": "./.yarn/cache/@types-parse-json-npm-4.0.0-298522afa6-4a8f720afa.zip/node_modules/@types/parse-json/",
@@ -1375,7 +1362,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.17.5"],
-            ["@types/node-fetch", "npm:2.5.8"],
             ["@types/power-assert", "npm:1.5.3"],
             ["@types/regression", "npm:2.0.2"],
             ["@types/sinon", "npm:10.0.2"],
@@ -1402,7 +1388,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["lodash", "npm:4.17.21"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
-            ["node-fetch", "npm:2.6.1"],
             ["nyc", "npm:15.1.0"],
             ["power-assert", "npm:1.6.1"],
             ["prettier", "npm:2.2.1"],
@@ -3427,16 +3412,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["mime-types", "npm:2.1.29"]
           ],
           "linkType": "HARD",
-        }],
-        ["npm:3.0.1", {
-          "packageLocation": "./.yarn/cache/form-data-npm-3.0.1-d080d436e0-6574ff4d2d.zip/node_modules/form-data/",
-          "packageDependencies": [
-            ["form-data", "npm:3.0.1"],
-            ["asynckit", "npm:0.4.0"],
-            ["combined-stream", "npm:1.0.8"],
-            ["mime-types", "npm:2.1.29"]
-          ],
-          "linkType": "HARD",
         }]
       ]],
       ["fromentries", [
@@ -5072,15 +5047,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["node-addon-api", "npm:2.0.2"],
             ["node-gyp", "npm:7.1.2"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["node-fetch", [
-        ["npm:2.6.1", {
-          "packageLocation": "./.yarn/cache/node-fetch-npm-2.6.1-46c670dbc1-cbb171635e.zip/node_modules/node-fetch/",
-          "packageDependencies": [
-            ["node-fetch", "npm:2.6.1"]
           ],
           "linkType": "HARD",
         }]
