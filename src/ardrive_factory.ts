@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Wallet } from './wallet';
 import Arweave from 'arweave';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
