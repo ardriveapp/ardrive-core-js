@@ -2,6 +2,8 @@
 
 ArDrive Core is a TypeScript library that contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management, and other common functions.
 
+Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more information.
+
 ## Development Environment Setup
 
 We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.

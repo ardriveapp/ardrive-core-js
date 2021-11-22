@@ -21,13 +21,21 @@ export class Winston {
 		return W(this.amount.times(multiplier).decimalPlaces(0, BigNumber.ROUND_DOWN));
 	}
 
-	dividedBy(divisor: BigNumber.Value): Winston {
+	dividedBy(divisor: BigNumber.Value, round: 'ROUND_DOWN' | 'ROUND_CEIL' = 'ROUND_CEIL'): Winston {
 		// TODO: Best rounding strategy? Up or down?
-		return W(this.amount.dividedBy(divisor).decimalPlaces(0, BigNumber.ROUND_CEIL));
+		return W(
+			this.amount
+				.dividedBy(divisor)
+				.decimalPlaces(0, round === 'ROUND_DOWN' ? BigNumber.ROUND_DOWN : BigNumber.ROUND_CEIL)
+		);
 	}
 
 	isGreaterThan(winston: Winston): boolean {
 		return this.amount.isGreaterThan(winston.amount);
+	}
+
+	isGreaterThanOrEqualTo(winston: Winston): boolean {
+		return this.amount.isGreaterThanOrEqualTo(winston.amount);
 	}
 
 	static difference(a: Winston, b: Winston): string {
