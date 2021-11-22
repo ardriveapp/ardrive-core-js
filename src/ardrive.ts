@@ -48,7 +48,8 @@ import {
 	ArFSManifestResult,
 	ManifestPathMap,
 	MANIFEST_CONTENT_TYPE,
-	UploadPublicManifestParams
+	UploadPublicManifestParams,
+	CreatePublicManifestParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -1013,27 +1014,51 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	async uploadPublicManifest({
+	public async uploadPublicManifest({
 		folderId,
 		driveId,
 		destManifestName = 'DriveManifest.json',
 		maxDepth = Number.MAX_SAFE_INTEGER
 	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
+		if (driveId && folderId) {
+			// User has specified both a folder and a drive, assert that
+			// the folder does indeed belong to the specified drive
+			const actualDriveId = await this.arFsDao.getDriveIdForFolderId(folderId);
+			if (!actualDriveId.equals(driveId)) {
+				throw new Error('That folder does not belong to the specified drive ID!');
+			}
+		}
+
 		if (!driveId) {
 			if (!folderId) {
-				throw new Error('Must provide either a drive ID or a folder ID to!');
+				throw new Error('Must provide either a drive ID or a folder ID to create a manifest!');
 			}
 
+			// User has specified only a folderId, derive DriveID from that folder
 			driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
 		}
 
+		// Assert that the owner of this drive is consistent with the provided wallet
 		const owner = await this.getOwnerForDriveId(driveId);
 		await this.assertOwnerAddress(owner);
 
-		const drive = await this.arFsDao.getPublicDrive(driveId, owner);
+		if (!folderId) {
+			// User has specified a driveId but no folderId,
+			// create manifest for the root folder of the drive
+			const drive = await this.arFsDao.getPublicDrive(driveId, owner);
+			folderId = drive.rootFolderId;
+		}
 
-		folderId ??= drive.rootFolderId;
+		return this.createPublicManifest({ folderId, driveId, destManifestName, maxDepth, owner });
+	}
 
+	private async createPublicManifest({
+		folderId,
+		driveId,
+		destManifestName,
+		maxDepth,
+		owner
+	}: Required<CreatePublicManifestParams>): Promise<ArFSManifestResult> {
 		// TODO: Handle collision with existing manifest. New manifest will always be a new file, with
 		// upsert by default this means it will only skip here on --skip conflict
 		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);

@@ -78,6 +78,11 @@ export interface UploadPublicManifestParams {
 	maxDepth?: number;
 	destManifestName?: string;
 }
+
+export interface CreatePublicManifestParams extends Required<UploadPublicManifestParams> {
+	owner: ArweaveAddress;
+}
+
 export interface CreatePublicFolderParams {
 	folderName: string;
 	driveId: DriveID;
