@@ -134,7 +134,7 @@ export class ArDriveAnonymous extends ArDriveType {
 	 * @returns - the array of streams to write
 	 */
 	async downloadPublicFile(
-		privateFile: ArFSPublicFile,
+		publicFile: ArFSPublicFile,
 		path: string,
 		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
 	): Promise<void> {
