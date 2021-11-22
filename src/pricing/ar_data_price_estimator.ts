@@ -42,13 +42,16 @@ export abstract class AbstractARDataPriceAndCapacityEstimator extends AbstractAR
 	 * @remarks Returns 0 bytes when the price does not cover minimum ArDrive community fee
 	 */
 	public async getByteCountForAR(
-		arPrice: AR,
+		arAmount: AR,
 		{ minWinstonFee, tipPercentage }: ArDriveCommunityTip
 	): Promise<ByteCount> {
-		const winstonPrice = arPrice.toWinston();
-		const communityWinstonFee = Winston.max(winstonPrice.minus(winstonPrice.dividedBy(1 + tipPercentage)), minWinstonFee);
-		if (winstonPrice.isGreaterThan(communityWinstonFee)) {
-			return this.getByteCountForWinston(winstonPrice.minus(communityWinstonFee));
+		const totalWinstonAmount = arAmount.toWinston();
+
+		// communityWinstonFee is either the minimum amount OR the amount based on the network's assessed data cost
+		const communityWinstonFee = Winston.max(totalWinstonAmount.minus(totalWinstonAmount.dividedBy(1 + tipPercentage)), minWinstonFee);
+		if (totalWinstonAmount.isGreaterThan(communityWinstonFee)) {
+			const networkCost = totalWinstonAmount.minus(communityWinstonFee);
+			return this.getByteCountForWinston(networkCost);
 		}
 
 		// Specified `arPrice` does not cover provided `minimumWinstonFee`
