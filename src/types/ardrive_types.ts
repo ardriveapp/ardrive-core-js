@@ -4,6 +4,11 @@ import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper'
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { ArFSListPublicFolderParams } from '../arfs/arfsdao_anonymous';
 import { PrivateKeyData } from '../arfs/private_key_data';
+import {
+	FileConflictPrompts,
+	FileNameConflictResolution,
+	FolderConflictPrompts
+} from '../utils/upload_conflict_resolution';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file';
 
@@ -64,7 +69,6 @@ export interface RecursivePublicBulkUploadParams {
 	wrappedFolder: ArFSFolderToUpload;
 	driveId: DriveID;
 	owner: ArweaveAddress;
-	conflictResolution: FileNameConflictResolution;
 }
 export type RecursivePrivateBulkUploadParams = RecursivePublicBulkUploadParams & WithDriveKey;
 
@@ -75,14 +79,6 @@ export interface CreatePublicFolderParams {
 }
 export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 
-export const skipOnConflicts = 'skip';
-export const replaceOnConflicts = 'replace';
-export const upsertOnConflicts = 'upsert';
-// export  const askOnConflicts = 'ask';
-
-export type FileNameConflictResolution = typeof skipOnConflicts | typeof replaceOnConflicts | typeof upsertOnConflicts;
-// | typeof askOnConflicts;
-
 export interface UploadParams {
 	parentFolderId: FolderID;
 	conflictResolution?: FileNameConflictResolution;
@@ -90,12 +86,15 @@ export interface UploadParams {
 
 export interface BulkPublicUploadParams extends UploadParams {
 	wrappedFolder: ArFSFolderToUpload;
+	parentFolderId: FolderID;
+	prompts?: FolderConflictPrompts;
 	destParentFolderName?: string;
 }
 export type BulkPrivateUploadParams = BulkPublicUploadParams & WithDriveKey;
 
 export interface UploadPublicFileParams extends UploadParams {
 	wrappedFile: ArFSFileToUpload;
+	prompts?: FileConflictPrompts;
 	destinationFileName?: string;
 }
 export type UploadPrivateFileParams = UploadPublicFileParams & WithDriveKey;
