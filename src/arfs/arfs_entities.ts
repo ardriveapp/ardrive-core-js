@@ -172,6 +172,10 @@ export class ArFSPublicFileOrFolderWithPaths extends ArFSFileOrFolderEntity impl
 		this.entityIdPath = `${hierarchy.entityPathToFolderId(_entity.parentFolderId)}${_entity.entityId}`;
 	}
 
+	/**
+	 * A getter for the public entity without paths
+	 * @returns {ArFSPublicFile | ArFSPublicFolder}
+	 */
 	getEntity<T = ArFSPublicFile | ArFSPublicFolder>(): T {
 		const entityAsUnknown = this._entity as unknown;
 		const entityAsT = entityAsUnknown as T;
@@ -211,6 +215,10 @@ export class ArFSPrivateFileOrFolderWithPaths extends ArFSFileOrFolderEntity imp
 		this.entityIdPath = `${hierarchy.entityPathToFolderId(_entity.parentFolderId)}${_entity.entityId}`;
 	}
 
+	/**
+	 * A getter for the private entity without paths
+	 * @returns {ArFSPublicFile | ArFSPublicFolder}
+	 */
 	getEntity<T = ArFSPublicFile | ArFSPublicFolder>(): T {
 		const entityAsUnknown = this._entity as unknown;
 		const entityAsT = entityAsUnknown as T;

@@ -1539,8 +1539,12 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	/**
-	 *
+	 * Downloads the data of a private folder tree into certain existing folder in the local storage
 	 * @param folderId - the ID of the folder to be download
+	 * @param maxDepth - the max depht in the file hierarchy
+	 * @param path - a path in local storage
+	 * @param driveKey - the key of the drive the folder is contained in
+	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns - the array of streams to write
 	 */
 	async downloadPrivateFolder(
@@ -1586,6 +1590,13 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
+	/**
+	 * Downloads the data of a private file into certain existing folder in the local storage
+	 * @param privateFile - the file entity to be download
+	 * @param path - a path in local storage
+	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
+	 * @returns - the array of streams to write
+	 */
 	async downloadPrivateFile(
 		privateFile: ArFSPrivateFile,
 		path: string,
