@@ -30,8 +30,8 @@ export class StreamDecrypt extends Transform {
 		const decipher = createDecipheriv(algo, this.fileKey, iv, { authTagLength });
 		decipher.setAuthTag(authTag);
 		try {
-			const decryptedFile: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-			next(undefined, decryptedFile);
+			const decryptedFileData: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+			next(undefined, decryptedFileData);
 		} catch (e) {
 			next(e);
 		}
