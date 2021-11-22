@@ -94,7 +94,7 @@ export class ArDriveAnonymous extends ArDriveType {
 	 * @param path - a path in local storage
 	 * @param driveKey - the key of the drive the folder is contained in
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
-	 * @returns - the array of streams to write
+	 * @returns {Promise<void>}
 	 */
 	async downloadPublicFolder(
 		folderId: FolderID,
@@ -131,7 +131,7 @@ export class ArDriveAnonymous extends ArDriveType {
 	 * @param publicFile - the file entity to be download
 	 * @param path - a path in local storage
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
-	 * @returns - the array of streams to write
+	 * @returns {Promise<void>}
 	 */
 	async downloadPublicFile(
 		publicFile: ArFSPublicFile,
