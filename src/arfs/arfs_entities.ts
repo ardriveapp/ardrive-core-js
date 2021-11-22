@@ -176,10 +176,8 @@ export class ArFSPublicFileOrFolderWithPaths extends ArFSFileOrFolderEntity impl
 	 * A getter for the public entity without paths
 	 * @returns {ArFSPublicFile | ArFSPublicFolder}
 	 */
-	getEntity<T = ArFSPublicFile | ArFSPublicFolder>(): T {
-		const entityAsUnknown = this._entity as unknown;
-		const entityAsT = entityAsUnknown as T;
-		return entityAsT;
+	getEntity(): ArFSPublicFile | ArFSPublicFolder {
+		return this._entity;
 	}
 }
 
@@ -219,10 +217,8 @@ export class ArFSPrivateFileOrFolderWithPaths extends ArFSFileOrFolderEntity imp
 	 * A getter for the private entity without paths
 	 * @returns {ArFSPublicFile | ArFSPublicFolder}
 	 */
-	getEntity<T = ArFSPublicFile | ArFSPublicFolder>(): T {
-		const entityAsUnknown = this._entity as unknown;
-		const entityAsT = entityAsUnknown as T;
-		return entityAsT;
+	getEntity(): ArFSPublicFile | ArFSPublicFolder {
+		return this._entity;
 	}
 }
 

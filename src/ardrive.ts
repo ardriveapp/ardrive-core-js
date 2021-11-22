@@ -1578,7 +1578,7 @@ export class ArDrive extends ArDriveAnonymous {
 					throw new Error(`The transaction data of the file with txID "${entity.txId}" has no cipher IV!`);
 				}
 				await this.downloadPrivateFile(
-					entity.getEntity(),
+					entity.getEntity() as ArFSPrivateFile,
 					fullPath,
 					driveKey,
 					cipherIVresult.cipherIV,
