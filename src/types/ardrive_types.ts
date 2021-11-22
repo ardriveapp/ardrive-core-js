@@ -164,15 +164,22 @@ export interface GetAllDrivesForAddressParams {
 	privateKeyData: PrivateKeyData;
 }
 
-// These manifest interfaces taken from arweave-deploy
+// The manifest interfaces below are taken from arweave-deploy
+
+// A path object is labeled by its path, file name
+// and extension, and then an arweave transaction id
 export interface ManifestPathMap {
 	[index: string]: { id: string };
 }
 export interface Manifest {
+	/** manifest must be 'arweave/paths' */
 	manifest: 'arweave/paths';
+	/** version must be 0.1.0 */
 	version: '0.1.0';
-	index?: {
+	/** index contains the default path that will redirected when the user access the manifest transaction itself */
+	index: {
 		path: string;
 	};
+	/** paths is an object of path objects */
 	paths: ManifestPathMap;
 }
