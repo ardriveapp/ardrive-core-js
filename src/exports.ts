@@ -40,6 +40,7 @@ export * from './community/verto_contract_oracle';
 // Pricing
 export * from './pricing/ar_data_price';
 export * from './pricing/ar_data_price_estimator';
+export * from './pricing/ar_data_price_chunk_estimator';
 export * from './pricing/ar_data_price_oracle_estimator';
 export * from './pricing/arweave_oracle';
 export * from './pricing/data_price_regression';
@@ -53,6 +54,4 @@ export * from './utils/mapper_functions';
 export * from './utils/query';
 export * from './utils/crypto';
 export * from './utils/sort_functions';
-export * from './utils/stubs';
-export * from './utils/test_helpers';
 export * from './utils/wallet_utils';

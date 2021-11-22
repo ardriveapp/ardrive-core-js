@@ -13,7 +13,6 @@ describe('ARDataPriceEstimator class', () => {
 
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
-		// TODO: Get ts-sinon working with snowpack so we don't have to use a concrete type here
 		spyedOracle = stub(new GatewayOracle());
 		spyedOracle.getWinstonPriceForByteCount.callsFake((input) => Promise.resolve(W(+input)));
 		calculator = new ARDataPriceRegressionEstimator(true, spyedOracle);
@@ -46,9 +45,9 @@ describe('ARDataPriceEstimator class', () => {
 		const byteVolumes = [1, 5, 10].map((vol) => new ByteCount(vol));
 		new ARDataPriceRegressionEstimator(false, spyedOracle, byteVolumes);
 
-		expect(spyedOracle.getWinstonPriceForByteCount.firstCall.args[0]).to.equal(byteVolumes[0]);
-		expect(spyedOracle.getWinstonPriceForByteCount.secondCall.args[0]).to.equal(byteVolumes[1]);
-		expect(spyedOracle.getWinstonPriceForByteCount.thirdCall.args[0]).to.equal(byteVolumes[2]);
+		expect(spyedOracle.getWinstonPriceForByteCount.firstCall.args[0].equals(byteVolumes[0])).to.be.true;
+		expect(spyedOracle.getWinstonPriceForByteCount.secondCall.args[0].equals(byteVolumes[1])).to.be.true;
+		expect(spyedOracle.getWinstonPriceForByteCount.thirdCall.args[0].equals(byteVolumes[2])).to.be.true;
 	});
 
 	it('getWinstonPriceForByteCount function returns the expected value', async () => {
@@ -77,7 +76,7 @@ describe('ARDataPriceEstimator class', () => {
 			spyedOracle.getWinstonPriceForByteCount.onSecondCall().callsFake(() => Promise.resolve(W(6)));
 
 			// Expect 4 to be reduced to 0 because it does not cover baseWinstonPrice of 5
-			expect(await (await priceEstimator.getByteCountForWinston(W(4))).equals(new ByteCount(0))).to.be.true;
+			expect((await priceEstimator.getByteCountForWinston(W(4))).equals(new ByteCount(0))).to.be.true;
 		});
 	});
 
