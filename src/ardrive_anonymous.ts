@@ -128,20 +128,20 @@ export class ArDriveAnonymous extends ArDriveType {
 
 	/**
 	 * Downloads the data of a public file into certain existing folder in the local storage
-	 * @param privateFile - the file entity to be download
+	 * @param publicFile - the file entity to be download
 	 * @param path - a path in local storage
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns - the array of streams to write
 	 */
 	async downloadPublicFile(
-		privateFile: ArFSPublicFile,
+		publicFile: ArFSPublicFile,
 		path: string,
 		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
 	): Promise<void> {
-		const remoteFileLastModifiedDate = Math.ceil(+privateFile.lastModifiedDate / 1000);
-		const proceedWriting = await proceedWritingFile(path, privateFile, conflictResolutionStrategy);
+		const remoteFileLastModifiedDate = Math.ceil(+publicFile.lastModifiedDate / 1000);
+		const proceedWriting = await proceedWritingFile(path, publicFile, conflictResolutionStrategy);
 		if (proceedWriting) {
-			const fileTxId = privateFile.dataTxId;
+			const fileTxId = publicFile.dataTxId;
 			const encryptedDataStream = await this.arFsDao.downloadFileData(fileTxId);
 			const writeStream = createWriteStream(path);
 			return pipelinePromise(encryptedDataStream, writeStream).finally(() => {
