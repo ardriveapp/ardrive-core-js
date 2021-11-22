@@ -12,9 +12,9 @@ export class StreamDecrypt extends Transform {
 		super();
 	}
 
-	_transform(chunk: Buffer, encoding: string, next: (err?: Error, data?: Buffer) => void): void {
-		if (encoding !== 'buffer') {
-			throw new Error('The encoding is not a buffer!');
+	_transform(chunk: Buffer | string, encoding: BufferEncoding, next: (err?: Error, data?: Buffer) => void): void {
+		if (!(chunk instanceof Buffer)) {
+			chunk = Buffer.from(chunk, encoding);
 		}
 		this.encryptedData = Buffer.concat([this.encryptedData, chunk]);
 		next();
