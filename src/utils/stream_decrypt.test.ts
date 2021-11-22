@@ -26,7 +26,7 @@ describe('the StreamDecrypt class', () => {
 			console.debug(`Data came: ${chunk}`);
 			decryptedData = `${decryptedData}${chunk.toString()}`;
 		});
-		return pipelinePromise(mockStream, decryptingStream).then((decrypted) => {
+		return pipelinePromise(mockStream, decryptingStream).then(() => {
 			return expect(decryptedData).to.equal(data);
 		});
 	});
