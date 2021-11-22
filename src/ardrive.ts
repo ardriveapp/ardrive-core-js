@@ -1618,7 +1618,6 @@ export class ArDrive extends ArDriveAnonymous {
 			const decryptingStream = new StreamDecrypt(cipherIV, fileKey);
 			return pipelinePromise(encryptedDataStream.pipe(decryptingStream), writeStream).finally(() => {
 				// update the last-modified-date
-				console.debug(`Updating the utimes for ${path}: ${remoteFileLastModifiedDate}`);
 				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
 			});
 		}

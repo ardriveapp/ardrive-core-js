@@ -16,14 +16,13 @@ describe('the StreamDecrypt class', () => {
 	beforeEach(() => {
 		mockStream = new Readable();
 		mockStream.push(encryptedData);
-		mockStream.push(null);
+		mockStream.push(null); // EOF
 	});
 
 	it('successfully decrypts a file with a healthy input', () => {
 		const decryptingStream = new StreamDecrypt(healthyCipherIV, healthyFileKey);
 		let decryptedData = '';
 		decryptingStream.on('data', (chunk: Buffer | string) => {
-			console.debug(`Data came: ${chunk}`);
 			decryptedData = `${decryptedData}${chunk.toString()}`;
 		});
 		return pipelinePromise(mockStream, decryptingStream).then(() => {

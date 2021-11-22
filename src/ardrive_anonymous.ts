@@ -146,7 +146,6 @@ export class ArDriveAnonymous extends ArDriveType {
 			const writeStream = createWriteStream(path);
 			return pipelinePromise(encryptedDataStream, writeStream).finally(() => {
 				// update the last-modified-date
-				console.debug(`Updating the utimes for ${path}: ${remoteFileLastModifiedDate}`);
 				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
 			});
 		}
