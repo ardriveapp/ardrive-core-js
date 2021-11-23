@@ -5,7 +5,12 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload, ArFSEntityToUpload } from './arfs/arfs_file_wrapper';
+import {
+	ArFSFolderToUpload,
+	ArFSFileToUpload,
+	ArFSEntityToUpload,
+	ArFSManifestToUpload
+} from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -1023,7 +1028,14 @@ export class ArDrive extends ArDriveAnonymous {
 		// conflicts with an existing file in the destination folder
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 
-		const arweaveManifest = await this.arFsDao.prepareManifest(folderId, owner, destManifestName, maxDepth);
+		const children = await this.listPublicFolder({
+			folderId,
+			maxDepth,
+			includeRoot: true,
+			owner
+		});
+
+		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
 			arweaveManifest.size,

@@ -34,7 +34,7 @@ import {
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
 } from './arfs_entity_result_factory';
-import { ArFSEntityToUpload, ArFSManifestToUpload } from './arfs_file_wrapper';
+import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -610,22 +610,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			destFileName,
 			existingFileId
 		);
-	}
-
-	async prepareManifest(
-		folderId: FolderID,
-		owner: ArweaveAddress,
-		destManifestName: string,
-		maxDepth = Number.MAX_SAFE_INTEGER
-	): Promise<ArFSManifestToUpload> {
-		const children = await this.listPublicFolder({
-			folderId,
-			maxDepth,
-			includeRoot: true,
-			owner
-		});
-
-		return new ArFSManifestToUpload(children, destManifestName);
 	}
 
 	async prepareArFSObjectTransaction(
