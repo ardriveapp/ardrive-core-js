@@ -3,15 +3,9 @@ import {
 	ArFSPrivateDrive,
 	ArFSPrivateFolder,
 	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths,
-	ArFSPublicFileOrFolderWithPaths
+	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import {
-	ArFSFolderToUpload,
-	ArFSFileToUpload,
-	ArFSEntityToUpload,
-	ArFSManifestToUpload
-} from './arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSEntityToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -84,7 +78,6 @@ import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
-import { alphabeticalOrder } from './exports';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 
@@ -1065,28 +1058,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 
-		const children = await this.arFsDao.listPublicFolder({
-			folderId,
-			maxDepth,
-			includeRoot: true,
-			owner
-		});
-
-		const sortedChildren = children.sort((a, b) => alphabeticalOrder(a.path, b.path));
-
-		const castedChildren = sortedChildren as Partial<ArFSPublicFileOrFolderWithPaths>[];
-
-		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
-		castedChildren.map((fileOrFolderMetaData) => {
-			if (fileOrFolderMetaData.entityType === 'folder') {
-				delete fileOrFolderMetaData.lastModifiedDate;
-				delete fileOrFolderMetaData.size;
-				delete fileOrFolderMetaData.dataTxId;
-				delete fileOrFolderMetaData.dataContentType;
-			}
-		});
-
-		const arweaveManifest = new ArFSManifestToUpload(castedChildren as ArFSPublicFileOrFolderWithPaths[]);
+		const arweaveManifest = await this.arFsDao.prepareManifest(folderId, owner, maxDepth);
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
 			arweaveManifest.size,
@@ -1110,6 +1082,7 @@ export class ArDrive extends ArDriveAnonymous {
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
+		// Setup links array from manifest
 		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
 			(path) => `arweave.net/${uploadFileResult.dataTrxId}/${path}`
 		);
