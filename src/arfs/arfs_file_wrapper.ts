@@ -72,7 +72,10 @@ export interface ArFSEntityToUpload {
 export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	manifest: Manifest;
 
-	constructor(public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[]) {
+	constructor(
+		public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[],
+		public readonly destManifestName: string
+	) {
 		const sortedChildren = folderToGenManifest.sort((a, b) => alphabeticalOrder(a.path, b.path));
 		const baseFolderPath = sortedChildren[0].path;
 
@@ -122,7 +125,7 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	}
 
 	public getBaseFileName(): BaseFileName {
-		return 'DriveManifest.json';
+		return this.destManifestName;
 	}
 
 	public getFileDataBuffer(): Buffer {

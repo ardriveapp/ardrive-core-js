@@ -1058,11 +1058,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 
-		const arweaveManifest = await this.arFsDao.prepareManifest(folderId, owner, maxDepth);
+		const arweaveManifest = await this.arFsDao.prepareManifest(folderId, owner, destManifestName, maxDepth);
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
 			arweaveManifest.size,
-			this.stubPublicFileMetadata(arweaveManifest, destManifestName),
+			this.stubPublicFileMetadata(arweaveManifest),
 			'public'
 		);
 		const fileDataRewardSettings = { reward: uploadBaseCosts.fileDataBaseReward, feeMultiple: this.feeMultiple };

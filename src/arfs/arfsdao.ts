@@ -615,6 +615,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async prepareManifest(
 		folderId: FolderID,
 		owner: ArweaveAddress,
+		destManifestName: string,
 		maxDepth = Number.MAX_SAFE_INTEGER
 	): Promise<ArFSManifestToUpload> {
 		const children = await this.listPublicFolder({
@@ -624,7 +625,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner
 		});
 
-		return new ArFSManifestToUpload(children);
+		return new ArFSManifestToUpload(children, destManifestName);
 	}
 
 	async prepareArFSObjectTransaction(
