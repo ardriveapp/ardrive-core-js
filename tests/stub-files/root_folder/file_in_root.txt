@@ -1,0 +1,2 @@
+This is good
+File should be created in root folder
