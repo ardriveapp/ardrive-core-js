@@ -97,8 +97,11 @@ describe('ArFSFileToUpload class', () => {
 		const { dataContentType, fileSize, lastModifiedDateMS } = fileToUpload.gatherFileInfo();
 
 		expect(dataContentType).to.equal('application/json');
-		expect(+lastModifiedDateMS).to.equal(1637097457457);
 		expect(+fileSize).to.equal(3204);
+
+		// Last modified date varies between local dev environments and CI environment
+		const expectedLastModifiedDate = fileToUpload.lastModifiedDate;
+		expect(+lastModifiedDateMS).to.equal(+expectedLastModifiedDate);
 	});
 
 	it('getFileDataBuffer function returns a compatible Buffer we can use to upload', () => {
