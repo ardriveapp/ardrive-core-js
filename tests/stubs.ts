@@ -213,3 +213,17 @@ export const stubPublicHierarchy = FolderHierarchy.newFromEntities(stubPublicEnt
 export const stubPublicEntitiesWithPaths = stubPublicEntities.map(
 	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubPublicHierarchy)
 );
+
+const stubIndexFileInRoot = stubPublicFile({
+	fileId: stubEntityID,
+	parentFolderId: stubEntityIDRoot,
+	fileName: 'index.html'
+});
+
+export const stubEntitiesWithIndexInRoot = [...stubPublicEntities, stubIndexFileInRoot];
+
+export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stubEntitiesWithIndexInRoot);
+
+export const stubEntitiesWithPathsAndIndexInRoot = stubEntitiesWithIndexInRoot.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithIndexInRoot)
+);
