@@ -37,8 +37,7 @@ describe('The ArFSDAO class', () => {
 				objectMetaData: stubFileMetaDataTrx,
 				rewardSettings: { reward: W(10) }
 			});
-			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.be
-				.undefined;
+			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.exist;
 		});
 
 		it('excludes ArFS tag if its within the exclusion array', async () => {
@@ -47,7 +46,8 @@ describe('The ArFSDAO class', () => {
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
-			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.exist;
+			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.be
+				.undefined;
 		});
 	});
 });

@@ -681,7 +681,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		tagsToAdd.push(...otherTags);
 
 		// Remove any excluded tags
-		tagsToAdd = tagsToAdd.filter((tag) => excludedTagNames.includes(tag.name));
+		tagsToAdd = tagsToAdd.filter((tag) => !excludedTagNames.includes(tag.name));
 
 		tagsToAdd.forEach((tag) => {
 			transaction.addTag(tag.name, tag.value);
