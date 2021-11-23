@@ -673,9 +673,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			tagsToAdd.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		// Add object-specific tags
-		objectMetaData.addTagsToTransaction(transaction);
-
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 		tagsToAdd.push(...otherTags);
@@ -686,6 +683,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		tagsToAdd.forEach((tag) => {
 			transaction.addTag(tag.name, tag.value);
 		});
+
+		// Add object-specific tags
+		objectMetaData.addTagsToTransaction(transaction);
 
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());
