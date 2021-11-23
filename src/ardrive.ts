@@ -46,8 +46,6 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	ManifestPathMap,
-	MANIFEST_CONTENT_TYPE,
 	UploadPublicManifestParams,
 	CreatePublicManifestParams
 } from './types';
@@ -1059,12 +1057,12 @@ export class ArDrive extends ArDriveAnonymous {
 		maxDepth,
 		owner
 	}: Required<CreatePublicManifestParams>): Promise<ArFSManifestResult> {
-		// TODO: Handle collision with existing manifest. New manifest will always be a new file, with
-		// upsert by default this means it will only skip here on --skip conflict
-		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
+		// TODO: Add conflictResolution option and handle skip case
+		// For now, manifest will perform upsert behavior
 
 		// Manifest becomes a new revision if the destination name
 		// conflicts with an existing file in the destination folder
+		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 
 		const children = await this.arFsDao.listPublicFolder({
@@ -1076,13 +1074,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const sortedChildren = children.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
-		// Slice and replace path to compare above pattern
-		const baseFolderPath = sortedChildren[0].path;
-
-		const castedChildren = sortedChildren as (
-			| Partial<ArFSPrivateFileOrFolderWithPaths>
-			| Partial<ArFSPublicFileOrFolderWithPaths>
-		)[];
+		const castedChildren = sortedChildren as Partial<ArFSPublicFileOrFolderWithPaths>[];
 
 		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
 		castedChildren.map((fileOrFolderMetaData) => {
@@ -1094,31 +1086,7 @@ export class ArDrive extends ArDriveAnonymous {
 			}
 		});
 
-		// TURN SORTED CHILDREN INTO MANIFEST
-		const pathMap: ManifestPathMap = {};
-		castedChildren.forEach((child) => {
-			if (child.dataTxId && child.path && child.dataContentType !== MANIFEST_CONTENT_TYPE) {
-				const path = child.path
-					// Slice off base folder path and the leading "/" so manifest URLs path correctly
-					.slice(baseFolderPath.length + 1)
-					// Replace spaces with underscores for sharing links
-					.replace(/ /g, '_');
-
-				pathMap[path] = { id: `${child.dataTxId}` };
-			}
-		});
-
-		// Use index.html in the specified folder if it exists, otherwise show first file found
-		const indexPath = Object.keys(pathMap).includes(`index.html`) ? `index.html` : Object.keys(pathMap)[0];
-
-		const arweaveManifest = new ArFSManifestToUpload({
-			manifest: 'arweave/paths',
-			version: '0.1.0',
-			index: {
-				path: indexPath
-			},
-			paths: pathMap
-		});
+		const arweaveManifest = new ArFSManifestToUpload(castedChildren as ArFSPublicFileOrFolderWithPaths[]);
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
 			arweaveManifest.size,

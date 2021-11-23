@@ -1,9 +1,19 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
-import { ByteCount, DataContentType, UnixTime, FileID, FolderID, MANIFEST_CONTENT_TYPE, Manifest } from '../types';
+import {
+	ByteCount,
+	DataContentType,
+	UnixTime,
+	FileID,
+	FolderID,
+	MANIFEST_CONTENT_TYPE,
+	Manifest,
+	ManifestPathMap
+} from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
+import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
 
 type BaseFileName = string;
 type FilePath = string;
@@ -59,7 +69,37 @@ export interface ArFSEntityToUpload {
 }
 
 export class ArFSManifestToUpload implements ArFSEntityToUpload {
-	constructor(public readonly manifest: Manifest) {}
+	manifest: Manifest;
+
+	constructor(public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[]) {
+		const baseFolderPath = folderToGenManifest[0].path;
+
+		// TURN SORTED CHILDREN INTO MANIFEST
+		const pathMap: ManifestPathMap = {};
+		folderToGenManifest.forEach((child) => {
+			if (child.dataTxId && child.path && child.dataContentType !== MANIFEST_CONTENT_TYPE) {
+				const path = child.path
+					// Slice off base folder path and the leading "/" so manifest URLs path correctly
+					.slice(baseFolderPath.length + 1)
+					// Replace spaces with underscores for sharing links
+					.replace(/ /g, '_');
+
+				pathMap[path] = { id: `${child.dataTxId}` };
+			}
+		});
+
+		// Use index.html in the specified folder if it exists, otherwise show first file found
+		const indexPath = Object.keys(pathMap).includes(`index.html`) ? `index.html` : Object.keys(pathMap)[0];
+
+		this.manifest = {
+			manifest: 'arweave/paths',
+			version: '0.1.0',
+			index: {
+				path: indexPath
+			},
+			paths: pathMap
+		};
+	}
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = MANIFEST_CONTENT_TYPE;
