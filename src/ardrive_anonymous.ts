@@ -100,7 +100,8 @@ export class ArDriveAnonymous extends ArDriveType {
 		folderId: FolderID,
 		maxDepth: number,
 		path: string,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts,
+		onDownloadProgress?: (progressPercentage: number) => void
 	): Promise<void> {
 		const folderEntityDump = await this.listPublicFolder({ folderId, maxDepth, includeRoot: true });
 		const rootFolder = folderEntityDump[0];
@@ -118,7 +119,8 @@ export class ArDriveAnonymous extends ArDriveType {
 				await this.downloadPublicFile(
 					entity.getEntity() as ArFSPublicFile,
 					fullPath,
-					conflictResolutionStrategy
+					conflictResolutionStrategy,
+					onDownloadProgress
 				);
 			} else {
 				throw new Error(`Unsupported entity type: ${entity.entityType}`);
@@ -136,15 +138,16 @@ export class ArDriveAnonymous extends ArDriveType {
 	async downloadPublicFile(
 		publicFile: ArFSPublicFile,
 		path: string,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
+		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts,
+		onDownloadProgress?: (progressPercentage: number) => void
 	): Promise<void> {
 		const remoteFileLastModifiedDate = Math.ceil(+publicFile.lastModifiedDate / 1000);
 		const proceedWriting = await proceedWritingFile(path, publicFile, conflictResolutionStrategy);
 		if (proceedWriting) {
 			const fileTxId = publicFile.dataTxId;
-			const encryptedDataStream = await this.arFsDao.downloadFileData(fileTxId);
+			const dataStream = await this.arFsDao.downloadFileData(fileTxId, onDownloadProgress);
 			const writeStream = createWriteStream(path);
-			return pipelinePromise(encryptedDataStream, writeStream).finally(() => {
+			return pipelinePromise(dataStream, writeStream).finally(() => {
 				// update the last-modified-date
 				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
 			});
