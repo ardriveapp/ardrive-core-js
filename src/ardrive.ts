@@ -1012,7 +1012,8 @@ export class ArDrive extends ArDriveAnonymous {
 	public async uploadPublicManifest({
 		folderId,
 		destManifestName = 'DriveManifest.json',
-		maxDepth = Number.MAX_SAFE_INTEGER
+		maxDepth = Number.MAX_SAFE_INTEGER,
+		conflictResolution = upsertOnConflicts
 	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
 
@@ -1020,13 +1021,17 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.getOwnerForDriveId(driveId);
 		await this.assertOwnerAddress(owner);
 
-		// TODO: Add conflictResolution option and handle skip case
-		// For now, manifest will perform upsert behavior
 		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 
-		// Manifest becomes a new revision if the destination name
-		// conflicts with an existing file in the destination folder
+		// Manifest becomes a new revision if the destination name conflicts for
+		// --replace and --upsert behaviors, since it will be newly created each time
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
+		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
+		if ((existingFileId && conflictResolution === skipOnConflicts) || fileToFolderConflict) {
+			// Return empty results if there is an existing manifest and resolution
+			// is set to skip or if there is a file to folder name conflict
+			return { ...emptyArFSResult, links: [] };
+		}
 
 		const children = await this.listPublicFolder({
 			folderId,
@@ -1034,7 +1039,6 @@ export class ArDrive extends ArDriveAnonymous {
 			includeRoot: true,
 			owner
 		});
-
 		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(

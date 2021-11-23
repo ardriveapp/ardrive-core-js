@@ -76,6 +76,7 @@ export interface UploadPublicManifestParams {
 	folderId: FolderID;
 	maxDepth?: number;
 	destManifestName?: string;
+	conflictResolution?: FileNameConflictResolution;
 }
 
 export interface CreatePublicManifestParams extends Required<UploadPublicManifestParams> {
