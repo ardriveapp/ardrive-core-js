@@ -40,8 +40,7 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	UploadPublicManifestParams,
-	CreatePublicManifestParams
+	UploadPublicManifestParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -1007,55 +1006,21 @@ export class ArDrive extends ArDriveAnonymous {
 
 	public async uploadPublicManifest({
 		folderId,
-		driveId,
 		destManifestName = 'DriveManifest.json',
 		maxDepth = Number.MAX_SAFE_INTEGER
 	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
-		if (driveId && folderId) {
-			// User has specified both a folder and a drive, assert that
-			// the folder does indeed belong to the specified drive
-			const actualDriveId = await this.arFsDao.getDriveIdForFolderId(folderId);
-			if (!actualDriveId.equals(driveId)) {
-				throw new Error('That folder does not belong to the specified drive ID!');
-			}
-		}
-
-		if (!driveId) {
-			if (!folderId) {
-				throw new Error('Must provide either a drive ID or a folder ID to create a manifest!');
-			}
-
-			// User has specified only a folderId, derive DriveID from that folder
-			driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
-		}
+		const driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
 
 		// Assert that the owner of this drive is consistent with the provided wallet
 		const owner = await this.getOwnerForDriveId(driveId);
 		await this.assertOwnerAddress(owner);
 
-		if (!folderId) {
-			// User has specified a driveId but no folderId,
-			// create manifest for the root folder of the drive
-			const drive = await this.arFsDao.getPublicDrive(driveId, owner);
-			folderId = drive.rootFolderId;
-		}
-
-		return this.createPublicManifest({ folderId, driveId, destManifestName, maxDepth, owner });
-	}
-
-	private async createPublicManifest({
-		folderId,
-		driveId,
-		destManifestName,
-		maxDepth,
-		owner
-	}: Required<CreatePublicManifestParams>): Promise<ArFSManifestResult> {
 		// TODO: Add conflictResolution option and handle skip case
 		// For now, manifest will perform upsert behavior
+		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 
 		// Manifest becomes a new revision if the destination name
 		// conflicts with an existing file in the destination folder
-		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 
 		const arweaveManifest = await this.arFsDao.prepareManifest(folderId, owner, destManifestName, maxDepth);

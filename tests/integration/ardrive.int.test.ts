@@ -873,8 +873,6 @@ describe('ArDrive class - integrated', () => {
 		});
 	});
 
-	// const stubFolderStructure: ArFSPublicFileOrFolderWithPaths[] =
-
 	describe('uploadPublicManifest', async () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
@@ -891,24 +889,6 @@ describe('ArDrive class - integrated', () => {
 					}
 				],
 				folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-			});
-		});
-
-		it('throws an error if provided folder ID does not belong to the provided drive ID', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arDrive.uploadPublicManifest({
-					folderId: stubEntityID,
-					// Pass unexpected DriveID, we would expect `stubEntityID`
-					driveId: stubEntityIDAlt
-				}),
-				errorMessage: 'That folder does not belong to the specified drive ID!'
-			});
-		});
-
-		it('throws an error if no folder ID or drive ID is provided', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arDrive.uploadPublicManifest({}),
-				errorMessage: 'Must provide either a drive ID or a folder ID to create a manifest!'
 			});
 		});
 

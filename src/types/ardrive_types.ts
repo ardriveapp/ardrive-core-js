@@ -73,13 +73,13 @@ export interface RecursivePublicBulkUploadParams {
 export type RecursivePrivateBulkUploadParams = RecursivePublicBulkUploadParams & WithDriveKey;
 
 export interface UploadPublicManifestParams {
-	driveId?: DriveID;
-	folderId?: FolderID;
+	folderId: FolderID;
 	maxDepth?: number;
 	destManifestName?: string;
 }
 
 export interface CreatePublicManifestParams extends Required<UploadPublicManifestParams> {
+	driveId: DriveID;
 	owner: ArweaveAddress;
 }
 
