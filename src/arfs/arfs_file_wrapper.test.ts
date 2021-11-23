@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { stubEntitiesWithPathsAndIndexInRoot, stubPublicEntitiesWithPaths } from '../../tests/stubs';
 import { W } from '../types';
-import { ArFSFileToUpload, ArFSManifestToUpload, wrapFileOrFolder } from './arfs_file_wrapper';
+import { ArFSFileToUpload, ArFSFolderToUpload, ArFSManifestToUpload, wrapFileOrFolder } from './arfs_file_wrapper';
 
 describe('ArFSManifestToUpload class', () => {
 	it('will link to an index.html file in the root of the folder if it exists', () => {
@@ -128,4 +128,33 @@ describe('ArFSFileToUpload class', () => {
 	});
 });
 
-// describe('ArFSFolderToUpload class');
+describe('ArFSFolderToUpload class', () => {
+	let folderToUpload: ArFSFolderToUpload;
+
+	beforeEach(() => {
+		// Start each test with a newly wrapped folder
+		folderToUpload = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+	});
+
+	it('getTotalByteCount function returns the expected size', () => {
+		expect(+folderToUpload.getTotalByteCount()).to.equal(52);
+	});
+
+	it('getTotalByteCount function returns the expected size if files are to be encrypted', () => {
+		expect(+folderToUpload.getTotalByteCount(true)).to.equal(116);
+	});
+
+	it('getBaseFileName function returns the correct name', () => {
+		expect(folderToUpload.getBaseFileName()).to.equal('bulk_root_folder');
+	});
+
+	it('getBaseCosts function throws an error if base costs are not set', () => {
+		expect(() => folderToUpload.getBaseCosts()).to.throw(Error, 'Base costs on folder were never set!');
+	});
+
+	it('getBaseCosts function returns any assigned base costs', () => {
+		folderToUpload.baseCosts = { metaDataBaseReward: W(1) };
+
+		expect(+folderToUpload.getBaseCosts().metaDataBaseReward).to.equal(1);
+	});
+});
