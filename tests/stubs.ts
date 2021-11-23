@@ -151,7 +151,13 @@ export const stubPublicFile = ({
 		JSON_CONTENT_TYPE
 	);
 
-export const stubPrivateFile = ({ driveId = stubEntityID, fileName = 'STUB NAME' }: StubFileParams): ArFSPrivateFile =>
+export const stubPrivateFile = ({
+	driveId = stubEntityID,
+	fileName = 'STUB NAME',
+	txId = stubTransactionID,
+	parentFolderId = stubEntityID,
+	fileId = stubEntityID
+}: StubFileParams): ArFSPrivateFile =>
 	new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
@@ -160,10 +166,10 @@ export const stubPrivateFile = ({ driveId = stubEntityID, fileName = 'STUB NAME'
 		driveId,
 		'file',
 		fileName,
-		stubTransactionID,
+		txId,
 		new UnixTime(0),
-		stubEntityID,
-		stubEntityID,
+		parentFolderId,
+		fileId,
 		new ByteCount(1234567890),
 		new UnixTime(0),
 		stubTransactionID,
