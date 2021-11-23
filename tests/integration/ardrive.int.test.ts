@@ -892,13 +892,53 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
-		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name', async () => {
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to replace', async () => {
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID,
-				destManifestName: 'CONFLICTING_FILE_NAME'
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'replace'
 			});
 
 			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+		});
+
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to upsert', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'upsert'
+			});
+
+			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+		});
+
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'skip'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {},
+				links: []
+			});
+		});
+
+		it('returns an empty ArFSManifestResult if destination folder has a conflicting FOLDER name', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FOLDER_NAME'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {},
+				links: []
+			});
 		});
 
 		it('returns the correct ArFSManifestResult', async () => {
