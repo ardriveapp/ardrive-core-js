@@ -53,6 +53,29 @@ describe('ArFSManifestToUpload class', () => {
 			}
 		});
 	});
+
+	it('getBaseFileName function returns the provided name', () => {
+		const manifest = new ArFSManifestToUpload(stubPublicEntitiesWithPaths, 'NameTestManifest.json');
+
+		expect(manifest.getBaseFileName()).to.equal('NameTestManifest.json');
+	});
+
+	it('gatherFileInfo function returns the expected results', () => {
+		const currentUnixTimeMs = Math.round(Date.now() / 1000);
+		const manifest = new ArFSManifestToUpload(stubPublicEntitiesWithPaths, 'TestManifest.json');
+
+		const { dataContentType, lastModifiedDateMS, fileSize } = manifest.gatherFileInfo();
+
+		expect(dataContentType).to.equal('application/x.arweave-manifest+json');
+		expect(+lastModifiedDateMS).to.equal(currentUnixTimeMs);
+		expect(+fileSize).to.equal(336);
+	});
+
+	it('getFileDataBuffer function returns a compatible Buffer we can use to upload', () => {
+		const manifest = new ArFSManifestToUpload(stubPublicEntitiesWithPaths, 'TestManifest.json');
+
+		expect(manifest.getFileDataBuffer() instanceof Buffer).to.be.true;
+	});
 });
 
 // describe('ArFSFileToUpload class');
