@@ -33,15 +33,20 @@ describe('The ArFSDAO class', () => {
 
 	describe('prepareObjectTransaction function', () => {
 		it('includes ArFS tag by default', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction(stubFileMetaDataTrx, { reward: W(10) });
+			const transaction = await arfsDao.prepareArFSObjectTransaction({
+				objectMetaData: stubFileMetaDataTrx,
+				rewardSettings: { reward: W(10) }
+			});
 			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.be
 				.undefined;
 		});
 
 		it('excludes ArFS tag if its within the exclusion array', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction(stubFileMetaDataTrx, { reward: W(10) }, [
-				'ArFS'
-			]);
+			const transaction = await arfsDao.prepareArFSObjectTransaction({
+				objectMetaData: stubFileMetaDataTrx,
+				rewardSettings: { reward: W(10) },
+				excludedTagNames: ['ArFS']
+			});
 			expect(transaction.tags.find((tag) => tag.get('name', { decode: true, string: true }) === 'ArFS')).to.exist;
 		});
 	});
