@@ -894,6 +894,13 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
+		it('throws an error if no folder ID or drive ID is provided', async () => {
+			expectAsyncErrorThrow({
+				promiseToError: arDrive.uploadPublicManifest({}),
+				errorMessage: 'Must provide either a drive ID or a folder ID to create a manifest!'
+			});
+		});
+
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name', async () => {
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID,
