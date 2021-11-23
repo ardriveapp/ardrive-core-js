@@ -71,6 +71,7 @@ export interface ArFSEntityToUpload {
 
 export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	manifest: Manifest;
+	lastModifiedDateMS: UnixTime;
 
 	constructor(
 		public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[],
@@ -115,13 +116,15 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 			},
 			paths: pathMap
 		};
+
+		// Create new current unix, as we just created this manifest
+		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
 	}
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = MANIFEST_CONTENT_TYPE;
-		const lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000)); // new unix time
 
-		return { dataContentType, lastModifiedDateMS, fileSize: this.size };
+		return { dataContentType, lastModifiedDateMS: this.lastModifiedDateMS, fileSize: this.size };
 	}
 
 	public getBaseFileName(): BaseFileName {
