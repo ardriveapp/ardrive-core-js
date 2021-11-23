@@ -13,6 +13,7 @@ import {
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
+import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
 
 type BaseFileName = string;
@@ -72,11 +73,23 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	manifest: Manifest;
 
 	constructor(public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[]) {
-		const baseFolderPath = folderToGenManifest[0].path;
+		const sortedChildren = folderToGenManifest.sort((a, b) => alphabeticalOrder(a.path, b.path));
+		const baseFolderPath = sortedChildren[0].path;
+
+		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
+		const castedChildren = sortedChildren as Partial<ArFSPublicFileOrFolderWithPaths>[];
+		castedChildren.map((fileOrFolderMetaData) => {
+			if (fileOrFolderMetaData.entityType === 'folder') {
+				delete fileOrFolderMetaData.lastModifiedDate;
+				delete fileOrFolderMetaData.size;
+				delete fileOrFolderMetaData.dataTxId;
+				delete fileOrFolderMetaData.dataContentType;
+			}
+		});
 
 		// TURN SORTED CHILDREN INTO MANIFEST
 		const pathMap: ManifestPathMap = {};
-		folderToGenManifest.forEach((child) => {
+		castedChildren.forEach((child) => {
 			if (child.dataTxId && child.path && child.dataContentType !== MANIFEST_CONTENT_TYPE) {
 				const path = child.path
 					// Slice off base folder path and the leading "/" so manifest URLs path correctly

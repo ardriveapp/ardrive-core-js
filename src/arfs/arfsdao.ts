@@ -16,8 +16,7 @@ import {
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
 	ArFSPrivateFileOrFolderWithPaths,
-	ENCRYPTED_DATA_PLACEHOLDER,
-	ArFSPublicFileOrFolderWithPaths
+	ENCRYPTED_DATA_PLACEHOLDER
 } from './arfs_entities';
 import {
 	ArFSCreateFolderResult,
@@ -98,7 +97,6 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
-import { alphabeticalOrder } from '../utils/sort_functions';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -626,20 +624,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner
 		});
 
-		const sortedChildren = children.sort((a, b) => alphabeticalOrder(a.path, b.path));
-
-		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
-		const castedChildren = sortedChildren as Partial<ArFSPublicFileOrFolderWithPaths>[];
-		castedChildren.map((fileOrFolderMetaData) => {
-			if (fileOrFolderMetaData.entityType === 'folder') {
-				delete fileOrFolderMetaData.lastModifiedDate;
-				delete fileOrFolderMetaData.size;
-				delete fileOrFolderMetaData.dataTxId;
-				delete fileOrFolderMetaData.dataContentType;
-			}
-		});
-
-		return new ArFSManifestToUpload(castedChildren as ArFSPublicFileOrFolderWithPaths[]);
+		return new ArFSManifestToUpload(children);
 	}
 
 	async prepareArFSObjectTransaction(
