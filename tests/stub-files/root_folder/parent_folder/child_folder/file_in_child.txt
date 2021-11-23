@@ -1,2 +1,0 @@
-This is good
-File should be created in child folder
