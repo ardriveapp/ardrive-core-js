@@ -894,8 +894,19 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
+		it('throws an error if provided folder ID does not belong to the provided drive ID', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.uploadPublicManifest({
+					folderId: stubEntityID,
+					// Pass unexpected DriveID, we would expect `stubEntityID`
+					driveId: stubEntityIDAlt
+				}),
+				errorMessage: 'That folder does not belong to the specified drive ID!'
+			});
+		});
+
 		it('throws an error if no folder ID or drive ID is provided', async () => {
-			expectAsyncErrorThrow({
+			await expectAsyncErrorThrow({
 				promiseToError: arDrive.uploadPublicManifest({}),
 				errorMessage: 'Must provide either a drive ID or a folder ID to create a manifest!'
 			});
