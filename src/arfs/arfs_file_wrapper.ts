@@ -25,7 +25,7 @@ type FilePath = string;
  *  Public : 2147483647 bytes
  *  Private: 2147483646 bytes
  */
-const maxFileSize = new ByteCount(2147483646);
+const maxFileSize = new ByteCount(2_147_483_646);
 
 export interface FileInfo {
 	dataContentType: DataContentType;
@@ -143,7 +143,7 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 export class ArFSFileToUpload implements ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
 		if (+this.fileStats.size >= +maxFileSize) {
-			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
+			throw new Error(`Files greater than "${+maxFileSize - 1}" bytes are not yet supported!`);
 		}
 	}
 

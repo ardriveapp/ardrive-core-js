@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { stubEntitiesWithPathsAndIndexInRoot, stubPublicEntitiesWithPaths } from '../../tests/stubs';
-import { ArFSManifestToUpload } from './arfs_file_wrapper';
+import { W } from '../types';
+import { ArFSFileToUpload, ArFSManifestToUpload, wrapFileOrFolder } from './arfs_file_wrapper';
 
 describe('ArFSManifestToUpload class', () => {
 	it('will link to an index.html file in the root of the folder if it exists', () => {
@@ -78,6 +79,50 @@ describe('ArFSManifestToUpload class', () => {
 	});
 });
 
-// describe('ArFSFileToUpload class');
+describe('ArFSFileToUpload class', () => {
+	let fileToUpload: ArFSFileToUpload;
+
+	beforeEach(() => {
+		// Start each test with a newly wrapped file
+		fileToUpload = wrapFileOrFolder('./test_wallet.json') as ArFSFileToUpload;
+	});
+
+	it('throws an error on construction if file max size limit is exceeded', () => {
+		expect(
+			() => new ArFSFileToUpload('./test_wallet.json', { ...fileToUpload.fileStats, size: 2_147_483_646 })
+		).to.throw(Error, 'Files greater than "2147483645" bytes are not yet supported!');
+	});
+
+	it('gatherFileInfo function returns the expected results', () => {
+		const { dataContentType, fileSize, lastModifiedDateMS } = fileToUpload.gatherFileInfo();
+
+		expect(dataContentType).to.equal('application/json');
+		expect(+lastModifiedDateMS).to.equal(1637097457457);
+		expect(+fileSize).to.equal(3204);
+	});
+
+	it('getFileDataBuffer function returns a compatible Buffer we can use to upload', () => {
+		expect(fileToUpload.getFileDataBuffer() instanceof Buffer).to.be.true;
+	});
+
+	it('getBaseFileName function returns the correct name', () => {
+		expect(fileToUpload.getBaseFileName()).to.equal('test_wallet.json');
+	});
+
+	it('encryptedDataSize function returns the expected size', () => {
+		expect(+fileToUpload.encryptedDataSize()).to.equal(3220);
+	});
+
+	it('getBaseCosts function throws an error if base costs are not set', () => {
+		expect(() => fileToUpload.getBaseCosts()).to.throw(Error, 'Base costs on file were never set!');
+	});
+
+	it('getBaseCosts function returns any assigned base costs', () => {
+		fileToUpload.baseCosts = { fileDataBaseReward: W(1), metaDataBaseReward: W(2) };
+
+		expect(+fileToUpload.getBaseCosts().fileDataBaseReward).to.equal(1);
+		expect(+fileToUpload.getBaseCosts().metaDataBaseReward).to.equal(2);
+	});
+});
 
 // describe('ArFSFolderToUpload class');
