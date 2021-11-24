@@ -17,7 +17,7 @@ describe('The ArFSDAO class', () => {
 		timeout: 600000
 	});
 
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDao-Test', '1.0');
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0');
 
 	const stubFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
 		new ArFSPublicFileMetadataTransactionData(
@@ -44,6 +44,7 @@ describe('The ArFSDAO class', () => {
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'ArFS')).to.exist;
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'App-Name')).to.exist;
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'App-Version')).to.exist;
+			expect(transaction.tags.length).to.equal(9);
 		});
 
 		it('includes the boost tag when boosted', async () => {
@@ -52,6 +53,7 @@ describe('The ArFSDAO class', () => {
 				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) }
 			});
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'Boost')).to.exist;
+			expect(transaction.tags.length).to.equal(10);
 		});
 
 		it('excludes the boost tag when boosted and boost tag is excluded', async () => {
@@ -61,6 +63,7 @@ describe('The ArFSDAO class', () => {
 				excludedTagNames: ['Boost']
 			});
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'Boost')).to.be.undefined;
+			expect(transaction.tags.length).to.equal(9);
 		});
 
 		it('excludes ArFS tag if its within the exclusion array', async () => {
@@ -70,6 +73,7 @@ describe('The ArFSDAO class', () => {
 				excludedTagNames: ['ArFS']
 			});
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'ArFS')).to.be.undefined;
+			expect(transaction.tags.length).to.equal(8);
 		});
 
 		it('can exclude multiple tags if provided within the exclusion array', async () => {
@@ -81,6 +85,7 @@ describe('The ArFSDAO class', () => {
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'ArFS')).to.be.undefined;
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'App-Name')).to.be.undefined;
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'App-Version')).to.be.undefined;
+			expect(transaction.tags.length).to.equal(6);
 		});
 	});
 });
