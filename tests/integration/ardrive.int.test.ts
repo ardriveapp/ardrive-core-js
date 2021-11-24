@@ -9,7 +9,18 @@ import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_or
 import { deriveDriveKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
-import { DriveKey, FeeMultiple, EID, W, UnixTime, ArFSResult, Winston, DrivePrivacy, FileID } from '../../src/types';
+import {
+	DriveKey,
+	FeeMultiple,
+	EID,
+	W,
+	UnixTime,
+	ArFSResult,
+	Winston,
+	DrivePrivacy,
+	FileID,
+	ArFSManifestResult
+} from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
 	stubEntityID,
@@ -24,7 +35,8 @@ import {
 	stubEntityIDGrandchild,
 	stubPrivateFolder,
 	stubPublicFile,
-	stubPrivateFile
+	stubPrivateFile,
+	stubPublicEntitiesWithPaths
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -75,6 +87,9 @@ describe('ArDrive class - integrated', () => {
 	const expectedDriveId = EID(stubEntityID.toString());
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
 	const existingFileId = EID(stubEntityIDAlt.toString());
+
+	const matchingLastModifiedDate = new UnixTime(420);
+	const differentLastModifiedDate = new UnixTime(1337);
 
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
@@ -471,8 +486,6 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		describe('file function', () => {
-			const matchingLastModifiedDate = new UnixTime(420);
-			const differentLastModifiedDate = new UnixTime(1337);
 			const stubbedFileAskPrompts: FileConflictPrompts = {
 				fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
 				fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
@@ -987,6 +1000,79 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 	});
+
+	describe('uploadPublicManifest', async () => {
+		beforeEach(() => {
+			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
+			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
+				files: [
+					{
+						fileName: 'CONFLICTING_FILE_NAME',
+						fileId: existingFileId,
+						lastModifiedDate: matchingLastModifiedDate
+					}
+				],
+				folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+			});
+		});
+
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to replace', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'replace'
+			});
+
+			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+		});
+
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to upsert', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'upsert'
+			});
+
+			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+		});
+
+		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID,
+				destManifestName: 'CONFLICTING_FILE_NAME',
+				conflictResolution: 'skip'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {},
+				links: []
+			});
+		});
+
+		it('throws an error if destination folder has a conflicting FOLDER name', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.uploadPublicManifest({
+					folderId: stubEntityID,
+					destManifestName: 'CONFLICTING_FOLDER_NAME'
+				}),
+				errorMessage: 'Entity name already exists in destination folder!'
+			});
+		});
+
+		it('returns the correct ArFSManifestResult', async () => {
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID
+			});
+
+			assertUploadManifestExpectations(result, W(336), W(183), W(0), W(1));
+		});
+	});
 });
 
 function assertCreateDriveExpectations(
@@ -1135,4 +1221,62 @@ function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, driveP
 	expect(feeKeys[0]).to.match(trxIdRegex);
 	expect(feeKeys[0]).to.equal(fileEntity.metadataTxId.toString());
 	expect(`${result.fees[fileEntity.metadataTxId.toString()]}`).to.equal(`${fileFee}`);
+}
+
+function assertUploadManifestExpectations(
+	result: ArFSManifestResult,
+	fileFee: Winston,
+	metadataFee: Winston,
+	tipFee: Winston,
+	expectedTip: Winston,
+	expectedFileId?: FileID
+) {
+	// Ensure that 1 arfs entity was created
+	expect(result.created.length).to.equal(1);
+
+	// Ensure that the file data entity looks healthy
+	const fileEntity = result.created[0];
+	expect(fileEntity.dataTxId).to.match(trxIdRegex);
+	expect(fileEntity.entityId).to.match(entityIdRegex);
+
+	if (expectedFileId) {
+		expect(fileEntity.entityId).to.equal(expectedFileId);
+	}
+
+	expect(fileEntity.metadataTxId).to.match(trxIdRegex);
+	expect(fileEntity.type).to.equal('file');
+
+	// There should be 1 tip
+	expect(result.tips.length).to.equal(1);
+	const uploadTip = result.tips[0];
+	expect(uploadTip.txId).to.match(trxIdRegex);
+	expect(`${uploadTip.winston}`).to.equal(`${expectedTip}`);
+	expect(uploadTip.recipient).to.match(trxIdRegex);
+
+	// Ensure that the fees look healthy
+	expect(Object.keys(result.fees).length).to.equal(3);
+
+	const feeKeys = Object.keys(result.fees);
+	expect(feeKeys[0]).to.match(trxIdRegex);
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
+
+	expect(feeKeys[1]).to.match(trxIdRegex);
+	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId.toString());
+	expect(`${result.fees[fileEntity.metadataTxId.toString()]}`).to.equal(`${metadataFee}`);
+
+	expect(feeKeys[2]).to.match(trxIdRegex);
+	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
+	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+
+	// Verify links are healthy
+	expect(result.links.length).to.equal(4);
+	expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
+	expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
+	expect(result.links[2]).to.equal(
+		`https://arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
+	);
+	expect(result.links[3]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`);
 }
