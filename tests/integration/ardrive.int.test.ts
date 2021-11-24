@@ -1149,10 +1149,10 @@ function assertUploadManifestExpectations(
 
 	// Verify links are healthy
 	expect(result.links.length).to.equal(4);
-	expect(result.links[0]).to.equal(`arweave.net/${result.created[0].dataTxId}`);
-	expect(result.links[1]).to.equal(`arweave.net/${result.created[0].dataTxId}/file-in-root`);
+	expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
+	expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
 	expect(result.links[2]).to.equal(
-		`arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
+		`https://arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
 	);
-	expect(result.links[3]).to.equal(`arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`);
+	expect(result.links[3]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`);
 }
