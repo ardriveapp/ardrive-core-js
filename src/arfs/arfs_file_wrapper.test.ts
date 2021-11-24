@@ -89,8 +89,8 @@ describe('ArFSFileToUpload class', () => {
 
 	it('throws an error on construction if file max size limit is exceeded', () => {
 		expect(
-			() => new ArFSFileToUpload('./test_wallet.json', { ...fileToUpload.fileStats, size: 2_147_483_646 })
-		).to.throw(Error, 'Files greater than "2147483645" bytes are not yet supported!');
+			() => new ArFSFileToUpload('./test_wallet.json', { ...fileToUpload.fileStats, size: 2_147_483_647 })
+		).to.throw(Error, 'Files greater than "2147483646" bytes are not yet supported!');
 	});
 
 	it('gatherFileInfo function returns the expected results', () => {

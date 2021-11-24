@@ -142,8 +142,8 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 
 export class ArFSFileToUpload implements ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
-		if (+this.fileStats.size >= +maxFileSize) {
-			throw new Error(`Files greater than "${+maxFileSize - 1}" bytes are not yet supported!`);
+		if (+this.fileStats.size > +maxFileSize) {
+			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
 	}
 
