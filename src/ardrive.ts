@@ -5,7 +5,7 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSFolderToDownload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -78,16 +78,7 @@ import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import { proceedWritingFile, proceedWritingFolder } from './utils/local_storage_conflict_resolution';
-import { createWriteStream, mkdir, utimes } from 'fs';
 import { StreamDecrypt } from './utils/stream_decrypt';
-import { join as joinPath } from 'path';
-import { promisify } from 'util';
-import { pipeline } from 'stream';
-
-const pipelinePromise = promisify(pipeline);
-const mkdirPromise = promisify(mkdir);
-const utimesPromise = promisify(utimes);
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1542,52 +1533,23 @@ export class ArDrive extends ArDriveAnonymous {
 	 * Downloads the data of a private folder tree into certain existing folder in the local storage
 	 * @param folderId - the ID of the folder to be download
 	 * @param maxDepth - the max depht in the file hierarchy
-	 * @param path - a path in local storage
 	 * @param driveKey - the key of the drive the folder is contained in
-	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns {Promise<void>}
 	 */
 	async downloadPrivateFolder(
 		folderId: FolderID,
 		maxDepth: number,
-		path: string,
-		driveKey: DriveKey,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
-	): Promise<void> {
+		driveKey: DriveKey
+	): Promise<ArFSFolderToDownload> {
 		const folderEntityDump = await this.listPrivateFolder({ folderId, maxDepth, includeRoot: true, driveKey });
 		const rootFolder = folderEntityDump[0];
-		const rootFolderPath = rootFolder.path;
-		const basePath = rootFolderPath.replace(/\/[^/]+$/, '');
 		const allFileDataTransactionIDs = folderEntityDump
 			.filter((entity) => entity.entityType === 'file')
 			.map((entity) => entity.dataTxId);
 		const allCipherIVs = await this.arFsDao.getCipherIVOfPrivateTransactionIDs(allFileDataTransactionIDs);
-		for (const entity of folderEntityDump) {
-			const relativePath = entity.path.replace(new RegExp(`^${basePath}/`), '');
-			const fullPath = joinPath(path, relativePath);
-			if (entity.entityType === 'folder') {
-				const proceedWriting = await proceedWritingFolder(fullPath, conflictResolutionStrategy);
-				if (proceedWriting) {
-					await mkdirPromise(fullPath);
-				}
-			} else if (entity.entityType === 'file') {
-				const cipherIVresult = allCipherIVs.find(
-					(queryResult) => `${queryResult.txId}` === `${entity.dataTxId}`
-				);
-				if (!cipherIVresult) {
-					throw new Error(`The transaction data of the file with txID "${entity.txId}" has no cipher IV!`);
-				}
-				await this.downloadPrivateFile(
-					entity.getEntity() as ArFSPrivateFile,
-					fullPath,
-					driveKey,
-					cipherIVresult.cipherIV,
-					conflictResolutionStrategy
-				);
-			} else {
-				throw new Error(`Unsupported entity type: ${entity.entityType}`);
-			}
-		}
+		const folderToDownload = new ArFSFolderToDownload(this, rootFolder);
+		await folderToDownload.hidratate(folderEntityDump, driveKey, allCipherIVs);
+		return folderToDownload;
 	}
 
 	/**
@@ -1597,29 +1559,20 @@ export class ArDrive extends ArDriveAnonymous {
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns {Promise<void>}
 	 */
-	async downloadPrivateFile(
+
+	async getDecryptingStream(
 		privateFile: ArFSPrivateFile,
-		path: string,
 		driveKey: DriveKey,
-		cipherIV?: CipherIV,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts
-	): Promise<void> {
-		const remoteFileLastModifiedDate = Math.ceil(+privateFile.lastModifiedDate / 1000);
-		const proceedWriting = await proceedWritingFile(path, privateFile, conflictResolutionStrategy);
-		if (proceedWriting) {
-			const fileTxId = privateFile.dataTxId;
-			const encryptedDataStream = await this.arFsDao.downloadFileData(fileTxId);
-			const writeStream = createWriteStream(path);
-			const fileKey = await deriveFileKey(`${privateFile.fileId}`, driveKey);
-			if (!cipherIV) {
-				// Only fetch the data if no CipherIV was provided
-				cipherIV = await this.arFsDao.getPrivateTransactionCipherIV(fileTxId);
-			}
-			const decryptingStream = new StreamDecrypt(cipherIV, fileKey);
-			return pipelinePromise(encryptedDataStream.pipe(decryptingStream), writeStream).finally(() => {
-				// update the last-modified-date
-				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
-			});
+		cipherIV?: CipherIV
+	): Promise<StreamDecrypt> {
+		const fileId = privateFile.fileId;
+		const fileDataTxId = privateFile.dataTxId;
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		if (!cipherIV) {
+			// Only fetch the data if no CipherIV was provided
+			cipherIV = await this.arFsDao.getPrivateTransactionCipherIV(fileDataTxId);
 		}
+		const decryptingStream = new StreamDecrypt(cipherIV, fileKey);
+		return decryptingStream;
 	}
 }

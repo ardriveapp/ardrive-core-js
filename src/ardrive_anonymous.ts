@@ -3,10 +3,11 @@ import {
 	ArFSPublicFolder,
 	ArFSPublicFile,
 	ArFSDriveEntity,
-	ArFSPublicFileOrFolderWithPaths
+	ArFSPublicFileOrFolderWithPaths,
+	ArFSPrivateFile
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress, upsertOnConflicts, FileNameConflictResolution, FolderID } from './types';
+import { DriveID, ArweaveAddress, FolderID } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -14,15 +15,8 @@ import {
 	GetAllDrivesForAddressParams,
 	ListPublicFolderParams
 } from './types';
-import { join as joinPath } from 'path';
-import { proceedWritingFile, proceedWritingFolder } from './utils/local_storage_conflict_resolution';
-import { promisify } from 'util';
-import { createWriteStream, mkdir, utimes } from 'fs';
-import { pipeline } from 'stream';
-
-const mkdirPromise = promisify(mkdir);
-const utimesPromise = promisify(utimes);
-const pipelinePromise = promisify(pipeline);
+import { Duplex } from 'stream';
+import { ArFSFolderToDownload } from './arfs/arfs_file_wrapper';
 
 export abstract class ArDriveType {
 	protected abstract readonly arFsDao: ArFSDAOType;
@@ -96,61 +90,24 @@ export class ArDriveAnonymous extends ArDriveType {
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns {Promise<void>}
 	 */
-	async downloadPublicFolder(
-		folderId: FolderID,
-		maxDepth: number,
-		path: string,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts,
-		onDownloadProgress?: (progressPercentage: number) => void
-	): Promise<void> {
+	async downloadPublicFolder(folderId: FolderID, maxDepth: number): Promise<ArFSFolderToDownload> {
 		const folderEntityDump = await this.listPublicFolder({ folderId, maxDepth, includeRoot: true });
 		const rootFolder = folderEntityDump[0];
-		const rootFolderPath = rootFolder.path;
-		const basePath = rootFolderPath.replace(/\/[^/]+$/, '');
-		for (const entity of folderEntityDump) {
-			const relativePath = entity.path.replace(new RegExp(`^${basePath}/`), '');
-			const fullPath = joinPath(path, relativePath);
-			if (entity.entityType === 'folder') {
-				const proceedWriting = await proceedWritingFolder(fullPath, conflictResolutionStrategy);
-				if (proceedWriting) {
-					await mkdirPromise(fullPath);
-				}
-			} else if (entity.entityType === 'file') {
-				await this.downloadPublicFile(
-					entity.getEntity() as ArFSPublicFile,
-					fullPath,
-					conflictResolutionStrategy,
-					onDownloadProgress
-				);
-			} else {
-				throw new Error(`Unsupported entity type: ${entity.entityType}`);
-			}
-		}
+		const folderToDownload = new ArFSFolderToDownload(this, rootFolder);
+		folderToDownload.hidratate(folderEntityDump);
+		return folderToDownload;
 	}
 
 	/**
 	 * Downloads the data of a public file into certain existing folder in the local storage
-	 * @param publicFile - the file entity to be download
+	 * @param file - the file entity to be download
 	 * @param path - a path in local storage
 	 * @param conflictResolutionStrategy - the conflicting-name resolution algorithm for conflicting file/folder in the local storage
 	 * @returns {Promise<void>}
 	 */
-	async downloadPublicFile(
-		publicFile: ArFSPublicFile,
-		path: string,
-		conflictResolutionStrategy: FileNameConflictResolution = upsertOnConflicts,
-		onDownloadProgress?: (progressPercentage: number) => void
-	): Promise<void> {
-		const remoteFileLastModifiedDate = Math.ceil(+publicFile.lastModifiedDate / 1000);
-		const proceedWriting = await proceedWritingFile(path, publicFile, conflictResolutionStrategy);
-		if (proceedWriting) {
-			const fileTxId = publicFile.dataTxId;
-			const dataStream = await this.arFsDao.downloadFileData(fileTxId, onDownloadProgress);
-			const writeStream = createWriteStream(path);
-			return pipelinePromise(dataStream, writeStream).finally(() => {
-				// update the last-modified-date
-				return utimesPromise(path, Date.now(), remoteFileLastModifiedDate);
-			});
-		}
+	async getDataStream(file: ArFSPublicFile | ArFSPrivateFile): Promise<{ data: Duplex; length: number }> {
+		const fileTxId = file.dataTxId;
+		const { data, length } = await this.arFsDao.downloadFileData(fileTxId);
+		return { data, length };
 	}
 }

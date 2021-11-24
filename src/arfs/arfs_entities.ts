@@ -149,35 +149,27 @@ export class ArFSPublicFileOrFolderWithPaths extends ArFSFileOrFolderEntity impl
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
 
-	constructor(private readonly _entity: ArFSPublicFile | ArFSPublicFolder, hierarchy: FolderHierarchy) {
+	constructor(public readonly entity: ArFSPublicFile | ArFSPublicFolder, hierarchy: FolderHierarchy) {
 		super(
-			_entity.appName,
-			_entity.appVersion,
-			_entity.arFS,
-			_entity.contentType,
-			_entity.driveId,
-			_entity.entityType,
-			_entity.name,
-			_entity.size,
-			_entity.txId,
-			_entity.unixTime,
-			_entity.lastModifiedDate,
-			_entity.dataTxId,
-			_entity.dataContentType,
-			_entity.parentFolderId,
-			_entity.entityId
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.size,
+			entity.txId,
+			entity.unixTime,
+			entity.lastModifiedDate,
+			entity.dataTxId,
+			entity.dataContentType,
+			entity.parentFolderId,
+			entity.entityId
 		);
-		this.path = `${hierarchy.pathToFolderId(_entity.parentFolderId)}${_entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(_entity.parentFolderId)}${_entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(_entity.parentFolderId)}${_entity.entityId}`;
-	}
-
-	/**
-	 * A getter for the public entity without paths
-	 * @returns {ArFSPublicFile | ArFSPublicFolder}
-	 */
-	getEntity(): ArFSPublicFile | ArFSPublicFolder {
-		return this._entity;
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.entityId}`;
 	}
 }
 
@@ -188,39 +180,33 @@ export class ArFSPrivateFileOrFolderWithPaths extends ArFSFileOrFolderEntity imp
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
 
-	constructor(private readonly _entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy) {
+	constructor(public readonly entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy) {
 		super(
-			_entity.appName,
-			_entity.appVersion,
-			_entity.arFS,
-			_entity.contentType,
-			_entity.driveId,
-			_entity.entityType,
-			_entity.name,
-			_entity.size,
-			_entity.txId,
-			_entity.unixTime,
-			_entity.lastModifiedDate,
-			_entity.dataTxId,
-			_entity.dataContentType,
-			_entity.parentFolderId,
-			_entity.entityId
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.size,
+			entity.txId,
+			entity.unixTime,
+			entity.lastModifiedDate,
+			entity.dataTxId,
+			entity.dataContentType,
+			entity.parentFolderId,
+			entity.entityId
 		);
-		this.cipher = _entity.cipher;
-		this.cipherIV = _entity.cipherIV;
-		this.path = `${hierarchy.pathToFolderId(_entity.parentFolderId)}${_entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(_entity.parentFolderId)}${_entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(_entity.parentFolderId)}${_entity.entityId}`;
-	}
-
-	/**
-	 * A getter for the private entity without paths
-	 * @returns {ArFSPublicFile | ArFSPublicFolder}
-	 */
-	getEntity(): ArFSPublicFile | ArFSPublicFolder {
-		return this._entity;
+		this.cipher = entity.cipher;
+		this.cipherIV = entity.cipherIV;
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.entityId}`;
 	}
 }
+
+export type ArFSAnyFileOrFolderWithPaths = ArFSPrivateFileOrFolderWithPaths | ArFSPublicFileOrFolderWithPaths;
 
 export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 	constructor(

@@ -26,7 +26,7 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-import { Readable } from 'stream';
+import { Duplex } from 'stream';
 import { gatewayURL } from '../utils/constants';
 import axios from 'axios';
 
@@ -288,24 +288,15 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		return entitiesWithPath;
 	}
 
-	async downloadFileData(
-		fileTxId: TransactionID,
-		onDownloadProgress?: (progressPercentage: number) => void
-	): Promise<Readable> {
+	async downloadFileData(fileTxId: TransactionID): Promise<{ data: Duplex; length: number }> {
 		const dataTxUrl = `${gatewayURL}${fileTxId}`;
 		const response = await axios({
 			method: 'get',
 			url: dataTxUrl,
-			responseType: 'stream',
-			onDownloadProgress(progressEvent) {
-				const totalSize = parseFloat(progressEvent.currentTarget.responseHeaders['Content-Length']);
-				const currentSize = progressEvent.currentTarget.response.length;
-				const progress = (totalSize / currentSize) * 100;
-				if (onDownloadProgress) {
-					onDownloadProgress(progress);
-				}
-			}
+			responseType: 'stream'
 		});
-		return response.data;
+		const { data, headers } = response;
+		const length = +headers['content-length'];
+		return { data, length };
 	}
 }

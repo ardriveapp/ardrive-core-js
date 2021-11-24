@@ -1,9 +1,22 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
-import { ByteCount, DataContentType, UnixTime, FileID, FolderID } from '../types';
+import { Duplex, PassThrough } from 'stream';
+import { ArDrive } from '../ardrive';
+import { ArDriveAnonymous } from '../ardrive_anonymous';
+import {
+	ByteCount,
+	DataContentType,
+	UnixTime,
+	FileID,
+	FolderID,
+	CipherIVQueryResult,
+	CipherIV,
+	DriveKey
+} from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
+import { ArFSAnyFileOrFolderWithPaths, ArFSPrivateFile } from './arfs_entities';
 
 type BaseFileName = string;
 type FilePath = string;
@@ -224,5 +237,97 @@ export class ArFSFolderToUpload {
 		}
 
 		return new ByteCount(totalByteCount);
+	}
+}
+
+export class ArFSFileToDownload {
+	private _length = 0;
+
+	constructor(
+		private readonly ardrive: ArDriveAnonymous,
+		readonly fileEntity: ArFSAnyFileOrFolderWithPaths,
+		private readonly driveKey?: DriveKey,
+		private readonly cipherIv?: CipherIV
+	) {
+		if (fileEntity.entityType !== 'file') {
+			throw new Error(`Can only download data of file entities, but got ${fileEntity.entityType}`);
+		}
+	}
+
+	get length(): number {
+		return this._length;
+	}
+
+	async getDataStream(): Promise<Duplex> {
+		const { data, length } = await this.ardrive.getDataStream(this.fileEntity.entity as ArFSPrivateFile);
+		this._length = length;
+		return data;
+	}
+
+	async getDecryptingStream(): Promise<Duplex> {
+		if (this.cipherIv && this.driveKey) {
+			const decryptingStream = await (this.ardrive as ArDrive).getDecryptingStream(
+				this.fileEntity.entity as ArFSPrivateFile,
+				this.driveKey,
+				this.cipherIv
+			);
+			return decryptingStream;
+		}
+		// returns a dummy stream
+		return new PassThrough();
+	}
+}
+
+export class ArFSFolderToDownload {
+	private readonly _folders: ArFSAnyFileOrFolderWithPaths[] = [];
+	private readonly _files: ArFSFileToDownload[] = [];
+
+	constructor(
+		private readonly ardrive: ArDriveAnonymous,
+		readonly rootFolderWithPaths: ArFSAnyFileOrFolderWithPaths
+	) {
+		if (rootFolderWithPaths.entityType !== 'folder') {
+			throw new Error(`Entity of type ${rootFolderWithPaths.entityType} is not a folder`);
+		}
+	}
+
+	public get folders(): ArFSAnyFileOrFolderWithPaths[] {
+		return this._folders.slice();
+	}
+
+	public get files(): ArFSFileToDownload[] {
+		return this._files.slice();
+	}
+
+	private get basePath(): string {
+		return this.rootFolderWithPaths.path.replace(/\/[^/]+$/, '');
+	}
+
+	async hidratate(
+		folderEntityDump: ArFSAnyFileOrFolderWithPaths[],
+		driveKey?: DriveKey,
+		cipherIVs?: CipherIVQueryResult[]
+	): Promise<void> {
+		for (const entityWithPaths of folderEntityDump) {
+			if (entityWithPaths.entityType === 'folder') {
+				this._folders.push(entityWithPaths);
+			} else if (entityWithPaths.entityType === 'file') {
+				const cipherIvResult = cipherIVs?.find((result) => result.txId === entityWithPaths.dataTxId);
+				if (cipherIvResult && driveKey) {
+					this._files.push(
+						new ArFSFileToDownload(this.ardrive, entityWithPaths, driveKey, cipherIvResult.cipherIV)
+					);
+				} else {
+					this._files.push(new ArFSFileToDownload(this.ardrive, entityWithPaths));
+				}
+			} else {
+				throw new Error(`Unsupported entity type: ${entityWithPaths.entityType}`);
+			}
+		}
+	}
+
+	getRelativePath(entity: ArFSAnyFileOrFolderWithPaths): string {
+		const relativePath = entity.path.replace(new RegExp(`^${this.basePath}/`), '');
+		return relativePath;
 	}
 }
