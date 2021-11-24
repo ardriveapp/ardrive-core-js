@@ -927,17 +927,13 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
-		it('returns an empty ArFSManifestResult if destination folder has a conflicting FOLDER name', async () => {
-			const result = await arDrive.uploadPublicManifest({
-				folderId: stubEntityID,
-				destManifestName: 'CONFLICTING_FOLDER_NAME'
-			});
-
-			expect(result).to.deep.equal({
-				created: [],
-				tips: [],
-				fees: {},
-				links: []
+		it('throws an error if destination folder has a conflicting FOLDER name', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.uploadPublicManifest({
+					folderId: stubEntityID,
+					destManifestName: 'CONFLICTING_FOLDER_NAME'
+				}),
+				errorMessage: 'Entity name already exists in destination folder!'
 			});
 		});
 

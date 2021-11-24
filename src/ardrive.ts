@@ -1023,13 +1023,17 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
 
+		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
+		if (fileToFolderConflict) {
+			// File names CANNOT conflict with folder names
+			throw new Error(errorMessage.entityNameExists);
+		}
+
 		// Manifest becomes a new revision if the destination name conflicts for
 		// --replace and --upsert behaviors, since it will be newly created each time
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
-		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
-		if ((existingFileId && conflictResolution === skipOnConflicts) || fileToFolderConflict) {
-			// Return empty results if there is an existing manifest and resolution
-			// is set to skip or if there is a file to folder name conflict
+		if (existingFileId && conflictResolution === skipOnConflicts) {
+			// Return empty result if there is an existing manifest and resolution is set to skip
 			return { ...emptyArFSResult, links: [] };
 		}
 
