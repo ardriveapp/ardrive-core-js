@@ -21,12 +21,18 @@ import {
 	PRIVATE_CONTENT_TYPE,
 	stubTransactionID,
 	TransactionID,
+	TxID,
 	UnixTime
 } from '../src/types';
 
 export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'): ArweaveAddress => {
 	return ADDR(address);
 };
+
+export const stubTxID = TxID('0000000000000000000000000000000000000000001');
+export const stubTxIDAlt = TxID('0000000000000000000000000000000000000000002');
+export const stubTxIDAltTwo = TxID('0000000000000000000000000000000000000000003');
+export const stubTxIDAltThree = TxID('0000000000000000000000000000000000000000004');
 
 export const stubEntityID = EID('00000000-0000-0000-0000-000000000000');
 export const stubEntityIDAlt = EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7');
@@ -124,6 +130,7 @@ interface StubFileParams {
 	txId?: TransactionID;
 	parentFolderId?: FolderID;
 	fileId?: FileID;
+	dataTxId?: TransactionID;
 }
 
 export const stubPublicFile = ({
@@ -131,7 +138,8 @@ export const stubPublicFile = ({
 	fileName = 'STUB NAME',
 	txId = stubTransactionID,
 	parentFolderId = stubEntityID,
-	fileId = stubEntityID
+	fileId = stubEntityID,
+	dataTxId = stubTransactionID
 }: StubFileParams): ArFSPublicFile =>
 	new ArFSPublicFile(
 		'Integration Test',
@@ -147,7 +155,7 @@ export const stubPublicFile = ({
 		fileId,
 		new ByteCount(1234567890),
 		new UnixTime(0),
-		stubTransactionID,
+		dataTxId,
 		JSON_CONTENT_TYPE
 	);
 
@@ -156,7 +164,8 @@ export const stubPrivateFile = ({
 	fileName = 'STUB NAME',
 	txId = stubTransactionID,
 	parentFolderId = stubEntityID,
-	fileId = stubEntityID
+	fileId = stubEntityID,
+	dataTxId = stubTransactionID
 }: StubFileParams): ArFSPrivateFile =>
 	new ArFSPrivateFile(
 		'Integration Test',
@@ -172,7 +181,7 @@ export const stubPrivateFile = ({
 		fileId,
 		new ByteCount(1234567890),
 		new UnixTime(0),
-		stubTransactionID,
+		dataTxId,
 		JSON_CONTENT_TYPE,
 		'stubCipher',
 		'stubIV'
@@ -192,17 +201,20 @@ const stubPublicChildFolder = stubPublicFolder({
 const stubPublicFileInRoot = stubPublicFile({
 	fileId: stubEntityID,
 	parentFolderId: stubEntityIDRoot,
-	fileName: 'file-in-root'
+	fileName: 'file-in-root',
+	dataTxId: stubTxID
 });
 const stubPublicFileInParent = stubPublicFile({
 	fileId: stubEntityIDAlt,
 	parentFolderId: stubEntityIDParent,
-	fileName: 'file-in-parent'
+	fileName: 'file-in-parent',
+	dataTxId: stubTxIDAlt
 });
 const stubPublicFileInChild = stubPublicFile({
 	fileId: stubEntityIDAltTwo,
 	parentFolderId: stubEntityIDChild,
-	fileName: 'file-in-child'
+	fileName: 'file-in-child',
+	dataTxId: stubTxIDAltTwo
 });
 
 export const stubPublicEntities = [
@@ -223,7 +235,8 @@ export const stubPublicEntitiesWithPaths = stubPublicEntities.map(
 const stubIndexFileInRoot = stubPublicFile({
 	fileId: stubEntityID,
 	parentFolderId: stubEntityIDRoot,
-	fileName: 'index.html'
+	fileName: 'index.html',
+	dataTxId: stubTxIDAltThree
 });
 
 export const stubEntitiesWithIndexInRoot = [...stubPublicEntities, stubIndexFileInRoot];

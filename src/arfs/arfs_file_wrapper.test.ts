@@ -17,16 +17,16 @@ describe('ArFSManifestToUpload class', () => {
 		// Assert the structure is consistent with provided stub hierarchy
 		expect(manifest.manifest.paths).to.deep.equal({
 			'file-in-root': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000001'
 			},
 			'index.html': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000004'
 			},
 			'parent-folder/child-folder/file-in-child': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000003'
 			},
 			'parent-folder/file-in-parent': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000002'
 			}
 		});
 	});
@@ -44,13 +44,13 @@ describe('ArFSManifestToUpload class', () => {
 		// Assert the structure is consistent with provided stub hierarchy
 		expect(manifest.manifest.paths).to.deep.equal({
 			'file-in-root': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000001'
 			},
 			'parent-folder/child-folder/file-in-child': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000003'
 			},
 			'parent-folder/file-in-parent': {
-				id: '0000000000000000000000000000000000000000000'
+				id: '0000000000000000000000000000000000000000002'
 			}
 		});
 	});
