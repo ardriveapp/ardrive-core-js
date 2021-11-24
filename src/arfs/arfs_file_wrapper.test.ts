@@ -11,7 +11,7 @@ describe('ArFSManifestToUpload class', () => {
 		expect(manifest.manifest.manifest).to.equal('arweave/paths');
 		expect(manifest.manifest.version).to.equal('0.1.0');
 
-		// Expect index path to be the first file
+		// Expect index path to be linked to index.html
 		expect(manifest.manifest.index.path).to.equal('index.html');
 
 		// Assert the structure is consistent with provided stub hierarchy
