@@ -523,19 +523,16 @@ describe('ArDrive class - integrated', () => {
 					});
 				});
 
-				it('returns an empty ArFS result if destination folder has a conflicting FOLDER name', async () => {
+				it('throws an error if destination folder has a conflicting FOLDER name', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FOLDER_NAME'
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPublicFile({
+							parentFolderId: stubEntityID,
+							wrappedFile,
+							destinationFileName: 'CONFLICTING_FOLDER_NAME'
+						}),
+						errorMessage: 'Entity name already exists in destination folder!'
 					});
 				});
 
@@ -570,21 +567,18 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3204), W(171), W(0), W(1), 'public', existingFileId);
 				});
 
-				it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'upsert'
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPublicFile({
+							parentFolderId: stubEntityID,
+							wrappedFile,
+							destinationFileName: 'CONFLICTING_FILE_NAME',
+							conflictResolution: 'upsert'
+						}),
+						errorMessage: 'The file to upload matches an existing file entity!'
 					});
 				});
 
@@ -702,20 +696,17 @@ describe('ArDrive class - integrated', () => {
 					});
 				});
 
-				it('returns an empty ArFS result if destination folder has a conflicting FOLDER name', async () => {
+				it('throws an error if destination folder has a conflicting FOLDER name', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						driveKey: await getStubDriveKey(),
-						destinationFileName: 'CONFLICTING_FOLDER_NAME'
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPrivateFile({
+							parentFolderId: EID(stubEntityID.toString()),
+							wrappedFile,
+							driveKey: await getStubDriveKey(),
+							destinationFileName: 'CONFLICTING_FOLDER_NAME'
+						}),
+						errorMessage: 'Entity name already exists in destination folder!'
 					});
 				});
 
@@ -752,22 +743,19 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3220), W(187), W(0), W(1), 'private', existingFileId);
 				});
 
-				it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'upsert',
-						driveKey: await getStubDriveKey()
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPrivateFile({
+							parentFolderId: EID(stubEntityID.toString()),
+							wrappedFile,
+							driveKey: await getStubDriveKey(),
+							destinationFileName: 'CONFLICTING_FILE_NAME',
+							conflictResolution: 'upsert'
+						}),
+						errorMessage: 'The file to upload matches an existing file entity!'
 					});
 				});
 
