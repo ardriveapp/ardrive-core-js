@@ -1,14 +1,14 @@
 import {
-	ResolveFileNameConflictsParams,
 	askOnConflicts,
 	errorOnConflict,
-	skipOnConflicts,
-	replaceOnConflicts,
-	upsertOnConflicts,
 	renameOnConflicts,
+	replaceOnConflicts,
+	ResolveFileNameConflictsParams,
 	ResolveFolderNameConflictsParams,
+	skipOnConflicts,
+	upsertOnConflicts,
 	useExistingFolder
-} from '../exports';
+} from '../types';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
 
 export const resolveFileNameConflicts = async ({
@@ -60,9 +60,7 @@ export const resolveFileNameConflicts = async ({
 
 	// Use the ask prompt behavior
 	if (!prompts) {
-		throw new Error(
-			'App must provide a file name conflict resolution prompt to use the `ask` conflict resolution!'
-		);
+		throw new Error('App must provide file name conflict resolution prompts to use the `ask` conflict resolution!');
 	}
 
 	const allExistingNames = [
@@ -140,7 +138,9 @@ export const resolveFolderNameConflicts = async ({
 	} else {
 		// Use the ask prompt behavior
 		if (!prompts) {
-			throw new Error('App must provide name conflict resolution prompts to use the `ask` conflict resolution!');
+			throw new Error(
+				'App must provide folder and file name conflict resolution prompts to use the `ask` conflict resolution!'
+			);
 		}
 
 		const allExistingNames = [
@@ -171,14 +171,12 @@ export const resolveFolderNameConflicts = async ({
 				return;
 
 			case useExistingFolder:
-				if (!existingNameAtDestConflict.existingFolderConflict) {
-					// useExistingFolder will only ever be returned from a folderToFolder prompt, which
-					// WILL have existingFolderConflict -- this error should never happen
-					throw new Error('Cannot use existing folder id of non existent folder...');
-				}
-
 				// Re-use this folder, upload its contents within the existing folder
-				wrappedFolder.existingId = existingNameAtDestConflict.existingFolderConflict.folderId;
+
+				// useExistingFolder will only ever be returned from a folderToFolder prompt, which
+				// WILL have existingFolderConflict -- this can not be null here
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				wrappedFolder.existingId = existingNameAtDestConflict.existingFolderConflict!.folderId;
 
 				// Break to check conflicts within folder
 				break;

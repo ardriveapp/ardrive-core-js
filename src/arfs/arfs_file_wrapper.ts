@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
-import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../exports';
 import {
 	ByteCount,
 	DataContentType,
@@ -11,7 +10,7 @@ import {
 	Manifest,
 	ManifestPathMap
 } from '../types';
-import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
+import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { extToMime } from '../utils/common';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';

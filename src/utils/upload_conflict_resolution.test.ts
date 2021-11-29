@@ -2,17 +2,17 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { stubEntityID, stubEntityIDAlt, stubEntityIDAltTwo } from '../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
+import { ArFSFileToUpload, wrapFileOrFolder, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
-	ArFSFileToUpload,
 	errorOnConflict,
 	FileConflictPrompts,
+	FolderConflictPrompts,
 	skipOnConflicts,
-	upsertOnConflicts,
-	wrapFileOrFolder
-} from '../exports';
-import { UnixTime } from '../types';
+	UnixTime,
+	upsertOnConflicts
+} from '../types';
 import { NameConflictInfo } from './mapper_functions';
-import { resolveFileNameConflicts } from './upload_conflict_resolution';
+import { resolveFileNameConflicts, resolveFolderNameConflicts } from './upload_conflict_resolution';
 
 const matchingLastModifiedDate = new UnixTime(123456789);
 const differentLastModifiedDate = new UnixTime(987654321);
@@ -28,6 +28,11 @@ const stubConflictInfo: NameConflictInfo = {
 			fileName: 'CONFLICTING_FILE_NAME',
 			fileId: stubEntityID,
 			lastModifiedDate: matchingLastModifiedDate
+		},
+		{
+			fileName: 'ANOTHER_CONFLICTING_NAME',
+			fileId: stubEntityIDAltTwo,
+			lastModifiedDate: differentLastModifiedDate
 		}
 	],
 	folders: [
@@ -125,8 +130,7 @@ describe('The resolveFileNameConflicts function', () => {
 				destinationFileName: 'CONFLICTING_FILE_NAME',
 				nameConflictInfo: stubConflictInfo
 			}),
-			errorMessage:
-				'App must provide a file name conflict resolution prompt to use the `ask` conflict resolution!'
+			errorMessage: 'App must provide file name conflict resolution prompts to use the `ask` conflict resolution!'
 		});
 	});
 
@@ -192,18 +196,6 @@ describe('The resolveFileNameConflicts function', () => {
 	});
 
 	it('throws an error when there is a file to file name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the file to another conflicting name', async () => {
-		const stubConflictInfoWithAnotherConflict: NameConflictInfo = {
-			...stubConflictInfo,
-			files: [
-				...stubConflictInfo.files,
-				{
-					fileName: 'ANOTHER_CONFLICTING_NAME',
-					fileId: stubEntityIDAltTwo,
-					lastModifiedDate: differentLastModifiedDate
-				}
-			]
-		};
-
 		stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 			resolution: 'rename',
 			newFileName: 'ANOTHER_CONFLICTING_NAME'
@@ -214,7 +206,7 @@ describe('The resolveFileNameConflicts function', () => {
 				wrappedFile,
 				conflictResolution: 'ask',
 				destinationFileName: 'CONFLICTING_FILE_NAME',
-				nameConflictInfo: stubConflictInfoWithAnotherConflict,
+				nameConflictInfo: stubConflictInfo,
 				prompts: stubbedFileAskPrompts
 			}),
 			errorMessage: 'That name also exists within dest folder!'
@@ -234,6 +226,177 @@ describe('The resolveFileNameConflicts function', () => {
 				destinationFileName: 'CONFLICTING_FILE_NAME',
 				nameConflictInfo: stubConflictInfo,
 				prompts: stubbedFileAskPrompts
+			}),
+			errorMessage: 'You must provide a different name!'
+		});
+	});
+});
+
+const stubGetConflictInfoFn = () => Promise.resolve(stubConflictInfo);
+
+const stubbedFolderAskPrompts: FolderConflictPrompts = {
+	...stubbedFileAskPrompts,
+	folderToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+	folderToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
+};
+
+describe('The resolveFolderNameConflicts function', () => {
+	let wrappedFolder: ArFSFolderToUpload;
+
+	beforeEach(() => {
+		// Start each test with a newly wrapped folder
+		wrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+	});
+
+	it('resolves wrappedFolder.conflictResolution to undefined when there are no conflicts in the destination folder', async () => {
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'upsert',
+			destinationFolderName: 'non-conflicting-test-name',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn
+		});
+
+		expect(wrappedFolder.conflictResolution).to.be.undefined;
+	});
+
+	it('resolves wrappedFolder.conflictResolution to skip when there is a folder to file name conflict in the destination folder', async () => {
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'upsert',
+			destinationFolderName: 'CONFLICTING_FILE_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn
+		});
+
+		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
+	});
+
+	it('resolves wrappedFolder.conflictResolution to undefined and re-uses existing Folder ID when there is a folder to folder name conflict in the destination folder', async () => {
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'upsert',
+			destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn
+		});
+
+		expect(wrappedFolder.conflictResolution).to.be.undefined;
+		expect(wrappedFolder.existingId?.equals(stubEntityIDAlt)).to.be.true;
+	});
+
+	it('throws an error if resolution is set to ask and there are no prompts defined', async () => {
+		await expectAsyncErrorThrow({
+			promiseToError: resolveFolderNameConflicts({
+				wrappedFolder,
+				conflictResolution: 'ask',
+				destinationFolderName: 'CONFLICTING_FILE_NAME',
+				nameConflictInfo: stubConflictInfo,
+				getConflictInfoFn: stubGetConflictInfoFn
+			}),
+			errorMessage:
+				'App must provide folder and file name conflict resolution prompts to use the `ask` conflict resolution!'
+		});
+	});
+
+	it('resolves wrappedFolder.conflictResolution to skip when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to skip the folder', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFolderNameConflict').resolves({ resolution: 'skip' });
+
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'ask',
+			destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn,
+			prompts: stubbedFolderAskPrompts
+		});
+
+		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
+	});
+
+	it('resolves wrappedFolder.conflictResolution to skip a when there is a folder to file name conflict in the destination folder, the resolution is set to ask, and the user chooses to skip the folder', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFileNameConflict').resolves({ resolution: 'skip' });
+
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'ask',
+			destinationFolderName: 'CONFLICTING_FILE_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn,
+			prompts: stubbedFolderAskPrompts
+		});
+
+		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
+	});
+
+	it('resolves wrappedFolder.conflictResolution to undefined and re-uses the existing Folder ID when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to re-use the folder', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFolderNameConflict').resolves({ resolution: 'useFolder' });
+
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'ask',
+			destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn,
+			prompts: stubbedFolderAskPrompts
+		});
+
+		expect(wrappedFolder.conflictResolution).to.be.undefined;
+		expect(wrappedFolder.existingId?.equals(stubEntityIDAlt)).to.be.true;
+	});
+
+	it('resolves wrappedFolder.conflictResolution to undefined and assigns the new folder name when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the folder to a non conflicting name', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFolderNameConflict').resolves({
+			resolution: 'rename',
+			newFolderName: 'non-conflicting-name'
+		});
+
+		await resolveFolderNameConflicts({
+			wrappedFolder,
+			conflictResolution: 'ask',
+			destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+			nameConflictInfo: stubConflictInfo,
+			getConflictInfoFn: stubGetConflictInfoFn,
+			prompts: stubbedFolderAskPrompts
+		});
+
+		expect(wrappedFolder.conflictResolution).to.be.undefined;
+		expect(wrappedFolder.newFolderName).to.equal('non-conflicting-name');
+	});
+
+	it('throws an error when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the folder to another conflicting name', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFolderNameConflict').resolves({
+			resolution: 'rename',
+			newFolderName: 'ANOTHER_CONFLICTING_NAME'
+		});
+
+		await expectAsyncErrorThrow({
+			promiseToError: resolveFolderNameConflicts({
+				wrappedFolder,
+				conflictResolution: 'ask',
+				destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+				nameConflictInfo: stubConflictInfo,
+				getConflictInfoFn: stubGetConflictInfoFn,
+				prompts: stubbedFolderAskPrompts
+			}),
+			errorMessage: 'That name also exists within dest folder!'
+		});
+	});
+
+	it('throws an error when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the folder to the same conflicting name', async () => {
+		stub(stubbedFolderAskPrompts, 'folderToFolderNameConflict').resolves({
+			resolution: 'rename',
+			newFolderName: 'CONFLICTING_FOLDER_NAME'
+		});
+
+		await expectAsyncErrorThrow({
+			promiseToError: resolveFolderNameConflicts({
+				wrappedFolder,
+				conflictResolution: 'ask',
+				destinationFolderName: 'CONFLICTING_FOLDER_NAME',
+				nameConflictInfo: stubConflictInfo,
+				getConflictInfoFn: stubGetConflictInfoFn,
+				prompts: stubbedFolderAskPrompts
 			}),
 			errorMessage: 'You must provide a different name!'
 		});

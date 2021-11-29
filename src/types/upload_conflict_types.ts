@@ -1,5 +1,6 @@
 import { FileID, FolderID } from '.';
-import { FileConflictInfo, NameConflictInfo, ArFSFileToUpload, ArFSFolderToUpload } from '../exports';
+import { ArFSFileToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
+import { FileConflictInfo, NameConflictInfo } from '../utils/mapper_functions';
 
 export const skipOnConflicts = 'skip';
 export const replaceOnConflicts = 'replace';
