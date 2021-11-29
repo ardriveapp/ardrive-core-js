@@ -1531,11 +1531,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async downloadPrivateFile(
 		fileId: FileID,
-		// maxDepth: TreeDepth,
-		// maxDepth: number,
-		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 		destFolderPath: string,
 		driveKey: DriveKey
+		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const fullPath = joinPath(destFolderPath, privateFile.name);

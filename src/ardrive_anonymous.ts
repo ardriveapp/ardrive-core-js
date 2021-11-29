@@ -82,8 +82,6 @@ export class ArDriveAnonymous extends ArDriveType {
 
 	async downloadPublicFile(
 		fileId: FileID,
-		// maxDepth: TreeDepth,
-		// maxDepth: number,
 		destFolderPath: string
 		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 	): Promise<void> {
