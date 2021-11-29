@@ -11,9 +11,13 @@ import {
 } from '../exports';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
 
-export const resolveFileNameConflicts = async (params: ResolveFileNameConflictsParams): Promise<void> => {
-	const { wrappedFile, conflictResolution, destinationFileName: destFileName, nameConflictInfo, prompts } = params;
-
+export const resolveFileNameConflicts = async ({
+	wrappedFile,
+	conflictResolution,
+	destinationFileName: destFileName,
+	nameConflictInfo,
+	prompts
+}: ResolveFileNameConflictsParams): Promise<void> => {
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFileName, nameConflictInfo);
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
