@@ -19,7 +19,8 @@ import {
 	Winston,
 	DrivePrivacy,
 	FileID,
-	ArFSManifestResult
+	ArFSManifestResult,
+	FileConflictPrompts
 } from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
@@ -41,7 +42,6 @@ import {
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
-import { FileConflictPrompts } from '../../src/utils/upload_conflict_resolution';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;

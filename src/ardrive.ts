@@ -45,7 +45,10 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	UploadPublicManifestParams
+	UploadPublicManifestParams,
+	errorOnConflict,
+	skipOnConflicts,
+	upsertOnConflicts
 } from './types';
 import {
 	CommunityTipParams,
@@ -81,13 +84,7 @@ import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import {
-	errorOnConflict,
-	resolveFileNameConflicts,
-	resolveFolderNameConflicts,
-	skipOnConflicts,
-	upsertOnConflicts
-} from './utils/upload_conflict_resolution';
+import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
