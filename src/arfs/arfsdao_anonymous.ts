@@ -20,12 +20,15 @@ import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import {
 	ArFSDriveEntity,
+	ArFSPrivateFile,
 	ArFSPublicDrive,
 	ArFSPublicFile,
 	ArFSPublicFileOrFolderWithPaths,
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
+import axios from 'axios';
+import { gatewayURL } from '../utils/constants';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
@@ -283,5 +286,23 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		const entitiesWithPath = children.map((entity) => new ArFSPublicFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
+	}
+
+	/**
+	 * Downloads the data of a public file into certain existing folder in the local storage
+	 * @param file - the file entity to be download
+	 * @returns {Promise<void>}
+	 */
+	async getDataStream(file: ArFSPublicFile | ArFSPrivateFile): Promise<{ data: ReadableStream; length: number }> {
+		const fileTxId = file.dataTxId;
+		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const response = await axios({
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream'
+		});
+		const { data, headers } = response;
+		const length = +headers['content-length'];
+		return { data, length };
 	}
 }

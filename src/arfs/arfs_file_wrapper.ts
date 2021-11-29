@@ -1,9 +1,10 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
-import { ByteCount, DataContentType, UnixTime, FileID, FolderID } from '../types';
+import { ByteCount, DataContentType, UnixTime, FileID, FolderID, CipherIVQueryResult, DriveKey } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
+import { ArFSAnyFileOrFolderWithPaths } from './arfs_entities';
 
 type BaseFileName = string;
 type FilePath = string;
@@ -224,5 +225,60 @@ export class ArFSFolderToUpload {
 		}
 
 		return new ByteCount(totalByteCount);
+	}
+}
+
+export class ArFSFileToDownload {
+	constructor(readonly fileEntity: ArFSAnyFileOrFolderWithPaths) {
+		if (fileEntity.entityType !== 'file') {
+			throw new Error(`Can only download data of file entities, but got ${fileEntity.entityType}`);
+		}
+	}
+}
+
+export class ArFSFolderToDownload {
+	private readonly _folders: ArFSAnyFileOrFolderWithPaths[] = [];
+	private readonly _files: ArFSFileToDownload[] = [];
+
+	constructor(
+		readonly rootFolderWithPaths: ArFSAnyFileOrFolderWithPaths,
+		folderEntityDump: ArFSAnyFileOrFolderWithPaths[],
+		driveKey?: DriveKey,
+		cipherIVs?: CipherIVQueryResult[]
+	) {
+		if (rootFolderWithPaths.entityType !== 'folder') {
+			throw new Error(`Entity of type ${rootFolderWithPaths.entityType} is not a folder`);
+		}
+		for (const entityWithPaths of folderEntityDump) {
+			if (entityWithPaths.entityType === 'folder') {
+				this._folders.push(entityWithPaths);
+			} else if (entityWithPaths.entityType === 'file') {
+				const cipherIvResult = cipherIVs?.find((result) => result.txId === entityWithPaths.dataTxId);
+				if (cipherIvResult && driveKey) {
+					this._files.push(new ArFSFileToDownload(entityWithPaths));
+				} else {
+					this._files.push(new ArFSFileToDownload(entityWithPaths));
+				}
+			} else {
+				throw new Error(`Unsupported entity type: ${entityWithPaths.entityType}`);
+			}
+		}
+	}
+
+	public get folders(): ArFSAnyFileOrFolderWithPaths[] {
+		return this._folders.slice();
+	}
+
+	public get files(): ArFSFileToDownload[] {
+		return this._files.slice();
+	}
+
+	private get basePath(): string {
+		return this.rootFolderWithPaths.path.replace(/\/[^/]+$/, '');
+	}
+
+	getRelativePath(entity: ArFSAnyFileOrFolderWithPaths): string {
+		const relativePath = entity.path.replace(new RegExp(`^${this.basePath}/`), '');
+		return relativePath;
 	}
 }
