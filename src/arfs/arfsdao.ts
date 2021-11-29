@@ -108,6 +108,13 @@ export class PrivateDriveKeyData {
 	}
 }
 
+export interface PrepareObjectTransactionParams {
+	objectMetaData: ArFSObjectMetadataPrototype;
+	rewardSettings?: RewardSettings;
+	excludedTagNames?: string[];
+	otherTags?: GQLTagInterface[];
+}
+
 export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
 	originalMetaData: O;
 	newParentFolderId: FolderID;
@@ -208,7 +215,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Create a root folder metadata transaction
 		const folderMetadata = folderPrototypeFactory(folderId, parentFolderId);
-		const folderTrx = await this.prepareArFSObjectTransaction(folderMetadata, rewardSettings);
+		const folderTrx = await this.prepareArFSObjectTransaction({ objectMetaData: folderMetadata, rewardSettings });
 
 		// Execute the upload
 		if (!this.dryRun) {
@@ -275,7 +282,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Create a drive metadata transaction
 		const driveMetaData = await createMetadataFn(driveId, rootFolderId);
-		const driveTrx = await this.prepareArFSObjectTransaction(driveMetaData, driveRewardSettings);
+		const driveTrx = await this.prepareArFSObjectTransaction({
+			objectMetaData: driveMetaData,
+			rewardSettings: driveRewardSettings
+		});
 
 		// Execute the upload
 		if (!this.dryRun) {
@@ -369,7 +379,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const metadataPrototype = metaDataFactory();
 
 		// Prepare meta data transaction
-		const metaDataTrx = await this.prepareArFSObjectTransaction(metadataPrototype, metaDataBaseReward);
+		const metaDataTrx = await this.prepareArFSObjectTransaction({
+			objectMetaData: metadataPrototype,
+			rewardSettings: metaDataBaseReward
+		});
 
 		// Upload meta data
 		if (!this.dryRun) {
@@ -493,7 +506,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Build file data transaction
 		const fileDataPrototype = await dataPrototypeFactoryFn(fileData, dataContentType, fileId);
-		const dataTrx = await this.prepareArFSObjectTransaction(fileDataPrototype, fileDataRewardSettings);
+		const dataTrx = await this.prepareArFSObjectTransaction({
+			objectMetaData: fileDataPrototype,
+			rewardSettings: fileDataRewardSettings,
+			excludedTagNames: ['ArFS']
+		});
 
 		// Upload file data
 		if (!this.dryRun) {
@@ -513,7 +530,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			fileId
 		);
 		const fileMetadata = metadataFactoryFn(metadataTrxData, fileId);
-		const metaDataTrx = await this.prepareArFSObjectTransaction(fileMetadata, metadataRewardSettings);
+		const metaDataTrx = await this.prepareArFSObjectTransaction({
+			objectMetaData: fileMetadata,
+			rewardSettings: metadataRewardSettings
+		});
 
 		// Upload meta data
 		if (!this.dryRun) {
@@ -612,11 +632,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async prepareArFSObjectTransaction(
-		objectMetaData: ArFSObjectMetadataPrototype,
-		rewardSettings: RewardSettings = {},
-		otherTags: GQLTagInterface[] = []
-	): Promise<Transaction> {
+	async prepareArFSObjectTransaction({
+		objectMetaData,
+		rewardSettings = {},
+		excludedTagNames = [],
+		otherTags = []
+	}: PrepareObjectTransactionParams): Promise<Transaction> {
 		const wallet = this.wallet as JWKWallet;
 
 		// Create transaction
@@ -641,22 +662,30 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
 		}
 
-		// Add baseline ArFS Tags
-		transaction.addTag('App-Name', this.appName);
-		transaction.addTag('App-Version', this.appVersion);
-		transaction.addTag('ArFS', CURRENT_ARFS_VERSION);
-		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
-			transaction.addTag('Boost', rewardSettings.feeMultiple.toString());
-		}
+		let tagsToAdd: GQLTagInterface[] = [
+			// Add baseline App Name and App Version Tags
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'ArFS', value: CURRENT_ARFS_VERSION }
+		];
 
-		// Add object-specific tags
-		objectMetaData.addTagsToTransaction(transaction);
+		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
+			tagsToAdd.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+		}
 
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
-		otherTags.forEach((tag) => {
+		tagsToAdd.push(...otherTags);
+
+		// Remove any excluded tags
+		tagsToAdd = tagsToAdd.filter((tag) => !excludedTagNames.includes(tag.name));
+
+		tagsToAdd.forEach((tag) => {
 			transaction.addTag(tag.name, tag.value);
 		});
+
+		// Add object-specific tags
+		objectMetaData.addTagsToTransaction(transaction);
 
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());
