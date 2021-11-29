@@ -82,6 +82,7 @@ import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import {
+	errorOnConflict,
 	resolveFileNameConflicts,
 	resolveFolderNameConflicts,
 	skipOnConflicts,
@@ -419,8 +420,17 @@ export class ArDrive extends ArDriveAnonymous {
 			prompts
 		});
 
-		if (wrappedFile.skipThisUpload) {
-			return emptyArFSResult;
+		if (wrappedFile.conflictResolution) {
+			switch (wrappedFile.conflictResolution) {
+				case errorOnConflict:
+					throw new Error(errorMessage.entityNameExists);
+
+				case skipOnConflicts:
+					return emptyArFSResult;
+
+				case upsertOnConflicts:
+					throw new Error(errorMessage.fileIsTheSame);
+			}
 		}
 
 		if (wrappedFile.newFileName) {
@@ -540,7 +550,7 @@ export class ArDrive extends ArDriveAnonymous {
 		let uploadEntityResults: ArFSEntityData[] = [];
 		let folderId: FolderID;
 
-		if (wrappedFolder.skipThisUpload) {
+		if (wrappedFolder.conflictResolution === skipOnConflicts) {
 			// We may skip a folder upload if it conflicts with an existing file name.
 			// This would one be the FAIL cases from the table, ideally we'd throw an
 			// error -- but we don't want to interrupt other parts of the bulk upload
@@ -585,9 +595,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Upload all files in the folder
 		for await (const wrappedFile of wrappedFolder.files) {
-			if (wrappedFile.skipThisUpload) {
-				// Continue loop, don't upload this file, and don't throw
-				// errors inside loop so the other results get returned
+			if (wrappedFile.conflictResolution) {
+				// Continue loop -- don't upload this file in every conflict case for bulk upload.
+				// We avoid throwing any errors inside this loop so other possible results get returned
 				continue;
 			}
 
@@ -686,8 +696,17 @@ export class ArDrive extends ArDriveAnonymous {
 			prompts
 		});
 
-		if (wrappedFile.skipThisUpload) {
-			return emptyArFSResult;
+		if (wrappedFile.conflictResolution) {
+			switch (wrappedFile.conflictResolution) {
+				case errorOnConflict:
+					throw new Error(errorMessage.entityNameExists);
+
+				case skipOnConflicts:
+					return emptyArFSResult;
+
+				case upsertOnConflicts:
+					throw new Error(errorMessage.fileIsTheSame);
+			}
 		}
 
 		if (wrappedFile.newFileName) {
@@ -825,7 +844,7 @@ export class ArDrive extends ArDriveAnonymous {
 		let uploadEntityResults: ArFSEntityData[] = [];
 		let folderId: FolderID;
 
-		if (wrappedFolder.skipThisUpload) {
+		if (wrappedFolder.conflictResolution === skipOnConflicts) {
 			// We may skip a folder upload if it conflicts with an existing file name.
 			// This would one be the FAIL cases from the table, ideally we'd throw an
 			// error -- but we don't want to interrupt other parts of the bulk upload
@@ -872,9 +891,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Upload all files in the folder
 		for await (const wrappedFile of wrappedFolder.files) {
-			if (wrappedFile.skipThisUpload) {
-				// Continue loop, don't upload this file, and don't throw
-				// errors inside loop so the other results get returned
+			if (wrappedFile.conflictResolution) {
+				// Continue loop -- don't upload this file in every conflict case for bulk upload.
+				// We avoid throwing any errors inside this loop so other possible results get returned
 				continue;
 			}
 
@@ -1227,7 +1246,7 @@ export class ArDrive extends ArDriveAnonymous {
 		let totalPrice = W(0);
 		let totalFilePrice = W(0);
 
-		if (folderToUpload.skipThisUpload) {
+		if (folderToUpload.conflictResolution === skipOnConflicts) {
 			// Return empty estimation if this folder will be skipped, do not recurse
 			return { totalPrice: W('0'), totalFilePrice: W('0'), communityWinstonTip: W('0') };
 		}
@@ -1254,7 +1273,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		for await (const file of folderToUpload.files) {
-			if (file.skipThisUpload) {
+			if (file.conflictResolution) {
 				// Continue loop, won't upload this file
 				continue;
 			}

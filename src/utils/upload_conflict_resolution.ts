@@ -9,6 +9,8 @@ export const askOnConflicts = 'ask';
 export const renameOnConflicts = 'rename';
 export const useExistingFolder = 'useFolder';
 
+export const errorOnConflict = 'error';
+
 /** Conflict settings used by ArDrive class */
 export type FileNameConflictResolution =
 	| typeof skipOnConflicts
@@ -107,9 +109,15 @@ export const resolveFileNameConflicts = async (params: ResolveFileNameConflictsP
 		existingNameAtDestConflict.existingFileConflict?.lastModifiedDate === wrappedFile.lastModifiedDate;
 
 	if (conflictResolution !== askOnConflicts) {
-		if (existingNameAtDestConflict.existingFolderConflict || conflictResolution === skipOnConflicts) {
+		if (existingNameAtDestConflict.existingFolderConflict) {
+			// Skip this file with an error, files CANNOT overwrite folders
+			wrappedFile.conflictResolution = errorOnConflict;
+			return;
+		}
+
+		if (conflictResolution === skipOnConflicts) {
 			// Skip this file
-			wrappedFile.skipThisUpload = true;
+			wrappedFile.conflictResolution = skipOnConflicts;
 			return;
 		}
 
@@ -121,8 +129,8 @@ export const resolveFileNameConflicts = async (params: ResolveFileNameConflictsP
 
 		// Otherwise, default to upsert behavior
 		if (hasSameLastModifiedDate) {
-			// Skip this file, it has a matching last modified date
-			wrappedFile.skipThisUpload = true;
+			// Skip this file with upsert, it has a matching last modified date
+			wrappedFile.conflictResolution = upsertOnConflicts;
 			return;
 		}
 		// Proceed with creating a new revision
@@ -162,7 +170,7 @@ export const resolveFileNameConflicts = async (params: ResolveFileNameConflictsP
 	switch (userInput.resolution) {
 		case skipOnConflicts:
 			// Skip this file
-			wrappedFile.skipThisUpload = true;
+			wrappedFile.conflictResolution = skipOnConflicts;
 			return;
 
 		case renameOnConflicts:
@@ -204,7 +212,7 @@ export const resolveFolderNameConflicts = async ({
 		if (existingNameAtDestConflict.existingFileConflict) {
 			// Folders cannot overwrite files
 			// Skip this folder and all its contents
-			wrappedFolder.skipThisUpload = true;
+			wrappedFolder.conflictResolution = skipOnConflicts;
 			return;
 		}
 		// Re-use this folder, upload its contents within the existing folder
@@ -239,7 +247,7 @@ export const resolveFolderNameConflicts = async ({
 		switch (userInput.resolution) {
 			case skipOnConflicts:
 				// Skip this folder and all its contents
-				wrappedFolder.skipThisUpload = true;
+				wrappedFolder.conflictResolution = skipOnConflicts;
 				return;
 
 			case useExistingFolder:

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import { basename, join } from 'path';
+import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../exports';
 import {
 	ByteCount,
 	DataContentType,
@@ -139,6 +140,9 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	}
 }
 
+export type FolderConflictResolution = typeof skipOnConflicts | undefined;
+export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
+
 export class ArFSFileToUpload implements ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
 		if (+this.fileStats.size > +maxFileSize) {
@@ -149,7 +153,7 @@ export class ArFSFileToUpload implements ArFSEntityToUpload {
 	baseCosts?: BulkFileBaseCosts;
 	existingId?: FileID;
 	newFileName?: string;
-	skipThisUpload = false;
+	conflictResolution: FileConflictResolution = undefined;
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -199,7 +203,7 @@ export class ArFSFolderToUpload {
 	baseCosts?: MetaDataBaseCosts;
 	existingId?: FolderID;
 	newFolderName?: string;
-	skipThisUpload = false;
+	conflictResolution: FolderConflictResolution = undefined;
 
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
 		const entitiesInFolder = fs.readdirSync(this.filePath);
