@@ -1541,7 +1541,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
 		const decryptingStream = new StreamDecrypt(fileCipherIV, fileKey);
-		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, decryptingStream);
-		await fileToDownload.write(data, fullPath);
+		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decryptingStream);
+		await fileToDownload.write();
 	}
 }
