@@ -1,10 +1,14 @@
-import * as fs from 'fs';
+import { createWriteStream, readdirSync, readFileSync, Stats, statSync, utimesSync } from 'fs';
 import { basename, join } from 'path';
-import { ByteCount, DataContentType, UnixTime, FileID, FolderID, CipherIVQueryResult, DriveKey } from '../types';
+import { Duplex, pipeline, Readable } from 'stream';
+import { promisify } from 'util';
+import { ByteCount, DataContentType, UnixTime, FileID, FolderID } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
-import { ArFSAnyFileOrFolderWithPaths } from './arfs_entities';
+import { ArFSFileOrFolderEntity, ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
+
+const pipelinePromise = promisify(pipeline);
 
 type BaseFileName = string;
 type FilePath = string;
@@ -40,7 +44,7 @@ export interface FileInfo {
  *
  */
 export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload | ArFSFolderToUpload {
-	const entityStats = fs.statSync(fileOrFolderPath);
+	const entityStats = statSync(fileOrFolderPath);
 
 	if (entityStats.isDirectory()) {
 		return new ArFSFolderToUpload(fileOrFolderPath, entityStats);
@@ -55,7 +59,7 @@ export function isFolder(fileOrFolder: ArFSFileToUpload | ArFSFolderToUpload): f
 }
 
 export class ArFSFileToUpload {
-	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
+	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
 		if (+this.fileStats.size >= +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
@@ -90,7 +94,7 @@ export class ArFSFileToUpload {
 	}
 
 	public getFileDataBuffer(): Buffer {
-		return fs.readFileSync(this.filePath);
+		return readFileSync(this.filePath);
 	}
 
 	public get contentType(): DataContentType {
@@ -116,12 +120,12 @@ export class ArFSFolderToUpload {
 	destinationName?: string;
 	existingFileAtDestConflict = false;
 
-	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
-		const entitiesInFolder = fs.readdirSync(this.filePath);
+	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+		const entitiesInFolder = readdirSync(this.filePath);
 
 		for (const entityPath of entitiesInFolder) {
 			const absoluteEntityPath = join(this.filePath, entityPath);
-			const entityStats = fs.statSync(absoluteEntityPath);
+			const entityStats = statSync(absoluteEntityPath);
 
 			if (entityStats.isDirectory()) {
 				// Child is a folder, build a new folder which will construct it's own children
@@ -228,57 +232,99 @@ export class ArFSFolderToUpload {
 	}
 }
 
-export class ArFSFileToDownload {
-	constructor(readonly fileEntity: ArFSAnyFileOrFolderWithPaths) {
+export abstract class ArFSFileToDownload {
+	constructor(readonly fileEntity: ArFSFileOrFolderEntity) {
 		if (fileEntity.entityType !== 'file') {
 			throw new Error(`Can only download data of file entities, but got ${fileEntity.entityType}`);
 		}
 	}
+
+	abstract write(data: Readable, fullLocalFilePath: string): Promise<void>;
 }
 
-export class ArFSFolderToDownload {
-	private readonly _folders: ArFSAnyFileOrFolderWithPaths[] = [];
-	private readonly _files: ArFSFileToDownload[] = [];
-
-	constructor(
-		readonly rootFolderWithPaths: ArFSAnyFileOrFolderWithPaths,
-		folderEntityDump: ArFSAnyFileOrFolderWithPaths[],
-		driveKey?: DriveKey,
-		cipherIVs?: CipherIVQueryResult[]
-	) {
-		if (rootFolderWithPaths.entityType !== 'folder') {
-			throw new Error(`Entity of type ${rootFolderWithPaths.entityType} is not a folder`);
-		}
-		for (const entityWithPaths of folderEntityDump) {
-			if (entityWithPaths.entityType === 'folder') {
-				this._folders.push(entityWithPaths);
-			} else if (entityWithPaths.entityType === 'file') {
-				const cipherIvResult = cipherIVs?.find((result) => result.txId === entityWithPaths.dataTxId);
-				if (cipherIvResult && driveKey) {
-					this._files.push(new ArFSFileToDownload(entityWithPaths));
-				} else {
-					this._files.push(new ArFSFileToDownload(entityWithPaths));
-				}
-			} else {
-				throw new Error(`Unsupported entity type: ${entityWithPaths.entityType}`);
-			}
-		}
+export class ArFSPublicFileToDownload extends ArFSFileToDownload {
+	constructor(fileEntity: ArFSPublicFile) {
+		super(fileEntity);
 	}
 
-	public get folders(): ArFSAnyFileOrFolderWithPaths[] {
-		return this._folders.slice();
-	}
-
-	public get files(): ArFSFileToDownload[] {
-		return this._files.slice();
-	}
-
-	private get basePath(): string {
-		return this.rootFolderWithPaths.path.replace(/\/[^/]+$/, '');
-	}
-
-	getRelativePath(entity: ArFSAnyFileOrFolderWithPaths): string {
-		const relativePath = entity.path.replace(new RegExp(`^${this.basePath}/`), '');
-		return relativePath;
+	async write(data: Readable, fullLocalFilePath: string): Promise<void> {
+		const writeStream = createWriteStream(fullLocalFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(data, writeStream);
+		writePromise.finally(() => {
+			// update the last-modified-date
+			const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+			const accessTime = Date.now();
+			utimesSync(fullLocalFilePath, accessTime, remoteFileLastModifiedDate);
+		});
 	}
 }
+
+export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
+	constructor(readonly fileEntity: ArFSPrivateFile, private readonly decryptingStream: Duplex) {
+		super(fileEntity);
+	}
+
+	async write(data: Readable, fullLocalFilePath: string): Promise<void> {
+		const writeStream = createWriteStream(fullLocalFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(data, this.decryptingStream, writeStream);
+		return writePromise.finally(() => {
+			// update the last-modified-date
+			const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+			const accessTime = Date.now();
+			utimesSync(fullLocalFilePath, accessTime, remoteFileLastModifiedDate);
+		});
+	}
+}
+
+// export class ArFSFolderToDownload {
+// 	private readonly _folders: ArFSAnyFileOrFolderWithPaths[] = [];
+// 	private readonly _files: ArFSFileToDownload[] = [];
+
+// 	constructor(
+// 		readonly rootFolderWithPaths: ArFSAnyFileOrFolderWithPaths,
+// 		folderEntityDump: ArFSAnyFileOrFolderWithPaths[],
+// 		driveKey?: DriveKey,
+// 		cipherIVs?: CipherIVQueryResult[]
+// 	) {
+// 		if (rootFolderWithPaths.entityType !== 'folder') {
+// 			throw new Error(`Entity of type ${rootFolderWithPaths.entityType} is not a folder`);
+// 		}
+// 		for (const entityWithPaths of folderEntityDump) {
+// 			if (entityWithPaths.entityType === 'folder') {
+// 				this._folders.push(entityWithPaths);
+// 			} else if (entityWithPaths.entityType === 'file') {
+// 				const cipherIvResult = cipherIVs?.find((result) => result.txId === entityWithPaths.dataTxId);
+// 				if (driveKey && cipherIVs) {
+// 					if (!cipherIvResult) {
+// 						throw new Error(
+// 							`Could not get the file cipherIV for entity with id: "${entityWithPaths.entityId}"`
+// 						);
+// 					}
+// 					const decryptingStream = new StreamDecrypt(cipherIvResult.cipherIV,);
+// 					this._files.push(new ArFSPrivateFileToDownload(entityWithPaths));
+// 				} else {
+// 					this._files.push(new ArFSPublicFileToDownload(entityWithPaths));
+// 				}
+// 			} else {
+// 				throw new Error(`Unsupported entity type: ${entityWithPaths.entityType}`);
+// 			}
+// 		}
+// 	}
+
+// 	public get folders(): ArFSAnyFileOrFolderWithPaths[] {
+// 		return this._folders.slice();
+// 	}
+
+// 	public get files(): ArFSFileToDownload[] {
+// 		return this._files.slice();
+// 	}
+
+// 	private get basePath(): string {
+// 		return this.rootFolderWithPaths.path.replace(/\/[^/]+$/, '');
+// 	}
+
+// 	getRelativePath(entity: ArFSAnyFileOrFolderWithPaths): string {
+// 		const relativePath = entity.path.replace(new RegExp(`^${this.basePath}/`), '');
+// 		return relativePath;
+// 	}
+// }

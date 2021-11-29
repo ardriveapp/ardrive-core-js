@@ -6,7 +6,7 @@ import {
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress } from './types';
+import { DriveID, ArweaveAddress, FileID } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -14,6 +14,8 @@ import {
 	GetAllDrivesForAddressParams,
 	ListPublicFolderParams
 } from './types';
+import { join as joinPath } from 'path';
+import { ArFSPublicFileToDownload } from './arfs/arfs_file_wrapper';
 
 export abstract class ArDriveType {
 	protected abstract readonly arFsDao: ArFSDAOType;
@@ -76,5 +78,19 @@ export class ArDriveAnonymous extends ArDriveType {
 
 		const children = await this.arFsDao.listPublicFolder({ folderId, maxDepth, includeRoot, owner });
 		return children;
+	}
+
+	async downloadPublicFile(
+		fileId: FileID,
+		// maxDepth: TreeDepth,
+		// maxDepth: number,
+		destFolderPath: string
+		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+	): Promise<void> {
+		const publicFile = await this.getPublicFile({ fileId });
+		const fullPath = joinPath(destFolderPath, publicFile.name);
+		const { data } = await this.arFsDao.getDataStream(publicFile);
+		const fileToDownload = new ArFSPublicFileToDownload(publicFile);
+		await fileToDownload.write(data, fullPath);
 	}
 }

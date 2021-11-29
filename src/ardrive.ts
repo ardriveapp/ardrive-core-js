@@ -5,7 +5,7 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSPrivateFileToDownload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -20,7 +20,7 @@ import {
 } from './arfs/arfs_trx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
-import { deriveDriveKey } from './utils/crypto';
+import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import {
 	FeeMultiple,
@@ -77,6 +77,8 @@ import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
+import { join as joinPath } from 'path';
+import { StreamDecrypt } from './utils/stream_decrypt';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1525,5 +1527,23 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async assertValidPassword(password: string): Promise<void> {
 		await this.arFsDao.assertValidPassword(password);
+	}
+
+	async downloadPrivateFile(
+		fileId: FileID,
+		// maxDepth: TreeDepth,
+		// maxDepth: number,
+		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+		destFolderPath: string,
+		driveKey: DriveKey
+	): Promise<void> {
+		const privateFile = await this.getPrivateFile({ fileId, driveKey });
+		const fullPath = joinPath(destFolderPath, privateFile.name);
+		const { data } = await this.arFsDao.getDataStream(privateFile);
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
+		const decryptingStream = new StreamDecrypt(fileCipherIV, fileKey);
+		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, decryptingStream);
+		await fileToDownload.write(data, fullPath);
 	}
 }

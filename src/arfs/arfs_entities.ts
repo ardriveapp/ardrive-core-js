@@ -206,6 +206,8 @@ export class ArFSPrivateFileOrFolderWithPaths extends ArFSFileOrFolderEntity imp
 	}
 }
 
+export type ArFSAnyFileOrFolderWithPaths = ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
+
 export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 	constructor(
 		readonly appName: string,
