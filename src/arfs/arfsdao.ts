@@ -85,7 +85,11 @@ import {
 	DriveKey,
 	FolderID,
 	RewardSettings,
-	FileID
+	FileID,
+	TransactionID,
+	CipherIV,
+	CipherIVQueryResult,
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -1055,5 +1059,52 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		) {
 			throw new Error(`Invalid password! Please type the same as your other private drives!`);
 		}
+	}
+
+	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
+		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
+		const singleResult = results[0];
+		return singleResult.cipherIV;
+	}
+
+	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		const result: CipherIVQueryResult[] = [];
+		const wallet = this.wallet;
+		const walletAddress = await wallet.getAddress();
+		let cursor = '';
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const query = buildQuery({
+				tags: [],
+				owner: walletAddress,
+				ids: txIDs,
+				cursor
+			});
+			const response = await this.arweave.api.post(graphQLURL, query);
+			const { data } = response.data;
+			const { errors } = response.data;
+			if (errors) {
+				throw new Error(`GQL error: ${JSON.stringify(errors)}`);
+			}
+			const { transactions }: { transactions: GQLTransactionsResultInterface } = data;
+			const { edges } = transactions;
+			hasNextPage = transactions.pageInfo.hasNextPage;
+			if (!edges.length) {
+				throw new Error(`No such private transactions with IDs: "${txIDs}"`);
+			}
+			edges.forEach((edge) => {
+				cursor = edge.cursor;
+				const { node } = edge;
+				const { tags } = node;
+				const txId = TxID(node.id);
+				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
+				if (!cipherIVTag) {
+					throw new Error("The private file doesn't has a valid Cipher-IV");
+				}
+				const cipherIV = cipherIVTag.value;
+				result.push({ txId, cipherIV });
+			});
+		}
+		return result;
 	}
 }
