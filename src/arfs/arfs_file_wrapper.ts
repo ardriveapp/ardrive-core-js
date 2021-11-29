@@ -233,45 +233,51 @@ export class ArFSFolderToUpload {
 }
 
 export abstract class ArFSFileToDownload {
-	constructor(readonly fileEntity: ArFSFileOrFolderEntity) {
+	constructor(
+		readonly fileEntity: ArFSFileOrFolderEntity,
+		readonly dataStream: Readable,
+		readonly localFilePath: string
+	) {
 		if (fileEntity.entityType !== 'file') {
-			throw new Error(`Can only download data of file entities, but got ${fileEntity.entityType}`);
+			throw new Error(`Can only download the data of file entities, but got ${fileEntity.entityType}`);
 		}
 	}
 
-	abstract write(data: Readable, fullLocalFilePath: string): Promise<void>;
+	abstract write(): Promise<void>;
+
+	protected setLastModifiedDate(): void {
+		// update the last-modified-date
+		const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+		const accessTime = Date.now();
+		utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
+	}
 }
 
 export class ArFSPublicFileToDownload extends ArFSFileToDownload {
-	constructor(fileEntity: ArFSPublicFile) {
-		super(fileEntity);
+	constructor(fileEntity: ArFSPublicFile, dataStream: Readable, localFilePath: string) {
+		super(fileEntity, dataStream, localFilePath);
 	}
 
-	async write(data: Readable, fullLocalFilePath: string): Promise<void> {
-		const writeStream = createWriteStream(fullLocalFilePath); // TODO: wrap 'fs' in a browser-safe class
-		const writePromise = pipelinePromise(data, writeStream);
-		writePromise.finally(() => {
-			// update the last-modified-date
-			const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
-			const accessTime = Date.now();
-			utimesSync(fullLocalFilePath, accessTime, remoteFileLastModifiedDate);
-		});
+	async write(): Promise<void> {
+		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(this.dataStream, writeStream);
+		writePromise.finally(this.setLastModifiedDate);
 	}
 }
 
 export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
-	constructor(readonly fileEntity: ArFSPrivateFile, private readonly decryptingStream: Duplex) {
-		super(fileEntity);
+	constructor(
+		fileEntity: ArFSPrivateFile,
+		dataStream: Readable,
+		localFilePath: string,
+		private readonly decryptingStream: Duplex
+	) {
+		super(fileEntity, dataStream, localFilePath);
 	}
 
-	async write(data: Readable, fullLocalFilePath: string): Promise<void> {
-		const writeStream = createWriteStream(fullLocalFilePath); // TODO: wrap 'fs' in a browser-safe class
-		const writePromise = pipelinePromise(data, this.decryptingStream, writeStream);
-		return writePromise.finally(() => {
-			// update the last-modified-date
-			const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
-			const accessTime = Date.now();
-			utimesSync(fullLocalFilePath, accessTime, remoteFileLastModifiedDate);
-		});
+	async write(): Promise<void> {
+		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(this.dataStream, this.decryptingStream, writeStream);
+		return writePromise.finally(this.setLastModifiedDate);
 	}
 }
