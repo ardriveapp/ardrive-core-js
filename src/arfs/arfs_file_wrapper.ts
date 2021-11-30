@@ -245,12 +245,12 @@ export abstract class ArFSFileToDownload {
 
 	abstract write(): Promise<void>;
 
-	protected setLastModifiedDate(): void {
+	protected setLastModifiedDate = (): void => {
 		// update the last-modified-date
 		const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
 		const accessTime = Date.now();
 		utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
-	}
+	};
 }
 
 export class ArFSPublicFileToDownload extends ArFSFileToDownload {
