@@ -1,12 +1,21 @@
-import { createWriteStream, readdirSync, readFileSync, Stats, statSync, utimesSync } from 'fs';
-import { basename, join } from 'path';
+import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync, utimesSync } from 'fs';
+import { basename, dirname, join as joinPath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import { ByteCount, DataContentType, UnixTime, FileID, FolderID } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
-import { ArFSFileOrFolderEntity, ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
+import {
+	ArFSFileOrFolderEntity,
+	ArFSPrivateFile,
+	ArFSPrivateFileOrFolderWithPaths,
+	ArFSPrivateFolder,
+	ArFSPublicFile,
+	ArFSPublicFileOrFolderWithPaths,
+	ArFSPublicFolder
+} from './arfs_entities';
+import { FolderHierarchy } from './folderHierarchy';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -124,7 +133,7 @@ export class ArFSFolderToUpload {
 		const entitiesInFolder = readdirSync(this.filePath);
 
 		for (const entityPath of entitiesInFolder) {
-			const absoluteEntityPath = join(this.filePath, entityPath);
+			const absoluteEntityPath = joinPath(this.filePath, entityPath);
 			const entityStats = statSync(absoluteEntityPath);
 
 			if (entityStats.isDirectory()) {
@@ -238,19 +247,20 @@ export abstract class ArFSFileToDownload {
 		readonly dataStream: Readable,
 		readonly localFilePath: string
 	) {
-		if (fileEntity.entityType !== 'file') {
+		if (!fileEntity || fileEntity.entityType !== 'file') {
 			throw new Error(`Can only download the data of file entities, but got ${fileEntity.entityType}`);
 		}
 	}
 
 	abstract write(): Promise<void>;
 
-	protected setLastModifiedDate(): void {
+	protected setLastModifiedDate = (): void => {
+		// debugger;
 		// update the last-modified-date
 		const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
 		const accessTime = Date.now();
 		utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
-	}
+	};
 }
 
 export class ArFSPublicFileToDownload extends ArFSFileToDownload {
@@ -279,5 +289,52 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
 		const writePromise = pipelinePromise(this.dataStream, this.decryptingStream, writeStream);
 		return writePromise.finally(this.setLastModifiedDate);
+	}
+}
+
+export abstract class ArFSFolderToDownload {
+	abstract readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
+
+	constructor(protected readonly hierarchy: FolderHierarchy) {}
+
+	getPathRelativeToSubtree(entity: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths): string {
+		debugger;
+		const rootFolderParentPath = dirname(this.rootFolderWithPaths.path);
+		const relativePath = entity.path.replace(new RegExp(`^${rootFolderParentPath}/`), '');
+		return relativePath;
+	}
+
+	ensureFolderExistence(folderPath: string, recursive = true): void {
+		try {
+			const stat = statSync(folderPath);
+			if (!stat.isDirectory()) {
+				throw new Error(`Path is not a directory: "${folderPath}"`);
+			}
+		} catch {
+			mkdirSync(folderPath, { recursive });
+		}
+	}
+}
+
+export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
+	readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths;
+
+	constructor(rootFolderEntity: ArFSPublicFolder, hierarchy: FolderHierarchy) {
+		super(hierarchy);
+		this.rootFolderWithPaths = new ArFSPublicFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
+	}
+}
+
+export class ArFSPrivateFolderToDownload extends ArFSFolderToDownload {
+	readonly rootFolderWithPaths: ArFSPrivateFileOrFolderWithPaths;
+
+	constructor(folders: ArFSPrivateFolder[], hierarchy: FolderHierarchy) {
+		super(hierarchy);
+		const entityId = this.hierarchy.rootNode.folderId;
+		const rootFolderEntitiy = folders.find((entity) => entity.entityId === entityId);
+		if (!rootFolderEntitiy) {
+			throw new Error(`The root folder was not provided!`);
+		}
+		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntitiy, this.hierarchy);
 	}
 }

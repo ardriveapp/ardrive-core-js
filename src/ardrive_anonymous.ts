@@ -5,8 +5,8 @@ import {
 	ArFSDriveEntity,
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress, FileID } from './types';
+import { ArFSDAOType, ArFSDAOAnonymous, ArFSDownloadPublicFolderParams } from './arfs/arfsdao_anonymous';
+import { DriveID, ArweaveAddress, FileID, FolderID } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -90,5 +90,18 @@ export class ArDriveAnonymous extends ArDriveType {
 		const { data } = await this.arFsDao.getDataStream(publicFile);
 		const fileToDownload = new ArFSPublicFileToDownload(publicFile, data, fullPath);
 		await fileToDownload.write();
+	}
+
+	async downloadPublicFolder(args: {
+		folderId: FolderID;
+		destFolderPath: string;
+		maxDepth: number;
+		owner?: ArweaveAddress;
+	}): Promise<void> {
+		if (!args.owner) {
+			args.owner = await this.arFsDao.getDriveOwnerForFolderId(args.folderId);
+		}
+
+		return this.arFsDao.downloadPublicFolder(args as ArFSDownloadPublicFolderParams);
 	}
 }
