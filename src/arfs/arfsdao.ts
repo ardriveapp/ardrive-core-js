@@ -34,7 +34,7 @@ import {
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
 } from './arfs_entity_result_factory';
-import { ArFSFileToUpload } from './arfs_file_wrapper';
+import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -130,7 +130,7 @@ export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
 
 export interface ArFSUploadPublicFileParams {
 	parentFolderId: FolderID;
-	wrappedFile: ArFSFileToUpload;
+	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
 	fileDataRewardSettings: RewardSettings;
 	metadataRewardSettings: RewardSettings;
@@ -482,7 +482,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async uploadFile<R extends ArFSUploadFileResult, D extends ArFSFileMetadataTransactionData>(
-		wrappedFile: ArFSFileToUpload,
+		wrappedFile: ArFSEntityToUpload,
 		fileDataRewardSettings: RewardSettings,
 		metadataRewardSettings: RewardSettings,
 		dataPrototypeFactoryFn: FileDataPrototypeFactory,
