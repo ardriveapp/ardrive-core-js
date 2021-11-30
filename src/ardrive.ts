@@ -1068,8 +1068,8 @@ export class ArDrive extends ArDriveAnonymous {
 		});
 
 		// Setup links array from manifest
-		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
-			(path) => `https://arweave.net/${uploadFileResult.dataTrxId}/${path}`
+		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map((path) =>
+			encodeURI(`https://arweave.net/${uploadFileResult.dataTrxId}/${path}`)
 		);
 
 		return Promise.resolve({
