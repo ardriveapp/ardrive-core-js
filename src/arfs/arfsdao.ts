@@ -68,7 +68,7 @@ import {
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, gatewayURL } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -89,7 +89,8 @@ import {
 	TransactionID,
 	CipherIV,
 	CipherIVQueryResult,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	ByteCount
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -101,6 +102,9 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
+import { ReadableData } from '../types/readable_data';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -1102,7 +1106,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const txId = TxID(node.id);
 				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
 				if (!cipherIVTag) {
-					throw new Error("The private file doesn't has a valid Cipher-IV");
+					throw new Error("The private file doesn't have a valid Cipher-IV");
 				}
 				const cipherIV = cipherIVTag.value;
 				result.push({ txId, cipherIV });
@@ -1110,4 +1114,54 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		return result;
 	}
+
+	/**
+	 * Downloads the data of a public file into certain existing folder in the local storage
+	 * @param file - the file entity to be download
+	 * @returns {Promise<void>}
+	 */
+	async getPrivateDataStream(fileTxId: TransactionID, dataLength: ByteCount): Promise<ReadableData> {
+		const authTagIndex = +dataLength - 16;
+		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream',
+			headers: {
+				Range: `bytes=0-${+authTagIndex - 1}`
+			}
+		};
+		const response = await axios(requestConfig);
+		const { data, headers } = response;
+		const length = new ByteCount(+headers['content-length']); // TODO: remove - it useless if we can compute the size before making the request
+		return { data, length };
+	}
+
+	getAuthTagForDataTxId = async (txId: TransactionID, dataLength: ByteCount): Promise<Buffer> =>
+		new Promise((resolve, reject) => {
+			const authTagIndex = +dataLength - 16;
+			axios({
+				method: 'GET',
+				url: `${gatewayURL}${txId}`,
+				headers: {
+					Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+				},
+				responseType: 'stream'
+			}).then((response) => {
+				const { data }: { data: Readable } = response;
+
+				const authTag = Buffer.from('0123456789abcdef');
+				let index = 0;
+				data.on('data', (chunk: Buffer) => {
+					authTag.set(chunk, index);
+					index += chunk.length;
+				});
+				data.on('end', () => {
+					resolve(authTag);
+				});
+				data.on('error', (err) => {
+					reject(err);
+				});
+			});
+		});
 }

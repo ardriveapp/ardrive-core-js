@@ -1,4 +1,4 @@
-import { createDecipheriv } from 'crypto';
+import { createDecipheriv, DecipherGCM } from 'crypto';
 import { Transform } from 'stream';
 import { CipherIV, FileKey } from '../types';
 
@@ -6,35 +6,28 @@ const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase.
 const authTagLength = 16;
 
 export class StreamDecrypt extends Transform {
-	// FIXME: holding the data into a buffer uses extra memory. Go back to use disk?
-	private encryptedData: Buffer = Buffer.from(''); // TODO: is it possible to pop the stream data in a buffer-like manner?
+	private readonly decipher: DecipherGCM;
 
-	constructor(private readonly cipherIV: CipherIV, private readonly fileKey: FileKey) {
+	constructor(cipherIV: CipherIV, fileKey: FileKey, authTag: Buffer) {
 		super();
+		const iv: Buffer = Buffer.from(cipherIV, 'base64');
+		this.decipher = createDecipheriv(algo, fileKey, iv, { authTagLength });
+		this.decipher.setAuthTag(authTag);
 	}
 
-	_transform(chunk: Buffer | string, encoding: BufferEncoding, next: (err?: Error, data?: Buffer) => void): void {
-		if (!(chunk instanceof Buffer)) {
-			chunk = Buffer.from(chunk, encoding);
-		}
-		this.encryptedData = Buffer.concat([this.encryptedData, chunk]);
+	_transform(chunk: Buffer, _encoding: BufferEncoding, next: (err?: Error, data?: Buffer) => void): void {
+		const decrypredChunk = this.decipher.update(chunk);
+		this.push(decrypredChunk);
 		next();
 	}
 
 	_flush(next: (err?: Error, data?: Buffer) => void): void {
-		const authTag: Buffer = this.encryptedData.slice(
-			this.encryptedData.byteLength - authTagLength,
-			this.encryptedData.byteLength
-		);
-		const encryptedDataSlice: Buffer = this.encryptedData.slice(0, this.encryptedData.byteLength - authTagLength);
-		const iv: Buffer = Buffer.from(this.cipherIV, 'base64');
-		const decipher = createDecipheriv(algo, this.fileKey, iv, { authTagLength });
-		decipher.setAuthTag(authTag);
 		try {
-			const decryptedFileData: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-			next(undefined, decryptedFileData);
-		} catch (e) {
-			next(e);
+			const decipherFinalData = this.decipher.final();
+			this.push(decipherFinalData);
+			next();
+		} catch (err) {
+			next(err);
 		}
 	}
 }

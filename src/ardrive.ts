@@ -1537,11 +1537,17 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const fullPath = joinPath(destFolderPath, privateFile.name);
-		const { data } = await this.arFsDao.getDataStream(privateFile);
+		const encryptedDataLength = this.encryptedDataSize(privateFile.size);
+		const { data } = await this.arFsDao.getPrivateDataStream(privateFile.dataTxId, encryptedDataLength);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
-		const decryptingStream = new StreamDecrypt(fileCipherIV, fileKey);
-		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decryptingStream);
+		// const iv = Buffer.from(fileCipherIV, 'base64');
+		// const decipher = createDecipheriv('aes-256-gcm', fileKey, iv, { authTagLength: 16 });
+		const authTag = await this.arFsDao.getAuthTagForDataTxId(privateFile.dataTxId, encryptedDataLength);
+		// decipher.setAuthTag(authTag);
+		// Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
+		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();
 	}
 }
