@@ -311,3 +311,9 @@ export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubE
 export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map(
 	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNestedFile)
 );
+
+export const stubEntitiesWithNoFiles = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
+export const stubHierarchyWithNoFiles = FolderHierarchy.newFromEntities(stubEntitiesWithNoFiles);
+export const stubEntitiesWithNoFilesWithPaths = stubEntitiesWithNoFiles.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNoFiles)
+);

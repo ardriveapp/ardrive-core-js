@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import {
 	stubEntitiesWithNestedFileWithPaths,
+	stubEntitiesWithNoFilesWithPaths,
 	stubEntitiesWithOneFileWithPaths,
 	stubEntitiesWithPathsAndIndexInRoot,
 	stubPublicEntitiesWithPaths,
@@ -59,6 +60,13 @@ describe('ArFSManifestToUpload class', () => {
 				id: '0000000000000000000000000000000000000000002'
 			}
 		});
+	});
+
+	it('throws an error when constructed with a hierarchy that has no file entities', () => {
+		expect(() => new ArFSManifestToUpload(stubEntitiesWithNoFilesWithPaths, 'NameTestManifest.json')).to.throw(
+			Error,
+			'Cannot construct a manifest of a folder that has no file entities!'
+		);
 	});
 
 	it('getBaseFileName function returns the provided name', () => {

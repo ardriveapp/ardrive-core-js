@@ -37,7 +37,8 @@ import {
 	stubPublicFile,
 	stubPrivateFile,
 	stubPublicEntitiesWithPaths,
-	stubSpecialCharEntitiesWithPaths
+	stubSpecialCharEntitiesWithPaths,
+	stubEntitiesWithNoFilesWithPaths
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -963,6 +964,17 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			assertUploadManifestExpectations(result, W(475), W(183), W(0), W(1), undefined, true);
+		});
+
+		it('throws an error if target folder has no files to put in the manifest', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubEntitiesWithNoFilesWithPaths);
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.uploadPublicManifest({
+					folderId: stubEntityID
+				}),
+				errorMessage: 'Cannot construct a manifest of a folder that has no file entities!'
+			});
 		});
 	});
 });
