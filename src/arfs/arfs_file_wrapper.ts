@@ -106,6 +106,10 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 			}
 		});
 
+		if (Object.keys(pathMap).length === 0) {
+			throw new Error('Cannot construct a manifest of a folder that has no file entities!');
+		}
+
 		// Use index.html in the specified folder if it exists, otherwise show first file found
 		const indexPath = Object.keys(pathMap).includes(`index.html`) ? `index.html` : Object.keys(pathMap)[0];
 
