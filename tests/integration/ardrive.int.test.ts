@@ -36,7 +36,8 @@ import {
 	stubPrivateFolder,
 	stubPublicFile,
 	stubPrivateFile,
-	stubPublicEntitiesWithPaths
+	stubPublicEntitiesWithPaths,
+	stubSpecialCharEntitiesWithPaths
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -877,7 +878,6 @@ describe('ArDrive class - integrated', () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
 			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
@@ -893,6 +893,8 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to replace', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID,
 				destManifestName: 'CONFLICTING_FILE_NAME',
@@ -903,6 +905,8 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to upsert', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID,
 				destManifestName: 'CONFLICTING_FILE_NAME',
@@ -912,7 +916,9 @@ describe('ArDrive class - integrated', () => {
 			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
 		});
 
-		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
+		it('returns an empty ArFSManifestResult if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID,
 				destManifestName: 'CONFLICTING_FILE_NAME',
@@ -928,6 +934,8 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('throws an error if destination folder has a conflicting FOLDER name', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.uploadPublicManifest({
 					folderId: stubEntityID,
@@ -938,11 +946,23 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('returns the correct ArFSManifestResult', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
 			const result = await arDrive.uploadPublicManifest({
 				folderId: stubEntityID
 			});
 
 			assertUploadManifestExpectations(result, W(336), W(183), W(0), W(1));
+		});
+
+		it('returns the correct ArFSManifestResult when using special characters', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubSpecialCharEntitiesWithPaths);
+
+			const result = await arDrive.uploadPublicManifest({
+				folderId: stubEntityID
+			});
+
+			assertUploadManifestExpectations(result, W(475), W(183), W(0), W(1), undefined, true);
 		});
 	});
 });
@@ -1101,7 +1121,8 @@ function assertUploadManifestExpectations(
 	metadataFee: Winston,
 	tipFee: Winston,
 	expectedTip: Winston,
-	expectedFileId?: FileID
+	expectedFileId?: FileID,
+	specialCharacters = false
 ) {
 	// Ensure that 1 arfs entity was created
 	expect(result.created.length).to.equal(1);
@@ -1144,11 +1165,27 @@ function assertUploadManifestExpectations(
 	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 
 	// Verify links are healthy
-	expect(result.links.length).to.equal(4);
-	expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
-	expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
-	expect(result.links[2]).to.equal(
-		`https://arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
-	);
-	expect(result.links[3]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`);
+	if (specialCharacters) {
+		expect(result.links.length).to.equal(4);
+		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
+		expect(result.links[1]).to.equal(
+			`https://arweave.net/${result.created[0].dataTxId}/%25%26%40*(%25%26(%40*%3A%22%3E%3F%7B%7D%5B%5D`
+		);
+		expect(result.links[2]).to.equal(
+			`https://arweave.net/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/'/''_%5C___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!%40%23%24%25%5E%26*()_%2B%7B%7D%3A%22%3E%3F`
+		);
+		expect(result.links[3]).to.equal(
+			`https://arweave.net/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
+		);
+	} else {
+		expect(result.links.length).to.equal(4);
+		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
+		expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
+		expect(result.links[2]).to.equal(
+			`https://arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
+		);
+		expect(result.links[3]).to.equal(
+			`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`
+		);
+	}
 }
