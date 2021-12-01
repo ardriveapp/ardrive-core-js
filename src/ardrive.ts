@@ -5,7 +5,13 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload, ArFSPrivateFileToDownload } from './arfs/arfs_file_wrapper';
+import {
+	ArFSFolderToUpload,
+	ArFSFileToUpload,
+	ArFSPrivateFileToDownload,
+	ArFSEntityToUpload,
+	ArFSManifestToUpload
+} from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -38,7 +44,9 @@ import {
 	DriveID,
 	stubTransactionID,
 	UploadPublicFileParams,
-	UploadPrivateFileParams
+	UploadPrivateFileParams,
+	ArFSManifestResult,
+	UploadPublicManifestParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -1004,6 +1012,88 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
+	public async uploadPublicManifest({
+		folderId,
+		destManifestName = 'DriveManifest.json',
+		maxDepth = Number.MAX_SAFE_INTEGER,
+		conflictResolution = upsertOnConflicts
+	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
+
+		// Assert that the owner of this drive is consistent with the provided wallet
+		const owner = await this.getOwnerForDriveId(driveId);
+		await this.assertOwnerAddress(owner);
+
+		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
+
+		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
+		if (fileToFolderConflict) {
+			// File names CANNOT conflict with folder names
+			throw new Error(errorMessage.entityNameExists);
+		}
+
+		// Manifest becomes a new revision if the destination name conflicts for
+		// --replace and --upsert behaviors, since it will be newly created each time
+		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
+		if (existingFileId && conflictResolution === skipOnConflicts) {
+			// Return empty result if there is an existing manifest and resolution is set to skip
+			return { ...emptyArFSResult, links: [] };
+		}
+
+		const children = await this.listPublicFolder({
+			folderId,
+			maxDepth,
+			includeRoot: true,
+			owner
+		});
+		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
+
+		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
+			arweaveManifest.size,
+			this.stubPublicFileMetadata(arweaveManifest),
+			'public'
+		);
+		const fileDataRewardSettings = { reward: uploadBaseCosts.fileDataBaseReward, feeMultiple: this.feeMultiple };
+		const metadataRewardSettings = { reward: uploadBaseCosts.metaDataBaseReward, feeMultiple: this.feeMultiple };
+
+		const uploadFileResult = await this.arFsDao.uploadPublicFile({
+			parentFolderId: folderId,
+			wrappedFile: arweaveManifest,
+			driveId,
+			fileDataRewardSettings,
+			metadataRewardSettings,
+			destFileName: destManifestName,
+			existingFileId
+		});
+
+		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			communityWinstonTip: uploadBaseCosts.communityWinstonTip
+		});
+
+		// Setup links array from manifest
+		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
+			(path) => `https://arweave.net/${uploadFileResult.dataTrxId}/${path}`
+		);
+
+		return Promise.resolve({
+			created: [
+				{
+					type: 'file',
+					metadataTxId: uploadFileResult.metaDataTrxId,
+					dataTxId: uploadFileResult.dataTrxId,
+					entityId: uploadFileResult.fileId
+				}
+			],
+			tips: [tipData],
+			fees: {
+				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
+				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
+				[`${tipData.txId}`]: communityTipTrxReward
+			},
+			links: [`https://arweave.net/${uploadFileResult.dataTrxId}`, ...fileLinks]
+		});
+	}
+
 	public async createPublicFolder({
 		folderName,
 		driveId,
@@ -1489,7 +1579,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 	// Provides for stubbing metadata during cost estimations since the data trx ID won't yet be known
 	private stubPublicFileMetadata(
-		wrappedFile: ArFSFileToUpload,
+		wrappedFile: ArFSEntityToUpload,
 		destinationFileName?: string
 	): ArFSPublicFileMetadataTransactionData {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();

@@ -7,6 +7,7 @@ export const DEFAULT_APP_VERSION = '1.0.0';
 
 export const JSON_CONTENT_TYPE = 'application/json';
 export const PRIVATE_CONTENT_TYPE = 'application/octet-stream';
+export const MANIFEST_CONTENT_TYPE = 'application/x.arweave-manifest+json';
 
 export type PublicKey = string;
 
