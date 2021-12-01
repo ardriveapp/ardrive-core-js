@@ -246,3 +246,74 @@ export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stub
 export const stubEntitiesWithPathsAndIndexInRoot = stubEntitiesWithIndexInRoot.map(
 	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithIndexInRoot)
 );
+
+const stubSpecialCharParentFolder = stubPublicFolder({
+	folderId: stubEntityIDParent,
+	parentFolderId: stubEntityIDRoot,
+	folderName: '~!@#$%^&*()_+{}|[]:";<>?,./`'
+});
+const stubSpecialCharChildFolder = stubPublicFolder({
+	folderId: stubEntityIDChild,
+	parentFolderId: stubEntityIDParent,
+	folderName: "'/'' \\   '' '  /'   ''' "
+});
+const stubSpecialCharFileInRoot = stubPublicFile({
+	fileId: stubEntityID,
+	parentFolderId: stubEntityIDRoot,
+	fileName: '%&@*(%&(@*:">?{}[]',
+	dataTxId: stubTxID
+});
+const stubSpecialCharFileInParent = stubPublicFile({
+	fileId: stubEntityIDAlt,
+	parentFolderId: stubEntityIDParent,
+	fileName: 'dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm,uiqwerioeqwndjkla',
+	dataTxId: stubTxIDAlt
+});
+const stubSpecialCharFileInChild = stubPublicFile({
+	fileId: stubEntityIDAltTwo,
+	parentFolderId: stubEntityIDChild,
+	fileName: 'QWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()_+{}:">?',
+	dataTxId: stubTxIDAltTwo
+});
+
+export const stubSpecialCharEntities = [
+	stubPublicRootFolder,
+	stubSpecialCharParentFolder,
+	stubSpecialCharChildFolder,
+	stubSpecialCharFileInRoot,
+	stubSpecialCharFileInParent,
+	stubSpecialCharFileInChild
+];
+
+export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpecialCharEntities);
+
+export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubSpecialCharHierarchy)
+);
+
+export const stubEntitiesWithOneFile = [stubPublicRootFolder, stubPublicFileInRoot];
+
+export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities(stubEntitiesWithOneFile);
+
+export const stubEntitiesWithOneFileWithPaths = stubEntitiesWithOneFile.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithOneFile)
+);
+
+export const stubEntitiesWithNestedFile = [
+	stubPublicRootFolder,
+	stubPublicParentFolder,
+	stubPublicChildFolder,
+	stubPublicFileInChild
+];
+
+export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubEntitiesWithNestedFile);
+
+export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNestedFile)
+);
+
+export const stubEntitiesWithNoFiles = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
+export const stubHierarchyWithNoFiles = FolderHierarchy.newFromEntities(stubEntitiesWithNoFiles);
+export const stubEntitiesWithNoFilesWithPaths = stubEntitiesWithNoFiles.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNoFiles)
+);
