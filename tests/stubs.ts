@@ -290,3 +290,24 @@ export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpec
 export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map(
 	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubSpecialCharHierarchy)
 );
+
+export const stubEntitiesWithOneFile = [stubPublicRootFolder, stubPublicFileInRoot];
+
+export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities(stubEntitiesWithOneFile);
+
+export const stubEntitiesWithOneFileWithPaths = stubEntitiesWithOneFile.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithOneFile)
+);
+
+export const stubEntitiesWithNestedFile = [
+	stubPublicRootFolder,
+	stubPublicParentFolder,
+	stubPublicChildFolder,
+	stubPublicFileInChild
+];
+
+export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubEntitiesWithNestedFile);
+
+export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map(
+	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNestedFile)
+);
