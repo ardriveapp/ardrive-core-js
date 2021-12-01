@@ -37,6 +37,10 @@ export interface ArFSResult {
 	fees: ArFSFees;
 }
 
+export interface ArFSManifestResult extends ArFSResult {
+	links: string[];
+}
+
 export const emptyArFSResult: ArFSResult = {
 	created: [],
 	tips: [],
@@ -67,6 +71,18 @@ export interface RecursivePublicBulkUploadParams {
 	conflictResolution: FileNameConflictResolution;
 }
 export type RecursivePrivateBulkUploadParams = RecursivePublicBulkUploadParams & WithDriveKey;
+
+export interface UploadPublicManifestParams {
+	folderId: FolderID;
+	maxDepth?: number;
+	destManifestName?: string;
+	conflictResolution?: FileNameConflictResolution;
+}
+
+export interface CreatePublicManifestParams extends Required<UploadPublicManifestParams> {
+	driveId: DriveID;
+	owner: ArweaveAddress;
+}
 
 export interface CreatePublicFolderParams {
 	folderName: string;
@@ -147,4 +163,24 @@ export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
 export interface GetAllDrivesForAddressParams {
 	address: ArweaveAddress;
 	privateKeyData: PrivateKeyData;
+}
+
+// The manifest interfaces below are taken from arweave-deploy
+
+// A path object is labeled by its path, file name
+// and extension, and then an arweave transaction id
+export interface ManifestPathMap {
+	[index: string]: { id: string };
+}
+export interface Manifest {
+	/** manifest must be 'arweave/paths' */
+	manifest: 'arweave/paths';
+	/** version must be 0.1.0 */
+	version: '0.1.0';
+	/** index contains the default path that will redirected when the user access the manifest transaction itself */
+	index: {
+		path: string;
+	};
+	/** paths is an object of path objects */
+	paths: ManifestPathMap;
 }
