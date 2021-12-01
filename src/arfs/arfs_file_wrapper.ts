@@ -8,7 +8,8 @@ import {
 	FolderID,
 	MANIFEST_CONTENT_TYPE,
 	Manifest,
-	ManifestPathMap
+	ManifestPathMap,
+	TransactionID
 } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { extToMime } from '../utils/common';
@@ -119,6 +120,25 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 
 		// Create new current unix, as we just created this manifest
 		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
+	}
+
+	public getLinksOutput(dataTxId: TransactionID): string[] {
+		const allPaths = Object.keys(this.manifest.paths);
+
+		const encodedPaths = allPaths.map((path) =>
+			path
+				// Split each path by `/` to avoid encoding the separation between folders and files
+				.split('/')
+				// Encode file/folder names for URL safe links
+				.map((path) => encodeURIComponent(path))
+				// Rejoin the paths
+				.join('/')
+		);
+
+		const pathsToFiles = encodedPaths.map((encodedPath) => `https://arweave.net/${dataTxId}/${encodedPath}`);
+		const pathToManifestTx = `https://arweave.net/${dataTxId}`;
+
+		return [pathToManifestTx, ...pathsToFiles];
 	}
 
 	public gatherFileInfo(): FileInfo {
