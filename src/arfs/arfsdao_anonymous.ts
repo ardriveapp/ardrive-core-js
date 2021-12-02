@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { ByteCount, GQLEdgeInterface, TransactionID } from '../types';
+import { GQLEdgeInterface, TransactionID } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import {
 	DriveID,
@@ -28,7 +28,7 @@ import {
 import { PrivateKeyData } from './private_key_data';
 import axios, { AxiosRequestConfig } from 'axios';
 import { gatewayURL } from '../utils/constants';
-import { ReadableData } from '../types/readable_data';
+import { Readable } from 'stream';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
@@ -293,7 +293,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	 * @param file - the file entity to be download
 	 * @returns {Promise<void>}
 	 */
-	async getPublicDataStream(fileTxId: TransactionID): Promise<ReadableData> {
+	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
 		const dataTxUrl = `${gatewayURL}${fileTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
@@ -301,8 +301,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			responseType: 'stream'
 		};
 		const response = await axios(requestConfig);
-		const { data, headers } = response;
-		const length = new ByteCount(+headers['content-length']); // TODO: remove - it useless if we can compute the size before making the request
-		return { data, length };
+		return response.data;
 	}
 }

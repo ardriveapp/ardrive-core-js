@@ -1618,7 +1618,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const fullPath = joinPath(destFolderPath, privateFile.name);
-		const { data } = await this.arFsDao.getPrivateDataStream(privateFile);
+		const data = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
 		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);

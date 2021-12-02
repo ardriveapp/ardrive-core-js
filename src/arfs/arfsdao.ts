@@ -89,8 +89,7 @@ import {
 	TransactionID,
 	CipherIV,
 	CipherIVQueryResult,
-	GQLTransactionsResultInterface,
-	ByteCount
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -104,7 +103,6 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
-import { ReadableData } from '../types/readable_data';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -1120,7 +1118,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 * @param file - the file entity to be download
 	 * @returns {Promise<void>}
 	 */
-	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<ReadableData> {
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
 		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - 16;
 		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
@@ -1133,9 +1131,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		};
 		const response = await axios(requestConfig);
-		const { data, headers } = response;
-		const length = new ByteCount(+headers['content-length']); // TODO: remove - it useless if we can compute the size before making the request
-		return { data, length };
+		return response.data;
 	}
 
 	getAuthTagForPrivateFile = async (privateFile: ArFSPrivateFile): Promise<Buffer> =>
@@ -1152,7 +1148,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}).then((response) => {
 				const { data }: { data: Readable } = response;
 
-				const authTag = Buffer.from('0123456789abcdef');
+				const authTag = Buffer.alloc(16);
 				let index = 0;
 				data.on('data', (chunk: Buffer) => {
 					authTag.set(chunk, index);
