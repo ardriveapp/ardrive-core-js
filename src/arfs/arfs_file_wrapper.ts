@@ -8,7 +8,8 @@ import {
 	FolderID,
 	MANIFEST_CONTENT_TYPE,
 	Manifest,
-	ManifestPathMap
+	ManifestPathMap,
+	TransactionID
 } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { extToMime } from '../utils/common';
@@ -104,6 +105,10 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 			}
 		});
 
+		if (Object.keys(pathMap).length === 0) {
+			throw new Error('Cannot construct a manifest of a folder that has no file entities!');
+		}
+
 		// Use index.html in the specified folder if it exists, otherwise show first file found
 		const indexPath = Object.keys(pathMap).includes(`index.html`) ? `index.html` : Object.keys(pathMap)[0];
 
@@ -118,6 +123,25 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 
 		// Create new current unix, as we just created this manifest
 		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
+	}
+
+	public getLinksOutput(dataTxId: TransactionID): string[] {
+		const allPaths = Object.keys(this.manifest.paths);
+
+		const encodedPaths = allPaths.map((path) =>
+			path
+				// Split each path by `/` to avoid encoding the separation between folders and files
+				.split('/')
+				// Encode file/folder names for URL safe links
+				.map((path) => encodeURIComponent(path))
+				// Rejoin the paths
+				.join('/')
+		);
+
+		const pathsToFiles = encodedPaths.map((encodedPath) => `https://arweave.net/${dataTxId}/${encodedPath}`);
+		const pathToManifestTx = `https://arweave.net/${dataTxId}`;
+
+		return [pathToManifestTx, ...pathsToFiles];
 	}
 
 	public gatherFileInfo(): FileInfo {

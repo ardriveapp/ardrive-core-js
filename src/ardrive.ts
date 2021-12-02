@@ -1015,11 +1015,6 @@ export class ArDrive extends ArDriveAnonymous {
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
-		// Setup links array from manifest
-		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
-			(path) => `https://arweave.net/${uploadFileResult.dataTrxId}/${path}`
-		);
-
 		return Promise.resolve({
 			created: [
 				{
@@ -1035,7 +1030,7 @@ export class ArDrive extends ArDriveAnonymous {
 				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
 				[`${tipData.txId}`]: communityTipTrxReward
 			},
-			links: [`https://arweave.net/${uploadFileResult.dataTrxId}`, ...fileLinks]
+			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTrxId)
 		});
 	}
 
