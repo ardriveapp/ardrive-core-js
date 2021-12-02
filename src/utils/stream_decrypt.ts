@@ -16,8 +16,8 @@ export class StreamDecrypt extends Transform {
 	}
 
 	_transform(chunk: Buffer, _encoding: BufferEncoding, next: (err?: Error, data?: Buffer) => void): void {
-		const decrypredChunk = this.decipher.update(chunk);
-		this.push(decrypredChunk);
+		const decryptedChunk = this.decipher.update(chunk);
+		this.push(decryptedChunk);
 		next();
 	}
 

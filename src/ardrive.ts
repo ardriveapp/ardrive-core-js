@@ -78,7 +78,7 @@ import {
 	FileUploadBaseCosts,
 	DriveUploadBaseCosts
 } from './types';
-import { urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
@@ -676,15 +676,6 @@ export class ArDrive extends ArDriveAnonymous {
 			entityResults: uploadEntityResults,
 			feeResults: uploadEntityFees
 		};
-	}
-
-	/** Computes the size of a private file encrypted with AES256-GCM */
-	encryptedDataSize(dataSize: ByteCount): ByteCount {
-		// TODO: Refactor to utils?
-		if (+dataSize > Number.MAX_SAFE_INTEGER - 16) {
-			throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - 16}!`);
-		}
-		return new ByteCount((+dataSize / 16 + 1) * 16);
 	}
 
 	public async uploadPrivateFile({
@@ -1482,7 +1473,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<FileUploadBaseCosts> {
 		let fileSize = decryptedFileSize;
 		if (drivePrivacy === 'private') {
-			fileSize = this.encryptedDataSize(fileSize);
+			fileSize = encryptedDataSize(fileSize);
 		}
 
 		let totalPrice = W(0);
@@ -1627,15 +1618,11 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const fullPath = joinPath(destFolderPath, privateFile.name);
-		const encryptedDataLength = this.encryptedDataSize(privateFile.size);
-		const { data } = await this.arFsDao.getPrivateDataStream(privateFile.dataTxId, encryptedDataLength);
+		const { data } = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
-		// const iv = Buffer.from(fileCipherIV, 'base64');
-		// const decipher = createDecipheriv('aes-256-gcm', fileKey, iv, { authTagLength: 16 });
-		const authTag = await this.arFsDao.getAuthTagForDataTxId(privateFile.dataTxId, encryptedDataLength);
-		// decipher.setAuthTag(authTag);
-		// Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
+		console.log(`authTag: ${authTag}`);
 		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
 		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();

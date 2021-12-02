@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { formatBytes, winstonToAr } from './common';
+import { ByteCount } from '../types';
+import { encryptedDataSize, formatBytes, winstonToAr } from './common';
 
 /**
  * formatBytes main test cases:
@@ -93,5 +94,26 @@ describe('The winstonToAr function', () => {
 	});
 	it("correctly converts winston data price to AR token price using the JavaScript's maximum safe integer", () => {
 		expect(winstonToAr(Number.MAX_SAFE_INTEGER)).to.equal(9_007.199_254_740_99);
+	});
+});
+
+describe('encryptedDataSize function', () => {
+	it('throws an error when passed a value too large for computation', () => {
+		expect(() => encryptedDataSize(new ByteCount(Number.MAX_SAFE_INTEGER - 15))).to.throw(Error);
+	});
+
+	it('returns the expected values for valid inputs', () => {
+		const inputsAndExpectedOutputs = [
+			[0, 16],
+			[1, 17],
+			[15, 31],
+			[16, 32],
+			[17, 33],
+			[Number.MAX_SAFE_INTEGER - 16, Number.MAX_SAFE_INTEGER]
+		].map((pair) => pair.map((vol) => new ByteCount(vol)));
+		inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
+			const actualSize = encryptedDataSize(input);
+			expect(actualSize.equals(expectedOutput), `${actualSize} === ${expectedOutput}`).to.be.true;
+		});
 	});
 });

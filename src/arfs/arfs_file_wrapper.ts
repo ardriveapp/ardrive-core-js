@@ -13,7 +13,7 @@ import {
 	ManifestPathMap
 } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
-import { extToMime } from '../utils/common';
+import { encryptedDataSize, extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
 import { ArFSFileOrFolderEntity, ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
 import { alphabeticalOrder } from '../utils/sort_functions';
@@ -194,7 +194,7 @@ export class ArFSFileToUpload implements ArFSEntityToUpload {
 
 	/** Computes the size of a private file encrypted with AES256-GCM */
 	public encryptedDataSize(): ByteCount {
-		return new ByteCount((this.fileStats.size / 16 + 1) * 16);
+		return encryptedDataSize(this.size);
 	}
 }
 

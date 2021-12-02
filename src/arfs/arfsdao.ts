@@ -1120,9 +1120,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 * @param file - the file entity to be download
 	 * @returns {Promise<void>}
 	 */
-	async getPrivateDataStream(fileTxId: TransactionID, dataLength: ByteCount): Promise<ReadableData> {
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<ReadableData> {
+		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - 16;
-		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		console.log(`dataTxUrl: ${dataTxUrl}`);
+		console.log(`authTagIndex: ${authTagIndex}`);
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
@@ -1137,12 +1140,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return { data, length };
 	}
 
-	getAuthTagForDataTxId = async (txId: TransactionID, dataLength: ByteCount): Promise<Buffer> =>
+	getAuthTagForPrivateFile = async (privateFile: ArFSPrivateFile): Promise<Buffer> =>
 		new Promise((resolve, reject) => {
+			const dataLength = privateFile.encryptedDataSize;
 			const authTagIndex = +dataLength - 16;
+			console.log(`requesting: ${gatewayURL}${privateFile.dataTxId}`);
+			console.log(`bytes=${authTagIndex}-${+dataLength - 1}`);
 			axios({
 				method: 'GET',
-				url: `${gatewayURL}${txId}`,
+				url: `${gatewayURL}${privateFile.dataTxId}`,
 				headers: {
 					Range: `bytes=${authTagIndex}-${+dataLength - 1}`
 				},
