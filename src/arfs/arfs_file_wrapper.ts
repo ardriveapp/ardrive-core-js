@@ -15,7 +15,7 @@ import {
 import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { EntityNamesAndIds } from '../utils/mapper_functions';
-import { ArFSFileOrFolderEntity, ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
+import { ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
 
@@ -321,14 +321,10 @@ export class ArFSFolderToUpload {
 
 export abstract class ArFSFileToDownload {
 	constructor(
-		readonly fileEntity: ArFSFileOrFolderEntity,
+		readonly fileEntity: ArFSPublicFile | ArFSPrivateFile,
 		readonly dataStream: Readable,
 		readonly localFilePath: string
-	) {
-		if (fileEntity.entityType !== 'file') {
-			throw new Error(`Can only download the data of file entities, but got ${fileEntity.entityType}`);
-		}
-	}
+	) {}
 
 	abstract write(): Promise<void>;
 
