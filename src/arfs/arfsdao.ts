@@ -97,6 +97,8 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import { bundleAndSignData, createData, DataItem } from 'arbundles';
+import { ArweaveSigner } from 'arbundles/src/signing';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -639,6 +641,71 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			{ name: 'ArFS', value: CURRENT_ARFS_VERSION }
 		];
 	}
+
+	async prepareArFSDataItem({
+		objectMetaData,
+		excludedTagNames = [],
+		otherTags = []
+	}: Omit<PrepareObjectTransactionParams, 'rewardSettings'>): Promise<DataItem> {
+		// Enforce that other tags are not protected
+		objectMetaData.assertProtectedTags(otherTags);
+
+		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags].filter(
+			// Filter out all excluded tags
+			(tag) => !excludedTagNames.includes(tag.name)
+		);
+
+		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
+
+		// Sign the data item
+		const dataItem = createData(objectMetaData.objectData.asTransactionData(), signer, { tags });
+		await dataItem.sign(signer);
+
+		return dataItem;
+	}
+
+	async prepareArFSObjectBundle({
+		dataItems,
+		rewardSettings = {},
+		excludedTagNames = [],
+		otherTags = []
+	}: Omit<PrepareObjectTransactionParams, 'objectMetaData'> & { dataItems: DataItem[] }): Promise<Transaction> {
+		const wallet = this.wallet as JWKWallet;
+		const signer = new ArweaveSigner(wallet.getPrivateKey());
+
+		const bundle = await bundleAndSignData(dataItems, signer);
+		const bundledDataTx = await bundle.toTransaction(this.arweave, wallet.getPrivateKey());
+
+		const tags = [...this.baselineArFSTags, ...otherTags];
+
+		// TODO: Test the ordering here. Originally, we would assign the reward before using arweave's createTransaction. In this bundle case, we are directly changing the reward after the fact. Which means we probably aren't saving any pricing requests here
+
+		// If we provided our own reward setting, use it now
+		if (rewardSettings.reward) {
+			bundledDataTx.reward = rewardSettings.reward.toString();
+		}
+
+		// If we've opted to boost the transaction, do so now
+		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
+			bundledDataTx.reward = rewardSettings.feeMultiple.boostReward(bundledDataTx.reward);
+
+			// Add a Boost tag
+			tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+		}
+
+		tags.filter(
+			// Filter out all excluded tags, bundles dont include ArFS tag by default
+			(tag) => ![...excludedTagNames, 'ArFS'].includes(tag.name)
+		).forEach((tag) => {
+			// Add remaining tags to transaction
+			bundledDataTx.addTag(tag.name, tag.value);
+		});
+
+		await this.arweave.transactions.sign(bundledDataTx, wallet.getPrivateKey());
+
+		return bundledDataTx;
+	}
+
 	async prepareArFSObjectTransaction({
 		objectMetaData,
 		rewardSettings = {},
