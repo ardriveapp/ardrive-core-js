@@ -930,12 +930,7 @@ describe('ArDrive class - integrated', () => {
 				created: [],
 				tips: [],
 				fees: {},
-				manifest: {
-					manifest: 'arweave/paths',
-					version: '0.1.0',
-					index: { path: '' },
-					paths: {}
-				},
+				manifest: {},
 				links: []
 			});
 		});

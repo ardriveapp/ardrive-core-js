@@ -38,7 +38,7 @@ export interface ArFSResult {
 }
 
 export interface ArFSManifestResult extends ArFSResult {
-	manifest: Manifest;
+	manifest: Manifest | Record<string, never>;
 	links: string[];
 }
 
@@ -50,12 +50,7 @@ export const emptyArFSResult: ArFSResult = {
 
 export const emptyManifestResult: ArFSManifestResult = {
 	...emptyArFSResult,
-	manifest: {
-		manifest: 'arweave/paths',
-		version: '0.1.0',
-		index: { path: '' },
-		paths: {}
-	},
+	manifest: {},
 	links: []
 };
 export interface MetaDataBaseCosts {
