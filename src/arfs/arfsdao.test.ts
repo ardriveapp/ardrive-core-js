@@ -19,7 +19,7 @@ describe('The ArFSDAO class', () => {
 
 	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0');
 
-	const stubFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
+	const stubPublicFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
 		new ArFSPublicFileMetadataTransactionData(
 			'Test Metadata',
 			new ByteCount(10),
@@ -28,17 +28,44 @@ describe('The ArFSDAO class', () => {
 			'text/plain'
 		),
 		stubEntityID,
-		stubEntityID,
-		stubEntityID
+		stubEntityIDAlt,
+		stubEntityIDAltTwo
 	);
 
 	describe('prepareObjectTransaction function', () => {
-		// Helper function to grab the decoded gql tags off of a Transaction
 		const getDecodedTagName = (tag: Tag) => tag.get('name', { decode: true, string: true });
+
+		// Helper function to grab the decoded gql tags off of a Transaction
+		const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
+			tags.map((tag) => ({
+				name: tag.get('name', { decode: true, string: true }),
+				value: tag.get('value', { decode: true, string: true })
+			}));
+
+		it('produces an ArFS compliant public file transaction', async () => {
+			const transaction = await arfsDao.prepareArFSObjectTransaction({
+				objectMetaData: stubPublicFileMetaDataTrx,
+				rewardSettings: { reward: W(10) }
+			});
+			const tags = getDecodedTags(transaction.tags);
+
+			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public File Metadata tags
+			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
+			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
+			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.equal(`${Math.round(Date.now() / 1000)}`);
+			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
+			expect(tags.find((t) => t.name === 'File-Id')?.value).to.equal(`${stubEntityIDAlt}`);
+			expect(tags.find((t) => t.name === 'Parent-Folder-Id')?.value).to.equal(`${stubEntityIDAltTwo}`);
+
+			// Assert there are no other unexpected tags
+			expect(tags.length).to.equal(9);
+		});
 
 		it('includes the base ArFS tags by default', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTrx,
 				rewardSettings: { reward: W(10) }
 			});
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'ArFS')).to.exist;
@@ -49,7 +76,7 @@ describe('The ArFSDAO class', () => {
 
 		it('includes the boost tag when boosted', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTrx,
 				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) }
 			});
 			expect(transaction.tags.find((tag) => getDecodedTagName(tag) === 'Boost')).to.exist;
@@ -58,7 +85,7 @@ describe('The ArFSDAO class', () => {
 
 		it('excludes the boost tag when boosted and boost tag is excluded', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTrx,
 				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) },
 				excludedTagNames: ['Boost']
 			});
@@ -68,7 +95,7 @@ describe('The ArFSDAO class', () => {
 
 		it('excludes ArFS tag if its within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTrx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
@@ -78,7 +105,7 @@ describe('The ArFSDAO class', () => {
 
 		it('can exclude multiple tags if provided within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTrx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS', 'App-Version', 'App-Name']
 			});
