@@ -551,7 +551,6 @@ export function urlEncodeHashKey(keyBuffer: Buffer): string {
 
 /** Computes the size of a private file encrypted with AES256-GCM */
 export function encryptedDataSize(dataSize: ByteCount): ByteCount {
-	// TODO: Refactor to utils?
 	if (+dataSize > Number.MAX_SAFE_INTEGER - 16) {
 		throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - 16}!`);
 	}
