@@ -632,13 +632,22 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
+	get baselineArFSTags(): GQLTagInterface[] {
+		return [
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'ArFS', value: CURRENT_ARFS_VERSION }
+		];
+	}
 	async prepareArFSObjectTransaction({
 		objectMetaData,
 		rewardSettings = {},
 		excludedTagNames = [],
 		otherTags = []
 	}: PrepareObjectTransactionParams): Promise<Transaction> {
-		const wallet = this.wallet as JWKWallet;
+		// Enforce that other tags are not protected
+		objectMetaData.assertProtectedTags(otherTags);
+		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags];
 
 		// Create transaction
 		const trxAttributes: Partial<CreateTransactionInterface> = {
@@ -655,37 +664,24 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			trxAttributes.last_tx = 'STUB';
 		}
 
+		const wallet = this.wallet as JWKWallet;
 		const transaction = await this.arweave.createTransaction(trxAttributes, wallet.getPrivateKey());
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
+
+			// Add a Boost tag
+			tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		let tagsToAdd: GQLTagInterface[] = [
-			// Add baseline App Name and App Version Tags
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'ArFS', value: CURRENT_ARFS_VERSION }
-		];
-
-		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
-			tagsToAdd.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
-		}
-
-		// Enforce that other tags are not protected
-		objectMetaData.assertProtectedTags(otherTags);
-		tagsToAdd.push(...otherTags);
-
-		// Remove any excluded tags
-		tagsToAdd = tagsToAdd.filter((tag) => !excludedTagNames.includes(tag.name));
-
-		tagsToAdd.forEach((tag) => {
+		tags.filter(
+			// Filter out all excluded tags
+			(tag) => !excludedTagNames.includes(tag.name)
+		).forEach((tag) => {
+			// Add remaining tags to transaction
 			transaction.addTag(tag.name, tag.value);
 		});
-
-		// Add object-specific tags
-		objectMetaData.addTagsToTransaction(transaction);
 
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());
