@@ -13,3 +13,4 @@ export * from './type_conditionals';
 export * from './type_guards';
 export * from './types';
 export * from './ardrive_types';
+export * from './upload_conflict_types';
