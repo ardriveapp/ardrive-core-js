@@ -1,7 +1,7 @@
 import Arweave from 'arweave';
 import { getStubDriveKey, stubEntityID, stubEntityIDAlt, stubEntityIDAltTwo } from '../../tests/stubs';
-import { ByteCount, FeeMultiple, GQLTagInterface, stubTransactionID, UnixTime, W } from '../types';
-import { readJWKFile } from '../utils/common';
+import { ByteCount, FeeMultiple, FileKey, GQLTagInterface, stubTransactionID, UnixTime, W } from '../types';
+import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import { ArFSDAO } from './arfsdao';
 import {
 	ArFSPrivateDriveMetaDataPrototype,
@@ -27,6 +27,7 @@ import { expect } from 'chai';
 import { Tag } from 'arweave/node/lib/transaction';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
 import { readFileSync } from 'fs';
+import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 
 describe('The ArFSDAO class', async () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -142,6 +143,13 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Drive-Privacy')?.value).to.equal('public');
 
 			expect(tags.length).to.equal(8);
+
+			// Assert that the data JSON of the metadata trx is ArFS compliant
+			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(trxData).to.deep.equal({
+				name: 'Test Public Drive Metadata',
+				rootFolderId: '00000000-0000-0000-0000-000000000000'
+			});
 		});
 
 		it('produces an ArFS compliant private drive metadata transaction', async () => {
@@ -164,6 +172,20 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Drive-Auth-Mode')?.value).to.equal('password');
 
 			expect(tags.length).to.equal(11);
+
+			const dataBuffer = Buffer.from(transaction.data);
+			const decryptedBuffer: Buffer = await driveDecrypt(
+				tags.find((t) => t.name === 'Cipher-IV')!.value,
+				stubDriveKey,
+				dataBuffer
+			);
+			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedJSON = await JSON.parse(decryptedString);
+
+			expect(decryptedJSON).to.deep.equal({
+				name: 'Test Private Drive Metadata',
+				rootFolderId: '00000000-0000-0000-0000-000000000000'
+			});
 		});
 
 		it('produces an ArFS compliant public folder metadata transaction', async () => {
@@ -184,6 +206,12 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Parent-Folder-Id')?.value).to.equal(`${stubEntityIDAltTwo}`);
 
 			expect(tags.length).to.equal(9);
+
+			// Assert that the data JSON of the metadata trx is ArFS compliant
+			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(trxData).to.deep.equal({
+				name: 'Test Public Folder Metadata'
+			});
 		});
 
 		it('produces an ArFS compliant private folder metadata transaction', async () => {
@@ -206,6 +234,20 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Cipher-IV')?.value).to.exist;
 
 			expect(tags.length).to.equal(11);
+
+			const dataBuffer = Buffer.from(transaction.data);
+			const decryptedBuffer: Buffer = await fileDecrypt(
+				tags.find((t) => t.name === 'Cipher-IV')!.value,
+				stubDriveKey,
+				dataBuffer
+			);
+			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedJSON = await JSON.parse(decryptedString);
+
+			// Assert that the data JSON of the metadata trx is ArFS compliant
+			expect(decryptedJSON).to.deep.equal({
+				name: 'Test Private Folder Metadata'
+			});
 		});
 
 		it('will produce an ArFS compliant root folder transaction without a parent folder id', async () => {
@@ -217,7 +259,6 @@ describe('The ArFSDAO class', async () => {
 
 			// Assert tha parent folder id does not exist
 			expect(tags.find((t) => t.name === 'Parent-Folder-Id')?.value).to.be.undefined;
-
 			expect(tags.length).to.equal(8);
 		});
 
@@ -239,6 +280,16 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Parent-Folder-Id')?.value).to.equal(`${stubEntityIDAltTwo}`);
 
 			expect(tags.length).to.equal(9);
+
+			// Assert that the data JSON of the metadata trx is ArFS compliant
+			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(trxData).to.deep.equal({
+				dataContentType: 'text/plain',
+				dataTxId: '0000000000000000000000000000000000000000000',
+				lastModifiedDate: 123456789,
+				name: 'Test Public File Metadata',
+				size: 10
+			});
 		});
 
 		it('produces an ArFS compliant private file metadata transaction', async () => {
@@ -261,6 +312,25 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.find((t) => t.name === 'Cipher-IV')?.value).to.exist;
 
 			expect(tags.length).to.equal(11);
+
+			const dataBuffer = Buffer.from(transaction.data);
+			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, stubDriveKey);
+			const decryptedBuffer: Buffer = await fileDecrypt(
+				tags.find((t) => t.name === 'Cipher-IV')!.value,
+				fileKey,
+				dataBuffer
+			);
+			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedJSON = await JSON.parse(decryptedString);
+
+			// Assert that the data JSON of the metadata trx is ArFS compliant
+			expect(decryptedJSON).to.deep.equal({
+				dataContentType: 'text/plain',
+				dataTxId: '0000000000000000000000000000000000000000000',
+				lastModifiedDate: 123456789,
+				name: 'Test Private File Metadata',
+				size: 10
+			});
 		});
 
 		it('produces an ArFS compliant public file data transaction', async () => {
