@@ -675,7 +675,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const bundle = await bundleAndSignData(dataItems, signer);
 
-		const tags = [...this.baselineArFSTags, ...otherTags];
+		// Verify the bundle and dataItems
+		if (!(await bundle.verify())) {
+			throw new Error('Bundle format could not be verified!');
+		}
 
 		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
 		const bundledDataTx = await this.arweave.createTransaction({
