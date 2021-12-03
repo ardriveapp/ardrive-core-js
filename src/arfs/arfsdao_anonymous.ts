@@ -289,9 +289,9 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	/**
-	 * Downloads the data of a public file into certain existing folder in the local storage
-	 * @param file - the file entity to be download
-	 * @returns {Promise<void>}
+	 * Returns the data stream of a public file
+	 * @param fileTxId - the transaction ID of the data to be download
+	 * @returns {Promise<Readable>}
 	 */
 	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
 		const dataTxUrl = `${gatewayURL}${fileTxId}`;

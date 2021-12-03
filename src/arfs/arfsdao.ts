@@ -1114,8 +1114,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	/**
-	 * Downloads the data of a public file into certain existing folder in the local storage
-	 * @param file - the file entity to be download
+	 * Returns the data stream of a private file
+	 * @param privateFile - the entity of the data to be download
 	 * @returns {Promise<void>}
 	 */
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
