@@ -1065,10 +1065,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
 		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
-		const fileCipherIvResult = results[0];
-		if (!fileCipherIvResult) {
+		if (results.length !== 1) {
 			throw new Error(`Could not fetch the CipherIV for transaction with id: ${txId}`);
 		}
+		const [fileCipherIvResult] = results;
 		return fileCipherIvResult.cipherIV;
 	}
 
