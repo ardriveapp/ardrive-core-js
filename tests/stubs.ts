@@ -7,13 +7,14 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFileOrFolderWithPaths
 } from '../src/arfs/arfs_entities';
-import { FolderHierarchy, RootFolderID } from '../src/exports';
+import { deriveDriveKey, FolderHierarchy, JWKWallet, readJWKFile, RootFolderID } from '../src/exports';
 import {
 	ADDR,
 	ArFS_O_11,
 	ArweaveAddress,
 	ByteCount,
 	DriveID,
+	DriveKey,
 	EID,
 	FileID,
 	FolderID,
@@ -27,6 +28,14 @@ import {
 
 export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'): ArweaveAddress => {
 	return ADDR(address);
+};
+
+export const getStubDriveKey = async (): Promise<DriveKey> => {
+	return deriveDriveKey(
+		'stubPassword',
+		`${stubEntityID}`,
+		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
+	);
 };
 
 export const stubTxID = TxID('0000000000000000000000000000000000000000001');
