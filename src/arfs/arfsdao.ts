@@ -674,16 +674,24 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
 
 		const bundle = await bundleAndSignData(dataItems, signer);
-		const bundledDataTx = await bundle.toTransaction(this.arweave, wallet.getPrivateKey());
 
 		const tags = [...this.baselineArFSTags, ...otherTags];
 
-		// TODO: Test the ordering here. Originally, we would assign the reward before using arweave's createTransaction. In this bundle case, we are directly changing the reward after the fact. Which means we probably aren't saving any pricing requests here
+		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
+		const bundledDataTx = await this.arweave.createTransaction({
+			data: bundle.getRaw(),
+			// If we provided our own reward setting, use it now
+			reward: rewardSettings.reward ? rewardSettings.reward.toString() : undefined,
+			// TODO: Use a mock arweave server instead
+			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
+		});
 
-		// If we provided our own reward setting, use it now
-		if (rewardSettings.reward) {
-			bundledDataTx.reward = rewardSettings.reward.toString();
-		}
+		const tags: GQLTagInterface[] = [
+			...this.baselineArFSTags,
+			...otherTags,
+			{ name: 'Bundle-Format', value: 'binary' },
+			{ name: 'Bundle-Version', value: '2.0.0' }
+		];
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
