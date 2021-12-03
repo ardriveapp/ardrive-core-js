@@ -13,7 +13,6 @@ describe('the StreamDecrypt class', () => {
 	const rawEncryptedData = Buffer.from('boFKovaNPFrbNHt0mftHjmQexP4=', 'base64');
 	const encryptedData = rawEncryptedData.slice(0, rawEncryptedData.length - 16);
 	const authTag = rawEncryptedData.slice(rawEncryptedData.length - 16, rawEncryptedData.length);
-	debugger;
 	let mockStream: Readable;
 
 	beforeEach(() => {
