@@ -14,14 +14,14 @@ import {
 	stubPublicFolderMetaDataTrx,
 	stubRootFolderMetaData
 } from '../../tests/stubs';
-import { FeeMultiple, FileKey, GQLTagInterface, W } from '../types';
+import { FeeMultiple, FileKey, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import { ArFSDAO } from './arfsdao';
 
 import { expect } from 'chai';
-import { Tag } from 'arweave/node/lib/transaction';
-import { expectAsyncErrorThrow } from '../../tests/test_helpers';
+import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
+import { DataItem } from 'arbundles';
 
 describe('The ArFSDAO class', async () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -36,13 +36,6 @@ describe('The ArFSDAO class', async () => {
 	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0');
 
 	describe('prepareObjectTransaction function', () => {
-		// Helper function to grab the decoded gql tags off of a Transaction
-		const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
-			tags.map((tag) => ({
-				name: tag.get('name', { decode: true, string: true }),
-				value: tag.get('value', { decode: true, string: true })
-			}));
-
 		it('produces an ArFS compliant public drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
 				objectMetaData: stubPublicDriveMetaDataTrx,
@@ -374,6 +367,110 @@ describe('The ArFSDAO class', async () => {
 					otherTags: [{ name: 'Drive-Id', value: 'ultimate drive ID of awesome' }]
 				}),
 				errorMessage: 'Tag Drive-Id is protected and cannot be used in this context!'
+			});
+		});
+	});
+
+	describe('prepareDataItems function', () => {
+		it('includes the base ArFS tags by default', async () => {
+			const dataItem = await arfsDao.prepareArFSDataItem({
+				objectMetaData: stubPublicFileMetaDataTrx
+			});
+			const tags = dataItem.tags;
+
+			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
+			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+
+			expect(tags.length).to.equal(9);
+		});
+
+		it('can exclude tags from data item', async () => {
+			const dataItem = await arfsDao.prepareArFSDataItem({
+				objectMetaData: stubPublicFileMetaDataTrx,
+				excludedTagNames: ['ArFS', 'App-Name']
+			});
+			const tags = dataItem.tags;
+
+			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
+			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.not.exist;
+
+			expect(tags.length).to.equal(7);
+		});
+	});
+
+	describe('prepareArFSObjectBundle function', async () => {
+		let dataItems: DataItem[];
+
+		beforeEach(async () => {
+			// Start each test with fresh data items
+			dataItems = [
+				await arfsDao.prepareArFSDataItem({
+					objectMetaData: stubPublicFileMetaDataTrx
+				}),
+				await arfsDao.prepareArFSDataItem({
+					objectMetaData: stubPublicFileDataTrx
+				})
+			];
+		});
+
+		it('includes the base ArFS tags, excluding "ArFS" tag, and bundle format tags by default', async () => {
+			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: { reward: W(10) }
+			});
+			const tags = getDecodedTags(bundleTransaction.tags);
+
+			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
+			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
+			expect(tags.find((t) => t.name === 'Bundle-Format')?.value).to.equal('binary');
+			expect(tags.find((t) => t.name === 'Bundle-Version')?.value).to.equal('2.0.0');
+
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.not.exist;
+
+			expect(tags.length).to.equal(4);
+		});
+
+		it('can exclude tags from bundled transaction', async () => {
+			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: { reward: W(10) },
+				excludedTagNames: ['Bundle-Format', 'App-Name']
+			});
+			const tags = getDecodedTags(bundleTransaction.tags);
+
+			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
+			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
+			expect(tags.find((t) => t.name === 'Bundle-Format')?.value).to.not.exist;
+			expect(tags.find((t) => t.name === 'Bundle-Version')?.value).to.equal('2.0.0');
+
+			expect(tags.length).to.equal(2);
+		});
+
+		it('will include a boost tag and correctly multiply reward', async () => {
+			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(2) }
+			});
+			const tags = getDecodedTags(bundleTransaction.tags);
+
+			expect(tags.find((t) => t.name === 'Boost')?.value).to.equal('2');
+
+			expect(tags.length).to.equal(5);
+
+			expect(bundleTransaction.reward).to.equal('20');
+		});
+
+		it('throws an error when bundle cannot be verified', async () => {
+			dataItems[0].id = 'fake ID so verify will return false';
+
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.prepareArFSObjectBundle({
+					dataItems,
+					rewardSettings: { reward: W(10) }
+				}),
+				errorMessage: 'Bundle format could not be verified!'
 			});
 		});
 	});
