@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import {
 	ArFSPublicDrive,
 	ArFSPrivateDrive,
@@ -7,7 +8,29 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFileOrFolderWithPaths
 } from '../src/arfs/arfs_entities';
-import { deriveDriveKey, FolderHierarchy, JWKWallet, readJWKFile, RootFolderID } from '../src/exports';
+import {
+	ArFSPrivateDriveMetaDataPrototype,
+	ArFSPrivateDriveTransactionData,
+	ArFSPrivateFileDataPrototype,
+	ArFSPrivateFileDataTransactionData,
+	ArFSPrivateFileMetaDataPrototype,
+	ArFSPrivateFileMetadataTransactionData,
+	ArFSPrivateFolderMetaDataPrototype,
+	ArFSPrivateFolderTransactionData,
+	ArFSPublicDriveMetaDataPrototype,
+	ArFSPublicDriveTransactionData,
+	ArFSPublicFileDataPrototype,
+	ArFSPublicFileDataTransactionData,
+	ArFSPublicFileMetaDataPrototype,
+	ArFSPublicFileMetadataTransactionData,
+	ArFSPublicFolderMetaDataPrototype,
+	ArFSPublicFolderTransactionData,
+	deriveDriveKey,
+	FolderHierarchy,
+	JWKWallet,
+	readJWKFile,
+	RootFolderID
+} from '../src/exports';
 import {
 	ADDR,
 	ArFS_O_11,
@@ -51,6 +74,81 @@ export const stubEntityIDRoot = EID('00000000-0000-0000-0000-000000000002');
 export const stubEntityIDParent = EID('00000000-0000-0000-0000-000000000003');
 export const stubEntityIDChild = EID('00000000-0000-0000-0000-000000000004');
 export const stubEntityIDGrandchild = EID('00000000-0000-0000-0000-000000000005');
+
+export const stubPublicFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
+	new ArFSPublicFileMetadataTransactionData(
+		'Test Public File Metadata',
+		new ByteCount(10),
+		new UnixTime(123456789),
+		stubTransactionID,
+		'text/plain'
+	),
+	stubEntityID,
+	stubEntityIDAlt,
+	stubEntityIDAltTwo
+);
+
+export const stubPrivateFileMetaDataTrx = (async () =>
+	new ArFSPrivateFileMetaDataPrototype(
+		await ArFSPrivateFileMetadataTransactionData.from(
+			'Test Private File Metadata',
+			new ByteCount(10),
+			new UnixTime(123456789),
+			stubTransactionID,
+			'text/plain',
+			stubEntityID,
+			await getStubDriveKey()
+		),
+		stubEntityID,
+		stubEntityIDAlt,
+		stubEntityIDAltTwo
+	))();
+
+export const stubPublicDriveMetaDataTrx = new ArFSPublicDriveMetaDataPrototype(
+	new ArFSPublicDriveTransactionData('Test Public Drive Metadata', stubEntityID),
+	stubEntityID
+);
+
+export const stubPrivateDriveMetaDataTrx = (async () =>
+	new ArFSPrivateDriveMetaDataPrototype(
+		stubEntityID,
+		await ArFSPrivateDriveTransactionData.from('Test Private Drive Metadata', stubEntityID, await getStubDriveKey())
+	))();
+
+export const stubPublicFolderMetaDataTrx = new ArFSPublicFolderMetaDataPrototype(
+	new ArFSPublicFolderTransactionData('Test Public Folder Metadata'),
+	stubEntityID,
+	stubEntityIDAlt,
+	stubEntityIDAltTwo
+);
+
+export const stubRootFolderMetaData = new ArFSPublicFolderMetaDataPrototype(
+	new ArFSPublicFolderTransactionData('Test Root Folder Metadata'),
+	stubEntityID,
+	stubEntityIDAlt
+);
+
+export const stubPrivateFolderMetaDataTrx = (async () =>
+	new ArFSPrivateFolderMetaDataPrototype(
+		stubEntityID,
+		stubEntityIDAlt,
+		await ArFSPrivateFolderTransactionData.from('Test Private Folder Metadata', await getStubDriveKey()),
+		stubEntityIDAltTwo
+	))();
+
+export const stubPublicFileDataTrx = new ArFSPublicFileDataPrototype(
+	new ArFSPublicFileDataTransactionData(readFileSync('./test_wallet.json')),
+	'application/json'
+);
+
+export const stubPrivateFileDataTrx = (async () =>
+	new ArFSPrivateFileDataPrototype(
+		await ArFSPrivateFileDataTransactionData.from(
+			readFileSync('./test_wallet.json'),
+			stubEntityID,
+			await getStubDriveKey()
+		)
+	))();
 
 export const stubPublicDrive = (): ArFSPublicDrive =>
 	new ArFSPublicDrive(

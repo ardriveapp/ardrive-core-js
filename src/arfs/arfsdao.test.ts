@@ -1,32 +1,26 @@
 import Arweave from 'arweave';
-import { getStubDriveKey, stubEntityID, stubEntityIDAlt, stubEntityIDAltTwo } from '../../tests/stubs';
-import { ByteCount, FeeMultiple, FileKey, GQLTagInterface, stubTransactionID, UnixTime, W } from '../types';
+import {
+	getStubDriveKey,
+	stubEntityID,
+	stubEntityIDAlt,
+	stubEntityIDAltTwo,
+	stubPrivateDriveMetaDataTrx,
+	stubPrivateFileDataTrx,
+	stubPrivateFileMetaDataTrx,
+	stubPrivateFolderMetaDataTrx,
+	stubPublicDriveMetaDataTrx,
+	stubPublicFileDataTrx,
+	stubPublicFileMetaDataTrx,
+	stubPublicFolderMetaDataTrx,
+	stubRootFolderMetaData
+} from '../../tests/stubs';
+import { FeeMultiple, FileKey, GQLTagInterface, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import { ArFSDAO } from './arfsdao';
-import {
-	ArFSPrivateDriveMetaDataPrototype,
-	ArFSPrivateFileDataPrototype,
-	ArFSPrivateFileMetaDataPrototype,
-	ArFSPrivateFolderMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype,
-	ArFSPublicFileDataPrototype,
-	ArFSPublicFileMetaDataPrototype,
-	ArFSPublicFolderMetaDataPrototype
-} from './arfs_prototypes';
-import {
-	ArFSPrivateDriveTransactionData,
-	ArFSPrivateFileDataTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
-	ArFSPrivateFolderTransactionData,
-	ArFSPublicDriveTransactionData,
-	ArFSPublicFileDataTransactionData,
-	ArFSPublicFileMetadataTransactionData,
-	ArFSPublicFolderTransactionData
-} from './arfs_trx_data_types';
+
 import { expect } from 'chai';
 import { Tag } from 'arweave/node/lib/transaction';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
-import { readFileSync } from 'fs';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 
 describe('The ArFSDAO class', async () => {
@@ -40,83 +34,6 @@ describe('The ArFSDAO class', async () => {
 	});
 
 	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0');
-
-	const stubPublicFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
-		new ArFSPublicFileMetadataTransactionData(
-			'Test Public File Metadata',
-			new ByteCount(10),
-			new UnixTime(123456789),
-			stubTransactionID,
-			'text/plain'
-		),
-		stubEntityID,
-		stubEntityIDAlt,
-		stubEntityIDAltTwo
-	);
-
-	const stubDriveKey = await getStubDriveKey();
-
-	const stubPrivateFileMetaDataTrx = await (async () =>
-		new ArFSPrivateFileMetaDataPrototype(
-			await ArFSPrivateFileMetadataTransactionData.from(
-				'Test Private File Metadata',
-				new ByteCount(10),
-				new UnixTime(123456789),
-				stubTransactionID,
-				'text/plain',
-				stubEntityID,
-				stubDriveKey
-			),
-			stubEntityID,
-			stubEntityIDAlt,
-			stubEntityIDAltTwo
-		))();
-
-	const stubPublicDriveMetaDataTrx = new ArFSPublicDriveMetaDataPrototype(
-		new ArFSPublicDriveTransactionData('Test Public Drive Metadata', stubEntityID),
-		stubEntityID
-	);
-
-	const stubPrivateDriveMetaDataTrx = await (async () =>
-		new ArFSPrivateDriveMetaDataPrototype(
-			stubEntityID,
-			await ArFSPrivateDriveTransactionData.from('Test Private Drive Metadata', stubEntityID, stubDriveKey)
-		))();
-
-	const stubPublicFolderMetaDataTrx = new ArFSPublicFolderMetaDataPrototype(
-		new ArFSPublicFolderTransactionData('Test Public Folder Metadata'),
-		stubEntityID,
-		stubEntityIDAlt,
-		stubEntityIDAltTwo
-	);
-
-	const stubRootFolderMetaData = new ArFSPublicFolderMetaDataPrototype(
-		new ArFSPublicFolderTransactionData('Test Root Folder Metadata'),
-		stubEntityID,
-		stubEntityIDAlt
-	);
-
-	const stubPrivateFolderMetaDataTrx = await (async () =>
-		new ArFSPrivateFolderMetaDataPrototype(
-			stubEntityID,
-			stubEntityIDAlt,
-			await ArFSPrivateFolderTransactionData.from('Test Private Folder Metadata', stubDriveKey),
-			stubEntityIDAltTwo
-		))();
-
-	const stubPublicFileDataTrx = new ArFSPublicFileDataPrototype(
-		new ArFSPublicFileDataTransactionData(readFileSync('./test_wallet.json')),
-		'application/json'
-	);
-
-	const stubPrivateFileDataTrx = await (async () =>
-		new ArFSPrivateFileDataPrototype(
-			await ArFSPrivateFileDataTransactionData.from(
-				readFileSync('./test_wallet.json'),
-				stubEntityID,
-				stubDriveKey
-			)
-		))();
 
 	describe('prepareObjectTransaction function', () => {
 		// Helper function to grab the decoded gql tags off of a Transaction
@@ -154,7 +71,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPrivateDriveMetaDataTrx,
+				objectMetaData: await stubPrivateDriveMetaDataTrx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -175,8 +92,9 @@ describe('The ArFSDAO class', async () => {
 
 			const dataBuffer = Buffer.from(transaction.data);
 			const decryptedBuffer: Buffer = await driveDecrypt(
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				stubDriveKey,
+				await getStubDriveKey(),
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -216,7 +134,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private folder metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPrivateFolderMetaDataTrx,
+				objectMetaData: await stubPrivateFolderMetaDataTrx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -237,8 +155,9 @@ describe('The ArFSDAO class', async () => {
 
 			const dataBuffer = Buffer.from(transaction.data);
 			const decryptedBuffer: Buffer = await fileDecrypt(
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				stubDriveKey,
+				await getStubDriveKey(),
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -294,7 +213,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private file metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPrivateFileMetaDataTrx,
+				objectMetaData: await stubPrivateFileMetaDataTrx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -314,8 +233,9 @@ describe('The ArFSDAO class', async () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
-			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, stubDriveKey);
+			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, await getStubDriveKey());
 			const decryptedBuffer: Buffer = await fileDecrypt(
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
 				fileKey,
 				dataBuffer
@@ -351,7 +271,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private file data transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPrivateFileDataTrx,
+				objectMetaData: await stubPrivateFileDataTrx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
