@@ -11,13 +11,13 @@ import {
 } from '../types';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
 
-export const resolveFileNameConflicts = async ({
+export async function resolveFileNameConflicts({
 	wrappedFile,
 	conflictResolution,
 	destinationFileName: destFileName,
 	nameConflictInfo,
 	prompts
-}: ResolveFileNameConflictsParams): Promise<void> => {
+}: ResolveFileNameConflictsParams): Promise<void> {
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFileName, nameConflictInfo);
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
@@ -109,16 +109,16 @@ export const resolveFileNameConflicts = async ({
 			wrappedFile.existingId = existingNameAtDestConflict.existingFileConflict?.fileId;
 			return;
 	}
-};
+}
 
-export const resolveFolderNameConflicts = async ({
+export async function resolveFolderNameConflicts({
 	wrappedFolder,
 	nameConflictInfo,
 	destinationFolderName: destFolderName,
 	prompts,
 	conflictResolution,
 	getConflictInfoFn
-}: ResolveFolderNameConflictsParams): Promise<void> => {
+}: ResolveFolderNameConflictsParams): Promise<void> {
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFolderName, nameConflictInfo);
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
@@ -225,7 +225,7 @@ export const resolveFolderNameConflicts = async ({
 			});
 		}
 	}
-};
+}
 
 /**
  * Utility function for finding name conflicts within NameConflictInfo
