@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import Arweave from 'arweave';
 import { expect } from 'chai';
 import { stub } from 'sinon';
@@ -68,7 +69,8 @@ describe('ArDrive class - integrated', () => {
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.0');
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.0');
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.0', false);
+	const bundleArfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Bundle Integration Test', '1.0', true);
 
 	const arDrive = new ArDrive(
 		wallet,
@@ -76,7 +78,19 @@ describe('ArDrive class - integrated', () => {
 		arfsDao,
 		communityOracle,
 		'Integration Test',
-		'1.0',
+		'1.2',
+		priceEstimator,
+		new FeeMultiple(1.0),
+		true
+	);
+
+	const bundledArDrive = new ArDrive(
+		wallet,
+		walletDao,
+		bundleArfsDao,
+		communityOracle,
+		'Bundle Integration Test',
+		'1.2',
 		priceEstimator,
 		new FeeMultiple(1.0),
 		true
@@ -125,9 +139,17 @@ describe('ArDrive class - integrated', () => {
 				const result = await arDrive.createPublicDrive({ driveName: 'TEST_DRIVE' });
 				assertCreateDriveExpectations(result, W(75), W(21));
 			});
+
+			it('returns the correct bundled ArFSResult', async () => {
+				const result = await bundledArDrive.createPublicDrive({
+					driveName: 'TEST_DRIVE'
+				});
+
+				assertCreateDriveExpectations(result, W(75), W(37), undefined, true);
+			});
 		});
 
-		describe('createPrivateDrive', () => {
+		describe('createPrivateDrive', async () => {
 			it('returns the correct ArFSResult', async () => {
 				const stubDriveKey = await getStubDriveKey();
 				const stubPrivateDriveData: PrivateDriveKeyData = {
@@ -140,6 +162,20 @@ describe('ArDrive class - integrated', () => {
 					newPrivateDriveData: stubPrivateDriveData
 				});
 				assertCreateDriveExpectations(result, W(91), W(37), urlEncodeHashKey(stubDriveKey));
+			});
+
+			it('returns the correct bundled ArFSResult', async () => {
+				const stubDriveKey = await getStubDriveKey();
+				const stubPrivateDriveData: PrivateDriveKeyData = {
+					driveId: stubEntityID,
+					driveKey: stubDriveKey
+				};
+
+				const result = await bundledArDrive.createPrivateDrive({
+					driveName: 'TEST_DRIVE',
+					newPrivateDriveData: stubPrivateDriveData
+				});
+				assertCreateDriveExpectations(result, W(91), W(37), urlEncodeHashKey(stubDriveKey), true);
 			});
 		});
 	});
@@ -1098,11 +1134,12 @@ describe('ArDrive class - integrated', () => {
 function assertCreateDriveExpectations(
 	result: ArFSResult,
 	driveFee: Winston,
-	folderFee: Winston,
-	expectedDriveKey?: string
+	folderFee?: Winston,
+	expectedDriveKey?: string,
+	isBundled = false
 ) {
 	// Ensure that 2 arfs entities were created
-	expect(result.created.length).to.equal(2);
+	expect(result.created.length).to.equal(isBundled ? 3 : 2);
 
 	// Ensure that the drive entity looks healthy
 	const driveEntity = result.created[0];
@@ -1123,15 +1160,33 @@ function assertCreateDriveExpectations(
 	// There should be no tips
 	expect(result.tips).to.be.empty;
 
-	// Ensure that the fees look healthy
 	const feeKeys = Object.keys(result.fees);
-	expect(feeKeys.length).to.equal(2);
-	expect(feeKeys[0]).to.equal(driveEntity.metadataTxId.toString());
-	expect(feeKeys[0]).to.match(trxIdRegex);
-	expect(`${result.fees[driveEntity.metadataTxId.toString()]}`).to.equal(`${driveFee}`);
-	expect(feeKeys[1]).to.equal(rootFolderEntity.metadataTxId.toString());
-	expect(feeKeys[1]).to.match(trxIdRegex);
-	expect(`${result.fees[rootFolderEntity.metadataTxId.toString()]}`).to.equal(`${folderFee}`);
+
+	if (isBundled) {
+		// Ensure that the bundle trx looks healthy
+		const bundleEntity = result.created[2];
+		expect(bundleEntity.dataTxId).to.be.undefined;
+		expect(bundleEntity.entityId).to.be.undefined;
+		expect(bundleEntity.key).to.be.undefined;
+		expect(bundleEntity.metadataTxId).to.be.undefined;
+		expect(bundleEntity.bundleTxId).to.match(trxIdRegex);
+		expect(bundleEntity.type).to.equal('bundle');
+
+		// Ensure that the bundle fee look healthy
+		expect(feeKeys.length).to.equal(1);
+		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
+		expect(feeKeys[0]).to.match(trxIdRegex);
+		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${driveFee}`);
+	} else {
+		// Ensure that the V2 transaction fees look healthy
+		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys[0]).to.equal(driveEntity.metadataTxId!.toString());
+		expect(feeKeys[0]).to.match(trxIdRegex);
+		expect(`${result.fees[driveEntity.metadataTxId!.toString()]}`).to.equal(`${driveFee}`);
+		expect(feeKeys[1]).to.equal(rootFolderEntity.metadataTxId!.toString());
+		expect(feeKeys[1]).to.match(trxIdRegex);
+		expect(`${result.fees[rootFolderEntity.metadataTxId!.toString()]}`).to.equal(`${folderFee}`);
+	}
 }
 
 function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, expectedDriveKey?: string) {
@@ -1153,8 +1208,8 @@ function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, 
 	const feeKeys = Object.keys(result.fees);
 	expect(feeKeys.length).to.equal(1);
 	expect(feeKeys[0]).to.match(trxIdRegex);
-	expect(feeKeys[0]).to.equal(folderEntity.metadataTxId.toString());
-	expect(`${result.fees[folderEntity.metadataTxId.toString()]}`).to.equal(`${folderFee}`);
+	expect(feeKeys[0]).to.equal(folderEntity.metadataTxId!.toString());
+	expect(`${result.fees[folderEntity.metadataTxId!.toString()]}`).to.equal(`${folderFee}`);
 }
 
 function assertUploadFileExpectations(
@@ -1206,8 +1261,8 @@ function assertUploadFileExpectations(
 	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
 	expect(feeKeys[1]).to.match(trxIdRegex);
-	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId.toString());
-	expect(`${result.fees[fileEntity.metadataTxId.toString()]}`).to.equal(`${metadataFee}`);
+	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
+	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
 
 	expect(feeKeys[2]).to.match(trxIdRegex);
 	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
@@ -1239,8 +1294,8 @@ function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, driveP
 	const feeKeys = Object.keys(result.fees);
 	expect(feeKeys.length).to.equal(1);
 	expect(feeKeys[0]).to.match(trxIdRegex);
-	expect(feeKeys[0]).to.equal(fileEntity.metadataTxId.toString());
-	expect(`${result.fees[fileEntity.metadataTxId.toString()]}`).to.equal(`${fileFee}`);
+	expect(feeKeys[0]).to.equal(fileEntity.metadataTxId!.toString());
+	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${fileFee}`);
 }
 
 function assertUploadManifestExpectations(
@@ -1279,14 +1334,12 @@ function assertUploadManifestExpectations(
 
 	const feeKeys = Object.keys(result.fees);
 	expect(feeKeys[0]).to.match(trxIdRegex);
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
 	expect(feeKeys[1]).to.match(trxIdRegex);
-	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId.toString());
-	expect(`${result.fees[fileEntity.metadataTxId.toString()]}`).to.equal(`${metadataFee}`);
+	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
+	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
 
 	expect(feeKeys[2]).to.match(trxIdRegex);
 	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
