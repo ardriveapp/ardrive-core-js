@@ -1,16 +1,33 @@
 import { ArFSFileMetadataTransactionData } from './arfs_trx_data_types';
 import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston } from '../types';
 
+export interface ArFSBundleWriteResult {
+	bundleTrxId: TransactionID;
+	bundleTrxReward: Winston;
+	metaDataTrxId: TransactionID;
+}
+
+export function isBundleResult(
+	arFSResult: ArFSWriteResult | ArFSBundleWriteResult
+): arFSResult is ArFSBundleWriteResult {
+	return Object.keys(arFSResult).includes('bundleTrxId');
+}
+
 export interface ArFSWriteResult {
 	metaDataTrxId: TransactionID;
 	metaDataTrxReward: Winston;
 }
 
-export interface ArFSCreateDriveResult extends ArFSWriteResult {
+export interface ArFSDriveResult {
 	rootFolderTrxId: TransactionID;
-	rootFolderTrxReward: Winston;
 	driveId: DriveID;
 	rootFolderId: FolderID;
+}
+
+export type ArFSCreateBundledDriveResult = ArFSBundleWriteResult & ArFSDriveResult;
+
+export interface ArFSCreateDriveResult extends ArFSWriteResult, ArFSDriveResult {
+	rootFolderTrxReward: Winston;
 }
 
 export interface ArFSCreateFolderResult extends ArFSWriteResult {
@@ -34,6 +51,9 @@ type WithFileKey = { fileKey: FileKey };
 
 export type ArFSCreatePublicDriveResult = ArFSCreateDriveResult;
 export type ArFSCreatePrivateDriveResult = ArFSCreateDriveResult & WithDriveKey;
+
+export type ArFSCreatePublicBundledDriveResult = ArFSCreateBundledDriveResult;
+export type ArFSCreatePrivateBundledDriveResult = ArFSCreateBundledDriveResult & WithDriveKey;
 
 export type ArFSCreatePublicFolderResult = ArFSCreateFolderResult;
 export type ArFSCreatePrivateFolderResult = ArFSCreateFolderResult & WithDriveKey;

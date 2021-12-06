@@ -17,13 +17,14 @@ import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { ArFSListPublicFolderParams } from '../arfs/arfsdao_anonymous';
 import { PrivateKeyData } from '../arfs/private_key_data';
 
-export type ArFSEntityDataType = 'drive' | 'folder' | 'file';
+export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
 export interface ArFSEntityData {
 	type: ArFSEntityDataType;
-	metadataTxId: TransactionID;
+	bundleTxId?: TransactionID;
+	metadataTxId?: TransactionID;
 	dataTxId?: TransactionID;
-	entityId: AnyEntityID;
+	entityId?: AnyEntityID;
 	key?: string;
 }
 
