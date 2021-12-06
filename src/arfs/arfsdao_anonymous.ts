@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { GQLEdgeInterface } from '../types';
+import { EntityID, GQLEdgeInterface } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import {
 	DriveID,
@@ -26,6 +26,7 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
+import { ArFSEntityCache } from './ArFSEntityCache';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
@@ -48,10 +49,19 @@ export abstract class ArFSDAOType {
 	protected abstract readonly appVersion: string;
 }
 
+export interface ArFSPublicDriveCacheKey {
+	driveId: DriveID;
+	owner: ArweaveAddress;
+}
+
 /**
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
 export class ArFSDAOAnonymous extends ArFSDAOType {
+	protected ownerCache = new ArFSEntityCache<DriveID, ArweaveAddress>(10);
+	protected driveIDCache = new ArFSEntityCache<EntityID, DriveID>(10);
+	protected publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
+
 	constructor(
 		protected readonly arweave: Arweave,
 		protected appName = DEFAULT_APP_NAME,
@@ -61,45 +71,67 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	public async getOwnerForDriveId(driveId: DriveID): Promise<ArweaveAddress> {
-		const gqlQuery = buildQuery({
-			tags: [
-				{ name: 'Drive-Id', value: `${driveId}` },
-				{ name: 'Entity-Type', value: 'drive' }
-			],
-			sort: ASCENDING_ORDER
-		});
-		const response = await this.arweave.api.post(graphQLURL, gqlQuery);
-		const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
-
-		if (!edges.length) {
-			throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+		const cachedOwner = this.ownerCache.get(driveId);
+		if (cachedOwner) {
+			console.log(`owner cache hit!`);
+			return cachedOwner;
 		}
 
-		const edgeOfFirstDrive = edges[0];
-		const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+		return this.ownerCache.put(
+			driveId,
+			(async () => {
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Drive-Id', value: `${driveId}` },
+						{ name: 'Entity-Type', value: 'drive' }
+					],
+					sort: ASCENDING_ORDER
+				});
+				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
-		return ADDR(driveOwnerAddress);
+				if (!edges.length) {
+					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+				}
+
+				const edgeOfFirstDrive = edges[0];
+				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+				const driveOwner = ADDR(driveOwnerAddress);
+				return driveOwner;
+			})()
+		);
 	}
 
 	async getDriveIDForEntityId(entityId: AnyEntityID, gqlTypeTag: 'File-Id' | 'Folder-Id'): Promise<DriveID> {
-		const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
-
-		const response = await this.arweave.api.post(graphQLURL, gqlQuery);
-		const { data } = response.data;
-		const { transactions } = data;
-
-		const edges: GQLEdgeInterface[] = transactions.edges;
-
-		if (!edges.length) {
-			throw new Error(`Entity with ${gqlTypeTag} ${entityId} not found!`);
+		const cachedDriveID = this.driveIDCache.get(entityId);
+		if (cachedDriveID) {
+			console.log(`drive cache hit for entity ID`);
+			return cachedDriveID;
 		}
 
-		const driveIdTag = edges[0].node.tags.find((t) => t.name === 'Drive-Id');
-		if (driveIdTag) {
-			return EID(driveIdTag.value);
-		}
+		return this.driveIDCache.put(
+			entityId,
+			(async () => {
+				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
 
-		throw new Error(`No Drive-Id tag found for meta data transaction of ${gqlTypeTag}: ${entityId}`);
+				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const { data } = response.data;
+				const { transactions } = data;
+
+				const edges: GQLEdgeInterface[] = transactions.edges;
+
+				if (!edges.length) {
+					throw new Error(`Entity with ${gqlTypeTag} ${entityId} not found!`);
+				}
+
+				const driveIdTag = edges[0].node.tags.find((t) => t.name === 'Drive-Id');
+				if (driveIdTag) {
+					return EID(driveIdTag.value);
+				}
+
+				throw new Error(`No Drive-Id tag found for meta data transaction of ${gqlTypeTag}: ${entityId}`);
+			})()
+		);
 	}
 
 	async getDriveOwnerForFolderId(folderId: FolderID): Promise<ArweaveAddress> {
@@ -120,7 +152,16 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	// Convenience function for known-public use cases
 	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress): Promise<ArFSPublicDrive> {
-		return new ArFSPublicDriveBuilder({ entityId: driveId, arweave: this.arweave, owner }).build();
+		const cacheKey = { driveId, owner };
+		const cachedDrive = this.publicDriveCache.get(cacheKey);
+		if (cachedDrive) {
+			console.log(`public drive cache hit`);
+			return cachedDrive;
+		}
+		return this.publicDriveCache.put(
+			cacheKey,
+			new ArFSPublicDriveBuilder({ entityId: driveId, arweave: this.arweave, owner }).build()
+		);
 	}
 
 	// Convenience function for known-private use cases

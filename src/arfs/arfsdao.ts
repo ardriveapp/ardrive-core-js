@@ -67,7 +67,12 @@ import {
 	ArFSPrivateFileDataTransactionData
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
-import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
+import {
+	ArFSAllPublicFoldersOfDriveParams,
+	ArFSDAOAnonymous,
+	ArFSPublicDriveCacheKey,
+	graphQLURL
+} from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
@@ -97,6 +102,7 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import { ArFSEntityCache } from './ArFSEntityCache';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -170,7 +176,13 @@ interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsPa
 	driveKey: DriveKey;
 }
 
+interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
+	driveKey: DriveKey;
+}
+
 export class ArFSDAO extends ArFSDAOAnonymous {
+	protected privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
+
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
 		private readonly wallet: Wallet,
@@ -694,7 +706,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	// Convenience function for known-private use cases
 	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
-		return new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build();
+		const cacheKey = { driveId, driveKey, owner };
+		const cachedDrive = this.privateDriveCache.get(cacheKey);
+		if (cachedDrive) {
+			console.log(`private drive cache hit`);
+			return cachedDrive;
+		}
+		return this.privateDriveCache.put(
+			cacheKey,
+			new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build()
+		);
 	}
 
 	// Convenience function for known-private use cases
@@ -917,54 +938,66 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
-		const gqlQuery = buildQuery({
-			tags: [
-				{ name: 'Entity-Type', value: 'drive' },
-				{ name: 'Drive-Id', value: `${driveId}` }
-			],
-			sort: ASCENDING_ORDER
-		});
-		const response = await this.arweave.api.post(graphQLURL, gqlQuery);
-		const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
-
-		if (!edges.length) {
-			throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+		const cachedOwner = this.ownerCache.get(driveId);
+		if (cachedOwner) {
+			console.log(`owner cache hit!`);
+			return cachedOwner;
 		}
 
-		const edgeOfFirstDrive = edges[0];
+		return this.ownerCache.put(
+			driveId,
+			(async () => {
+				console.log(`fetching owner of driveID ${driveId}`);
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Entity-Type', value: 'drive' },
+						{ name: 'Drive-Id', value: `${driveId}` }
+					],
+					sort: ASCENDING_ORDER
+				});
+				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
-		const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
-		const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
+				if (!edges.length) {
+					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+				}
 
-		if (!drivePrivacyFromTag) {
-			throw new Error('Target drive has no "Drive-Privacy" tag!');
-		}
+				const edgeOfFirstDrive = edges[0];
+				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+				const driveOwner = new ArweaveAddress(driveOwnerAddress);
 
-		if (drivePrivacyFromTag.value !== drivePrivacy) {
-			throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
-		}
+				const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
+				const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
 
-		if (driveKey) {
-			const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
-			if (!cipherIVFromTag) {
-				throw new Error('Target private drive has no "Cipher-IV" tag!');
-			}
+				if (!drivePrivacyFromTag) {
+					throw new Error('Target drive has no "Drive-Privacy" tag!');
+				}
 
-			const driveDataBuffer = Buffer.from(
-				await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
-			);
+				if (drivePrivacyFromTag.value !== drivePrivacy) {
+					throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
+				}
 
-			try {
-				// Attempt to decrypt drive to assert drive key is correct
-				await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
-			} catch {
-				throw new Error('Provided drive key or password could not decrypt target private drive!');
-			}
-		}
+				if (driveKey) {
+					const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
+					if (!cipherIVFromTag) {
+						throw new Error('Target private drive has no "Cipher-IV" tag!');
+					}
 
-		const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+					const driveDataBuffer = Buffer.from(
+						await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
+					);
 
-		return new ArweaveAddress(driveOwnerAddress);
+					try {
+						// Attempt to decrypt drive to assert drive key is correct
+						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
+					} catch {
+						throw new Error('Provided drive key or password could not decrypt target private drive!');
+					}
+				}
+
+				return driveOwner;
+			})()
+		);
 	}
 
 	/**
