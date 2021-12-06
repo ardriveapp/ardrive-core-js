@@ -19,7 +19,7 @@ export function resolveLocalFilePath(destFolderPath: string, defaultFileName: st
 			// the path does not exist, but the parent is an existing directory
 			return fullPath;
 		}
-		// the path neither its parent exist
+		// neither path nor its parent exist
 		throw e;
 	}
 }
