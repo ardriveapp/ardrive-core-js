@@ -87,7 +87,7 @@ export class ArDriveAnonymous extends ArDriveType {
 	): Promise<void> {
 		const publicFile = await this.getPublicFile({ fileId });
 		const fullPath = joinPath(destFolderPath, publicFile.name);
-		const { data } = await this.arFsDao.getDataStream(publicFile);
+		const data = await this.arFsDao.getPublicDataStream(publicFile.dataTxId);
 		const fileToDownload = new ArFSPublicFileToDownload(publicFile, data, fullPath);
 		await fileToDownload.write();
 	}

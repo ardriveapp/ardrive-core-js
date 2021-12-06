@@ -5,7 +5,13 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSFolderToUpload, ArFSFileToUpload, ArFSPrivateFileToDownload } from './arfs/arfs_file_wrapper';
+import {
+	ArFSFolderToUpload,
+	ArFSFileToUpload,
+	ArFSPrivateFileToDownload,
+	ArFSEntityToUpload,
+	ArFSManifestToUpload
+} from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -38,7 +44,9 @@ import {
 	DriveID,
 	stubTransactionID,
 	UploadPublicFileParams,
-	UploadPrivateFileParams
+	UploadPrivateFileParams,
+	ArFSManifestResult,
+	UploadPublicManifestParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -70,15 +78,15 @@ import {
 	FileUploadBaseCosts,
 	DriveUploadBaseCosts
 } from './types';
-import { urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import { join as joinPath } from 'path';
 import { StreamDecrypt } from './utils/stream_decrypt';
+import { resolveLocalFilePath } from './utils/resolve_path';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -670,15 +678,6 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	/** Computes the size of a private file encrypted with AES256-GCM */
-	encryptedDataSize(dataSize: ByteCount): ByteCount {
-		// TODO: Refactor to utils?
-		if (+dataSize > Number.MAX_SAFE_INTEGER - 16) {
-			throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - 16}!`);
-		}
-		return new ByteCount((+dataSize / 16 + 1) * 16);
-	}
-
 	public async uploadPrivateFile({
 		parentFolderId,
 		wrappedFile,
@@ -1002,6 +1001,88 @@ export class ArDrive extends ArDriveAnonymous {
 			entityResults: uploadEntityResults,
 			feeResults: uploadEntityFees
 		};
+	}
+
+	public async uploadPublicManifest({
+		folderId,
+		destManifestName = 'DriveManifest.json',
+		maxDepth = Number.MAX_SAFE_INTEGER,
+		conflictResolution = upsertOnConflicts
+	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
+
+		// Assert that the owner of this drive is consistent with the provided wallet
+		const owner = await this.getOwnerForDriveId(driveId);
+		await this.assertOwnerAddress(owner);
+
+		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
+
+		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
+		if (fileToFolderConflict) {
+			// File names CANNOT conflict with folder names
+			throw new Error(errorMessage.entityNameExists);
+		}
+
+		// Manifest becomes a new revision if the destination name conflicts for
+		// --replace and --upsert behaviors, since it will be newly created each time
+		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
+		if (existingFileId && conflictResolution === skipOnConflicts) {
+			// Return empty result if there is an existing manifest and resolution is set to skip
+			return { ...emptyArFSResult, links: [] };
+		}
+
+		const children = await this.listPublicFolder({
+			folderId,
+			maxDepth,
+			includeRoot: true,
+			owner
+		});
+		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
+
+		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
+			arweaveManifest.size,
+			this.stubPublicFileMetadata(arweaveManifest),
+			'public'
+		);
+		const fileDataRewardSettings = { reward: uploadBaseCosts.fileDataBaseReward, feeMultiple: this.feeMultiple };
+		const metadataRewardSettings = { reward: uploadBaseCosts.metaDataBaseReward, feeMultiple: this.feeMultiple };
+
+		const uploadFileResult = await this.arFsDao.uploadPublicFile({
+			parentFolderId: folderId,
+			wrappedFile: arweaveManifest,
+			driveId,
+			fileDataRewardSettings,
+			metadataRewardSettings,
+			destFileName: destManifestName,
+			existingFileId
+		});
+
+		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			communityWinstonTip: uploadBaseCosts.communityWinstonTip
+		});
+
+		// Setup links array from manifest
+		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
+			(path) => `https://arweave.net/${uploadFileResult.dataTrxId}/${path}`
+		);
+
+		return Promise.resolve({
+			created: [
+				{
+					type: 'file',
+					metadataTxId: uploadFileResult.metaDataTrxId,
+					dataTxId: uploadFileResult.dataTrxId,
+					entityId: uploadFileResult.fileId
+				}
+			],
+			tips: [tipData],
+			fees: {
+				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
+				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
+				[`${tipData.txId}`]: communityTipTrxReward
+			},
+			links: [`https://arweave.net/${uploadFileResult.dataTrxId}`, ...fileLinks]
+		});
 	}
 
 	public async createPublicFolder({
@@ -1392,7 +1473,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<FileUploadBaseCosts> {
 		let fileSize = decryptedFileSize;
 		if (drivePrivacy === 'private') {
-			fileSize = this.encryptedDataSize(fileSize);
+			fileSize = encryptedDataSize(fileSize);
 		}
 
 		let totalPrice = W(0);
@@ -1489,7 +1570,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 	// Provides for stubbing metadata during cost estimations since the data trx ID won't yet be known
 	private stubPublicFileMetadata(
-		wrappedFile: ArFSFileToUpload,
+		wrappedFile: ArFSEntityToUpload,
 		destinationFileName?: string
 	): ArFSPublicFileMetadataTransactionData {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
@@ -1536,12 +1617,13 @@ export class ArDrive extends ArDriveAnonymous {
 		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
-		const fullPath = joinPath(destFolderPath, privateFile.name);
-		const { data } = await this.arFsDao.getDataStream(privateFile);
+		const fullPath = resolveLocalFilePath(destFolderPath, privateFile.name);
+		const data = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
-		const decryptingStream = new StreamDecrypt(fileCipherIV, fileKey);
-		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decryptingStream);
+		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
+		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
+		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();
 	}
 }

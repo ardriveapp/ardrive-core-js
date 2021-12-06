@@ -34,7 +34,7 @@ import {
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
 } from './arfs_entity_result_factory';
-import { ArFSFileToUpload } from './arfs_file_wrapper';
+import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -68,7 +68,7 @@ import {
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, gatewayURL } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -101,6 +101,8 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -134,7 +136,7 @@ export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
 
 export interface ArFSUploadPublicFileParams {
 	parentFolderId: FolderID;
-	wrappedFile: ArFSFileToUpload;
+	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
 	fileDataRewardSettings: RewardSettings;
 	metadataRewardSettings: RewardSettings;
@@ -486,7 +488,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async uploadFile<R extends ArFSUploadFileResult, D extends ArFSFileMetadataTransactionData>(
-		wrappedFile: ArFSFileToUpload,
+		wrappedFile: ArFSEntityToUpload,
 		fileDataRewardSettings: RewardSettings,
 		metadataRewardSettings: RewardSettings,
 		dataPrototypeFactoryFn: FileDataPrototypeFactory,
@@ -1063,10 +1065,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
 		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
-		const fileCipherIvResult = results[0];
-		if (!fileCipherIvResult) {
+		if (results.length !== 1) {
 			throw new Error(`Could not fetch the CipherIV for transaction with id: ${txId}`);
 		}
+		const [fileCipherIvResult] = results;
 		return fileCipherIvResult.cipherIV;
 	}
 
@@ -1102,7 +1104,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const txId = TxID(node.id);
 				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
 				if (!cipherIVTag) {
-					throw new Error("The private file doesn't has a valid Cipher-IV");
+					throw new Error("The private file doesn't have a valid Cipher-IV");
 				}
 				const cipherIV = cipherIVTag.value;
 				result.push({ txId, cipherIV });
@@ -1110,4 +1112,54 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		return result;
 	}
+
+	/**
+	 * Returns the data stream of a private file
+	 * @param privateFile - the entity of the data to be download
+	 * @returns {Promise<void>}
+	 */
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - 16;
+		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream',
+			headers: {
+				Range: `bytes=0-${+authTagIndex - 1}`
+			}
+		};
+		const response = await axios(requestConfig);
+		return response.data;
+	}
+
+	getAuthTagForPrivateFile = async (privateFile: ArFSPrivateFile): Promise<Buffer> =>
+		new Promise((resolve, reject) => {
+			const dataLength = privateFile.encryptedDataSize;
+			const authTagIndex = +dataLength - 16;
+			axios({
+				method: 'GET',
+				url: `${gatewayURL}${privateFile.dataTxId}`,
+				headers: {
+					Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+				},
+				responseType: 'stream'
+			}).then((response) => {
+				const { data }: { data: Readable } = response;
+
+				const authTag = Buffer.alloc(16);
+				let index = 0;
+				data.on('data', (chunk: Buffer) => {
+					authTag.set(chunk, index);
+					index += chunk.length;
+				});
+				data.on('end', () => {
+					resolve(authTag);
+				});
+				data.on('error', (err) => {
+					reject(err);
+				});
+			});
+		});
 }
