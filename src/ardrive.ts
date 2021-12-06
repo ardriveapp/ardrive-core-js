@@ -1034,11 +1034,8 @@ export class ArDrive extends ArDriveAnonymous {
 		});
 	}
 
-	public async createPublicFolder({
-		folderName,
-		driveId,
-		parentFolderId
-	}: CreatePublicFolderParams): Promise<ArFSResult> {
+	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
 		await this.assertOwnerAddress(owner);
 
@@ -1080,10 +1077,10 @@ export class ArDrive extends ArDriveAnonymous {
 
 	public async createPrivateFolder({
 		folderName,
-		driveId,
 		driveKey,
 		parentFolderId
 	}: CreatePrivateFolderParams): Promise<ArFSResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId, driveKey);
 		await this.assertOwnerAddress(owner);
 

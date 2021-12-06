@@ -97,8 +97,9 @@ export interface CreatePublicManifestParams extends Required<UploadPublicManifes
 
 export interface CreatePublicFolderParams {
 	folderName: string;
-	driveId: DriveID;
 	parentFolderId: FolderID;
+	/** @deprecated ArFS cache makes passing driveId here redundant. This parameter makes the api confusing and will no longer used */
+	driveId?: DriveID;
 }
 export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 
