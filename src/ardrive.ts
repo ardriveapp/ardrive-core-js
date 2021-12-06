@@ -85,8 +85,8 @@ import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import { join as joinPath } from 'path';
 import { StreamDecrypt } from './utils/stream_decrypt';
+import { resolveLocalFilePath } from './utils/resolve_path';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1617,7 +1617,7 @@ export class ArDrive extends ArDriveAnonymous {
 		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 	): Promise<void> {
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
-		const fullPath = joinPath(destFolderPath, privateFile.name);
+		const fullPath = resolveLocalFilePath(destFolderPath, privateFile.name);
 		const data = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
