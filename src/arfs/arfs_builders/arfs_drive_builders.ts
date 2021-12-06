@@ -23,7 +23,7 @@ import {
 
 interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
-	rootFolderId: FolderID;
+	rootFolderId: string; // FIXME: https://ardrive.atlassian.net/browse/PE-749
 }
 
 export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublicDrive> {
@@ -189,7 +189,7 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 
 			this.name = decryptedDriveJSON.name;
-			this.rootFolderId = decryptedDriveJSON.rootFolderId;
+			this.rootFolderId = EID(decryptedDriveJSON.rootFolderId);
 
 			return new ArFSPrivateDrive(
 				this.appName,
@@ -314,9 +314,10 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 				if (isPrivate) {
 					// Type-check private properties
 					if (this.cipher?.length && this.driveAuthMode?.length && this.cipherIV?.length) {
+						const rootFolderId: unknown = new EncryptedEntityID(); // FIXME: https://ardrive.atlassian.net/browse/PE-749
 						const placeholderDriveData = {
 							name: ENCRYPTED_DATA_PLACEHOLDER,
-							rootFolderId: new EncryptedEntityID()
+							rootFolderId: rootFolderId as string
 						};
 						return this.privateKeyData.safelyDecryptToJson<DriveMetaDataTransactionData>(
 							this.cipherIV,
@@ -333,7 +334,7 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			})();
 
 			this.name = dataJSON.name;
-			this.rootFolderId = dataJSON.rootFolderId;
+			this.rootFolderId = EID(dataJSON.rootFolderId);
 
 			if (isPrivate) {
 				return new ArFSPrivateDrive(
