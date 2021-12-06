@@ -104,4 +104,25 @@ export class ArDriveAnonymous extends ArDriveType {
 
 		return this.arFsDao.downloadPublicFolder(args as ArFSDownloadPublicFolderParams);
 	}
+
+	async downloadPublicDrive(args: {
+		driveId: DriveID;
+		destFolderPath: string;
+		maxDepth: number;
+		owner?: ArweaveAddress;
+	}): Promise<void> {
+		if (!args.owner) {
+			args.owner = await this.arFsDao.getOwnerForDriveId(args.driveId);
+		}
+
+		const drive = await this.arFsDao.getPublicDrive(args.driveId, args.owner);
+		const downloadFolderArgs: ArFSDownloadPublicFolderParams = {
+			folderId: drive.rootFolderId,
+			destFolderPath: args.destFolderPath,
+			maxDepth: args.maxDepth,
+			owner: args.owner
+		};
+
+		return this.arFsDao.downloadPublicFolder(downloadFolderArgs);
+	}
 }

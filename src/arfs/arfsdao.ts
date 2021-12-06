@@ -1195,7 +1195,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth - 1);
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
 		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
-			subFolderIDs.includes(folder.entityId)
+			subFolderIDs.some((subFolderID) => subFolderID.equals(folder.entityId))
 		);
 
 		// Fetch all file entities within all Folders of the drive
