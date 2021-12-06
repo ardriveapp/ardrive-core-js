@@ -12,8 +12,6 @@ import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
 	appVersion?: string;
@@ -27,6 +25,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	feeMultiple?: FeeMultiple;
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
+	bundle?: boolean;
 }
 
 const defaultArweave = Arweave.init({
@@ -47,12 +46,13 @@ export function arDriveFactory({
 	feeMultiple,
 	arfsDao,
 	appName = DEFAULT_APP_NAME,
-	appVersion = DEFAULT_APP_VERSION
+	appVersion = DEFAULT_APP_VERSION,
+	bundle = true
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
 		walletDao ?? new WalletDAO(arweave, appName, appVersion),
-		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion),
+		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, bundle),
 		communityOracle,
 		appName,
 		appVersion,

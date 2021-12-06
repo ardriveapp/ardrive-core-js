@@ -179,7 +179,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		arweave: Arweave,
 		private readonly dryRun = false,
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION
+		protected appVersion = DEFAULT_APP_VERSION,
+		private readonly bundle = true
 	) {
 		super(arweave, appName, appVersion);
 	}
