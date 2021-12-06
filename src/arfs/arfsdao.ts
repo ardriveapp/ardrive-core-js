@@ -1116,7 +1116,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	/**
 	 * Returns the data stream of a private file
 	 * @param privateFile - the entity of the data to be download
-	 * @returns {Promise<void>}
+	 * @returns {Promise<Readable>}
 	 */
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
 		const dataLength = privateFile.encryptedDataSize;
