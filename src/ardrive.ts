@@ -85,6 +85,7 @@ import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
+import { isBundleResult } from './arfs/arfs_entity_result_factory';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -570,9 +571,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: wrappedFolder.getBaseCosts().metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				},
-				parentFolderId,
-				syncParentFolderId: false,
-				owner
+				parentFolderId
 			});
 
 			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
@@ -864,10 +863,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: wrappedFolder.getBaseCosts().metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				},
-				parentFolderId,
-				driveKey,
-				syncParentFolderId: false,
-				owner
+				parentFolderId
 			});
 
 			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
@@ -1055,8 +1051,7 @@ export class ArDrive extends ArDriveAnonymous {
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
-			parentFolderId,
-			owner
+			parentFolderId
 		});
 
 		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
@@ -1100,9 +1095,7 @@ export class ArDrive extends ArDriveAnonymous {
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
-			driveKey,
-			parentFolderId,
-			owner
+			parentFolderId
 		});
 
 		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
@@ -1136,14 +1129,13 @@ export class ArDrive extends ArDriveAnonymous {
 			reward: driveUploadCosts.rootFolderMetaDataBaseReward,
 			feeMultiple: this.feeMultiple
 		};
-		const createDriveResult = await this.arFsDao.createPublicDrive(
+		const createDriveResult = await this.arFsDao.createPublicDrive({
 			driveName,
 			driveRewardSettings,
-			rootFolderRewardSettings,
-			// There is no need to assert ownership during drive creation
-			await this.wallet.getAddress()
-		);
-		return Promise.resolve({
+			rootFolderRewardSettings
+		});
+
+		const arFSResults: ArFSResult = {
 			created: [
 				{
 					type: 'drive',
@@ -1157,11 +1149,32 @@ export class ArDrive extends ArDriveAnonymous {
 				}
 			],
 			tips: [],
+			fees: {}
+		};
+
+		if (isBundleResult(createDriveResult)) {
+			arFSResults.created.push({
+				type: 'bundle',
+				bundleTxId: createDriveResult.bundleTrxId
+			});
+
+			// Bundled trx result:
+			return {
+				...arFSResults,
+				fees: {
+					[`${createDriveResult.bundleTrxId}`]: createDriveResult.bundleTrxReward
+				}
+			};
+		}
+
+		// V2 Transaction result:
+		return {
+			...arFSResults,
 			fees: {
 				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
 				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
 			}
-		});
+		};
 	}
 
 	public async createPrivateDrive({ driveName, newPrivateDriveData }: CreatePrivateDriveParams): Promise<ArFSResult> {
@@ -1181,17 +1194,16 @@ export class ArDrive extends ArDriveAnonymous {
 			reward: driveCreationCosts.rootFolderMetaDataBaseReward,
 			feeMultiple: this.feeMultiple
 		};
-		const createDriveResult = await this.arFsDao.createPrivateDrive(
+		const createDriveResult = await this.arFsDao.createPrivateDrive({
 			driveName,
-			newPrivateDriveData,
+			newDriveData: newPrivateDriveData,
 			driveRewardSettings,
-			rootFolderRewardSettings,
-			// Ownership of drive has been verified by assertValidPassword successfully decrypting
-			await this.wallet.getAddress()
-		);
+			rootFolderRewardSettings
+		});
 
 		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
-		return Promise.resolve({
+
+		const arFSResults: ArFSResult = {
 			created: [
 				{
 					type: 'drive',
@@ -1207,11 +1219,32 @@ export class ArDrive extends ArDriveAnonymous {
 				}
 			],
 			tips: [],
+			fees: {}
+		};
+
+		if (isBundleResult(createDriveResult)) {
+			arFSResults.created.push({
+				type: 'bundle',
+				bundleTxId: createDriveResult.bundleTrxId
+			});
+
+			// Bundled trx result:
+			return {
+				...arFSResults,
+				fees: {
+					[`${createDriveResult.bundleTrxId}`]: createDriveResult.bundleTrxReward
+				}
+			};
+		}
+
+		// V2 Transaction result:
+		return {
+			...arFSResults,
 			fees: {
 				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
 				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
 			}
-		});
+		};
 	}
 
 	/**

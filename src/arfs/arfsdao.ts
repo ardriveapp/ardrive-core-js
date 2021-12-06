@@ -22,7 +22,6 @@ import {
 	ArFSCreateFolderResult,
 	WithDriveKey,
 	ArFSCreateDriveResult,
-	ArFSCreateDriveResultFactory,
 	ArFSCreatePrivateDriveResult,
 	ArFSMoveEntityResult,
 	ArFSMoveEntityResultFactory,
@@ -32,11 +31,15 @@ import {
 	ArFSMovePrivateFolderResult,
 	ArFSUploadFileResult,
 	ArFSUploadFileResultFactory,
-	ArFSUploadPrivateFileResult
+	ArFSUploadPrivateFileResult,
+	ArFSCreateBundledDriveResult,
+	ArFSCreatePrivateBundledDriveResult,
+	ArFSCreatePublicDriveResult,
+	ArFSCreatePublicBundledDriveResult,
+	ArFSDriveResult
 } from './arfs_entity_result_factory';
 import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
-	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
 	MoveEntityMetaDataFactory,
 	FileDataPrototypeFactory,
@@ -46,25 +49,28 @@ import {
 import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPrivateFolderMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSPublicFileDataPrototype,
 	ArFSPrivateFileDataPrototype,
-	ArFSObjectMetadataPrototype
+	ArFSObjectMetadataPrototype,
+	ArFSFolderMetaDataPrototype,
+	ArFSDriveMetaDataPrototype,
+	ArFSPublicDriveMetaDataPrototype
 } from './arfs_prototypes';
 import {
 	ArFSObjectTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
-	ArFSPublicDriveTransactionData,
 	ArFSPrivateDriveTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
-	ArFSPrivateFileDataTransactionData
+	ArFSPrivateFileDataTransactionData,
+	ArFSFolderTransactionData,
+	ArFSPublicDriveTransactionData
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
@@ -110,6 +116,57 @@ export class PrivateDriveKeyData {
 	}
 }
 
+type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
+
+export interface ArFSPrepareDriveParams<T> {
+	generateDriveIdFn: GenerateDriveIdFn;
+	drivePrototypeFactory: CreateDriveMetaDataFactory;
+	rootFolderPrototypeFactory: (rootFolderId: FolderID, driveId: DriveID) => ArFSFolderMetaDataPrototype;
+	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype | ArFSDriveMetaDataPrototype>;
+}
+
+interface ArFSPrepareResult<T> {
+	arFSObjects: T[];
+}
+interface ArFSPrepareFolderResult<T> extends ArFSPrepareResult<T> {
+	folderId: FolderID;
+}
+
+export interface ArFSPrepareDriveResult<T> extends ArFSPrepareResult<T> {
+	rootFolderId: FolderID;
+	driveId: DriveID;
+}
+
+export interface ArFSPrepareFolderParams<T> {
+	folderPrototypeFactory: (folderId: FolderID) => ArFSFolderMetaDataPrototype;
+	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype>;
+}
+
+export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {
+	driveId: DriveID;
+	rewardSettings: RewardSettings;
+	parentFolderId: FolderID;
+	folderData: T;
+}
+
+export type ArFSPublicCreateFolderParams = ArFSCreateFolderParams<ArFSPublicFolderTransactionData>;
+export type ArFSPrivateCreateFolderParams = ArFSCreateFolderParams<ArFSPrivateFolderTransactionData>;
+
+export interface ArFSCreatePublicDriveParams {
+	driveName: string;
+	driveRewardSettings: RewardSettings;
+	rootFolderRewardSettings: RewardSettings;
+}
+export interface ArFSCreatePrivateDriveParams extends ArFSCreatePublicDriveParams {
+	newDriveData: PrivateDriveKeyData;
+}
+
+/** Shared result type for createBundledDrive and createV2TxDrive */
+export type ArFSDriveTxResult<R extends ArFSDriveResult> = {
+	result: R;
+	transactions: Transaction[];
+};
+
 export interface PrepareObjectTransactionParams {
 	objectMetaData: ArFSObjectMetadataPrototype;
 	rewardSettings?: RewardSettings;
@@ -146,23 +203,6 @@ export interface ArFSUploadPrivateFileParams extends ArFSUploadPublicFileParams 
 
 export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
 
-export interface CreateFolderSettings {
-	driveId: DriveID;
-	rewardSettings: RewardSettings;
-	parentFolderId?: FolderID;
-	syncParentFolderId?: boolean;
-	owner: ArweaveAddress;
-}
-
-export interface CreatePublicFolderSettings extends CreateFolderSettings {
-	folderData: ArFSPublicFolderTransactionData;
-}
-
-export interface CreatePrivateFolderSettings extends CreateFolderSettings {
-	folderData: ArFSPrivateFolderTransactionData;
-	driveKey: DriveKey;
-}
-
 interface getPublicChildrenFolderIdsParams {
 	folderId: FolderID;
 	driveId: DriveID;
@@ -185,193 +225,220 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		super(arweave, appName, appVersion);
 	}
 
-	// For generic use with public and private drives. Generic types should all be harmonious.
-	async createFolder(
-		{ driveId, rewardSettings, parentFolderId, syncParentFolderId = true }: CreateFolderSettings,
-		getDriveFn: GetDriveFunction,
-		folderPrototypeFactory: FolderMetaDataFactory
-	): Promise<ArFSCreateFolderResult> {
-		if (parentFolderId && syncParentFolderId) {
-			// Assert that drive ID is consistent with parent folder ID
-			const actualDriveId = await this.getDriveIdForFolderId(parentFolderId);
-
-			if (!actualDriveId.equals(driveId)) {
-				throw new Error(
-					`Drive id: ${driveId} does not match actual drive id: ${actualDriveId} for parent folder id`
-				);
-			}
-		} else if (syncParentFolderId) {
-			// If drive contains a root folder ID, treat this as a subfolder to the root folder
-			const drive = await getDriveFn();
-
-			if (!drive) {
-				throw new Error(`Drive with Drive ID ${driveId} not found!`);
-			}
-
-			if (drive.rootFolderId) {
-				parentFolderId = drive.rootFolderId;
-			}
-		}
-
+	/** Prepare an ArFS folder entity for upload */
+	private async prepareFolder<T>({
+		folderPrototypeFactory,
+		prepareArFSObject
+	}: ArFSPrepareFolderParams<T>): Promise<ArFSPrepareFolderResult<T>> {
 		// Generate a new folder ID
 		const folderId = EID(uuidv4());
 
-		// Create a root folder metadata transaction
-		const folderMetadata = folderPrototypeFactory(folderId, parentFolderId);
-		const folderTrx = await this.prepareArFSObjectTransaction({ objectMetaData: folderMetadata, rewardSettings });
+		// Create a folder metadata transaction
+		const folderMetadata = folderPrototypeFactory(folderId);
 
-		// Execute the upload
-		if (!this.dryRun) {
-			const folderUploader = await this.arweave.transactions.getUploader(folderTrx);
-			while (!folderUploader.isComplete) {
-				await folderUploader.uploadChunk();
-			}
-		}
+		// Prepare the ArFS folder transaction or dataItem
+		const arFSObjects = [await prepareArFSObject(folderMetadata)];
+
+		return { arFSObjects, folderId };
+	}
+
+	/** Create a single folder as a V2 transaction */
+	private async createFolder(
+		folderPrototypeFactory: (folderId: FolderID) => ArFSFolderMetaDataPrototype,
+		rewardSettings: RewardSettings
+	): Promise<ArFSCreateFolderResult> {
+		const { arFSObjects, folderId } = await this.prepareFolder({
+			folderPrototypeFactory,
+			prepareArFSObject: (folderMetaData) =>
+				this.prepareArFSObjectTransaction({ objectMetaData: folderMetaData, rewardSettings })
+		});
+		const folderTrx = arFSObjects[0];
+
+		await this.sendTransactionsAsChunks([folderTrx]);
 
 		return { metaDataTrxId: TxID(folderTrx.id), metaDataTrxReward: W(folderTrx.reward), folderId };
 	}
 
-	// Convenience wrapper for folder creation in a known-public use case
-	async createPublicFolder({
-		folderData,
+	/** Create a single private folder as a V2 transaction */
+	public async createPrivateFolder({
 		driveId,
 		rewardSettings,
 		parentFolderId,
-		syncParentFolderId = true,
-		owner
-	}: CreatePublicFolderSettings): Promise<ArFSCreateFolderResult> {
+		folderData
+	}: ArFSPrivateCreateFolderParams): Promise<ArFSCreateFolderResult> {
 		return this.createFolder(
-			{ driveId, rewardSettings, parentFolderId, syncParentFolderId, owner },
-			() => this.getPublicDrive(driveId, owner),
-			(folderId, parentFolderId) =>
-				new ArFSPublicFolderMetaDataPrototype(folderData, driveId, folderId, parentFolderId)
+			(folderId) => new ArFSPrivateFolderMetaDataPrototype(driveId, folderId, folderData, parentFolderId),
+			rewardSettings
 		);
 	}
 
-	// Convenience wrapper for folder creation in a known-private use case
-	async createPrivateFolder({
-		folderData,
+	/** Create a single public folder as a V2 transaction */
+	public async createPublicFolder({
 		driveId,
-		driveKey,
-		parentFolderId,
 		rewardSettings,
-		syncParentFolderId = true,
-		owner
-	}: CreatePrivateFolderSettings): Promise<ArFSCreateFolderResult> {
+		parentFolderId,
+		folderData
+	}: ArFSPublicCreateFolderParams): Promise<ArFSCreateFolderResult> {
 		return this.createFolder(
-			{ driveId, rewardSettings, parentFolderId, syncParentFolderId, owner },
-			() => this.getPrivateDrive(driveId, driveKey, owner),
-			(folderId, parentFolderId) =>
-				new ArFSPrivateFolderMetaDataPrototype(driveId, folderId, folderData, parentFolderId)
+			(folderId) => new ArFSPublicFolderMetaDataPrototype(folderData, driveId, folderId, parentFolderId),
+			rewardSettings
 		);
 	}
 
-	async createDrive<R extends ArFSCreateDriveResult>(
-		driveRewardSettings: RewardSettings,
-		generateDriveIdFn: GenerateDriveIdFn,
-		createFolderFn: CreateFolderFunction,
-		createMetadataFn: CreateDriveMetaDataFactory,
-		resultFactory: ArFSCreateDriveResultFactory<R>
-	): Promise<R> {
-		// Generate a new drive ID  for the new drive
+	/** Prepare an ArFS drive entity for upload */
+	private async prepareDrive<T>({
+		drivePrototypeFactory,
+		prepareArFSObject,
+		rootFolderPrototypeFactory,
+		generateDriveIdFn
+	}: ArFSPrepareDriveParams<T>): Promise<ArFSPrepareDriveResult<T>> {
+		// Generate a new drive ID for the new drive
 		const driveId = generateDriveIdFn();
 
-		// Create root folder
-		const {
-			metaDataTrxId: rootFolderTrxId,
-			metaDataTrxReward: rootFolderTrxReward,
-			folderId: rootFolderId
-		} = await createFolderFn(driveId);
-
-		// Create a drive metadata transaction
-		const driveMetaData = await createMetadataFn(driveId, rootFolderId);
-		const driveTrx = await this.prepareArFSObjectTransaction({
-			objectMetaData: driveMetaData,
-			rewardSettings: driveRewardSettings
+		// Create ArFS root folder object
+		const { arFSObjects, folderId: rootFolderId } = await this.prepareFolder({
+			folderPrototypeFactory: (folderId) => rootFolderPrototypeFactory(folderId, driveId),
+			prepareArFSObject
 		});
+		const rootFolderArFSObject = arFSObjects[0];
 
-		// Execute the upload
-		if (!this.dryRun) {
-			const driveUploader = await this.arweave.transactions.getUploader(driveTrx);
-			while (!driveUploader.isComplete) {
-				await driveUploader.uploadChunk();
-			}
-		}
+		// Create ArFS drive object
+		const driveMetaData = await drivePrototypeFactory(driveId, rootFolderId);
+		const driveArFSObject = await prepareArFSObject(driveMetaData);
 
-		return resultFactory({
-			metaDataTrxId: TxID(driveTrx.id),
-			metaDataTrxReward: W(driveTrx.reward),
-			rootFolderTrxId: rootFolderTrxId,
-			rootFolderTrxReward: rootFolderTrxReward,
-			driveId: driveId,
-			rootFolderId: rootFolderId
-		});
+		return { arFSObjects: [rootFolderArFSObject, driveArFSObject], driveId, rootFolderId };
 	}
 
-	async createPublicDrive(
-		driveName: string,
+	/** Create drive and root folder together as bundled transaction */
+	private async createBundledDrive(
+		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<DataItem>, 'prepareArFSObject'>,
+		rewardSettings: RewardSettings
+	): Promise<ArFSDriveTxResult<ArFSCreateBundledDriveResult>> {
+		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
+			...sharedPrepDriveParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSDataItem({
+					objectMetaData
+				})
+		});
+
+		// Pack data items into a bundle
+		const bundledTrx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
+
+		const [rootFolderDataItem, driveDataItem] = arFSObjects;
+		return {
+			transactions: [bundledTrx],
+			result: {
+				bundleTrxId: TxID(bundledTrx.id),
+				bundleTrxReward: W(bundledTrx.reward),
+				driveId,
+				metaDataTrxId: TxID(driveDataItem.id),
+				rootFolderId,
+				rootFolderTrxId: TxID(rootFolderDataItem.id)
+			}
+		};
+	}
+
+	/** Create drive and root folder as separate V2 transactions */
+	private async createV2TxDrive(
+		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction>, 'prepareArFSObject'>,
 		driveRewardSettings: RewardSettings,
-		rootFolderRewardSettings: RewardSettings,
-		owner: ArweaveAddress
-	): Promise<ArFSCreateDriveResult> {
-		return this.createDrive<ArFSCreateDriveResult>(
-			driveRewardSettings,
-			() => EID(uuidv4()),
-			async (driveId) => {
-				const folderData = new ArFSPublicFolderTransactionData(driveName);
-				return this.createPublicFolder({
-					folderData,
-					driveId,
-					rewardSettings: rootFolderRewardSettings,
-					syncParentFolderId: false,
-					owner
-				});
-			},
-			(driveId, rootFolderId) => {
-				return Promise.resolve(
+		rootFolderRewardSettings: RewardSettings
+	): Promise<ArFSDriveTxResult<ArFSCreateDriveResult>> {
+		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
+			...sharedPrepDriveParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings:
+						// Type-check the metadata to conditionally pass correct reward setting
+						objectMetaData instanceof ArFSDriveMetaDataPrototype
+							? driveRewardSettings
+							: rootFolderRewardSettings
+				})
+		});
+
+		const [rootFolderTrx, driveTrx] = arFSObjects;
+		return {
+			transactions: arFSObjects,
+			result: {
+				metaDataTrxId: TxID(driveTrx.id),
+				metaDataTrxReward: W(driveTrx.reward),
+				driveId,
+				rootFolderId,
+				rootFolderTrxId: TxID(rootFolderTrx.id),
+				rootFolderTrxReward: W(rootFolderTrx.reward)
+			}
+		};
+	}
+
+	/**
+	 * Create drive and root folder as a V2 transaction OR a bundled transaction
+	 *
+	 * @remarks Result type is determined by ArFSDAO class setting `bundle`
+	 */
+	private async createDrive(
+		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction | DataItem>, 'prepareArFSObject'>,
+		driveRewardSettings: RewardSettings,
+		rootFolderRewardSettings: RewardSettings
+	): Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult> {
+		const { transactions, result } = this.bundle
+			? await this.createBundledDrive(sharedPrepDriveParams, driveRewardSettings)
+			: await this.createV2TxDrive(sharedPrepDriveParams, driveRewardSettings, rootFolderRewardSettings);
+
+		// Upload all v2 transactions or bundles
+		await this.sendTransactionsAsChunks(transactions);
+		return result;
+	}
+
+	/** Create an ArFS public drive */
+	public async createPublicDrive({
+		driveName,
+		driveRewardSettings,
+		rootFolderRewardSettings
+	}: ArFSCreatePublicDriveParams): Promise<ArFSCreatePublicDriveResult | ArFSCreatePublicBundledDriveResult> {
+		const folderData = new ArFSPublicFolderTransactionData(driveName);
+		const prepPublicDriveParams = {
+			rootFolderPrototypeFactory: (folderId: FolderID, driveId: DriveID) =>
+				new ArFSPublicFolderMetaDataPrototype(folderData, driveId, folderId),
+			generateDriveIdFn: () => EID(uuidv4()),
+			drivePrototypeFactory: async (driveId: DriveID, rootFolderId: FolderID) =>
+				Promise.resolve(
 					new ArFSPublicDriveMetaDataPrototype(
 						new ArFSPublicDriveTransactionData(driveName, rootFolderId),
 						driveId
 					)
-				);
-			},
-			(result) => result // No change
-		);
+				)
+		};
+
+		return this.createDrive(prepPublicDriveParams, driveRewardSettings, rootFolderRewardSettings);
 	}
 
-	async createPrivateDrive(
-		driveName: string,
-		newDriveData: PrivateDriveKeyData,
-		driveRewardSettings: RewardSettings,
-		rootFolderRewardSettings: RewardSettings,
-		owner: ArweaveAddress
-	): Promise<ArFSCreatePrivateDriveResult> {
-		return this.createDrive(
-			driveRewardSettings,
-			() => newDriveData.driveId,
-			async (driveId) => {
-				const folderData = await ArFSPrivateFolderTransactionData.from(driveName, newDriveData.driveKey);
-				return this.createPrivateFolder({
-					folderData,
-					driveId,
-					rewardSettings: rootFolderRewardSettings,
-					syncParentFolderId: false,
-					driveKey: newDriveData.driveKey,
-					owner
-				});
-			},
-			async (driveId, rootFolderId) => {
-				return Promise.resolve(
+	/** Create an ArFS private drive */
+	public async createPrivateDrive({
+		driveName,
+		driveRewardSettings,
+		rootFolderRewardSettings,
+		newDriveData
+	}: ArFSCreatePrivateDriveParams): Promise<ArFSCreatePrivateDriveResult | ArFSCreatePrivateBundledDriveResult> {
+		const folderData = await ArFSPrivateFolderTransactionData.from(driveName, newDriveData.driveKey);
+		const prepPrivateDriveParams = {
+			rootFolderPrototypeFactory: (folderId: FolderID, driveId: DriveID) =>
+				new ArFSPrivateFolderMetaDataPrototype(driveId, folderId, folderData),
+			generateDriveIdFn: () => newDriveData.driveId,
+			drivePrototypeFactory: async (driveId: DriveID, rootFolderId: FolderID) =>
+				Promise.resolve(
 					new ArFSPrivateDriveMetaDataPrototype(
 						driveId,
 						await ArFSPrivateDriveTransactionData.from(driveName, rootFolderId, newDriveData.driveKey)
 					)
-				);
-			},
-			(result) => {
-				return { ...result, driveKey: newDriveData.driveKey }; // Add drive key for private return type
-			}
-		);
+				)
+		};
+
+		return {
+			...(await this.createDrive(prepPrivateDriveParams, driveRewardSettings, rootFolderRewardSettings)),
+			driveKey: folderData.driveKey
+		};
 	}
 
 	async moveEntity<R extends ArFSMoveEntityResult>(
@@ -765,6 +832,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());
 		return transaction;
+	}
+
+	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {
+		// Execute the uploads
+		if (!this.dryRun) {
+			await Promise.all(
+				transactions.map(async (transaction) => {
+					const driveUploader = await this.arweave.transactions.getUploader(transaction);
+					while (!driveUploader.isComplete) {
+						await driveUploader.uploadChunk();
+					}
+				})
+			);
+		}
 	}
 
 	// Convenience function for known-private use cases
