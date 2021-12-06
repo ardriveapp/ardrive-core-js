@@ -24,7 +24,7 @@ import {
 	ArFSDriveTransactionData,
 	ArFSFolderTransactionData
 } from './arfs/arfs_trx_data_types';
-import { ArFSDAO } from './arfs/arfsdao';
+import { ArFSDAO, ArFSDownloadPrivateFolderParams } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
@@ -1625,5 +1625,19 @@ export class ArDrive extends ArDriveAnonymous {
 		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
 		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();
+	}
+
+	async downloadPrivateFolder(args: {
+		folderId: FolderID;
+		destFolderPath: string;
+		maxDepth: number;
+		driveKey: DriveKey;
+		owner?: ArweaveAddress;
+	}): Promise<void> {
+		if (!args.owner) {
+			args.owner = await this.arFsDao.getDriveOwnerForFolderId(args.folderId);
+		}
+
+		return this.arFsDao.downloadPrivateFolder(args as ArFSDownloadPrivateFolderParams);
 	}
 }

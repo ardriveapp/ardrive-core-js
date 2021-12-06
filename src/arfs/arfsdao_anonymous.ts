@@ -341,7 +341,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const folderWrapper = new ArFSPublicFolderToDownload(folder, hierarchy);
 
 		for (const childFolder of [folder, ...childrenFolderEntities]) {
-			debugger;
 			// assert the existence of the folder in disk
 			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
 				new ArFSPublicFileOrFolderWithPaths(childFolder, hierarchy)
@@ -358,14 +357,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					new ArFSPublicFileOrFolderWithPaths(file, hierarchy)
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
-				// folderWrapper.ensureFolderExistence(absoluteLocalFilePath);
 
 				/*
 				 * FIXME: Downloading all files at once consumes a lot of resources.
 				 * TODO: Implement a download manager for downloading in paralel
 				 * Doing it sequentially for now
 				 */
-				const { data: dataStream } = await this.getDataStream(file);
+				const dataStream = await this.getPublicDataStream(file.dataTxId);
 				const fileWrapper = new ArFSPublicFileToDownload(file, dataStream, absoluteLocalFilePath);
 				await fileWrapper.write();
 			}

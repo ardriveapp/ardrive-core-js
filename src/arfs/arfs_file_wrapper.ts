@@ -407,13 +407,8 @@ export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
 export class ArFSPrivateFolderToDownload extends ArFSFolderToDownload {
 	readonly rootFolderWithPaths: ArFSPrivateFileOrFolderWithPaths;
 
-	constructor(folders: ArFSPrivateFolder[], hierarchy: FolderHierarchy) {
+	constructor(rootFolderEntity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
 		super(hierarchy);
-		const entityId = this.hierarchy.rootNode.folderId;
-		const rootFolderEntitiy = folders.find((entity) => entity.entityId === entityId);
-		if (!rootFolderEntitiy) {
-			throw new Error(`The root folder was not provided!`);
-		}
-		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntitiy, this.hierarchy);
+		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
 	}
 }

@@ -34,7 +34,7 @@ import {
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
 } from './arfs_entity_result_factory';
-import { ArFSEntityToUpload } from './arfs_file_wrapper';
+import { ArFSEntityToUpload, ArFSPrivateFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -69,7 +69,7 @@ import {
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, gatewayURL } from '../utils/constants';
-import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
+import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -103,6 +103,8 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
+import { join as joinPath } from 'path';
+import { StreamDecrypt } from '../utils/stream_decrypt';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -173,6 +175,14 @@ interface getPublicChildrenFolderIdsParams {
 	owner: ArweaveAddress;
 }
 interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsParams {
+	driveKey: DriveKey;
+}
+
+export interface ArFSDownloadPrivateFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
 	driveKey: DriveKey;
 }
 
@@ -1162,4 +1172,84 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 			});
 		});
+
+	async downloadPrivateFolder({
+		folderId,
+		destFolderPath,
+		maxDepth,
+		driveKey,
+		owner
+	}: ArFSDownloadPrivateFolderParams): Promise<void> {
+		const folder = await this.getPrivateFolder(folderId, driveKey, owner);
+		// Fetch all of the folder entities within the drive
+		const driveIdOfFolder = folder.driveId;
+		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPrivateDrive({
+			driveId: driveIdOfFolder,
+			owner,
+			latestRevisionsOnly: true,
+			driveKey
+		});
+
+		// Feed entities to FolderHierarchy
+		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
+		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth - 1);
+		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
+		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
+			subFolderIDs.includes(folder.entityId)
+		);
+
+		// Fetch all file entities within all Folders of the drive
+		const childrenFileEntities = await this.getPrivateFilesWithParentFolderIds(
+			searchFolderIDs,
+			driveKey,
+			owner,
+			true
+		);
+		const folderWrapper = new ArFSPrivateFolderToDownload(folder, hierarchy);
+
+		// Fetch the file CipherIVs
+		const fileDataTxIDs = childrenFileEntities.map((file) => file.dataTxId);
+		const fileCipherIVResults = await this.getCipherIVOfPrivateTransactionIDs(fileDataTxIDs);
+
+		for (const childFolder of [folder, ...childrenFolderEntities]) {
+			// assert the existence of the folder in disk
+			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
+				new ArFSPrivateFileOrFolderWithPaths(childFolder, hierarchy)
+			);
+			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
+			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
+
+			// download child files into the folder
+			const childrenFiles = childrenFileEntities.filter((file) =>
+				file.parentFolderId.equals(childFolder.entityId)
+			);
+			for (const file of childrenFiles) {
+				const relativeFilePath = folderWrapper.getPathRelativeToSubtree(
+					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy)
+				);
+				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
+
+				/*
+				 * FIXME: Downloading all files at once consumes a lot of resources.
+				 * TODO: Implement a download manager for downloading in paralel
+				 * Doing it sequentially for now
+				 */
+				const dataStream = await this.getPrivateDataStream(file);
+				const fileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+				const fileCipherIVResult = fileCipherIVResults.find((result) => result.txId.equals(file.dataTxId));
+				if (!fileCipherIVResult) {
+					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);
+				}
+				const authTag = await this.getAuthTagForPrivateFile(file);
+				const decryptingStream = new StreamDecrypt(fileCipherIVResult.cipherIV, fileKey, authTag);
+				const fileWrapper = new ArFSPrivateFileToDownload(
+					file,
+					dataStream,
+					absoluteLocalFilePath,
+					decryptingStream
+				);
+				await fileWrapper.write();
+			}
+		}
+	}
 }
