@@ -186,6 +186,12 @@ export interface ArFSDownloadPrivateFolderParams {
 	driveKey: DriveKey;
 }
 
+export interface SeparatedFolderHierarchy<FileType, FolderType> {
+	hierarchy: FolderHierarchy;
+	childFiles: FileType[];
+	childFolders: FolderType[];
+}
+
 export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
@@ -1005,35 +1011,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const folder = await this.getPrivateFolder(folderId, driveKey, owner);
 
 		// Fetch all of the folder entities within the drive
-		const driveIdOfFolder = folder.driveId;
-		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPrivateDrive({
-			driveId: driveIdOfFolder,
-			driveKey,
+		const { hierarchy, childFiles, childFolders } = await this.separatedHierarchyOfFolder(
+			folder,
 			owner,
-			latestRevisionsOnly: true
-		});
-
-		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
-		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth - 1);
-		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth);
-
-		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
-			subFolderIDs.includes(folder.entityId)
+			driveKey,
+			maxDepth
 		);
 
 		if (includeRoot) {
-			childrenFolderEntities.unshift(folder);
+			childFolders.unshift(folder);
 		}
 
-		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities = await this.getPrivateFilesWithParentFolderIds(
-			searchFolderIDs,
-			driveKey,
-			owner,
-			true
-		);
-
-		const children = [...childrenFolderEntities, ...childrenFileEntities];
+		const children = [...childFolders, ...childFiles];
 
 		const entitiesWithPath = children.map((entity) => new ArFSPrivateFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
@@ -1181,38 +1170,26 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		owner
 	}: ArFSDownloadPrivateFolderParams): Promise<void> {
 		const folder = await this.getPrivateFolder(folderId, driveKey, owner);
-		// Fetch all of the folder entities within the drive
-		const driveIdOfFolder = folder.driveId;
-		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPrivateDrive({
-			driveId: driveIdOfFolder,
+
+		// Fetch all file and folder entities within all Folders of the drive
+		const { hierarchy, childFiles, childFolders } = await this.separatedHierarchyOfFolder(
+			folder,
 			owner,
-			latestRevisionsOnly: true,
-			driveKey
-		});
-
-		// Feed entities to FolderHierarchy
-		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
-		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth - 1);
-		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
-		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
-			subFolderIDs.includes(folder.entityId)
-		);
-
-		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities = await this.getPrivateFilesWithParentFolderIds(
-			searchFolderIDs,
 			driveKey,
-			owner,
-			true
+			maxDepth
 		);
 		const folderWrapper = new ArFSPrivateFolderToDownload(folder, hierarchy);
 
 		// Fetch the file CipherIVs
-		const fileDataTxIDs = childrenFileEntities.map((file) => file.dataTxId);
+		const fileDataTxIDs = childFiles.map((file) => file.dataTxId);
 		const fileCipherIVResults = await this.getCipherIVOfPrivateTransactionIDs(fileDataTxIDs);
+		const cipherIVMap: Record<string, CipherIVQueryResult> = fileCipherIVResults.reduce((accumulator, ivResult) => {
+			return Object.assign(accumulator, { [`${ivResult.txId}`]: ivResult });
+		}, {});
 
-		for (const childFolder of [folder, ...childrenFolderEntities]) {
-			// assert the existence of the folder in disk
+		// Iteratively download all child files in the hierarchy
+		for (const childFolder of [folder, ...childFolders]) {
+			// assert the existence of the folder on disk
 			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
 				new ArFSPrivateFileOrFolderWithPaths(childFolder, hierarchy)
 			);
@@ -1220,9 +1197,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
 			// download child files into the folder
-			const childrenFiles = childrenFileEntities.filter((file) =>
-				file.parentFolderId.equals(childFolder.entityId)
-			);
+			const childrenFiles = childFiles.filter((file) => file.parentFolderId.equals(childFolder.entityId));
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getPathRelativeToSubtree(
 					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy)
@@ -1231,12 +1206,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				/*
 				 * FIXME: Downloading all files at once consumes a lot of resources.
-				 * TODO: Implement a download manager for downloading in paralel
+				 * TODO: Implement a download manager for downloading in parallel
 				 * Doing it sequentially for now
 				 */
 				const dataStream = await this.getPrivateDataStream(file);
 				const fileKey = await deriveFileKey(`${file.fileId}`, driveKey);
-				const fileCipherIVResult = fileCipherIVResults.find((result) => result.txId.equals(file.dataTxId));
+				const fileCipherIVResult = cipherIVMap[`${file.dataTxId}`];
 				if (!fileCipherIVResult) {
 					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);
 				}
@@ -1251,5 +1226,33 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				await fileWrapper.write();
 			}
 		}
+	}
+
+	async separatedHierarchyOfFolder(
+		folder: ArFSPrivateFolder,
+		owner: ArweaveAddress,
+		driveKey: DriveKey,
+		maxDepth: number
+	): Promise<SeparatedFolderHierarchy<ArFSPrivateFile, ArFSPrivateFolder>> {
+		// Fetch all of the folder entities within the drive
+		const driveIdOfFolder = folder.driveId;
+		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPrivateDrive({
+			driveId: driveIdOfFolder,
+			owner,
+			latestRevisionsOnly: true,
+			driveKey
+		});
+
+		// Feed entities to FolderHierarchy
+		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
+		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth - 1);
+
+		// Fetch all file entities within all Folders of the drive
+		const childFiles = await this.getPrivateFilesWithParentFolderIds(searchFolderIDs, driveKey, owner, true);
+
+		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
+		const childFolders = allFolderEntitiesOfDrive.filter((folder) => subFolderIDs.includes(folder.entityId));
+
+		return { hierarchy, childFiles, childFolders };
 	}
 }
