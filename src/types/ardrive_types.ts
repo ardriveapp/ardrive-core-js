@@ -50,6 +50,7 @@ export interface ArFSResult {
 }
 
 export interface ArFSManifestResult extends ArFSResult {
+	manifest: Manifest | Record<string, never>;
 	links: string[];
 }
 
@@ -59,6 +60,11 @@ export const emptyArFSResult: ArFSResult = {
 	fees: {}
 };
 
+export const emptyManifestResult: ArFSManifestResult = {
+	...emptyArFSResult,
+	manifest: {},
+	links: []
+};
 export interface MetaDataBaseCosts {
 	metaDataBaseReward: Winston;
 }
