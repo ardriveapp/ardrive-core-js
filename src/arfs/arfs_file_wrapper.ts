@@ -63,13 +63,18 @@ export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload |
 export function isFolder(fileOrFolder: ArFSFileToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
 	return fileOrFolder instanceof ArFSFolderToUpload;
 }
-export interface ArFSEntityToUpload {
-	gatherFileInfo: () => FileInfo;
-	getFileDataBuffer: () => Buffer;
-	getBaseFileName: () => BaseFileName;
+export abstract class ArFSEntityToUpload {
+	abstract gatherFileInfo(): FileInfo;
+	abstract getFileDataBuffer(): Buffer;
+	abstract getBaseFileName(): BaseFileName;
+
+	abstract lastModifiedDate: UnixTime;
+	existingId?: FileID;
+	newFileName?: string;
+	conflictResolution?: FileConflictResolution;
 }
 
-export class ArFSManifestToUpload implements ArFSEntityToUpload {
+export class ArFSManifestToUpload extends ArFSEntityToUpload {
 	manifest: Manifest;
 	lastModifiedDateMS: UnixTime;
 
@@ -77,6 +82,8 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 		public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[],
 		public readonly destManifestName: string
 	) {
+		super();
+
 		const sortedChildren = folderToGenManifest.sort((a, b) => alphabeticalOrder(a.path, b.path));
 		const baseFolderPath = sortedChildren[0].path;
 
@@ -151,7 +158,7 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	}
 
 	public getBaseFileName(): BaseFileName {
-		return this.destManifestName;
+		return this.newFileName ?? this.destManifestName;
 	}
 
 	public getFileDataBuffer(): Buffer {
@@ -161,22 +168,24 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	public get size(): ByteCount {
 		return new ByteCount(Buffer.byteLength(JSON.stringify(this.manifest)));
 	}
+
+	public get lastModifiedDate(): UnixTime {
+		return this.lastModifiedDateMS;
+	}
 }
 
 export type FolderConflictResolution = typeof skipOnConflicts | undefined;
 export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
 
-export class ArFSFileToUpload implements ArFSEntityToUpload {
+export class ArFSFileToUpload extends ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
+		super();
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
 	}
 
 	baseCosts?: BulkFileBaseCosts;
-	existingId?: FileID;
-	newFileName?: string;
-	conflictResolution: FileConflictResolution = undefined;
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;

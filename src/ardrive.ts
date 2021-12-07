@@ -962,29 +962,14 @@ export class ArDrive extends ArDriveAnonymous {
 		folderId,
 		destManifestName = 'DriveManifest.json',
 		maxDepth = Number.MAX_SAFE_INTEGER,
-		conflictResolution = upsertOnConflicts
+		conflictResolution = upsertOnConflicts,
+		prompts
 	}: UploadPublicManifestParams): Promise<ArFSManifestResult> {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(folderId);
 
 		// Assert that the owner of this drive is consistent with the provided wallet
 		const owner = await this.getOwnerForDriveId(driveId);
 		await this.assertOwnerAddress(owner);
-
-		const filesAndFolderNames = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
-
-		const fileToFolderConflict = filesAndFolderNames.folders.find((f) => f.folderName === destManifestName);
-		if (fileToFolderConflict) {
-			// File names CANNOT conflict with folder names
-			throw new Error(errorMessage.entityNameExists);
-		}
-
-		// Manifest becomes a new revision if the destination name conflicts for
-		// --replace and --upsert behaviors, since it will be newly created each time
-		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
-		if (existingFileId && conflictResolution === skipOnConflicts) {
-			// Return empty result if there is an existing manifest and resolution is set to skip
-			return emptyManifestResult;
-		}
 
 		const children = await this.listPublicFolder({
 			folderId,
@@ -993,6 +978,25 @@ export class ArDrive extends ArDriveAnonymous {
 			owner
 		});
 		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
+
+		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(folderId);
+		await resolveFileNameConflicts({
+			wrappedFile: arweaveManifest,
+			conflictResolution,
+			destinationFileName: destManifestName,
+			nameConflictInfo,
+			prompts
+		});
+
+		if (arweaveManifest.conflictResolution === errorOnConflict) {
+			// File names CANNOT conflict with folder names
+			throw new Error(errorMessage.entityNameExists);
+		}
+
+		if (arweaveManifest.conflictResolution === skipOnConflicts) {
+			// Return empty result if there is an existing manifest and resolution is set to skip
+			return emptyManifestResult;
+		}
 
 		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
 			arweaveManifest.size,
@@ -1008,8 +1012,8 @@ export class ArDrive extends ArDriveAnonymous {
 			driveId,
 			fileDataRewardSettings,
 			metadataRewardSettings,
-			destFileName: destManifestName,
-			existingFileId
+			destFileName: arweaveManifest.getBaseFileName(),
+			existingFileId: arweaveManifest.existingId
 		});
 
 		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
