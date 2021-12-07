@@ -1051,7 +1051,6 @@ __metadata:
     "@typescript-eslint/eslint-plugin": ^4.18.0
     "@typescript-eslint/parser": ^4.18.0
     arweave: ^1.10.16
-    arweave-bundles: ^1.0.3
     arweave-mnemonic-keys: ^0.0.9
     axios: ^0.21.1
     base64-js: ^1.5.1
@@ -1145,15 +1144,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arweave-bundles@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "arweave-bundles@npm:1.0.3"
-  dependencies:
-    arweave: ^1.10.5
-  checksum: fe920c8448041696cf9aa3528ccb7862d1e82eb512f6598b597c3f11e901e3c843c9d6c9fc2d1e73c2cc9e6028f8142000f6cb36446622c997df573b7a1eadd4
-  languageName: node
-  linkType: hard
-
 "arweave-mnemonic-keys@npm:^0.0.9":
   version: 0.0.9
   resolution: "arweave-mnemonic-keys@npm:0.0.9"
@@ -1164,7 +1154,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arweave@npm:^1.10.13, arweave@npm:^1.10.16, arweave@npm:^1.10.5":
+"arweave@npm:^1.10.13, arweave@npm:^1.10.16":
   version: 1.10.16
   resolution: "arweave@npm:1.10.16"
   dependencies:
