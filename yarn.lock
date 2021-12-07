@@ -1583,7 +1583,6 @@ __metadata:
     "@typescript-eslint/parser": ^4.18.0
     arbundles: ^0.5.5
     arweave: ^1.10.18
-    arweave-bundles: ^1.0.3
     arweave-mnemonic-keys: ^0.0.9
     axios: ^0.21.1
     base64-js: ^1.5.1
@@ -1677,15 +1676,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arweave-bundles@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "arweave-bundles@npm:1.0.3"
-  dependencies:
-    arweave: ^1.10.5
-  checksum: fe920c8448041696cf9aa3528ccb7862d1e82eb512f6598b597c3f11e901e3c843c9d6c9fc2d1e73c2cc9e6028f8142000f6cb36446622c997df573b7a1eadd4
-  languageName: node
-  linkType: hard
-
 "arweave-mnemonic-keys@npm:^0.0.9":
   version: 0.0.9
   resolution: "arweave-mnemonic-keys@npm:0.0.9"
@@ -1707,7 +1697,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arweave@npm:^1.10.0, arweave@npm:^1.10.15, arweave@npm:^1.10.18":
+"arweave@npm:^1.10.0, arweave@npm:^1.10.13, arweave@npm:^1.10.15, arweave@npm:^1.10.16, arweave@npm:^1.10.18":
   version: 1.10.18
   resolution: "arweave@npm:1.10.18"
   dependencies:
@@ -1717,19 +1707,6 @@ __metadata:
     base64-js: ^1.3.1
     bignumber.js: ^9.0.1
   checksum: 81c94216f584adbad4c4db6e8044e46bac77081fe0d910add63c24765e2038e0ff824096c301e2adb951f5cf20c084b4534bf7a4ec0b592390633acc09e655a6
-  languageName: node
-  linkType: hard
-
-"arweave@npm:^1.10.13, arweave@npm:^1.10.16, arweave@npm:^1.10.5":
-  version: 1.10.16
-  resolution: "arweave@npm:1.10.16"
-  dependencies:
-    arconnect: ^0.2.8
-    asn1.js: ^5.4.1
-    axios: ^0.21.1
-    base64-js: ^1.3.1
-    bignumber.js: ^9.0.1
-  checksum: 2baa240095f85a03c6cd29c8f9094347571362ccd2a9dc946dc0299c2d2e94af7e8ce3ea3ef9dcad9ee7fe1c2e3463fb3e55d110697e6fff80ae2ea74a92aeba
   languageName: node
   linkType: hard
 
@@ -1812,16 +1789,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^0.21.1":
-  version: 0.21.1
-  resolution: "axios@npm:0.21.1"
-  dependencies:
-    follow-redirects: ^1.10.0
-  checksum: 864fb7b5d077d236737f10adca53bf451a93f35a15271f56fba8da07265a02d26b7d881b935a6697dc6adb0549ea3e56d2eecb403edaa3bb78f6479901c10f69
-  languageName: node
-  linkType: hard
-
-"axios@npm:^0.21.3":
+"axios@npm:^0.21.1, axios@npm:^0.21.3":
   version: 0.21.4
   resolution: "axios@npm:0.21.4"
   dependencies:
@@ -3555,16 +3523,6 @@ __metadata:
   version: 3.1.1
   resolution: "flatted@npm:3.1.1"
   checksum: 1065cd78294ea651b8c1b96c298a3e70893a23da655e2288e40c06d5d9b1ebce4bd977e604678e01065a92580f3de5078d60d9ee4cdcede9a9989859d7eb5057
-  languageName: node
-  linkType: hard
-
-"follow-redirects@npm:^1.10.0":
-  version: 1.13.3
-  resolution: "follow-redirects@npm:1.13.3"
-  peerDependenciesMeta:
-    debug:
-      optional: true
-  checksum: 9ad74c3b66ad5c32d8c009a2afb4e5c1b9e5dbe1f631419296c21f8e4f9976ed2c52f9a676c4acdd1d7f41a8f17a03dfaa3704993b25b5965eb11bc9dc9a8ef5
   languageName: node
   linkType: hard
 

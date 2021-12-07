@@ -55,9 +55,8 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["arbundles", "npm:0.5.5"],
             ["arweave", "npm:1.10.18"],
-            ["arweave-bundles", "npm:1.0.3"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
-            ["axios", "npm:0.21.1"],
+            ["axios", "npm:0.21.4"],
             ["base64-js", "npm:1.5.1"],
             ["bignumber.js", "npm:9.0.1"],
             ["chai", "npm:4.3.4"],
@@ -1918,7 +1917,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/arconnect-npm-0.2.9-a276136014-7871621da2.zip/node_modules/arconnect/",
           "packageDependencies": [
             ["arconnect", "npm:0.2.9"],
-            ["arweave", "npm:1.10.16"]
+            ["arweave", "npm:1.10.18"]
           ],
           "linkType": "HARD",
         }]
@@ -1946,9 +1945,8 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["arbundles", "npm:0.5.5"],
             ["arweave", "npm:1.10.18"],
-            ["arweave-bundles", "npm:1.0.3"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
-            ["axios", "npm:0.21.1"],
+            ["axios", "npm:0.21.4"],
             ["base64-js", "npm:1.5.1"],
             ["bignumber.js", "npm:9.0.1"],
             ["chai", "npm:4.3.4"],
@@ -2054,18 +2052,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]
       ]],
       ["arweave", [
-        ["npm:1.10.16", {
-          "packageLocation": "./.yarn/cache/arweave-npm-1.10.16-559acf76f7-2baa240095.zip/node_modules/arweave/",
-          "packageDependencies": [
-            ["arweave", "npm:1.10.16"],
-            ["arconnect", "npm:0.2.9"],
-            ["asn1.js", "npm:5.4.1"],
-            ["axios", "npm:0.21.1"],
-            ["base64-js", "npm:1.5.1"],
-            ["bignumber.js", "npm:9.0.1"]
-          ],
-          "linkType": "HARD",
-        }],
         ["npm:1.10.18", {
           "packageLocation": "./.yarn/cache/arweave-npm-1.10.18-60cbcd840e-81c94216f5.zip/node_modules/arweave/",
           "packageDependencies": [
@@ -2075,16 +2061,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["axios", "npm:0.22.0"],
             ["base64-js", "npm:1.5.1"],
             ["bignumber.js", "npm:9.0.1"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["arweave-bundles", [
-        ["npm:1.0.3", {
-          "packageLocation": "./.yarn/cache/arweave-bundles-npm-1.0.3-2bdcb9d1ed-fe920c8448.zip/node_modules/arweave-bundles/",
-          "packageDependencies": [
-            ["arweave-bundles", "npm:1.0.3"],
-            ["arweave", "npm:1.10.16"]
           ],
           "linkType": "HARD",
         }]
@@ -2199,14 +2175,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]
       ]],
       ["axios", [
-        ["npm:0.21.1", {
-          "packageLocation": "./.yarn/cache/axios-npm-0.21.1-d192f6b3b3-864fb7b5d0.zip/node_modules/axios/",
-          "packageDependencies": [
-            ["axios", "npm:0.21.1"],
-            ["follow-redirects", "virtual:d192f6b3b31cd5d11a443145a3883a70c04cbd7c813c53085dbaf50263735f1162f10fdbddd53c24e162ec3bc37b90966413084323739b7cf942b8bfb4da8831#npm:1.13.3"]
-          ],
-          "linkType": "HARD",
-        }],
         ["npm:0.21.4", {
           "packageLocation": "./.yarn/cache/axios-npm-0.21.4-e278873748-e6d42b269b.zip/node_modules/axios/",
           "packageDependencies": [
@@ -4206,13 +4174,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]
       ]],
       ["follow-redirects", [
-        ["npm:1.13.3", {
-          "packageLocation": "./.yarn/cache/follow-redirects-npm-1.13.3-bc35dfad3e-9ad74c3b66.zip/node_modules/follow-redirects/",
-          "packageDependencies": [
-            ["follow-redirects", "npm:1.13.3"]
-          ],
-          "linkType": "SOFT",
-        }],
         ["npm:1.14.5", {
           "packageLocation": "./.yarn/cache/follow-redirects-npm-1.14.5-7c681222a0-69c5dc6658.zip/node_modules/follow-redirects/",
           "packageDependencies": [
@@ -4224,17 +4185,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/$$virtual/follow-redirects-virtual-02c2a4727a/0/cache/follow-redirects-npm-1.14.5-7c681222a0-69c5dc6658.zip/node_modules/follow-redirects/",
           "packageDependencies": [
             ["follow-redirects", "virtual:39e5c1e79ea63134f0cf339f4463df92854aaf708a45210afd29a0b4b9f67f95b34a1abbcabaae6d0033ad99a1d5f690ab51ed8e5d3283b87ccbc3a9ab3ec05f#npm:1.14.5"],
-            ["debug", null]
-          ],
-          "packagePeers": [
-            "debug"
-          ],
-          "linkType": "HARD",
-        }],
-        ["virtual:d192f6b3b31cd5d11a443145a3883a70c04cbd7c813c53085dbaf50263735f1162f10fdbddd53c24e162ec3bc37b90966413084323739b7cf942b8bfb4da8831#npm:1.13.3", {
-          "packageLocation": "./.yarn/$$virtual/follow-redirects-virtual-355f55dffb/0/cache/follow-redirects-npm-1.13.3-bc35dfad3e-9ad74c3b66.zip/node_modules/follow-redirects/",
-          "packageDependencies": [
-            ["follow-redirects", "virtual:d192f6b3b31cd5d11a443145a3883a70c04cbd7c813c53085dbaf50263735f1162f10fdbddd53c24e162ec3bc37b90966413084323739b7cf942b8bfb4da8831#npm:1.13.3"],
             ["debug", null]
           ],
           "packagePeers": [
@@ -7205,7 +7155,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/clui", "npm:0.3.0"],
             ["@types/inquirer", "npm:7.3.1"],
             ["@weavery/clarity", "npm:0.1.5"],
-            ["arweave", "npm:1.10.16"],
+            ["arweave", "npm:1.10.18"],
             ["bignumber.js", "npm:9.0.1"],
             ["chalk", "npm:4.1.2"],
             ["clui", "npm:0.3.6"],
