@@ -9,7 +9,6 @@ import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_builders/a
 import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import {
 	ArFSFileOrFolderEntity,
-	ArFSPublicDrive,
 	ArFSPrivateDrive,
 	ArFSPublicFile,
 	ArFSPrivateFile,
@@ -20,7 +19,6 @@ import {
 } from './arfs_entities';
 import {
 	ArFSCreateFolderResult,
-	WithDriveKey,
 	ArFSCreateDriveResult,
 	ArFSCreatePrivateDriveResult,
 	ArFSMoveEntityResult,
@@ -35,12 +33,10 @@ import {
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
-	ArFSCreatePublicBundledDriveResult,
-	ArFSDriveResult
+	ArFSCreatePublicBundledDriveResult
 } from './arfs_entity_result_factory';
 import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
-	CreateDriveMetaDataFactory,
 	MoveEntityMetaDataFactory,
 	FileDataPrototypeFactory,
 	FileMetadataTrxDataFactory,
@@ -54,13 +50,11 @@ import {
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSPublicFileDataPrototype,
 	ArFSPrivateFileDataPrototype,
-	ArFSObjectMetadataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
 	ArFSPublicDriveMetaDataPrototype
 } from './arfs_prototypes';
 import {
-	ArFSObjectTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSPrivateDriveTransactionData,
@@ -69,12 +63,11 @@ import {
 	ArFSFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData,
-	ArFSFolderTransactionData,
 	ArFSPublicDriveTransactionData
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
-import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
+import { ArFSDAOAnonymous } from './arfsdao_anonymous';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, graphQLURL } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -86,7 +79,6 @@ import {
 	GQLEdgeInterface,
 	GQLNodeInterface,
 	DrivePrivacy,
-	ListPrivateFolderParams,
 	DriveID,
 	DriveKey,
 	FolderID,
@@ -105,7 +97,27 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { bundleAndSignData, createData, DataItem } from 'arbundles';
 import { ArweaveSigner } from 'arbundles/src/signing';
+import {
+	ArFSPrepareFolderParams,
+	ArFSPrepareFolderResult,
+	ArFSPrivateCreateFolderParams,
+	ArFSPublicCreateFolderParams,
+	ArFSPrepareDriveParams,
+	ArFSPrepareDriveResult,
+	ArFSCreatePublicDriveParams,
+	ArFSCreatePrivateDriveParams,
+	ArFSMoveParams,
+	ArFSUploadPublicFileParams,
+	ArFSUploadPrivateFileParams,
+	ArFSPrepareObjectTransactionParams,
+	ArFSAllPrivateFoldersOfDriveParams,
+	ArFSGetPrivateChildFolderIdsParams,
+	ArFSGetPublicChildFolderIdsParams,
+	ArFSListPrivateFolderParams,
+	ArFSTxResult
+} from '../types/arfsdao_types';
 
+/** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
 
@@ -114,102 +126,6 @@ export class PrivateDriveKeyData {
 		const driveKey = await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey));
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
-}
-
-type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
-
-export interface ArFSPrepareDriveParams<T> {
-	generateDriveIdFn: GenerateDriveIdFn;
-	drivePrototypeFactory: CreateDriveMetaDataFactory;
-	rootFolderPrototypeFactory: (rootFolderId: FolderID, driveId: DriveID) => ArFSFolderMetaDataPrototype;
-	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype | ArFSDriveMetaDataPrototype>;
-}
-
-interface ArFSPrepareResult<T> {
-	arFSObjects: T[];
-}
-interface ArFSPrepareFolderResult<T> extends ArFSPrepareResult<T> {
-	folderId: FolderID;
-}
-
-export interface ArFSPrepareDriveResult<T> extends ArFSPrepareResult<T> {
-	rootFolderId: FolderID;
-	driveId: DriveID;
-}
-
-export interface ArFSPrepareFolderParams<T> {
-	folderPrototypeFactory: (folderId: FolderID) => ArFSFolderMetaDataPrototype;
-	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype>;
-}
-
-export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {
-	driveId: DriveID;
-	rewardSettings: RewardSettings;
-	parentFolderId: FolderID;
-	folderData: T;
-}
-
-export type ArFSPublicCreateFolderParams = ArFSCreateFolderParams<ArFSPublicFolderTransactionData>;
-export type ArFSPrivateCreateFolderParams = ArFSCreateFolderParams<ArFSPrivateFolderTransactionData>;
-
-export interface ArFSCreatePublicDriveParams {
-	driveName: string;
-	driveRewardSettings: RewardSettings;
-	rootFolderRewardSettings: RewardSettings;
-}
-export interface ArFSCreatePrivateDriveParams extends ArFSCreatePublicDriveParams {
-	newDriveData: PrivateDriveKeyData;
-}
-
-/** Shared result type for createBundledDrive and createV2TxDrive */
-export type ArFSDriveTxResult<R extends ArFSDriveResult> = {
-	result: R;
-	transactions: Transaction[];
-};
-
-export interface PrepareObjectTransactionParams {
-	objectMetaData: ArFSObjectMetadataPrototype;
-	rewardSettings?: RewardSettings;
-	excludedTagNames?: string[];
-	otherTags?: GQLTagInterface[];
-}
-
-export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
-	originalMetaData: O;
-	newParentFolderId: FolderID;
-	metaDataBaseReward: RewardSettings;
-	transactionData: T;
-}
-
-export type GetDriveFunction = () => Promise<ArFSPublicDrive | ArFSPrivateDrive>;
-export type CreateFolderFunction = (driveId: DriveID) => Promise<ArFSCreateFolderResult>;
-export type GenerateDriveIdFn = () => DriveID;
-
-export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
-
-export interface ArFSUploadPublicFileParams {
-	parentFolderId: FolderID;
-	wrappedFile: ArFSEntityToUpload;
-	driveId: DriveID;
-	fileDataRewardSettings: RewardSettings;
-	metadataRewardSettings: RewardSettings;
-	destFileName?: string;
-	existingFileId?: FileID;
-}
-
-export interface ArFSUploadPrivateFileParams extends ArFSUploadPublicFileParams {
-	driveKey: DriveKey;
-}
-
-export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
-
-interface getPublicChildrenFolderIdsParams {
-	folderId: FolderID;
-	driveId: DriveID;
-	owner: ArweaveAddress;
-}
-interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsParams {
-	driveKey: DriveKey;
 }
 
 export class ArFSDAO extends ArFSDAOAnonymous {
@@ -313,7 +229,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async createBundledDrive(
 		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<DataItem>, 'prepareArFSObject'>,
 		rewardSettings: RewardSettings
-	): Promise<ArFSDriveTxResult<ArFSCreateBundledDriveResult>> {
+	): Promise<ArFSTxResult<ArFSCreateBundledDriveResult>> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
@@ -344,7 +260,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction>, 'prepareArFSObject'>,
 		driveRewardSettings: RewardSettings,
 		rootFolderRewardSettings: RewardSettings
-	): Promise<ArFSDriveTxResult<ArFSCreateDriveResult>> {
+	): Promise<ArFSTxResult<ArFSCreateDriveResult>> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
@@ -714,7 +630,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		objectMetaData,
 		excludedTagNames = [],
 		otherTags = []
-	}: Omit<PrepareObjectTransactionParams, 'rewardSettings'>): Promise<DataItem> {
+	}: Omit<ArFSPrepareObjectTransactionParams, 'rewardSettings'>): Promise<DataItem> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
@@ -737,7 +653,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings = {},
 		excludedTagNames = [],
 		otherTags = []
-	}: Omit<PrepareObjectTransactionParams, 'objectMetaData'> & { dataItems: DataItem[] }): Promise<Transaction> {
+	}: Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> & { dataItems: DataItem[] }): Promise<Transaction> {
 		const wallet = this.wallet as JWKWallet;
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
 
@@ -790,7 +706,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings = {},
 		excludedTagNames = [],
 		otherTags = []
-	}: PrepareObjectTransactionParams): Promise<Transaction> {
+	}: ArFSPrepareObjectTransactionParams): Promise<Transaction> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags];
@@ -1054,7 +970,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		driveId,
 		driveKey,
 		owner
-	}: getPrivateChildrenFolderIdsParams): Promise<FolderID[]> {
+	}: ArFSGetPrivateChildFolderIdsParams): Promise<FolderID[]> {
 		return this.getChildrenFolderIds(
 			folderId,
 			await this.getAllFoldersOfPrivateDrive({ driveId, driveKey, owner, latestRevisionsOnly: true })
@@ -1065,7 +981,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderId,
 		owner,
 		driveId
-	}: getPublicChildrenFolderIdsParams): Promise<FolderID[]> {
+	}: ArFSGetPublicChildFolderIdsParams): Promise<FolderID[]> {
 		return this.getChildrenFolderIds(
 			folderId,
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })

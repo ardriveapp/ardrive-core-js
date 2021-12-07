@@ -26,21 +26,8 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-
-export const graphQLURL = 'https://arweave.net/graphql';
-
-export interface ArFSAllPublicFoldersOfDriveParams {
-	driveId: DriveID;
-	owner: ArweaveAddress;
-	latestRevisionsOnly: boolean;
-}
-
-export interface ArFSListPublicFolderParams {
-	folderId: FolderID;
-	maxDepth: number;
-	includeRoot: boolean;
-	owner: ArweaveAddress;
-}
+import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
+import { graphQLURL } from '../utils/constants';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
