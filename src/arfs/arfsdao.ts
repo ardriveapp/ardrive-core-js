@@ -114,7 +114,9 @@ import {
 	ArFSGetPrivateChildFolderIdsParams,
 	ArFSGetPublicChildFolderIdsParams,
 	ArFSListPrivateFolderParams,
-	ArFSTxResult
+	ArFSTxResult,
+	ArFSPrepareDataItemsParams,
+	ArFSPrepareObjectBundleParams
 } from '../types/arfsdao_types';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -630,7 +632,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		objectMetaData,
 		excludedTagNames = [],
 		otherTags = []
-	}: Omit<ArFSPrepareObjectTransactionParams, 'rewardSettings'>): Promise<DataItem> {
+	}: ArFSPrepareDataItemsParams): Promise<DataItem> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
@@ -653,7 +655,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings = {},
 		excludedTagNames = [],
 		otherTags = []
-	}: Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> & { dataItems: DataItem[] }): Promise<Transaction> {
+	}: ArFSPrepareObjectBundleParams): Promise<Transaction> {
 		const wallet = this.wallet as JWKWallet;
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
 

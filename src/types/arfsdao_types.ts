@@ -1,3 +1,4 @@
+import { DataItem } from 'arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress } from '.';
 import {
@@ -87,11 +88,19 @@ export interface ArFSUploadPublicFileParams {
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
 
-export interface ArFSPrepareObjectTransactionParams {
-	objectMetaData: ArFSObjectMetadataPrototype;
-	rewardSettings?: RewardSettings;
+export interface ArFSPrepareObjectParams {
 	excludedTagNames?: string[];
 	otherTags?: GQLTagInterface[];
+}
+export interface ArFSPrepareDataItemsParams extends ArFSPrepareObjectParams {
+	objectMetaData: ArFSObjectMetadataPrototype;
+}
+
+export interface ArFSPrepareObjectTransactionParams extends ArFSPrepareDataItemsParams {
+	rewardSettings: RewardSettings;
+}
+export interface ArFSPrepareObjectBundleParams extends Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> {
+	dataItems: DataItem[];
 }
 
 export interface ArFSListPublicFolderParams {
