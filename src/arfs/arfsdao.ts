@@ -1140,8 +1140,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return response.data;
 	}
 
-	getAuthTagForPrivateFile = async (privateFile: ArFSPrivateFile): Promise<Buffer> =>
-		new Promise((resolve, reject) => {
+	getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
+		return new Promise(function (resolve, reject) {
 			const dataLength = privateFile.encryptedDataSize;
 			const authTagIndex = +dataLength - authTagLength;
 			axios({
@@ -1168,4 +1168,5 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 			});
 		});
+	}
 }
