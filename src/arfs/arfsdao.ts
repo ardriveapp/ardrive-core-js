@@ -1155,13 +1155,21 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const { data }: { data: Readable } = response;
 
 				const authTag = Buffer.alloc(authTagLength);
-				let index = 0;
+				let responseByteCount = 0;
 				data.on('data', (chunk: Buffer) => {
-					authTag.set(chunk, index);
-					index += chunk.length;
+					authTag.set(chunk, responseByteCount);
+					responseByteCount += chunk.length;
 				});
 				data.on('end', () => {
-					resolve(authTag);
+					if (responseByteCount === authTagLength) {
+						resolve(authTag);
+					} else {
+						reject(
+							new Error(
+								`The retrieved auth tag does not has the length of ${authTagLength} bytes, but instead: ${responseByteCount}`
+							)
+						);
+					}
 				});
 				data.on('error', (err) => {
 					reject(err);
