@@ -68,7 +68,13 @@ import {
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, gatewayURL } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	CURRENT_ARFS_VERSION,
+	gatewayURL,
+	authTagLength
+} from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -1120,7 +1126,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 */
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
 		const dataLength = privateFile.encryptedDataSize;
-		const authTagIndex = +dataLength - 16;
+		const authTagIndex = +dataLength - authTagLength;
 		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
@@ -1137,7 +1143,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	getAuthTagForPrivateFile = async (privateFile: ArFSPrivateFile): Promise<Buffer> =>
 		new Promise((resolve, reject) => {
 			const dataLength = privateFile.encryptedDataSize;
-			const authTagIndex = +dataLength - 16;
+			const authTagIndex = +dataLength - authTagLength;
 			axios({
 				method: 'GET',
 				url: `${gatewayURL}${privateFile.dataTxId}`,
@@ -1148,7 +1154,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}).then((response) => {
 				const { data }: { data: Readable } = response;
 
-				const authTag = Buffer.alloc(16);
+				const authTag = Buffer.alloc(authTagLength);
 				let index = 0;
 				data.on('data', (chunk: Buffer) => {
 					authTag.set(chunk, index);
