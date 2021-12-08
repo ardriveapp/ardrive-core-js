@@ -1166,7 +1166,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					} else {
 						reject(
 							new Error(
-								`The retrieved auth tag does not has the length of ${authTagLength} bytes, but instead: ${responseByteCount}`
+								`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${responseByteCount}`
 							)
 						);
 					}
