@@ -198,4 +198,4 @@ export interface DownloadPublicFileArguments {
 	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 }
 
-export type DownloadPrivateFileArguments = DownloadPublicFileArguments & WithDriveKey;
+export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;

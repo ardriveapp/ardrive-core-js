@@ -47,7 +47,7 @@ import {
 	UploadPrivateFileParams,
 	ArFSManifestResult,
 	UploadPublicManifestParams,
-	DownloadPrivateFileArguments,
+	DownloadPrivateFileParameters,
 	emptyManifestResult
 } from './types';
 import {
@@ -1614,7 +1614,7 @@ export class ArDrive extends ArDriveAnonymous {
 		driveKey,
 		destFolderPath,
 		defaultFileName
-	}: DownloadPrivateFileArguments): Promise<void> {
+	}: DownloadPrivateFileParameters): Promise<void> {
 		assertFolderExists(destFolderPath);
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const outputFileName = defaultFileName ?? privateFile.name;
