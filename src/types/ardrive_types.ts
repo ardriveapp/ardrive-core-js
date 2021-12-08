@@ -184,3 +184,12 @@ export interface Manifest {
 	/** paths is an object of path objects */
 	paths: ManifestPathMap;
 }
+
+export interface DownloadPublicFileArguments {
+	fileId: FileID;
+	destFolderPath: string;
+	defaultFileName?: string;
+	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+}
+
+export type DownloadPrivateFileArguments = DownloadPublicFileArguments & WithDriveKey;

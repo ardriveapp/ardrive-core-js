@@ -46,7 +46,8 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	UploadPublicManifestParams
+	UploadPublicManifestParams,
+	DownloadPrivateFileArguments
 } from './types';
 import {
 	CommunityTipParams,
@@ -1611,13 +1612,12 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.arFsDao.assertValidPassword(password);
 	}
 
-	async downloadPrivateFile(
-		fileId: FileID,
-		driveKey: DriveKey,
-		destFolderPath: string,
-		defaultFileName?: string
-		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
-	): Promise<void> {
+	async downloadPrivateFile({
+		fileId,
+		driveKey,
+		destFolderPath,
+		defaultFileName
+	}: DownloadPrivateFileArguments): Promise<void> {
 		assertFolderExists(destFolderPath);
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
 		const outputFileName = defaultFileName ?? privateFile.name;

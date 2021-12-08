@@ -6,7 +6,7 @@ import {
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress, FileID } from './types';
+import { DriveID, ArweaveAddress, DownloadPublicFileArguments } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -81,12 +81,7 @@ export class ArDriveAnonymous extends ArDriveType {
 		return children;
 	}
 
-	async downloadPublicFile(
-		fileId: FileID,
-		destFolderPath: string,
-		defaultFileName?: string
-		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
-	): Promise<void> {
+	async downloadPublicFile({ fileId, destFolderPath, defaultFileName }: DownloadPublicFileArguments): Promise<void> {
 		assertFolderExists(destFolderPath);
 		const publicFile = await this.getPublicFile({ fileId });
 		const outputFileName = defaultFileName ?? publicFile.name;
