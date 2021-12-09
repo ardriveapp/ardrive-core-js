@@ -13,10 +13,10 @@ import { ARDataPriceEstimator } from './ar_data_price_estimator';
 
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSCostEstimator {
-	priceEstimator: ARDataPriceEstimator;
-	bundle: boolean;
-	feeMultiple: FeeMultiple;
-	baseTags: GQLTagInterface[];
+	private readonly priceEstimator: ARDataPriceEstimator;
+	private readonly bundle: boolean;
+	private readonly feeMultiple: FeeMultiple;
+	private readonly baseTags: GQLTagInterface[];
 
 	constructor({
 		bundle = true,
