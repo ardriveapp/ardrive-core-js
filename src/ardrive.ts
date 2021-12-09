@@ -46,7 +46,9 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	UploadPublicManifestParams
+	UploadPublicManifestParams,
+	DownloadPrivateFileParameters,
+	emptyManifestResult
 } from './types';
 import {
 	CommunityTipParams,
@@ -86,7 +88,8 @@ import { WalletDAO } from './wallet_dao';
 import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { StreamDecrypt } from './utils/stream_decrypt';
-import { resolveLocalFilePath } from './utils/resolve_path';
+import { assertFolderExists } from './utils/assert_folder';
+import { join as joinPath } from 'path';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1028,7 +1031,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 		if (existingFileId && conflictResolution === skipOnConflicts) {
 			// Return empty result if there is an existing manifest and resolution is set to skip
-			return { ...emptyArFSResult, links: [] };
+			return emptyManifestResult;
 		}
 
 		const children = await this.listPublicFolder({
@@ -1061,11 +1064,6 @@ export class ArDrive extends ArDriveAnonymous {
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
-		// Setup links array from manifest
-		const fileLinks = Object.keys(arweaveManifest.manifest.paths).map(
-			(path) => `https://arweave.net/${uploadFileResult.dataTrxId}/${path}`
-		);
-
 		return Promise.resolve({
 			created: [
 				{
@@ -1081,7 +1079,8 @@ export class ArDrive extends ArDriveAnonymous {
 				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
 				[`${tipData.txId}`]: communityTipTrxReward
 			},
-			links: [`https://arweave.net/${uploadFileResult.dataTrxId}`, ...fileLinks]
+			manifest: arweaveManifest.manifest,
+			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTrxId)
 		});
 	}
 
@@ -1610,14 +1609,16 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.arFsDao.assertValidPassword(password);
 	}
 
-	async downloadPrivateFile(
-		fileId: FileID,
-		destFolderPath: string,
-		driveKey: DriveKey
-		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
-	): Promise<void> {
+	async downloadPrivateFile({
+		fileId,
+		driveKey,
+		destFolderPath,
+		defaultFileName
+	}: DownloadPrivateFileParameters): Promise<void> {
+		assertFolderExists(destFolderPath);
 		const privateFile = await this.getPrivateFile({ fileId, driveKey });
-		const fullPath = resolveLocalFilePath(destFolderPath, privateFile.name);
+		const outputFileName = defaultFileName ?? privateFile.name;
+		const fullPath = joinPath(destFolderPath, outputFileName);
 		const data = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);

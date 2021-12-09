@@ -32,7 +32,7 @@ describe('the StreamDecrypt class', () => {
 		});
 	});
 
-	it('fails while descrypting with wrong secrets', () => {
+	it('fails while decrypting with wrong secrets', () => {
 		const decryptingStream = new StreamDecrypt(badCipherIV, healthyFileKey, authTag);
 		return pipelinePromise(mockStream, decryptingStream).catch((err) => {
 			return expect(err).to.be.instanceOf(Error);

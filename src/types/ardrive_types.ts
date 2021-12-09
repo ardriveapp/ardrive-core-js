@@ -38,6 +38,7 @@ export interface ArFSResult {
 }
 
 export interface ArFSManifestResult extends ArFSResult {
+	manifest: Manifest | Record<string, never>;
 	links: string[];
 }
 
@@ -47,6 +48,11 @@ export const emptyArFSResult: ArFSResult = {
 	fees: {}
 };
 
+export const emptyManifestResult: ArFSManifestResult = {
+	...emptyArFSResult,
+	manifest: {},
+	links: []
+};
 export interface MetaDataBaseCosts {
 	metaDataBaseReward: Winston;
 }
@@ -184,3 +190,12 @@ export interface Manifest {
 	/** paths is an object of path objects */
 	paths: ManifestPathMap;
 }
+
+export interface DownloadPublicFileArguments {
+	fileId: FileID;
+	destFolderPath: string;
+	defaultFileName?: string;
+	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+}
+
+export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;
