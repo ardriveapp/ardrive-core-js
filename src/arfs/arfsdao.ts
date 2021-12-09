@@ -1140,41 +1140,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return response.data;
 	}
 
-	getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
-		return new Promise(function (resolve, reject) {
-			const dataLength = privateFile.encryptedDataSize;
-			const authTagIndex = +dataLength - authTagLength;
-			axios({
-				method: 'GET',
-				url: `${gatewayURL}${privateFile.dataTxId}`,
-				headers: {
-					Range: `bytes=${authTagIndex}-${+dataLength - 1}`
-				},
-				responseType: 'stream'
-			}).then((response) => {
-				const { data }: { data: Readable } = response;
-
-				const authTag = Buffer.alloc(authTagLength);
-				let responseByteCount = 0;
-				data.on('data', (chunk: Buffer) => {
-					authTag.set(chunk, responseByteCount);
-					responseByteCount += chunk.length;
-				});
-				data.on('end', () => {
-					if (responseByteCount === authTagLength) {
-						resolve(authTag);
-					} else {
-						reject(
-							new Error(
-								`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${responseByteCount}`
-							)
-						);
-					}
-				});
-				data.on('error', (err) => {
-					reject(err);
-				});
-			});
+	async getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const response = await axios({
+			method: 'GET',
+			url: `${gatewayURL}${privateFile.dataTxId}`,
+			headers: {
+				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+			},
+			responseType: 'arraybuffer'
 		});
+		const { data }: { data: Buffer } = response;
+		if (data.length === authTagLength) {
+			return data;
+		}
+		throw new Error(
+			`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${data.length}`
+		);
 	}
 }
