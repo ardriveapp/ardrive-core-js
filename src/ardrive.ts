@@ -45,7 +45,8 @@ import {
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
-	UploadPublicManifestParams
+	UploadPublicManifestParams,
+	emptyManifestResult
 } from './types';
 import {
 	CommunityTipParams,
@@ -1034,7 +1035,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const existingFileId = filesAndFolderNames.files.find((f) => f.fileName === destManifestName)?.fileId;
 		if (existingFileId && conflictResolution === skipOnConflicts) {
 			// Return empty result if there is an existing manifest and resolution is set to skip
-			return { ...emptyArFSResult, links: [] };
+			return emptyManifestResult;
 		}
 
 		const children = await this.listPublicFolder({
@@ -1082,6 +1083,7 @@ export class ArDrive extends ArDriveAnonymous {
 				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
 				[`${tipData.txId}`]: communityTipTrxReward
 			},
+			manifest: arweaveManifest.manifest,
 			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTrxId)
 		});
 	}
