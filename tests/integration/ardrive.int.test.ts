@@ -69,8 +69,7 @@ describe('ArDrive class - integrated', () => {
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.0');
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.0', false);
-	const bundleArfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Bundle Integration Test', '1.0', true);
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.0');
 
 	const arDrive = new ArDrive(
 		wallet,
@@ -81,18 +80,20 @@ describe('ArDrive class - integrated', () => {
 		'1.2',
 		priceEstimator,
 		new FeeMultiple(1.0),
-		true
+		true,
+		false
 	);
 
 	const bundledArDrive = new ArDrive(
 		wallet,
 		walletDao,
-		bundleArfsDao,
+		arfsDao,
 		communityOracle,
 		'Bundle Integration Test',
 		'1.2',
 		priceEstimator,
 		new FeeMultiple(1.0),
+		true,
 		true
 	);
 
@@ -145,7 +146,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE'
 				});
 
-				assertCreateDriveExpectations(result, W(75), W(37), undefined, true);
+				assertCreateDriveExpectations(result, W(2751), W(37), undefined, true);
 			});
 		});
 
@@ -175,7 +176,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE',
 					newPrivateDriveData: stubPrivateDriveData
 				});
-				assertCreateDriveExpectations(result, W(91), W(37), urlEncodeHashKey(stubDriveKey), true);
+				assertCreateDriveExpectations(result, W(2915), W(37), urlEncodeHashKey(stubDriveKey), true);
 			});
 		});
 	});

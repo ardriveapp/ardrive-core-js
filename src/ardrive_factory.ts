@@ -52,13 +52,14 @@ export function arDriveFactory({
 	return new ArDrive(
 		wallet,
 		walletDao ?? new WalletDAO(arweave, appName, appVersion),
-		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, bundle),
+		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion),
 		communityOracle,
 		appName,
 		appVersion,
 		priceEstimator,
 		feeMultiple,
-		dryRun
+		dryRun,
+		bundle
 	);
 }
 

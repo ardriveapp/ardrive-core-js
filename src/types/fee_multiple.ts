@@ -1,4 +1,5 @@
 import BigNumber from 'bignumber.js';
+import { W, Winston } from './winston';
 
 export class FeeMultiple {
 	constructor(private readonly feeMultiple: number) {
@@ -34,5 +35,13 @@ export class FeeMultiple {
 	boostReward(reward: string): string {
 		// Round up with because fractional Winston will cause an Arweave API failure
 		return new BigNumber(reward).times(new BigNumber(this.feeMultiple)).toFixed(0, BigNumber.ROUND_UP);
+	}
+
+	boostedWinstonReward(reward: Winston): Winston {
+		if (this.wouldBoostReward()) {
+			return W(this.boostReward(`${reward}`));
+		}
+
+		return reward;
 	}
 }

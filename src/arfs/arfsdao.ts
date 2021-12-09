@@ -118,6 +118,11 @@ import {
 	ArFSPrepareDataItemsParams,
 	ArFSPrepareObjectBundleParams
 } from '../types/arfsdao_types';
+import {
+	CreateDriveRewardSettings,
+	CreateDriveV2TxRewardSettings,
+	isBundleRewardSetting
+} from '../types/cost_estimator_types';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -137,8 +142,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		arweave: Arweave,
 		private readonly dryRun = false,
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION,
-		private readonly bundle = true
+		protected appVersion = DEFAULT_APP_VERSION
 	) {
 		super(arweave, appName, appVersion);
 	}
@@ -260,8 +264,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	/** Create drive and root folder as separate V2 transactions */
 	private async createV2TxDrive(
 		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction>, 'prepareArFSObject'>,
-		driveRewardSettings: RewardSettings,
-		rootFolderRewardSettings: RewardSettings
+		{ driveRewardSettings, rootFolderRewardSettings }: CreateDriveV2TxRewardSettings
 	): Promise<ArFSTxResult<ArFSCreateDriveResult>> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
@@ -291,20 +294,22 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	/**
-	 * Create drive and root folder as a V2 transaction OR a bundled transaction
+	 * Create drive and root folder as a V2 transaction
+	 * OR a direct to network bundled transaction
 	 *
-	 * @remarks Result type is determined by ArFSDAO class setting `bundle`
+	 * @remarks To bundle or not is determined during cost estimation,
+	 * and the provided rewardSettings will be type checked here to
+	 * determine the result type
 	 */
 	private async createDrive(
 		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction | DataItem>, 'prepareArFSObject'>,
-		driveRewardSettings: RewardSettings,
-		rootFolderRewardSettings: RewardSettings
+		rewardSettings: CreateDriveRewardSettings
 	): Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult> {
-		const { transactions, result } = this.bundle
-			? await this.createBundledDrive(sharedPrepDriveParams, driveRewardSettings)
-			: await this.createV2TxDrive(sharedPrepDriveParams, driveRewardSettings, rootFolderRewardSettings);
+		const { transactions, result } = isBundleRewardSetting(rewardSettings)
+			? await this.createBundledDrive(sharedPrepDriveParams, rewardSettings.bundleRewardSettings)
+			: await this.createV2TxDrive(sharedPrepDriveParams, rewardSettings);
 
-		// Upload all v2 transactions or bundles
+		// Upload all v2 transactions or direct to network bundles
 		await this.sendTransactionsAsChunks(transactions);
 		return result;
 	}
@@ -312,8 +317,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	/** Create an ArFS public drive */
 	public async createPublicDrive({
 		driveName,
-		driveRewardSettings,
-		rootFolderRewardSettings
+		rewardSettings
 	}: ArFSCreatePublicDriveParams): Promise<ArFSCreatePublicDriveResult | ArFSCreatePublicBundledDriveResult> {
 		const folderData = new ArFSPublicFolderTransactionData(driveName);
 		const prepPublicDriveParams = {
@@ -329,14 +333,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				)
 		};
 
-		return this.createDrive(prepPublicDriveParams, driveRewardSettings, rootFolderRewardSettings);
+		return this.createDrive(prepPublicDriveParams, rewardSettings);
 	}
 
 	/** Create an ArFS private drive */
 	public async createPrivateDrive({
 		driveName,
-		driveRewardSettings,
-		rootFolderRewardSettings,
+		rewardSettings,
 		newDriveData
 	}: ArFSCreatePrivateDriveParams): Promise<ArFSCreatePrivateDriveResult | ArFSCreatePrivateBundledDriveResult> {
 		const folderData = await ArFSPrivateFolderTransactionData.from(driveName, newDriveData.driveKey);
@@ -354,7 +357,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 
 		return {
-			...(await this.createDrive(prepPrivateDriveParams, driveRewardSettings, rootFolderRewardSettings)),
+			...(await this.createDrive(prepPrivateDriveParams, rewardSettings)),
 			driveKey: folderData.driveKey
 		};
 	}

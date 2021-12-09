@@ -77,11 +77,6 @@ export interface FileUploadBaseCosts extends BulkFileBaseCosts {
 	communityWinstonTip: Winston;
 }
 
-export interface DriveUploadBaseCosts {
-	driveMetaDataBaseReward: Winston;
-	rootFolderMetaDataBaseReward: Winston;
-}
-
 export interface RecursivePublicBulkUploadParams {
 	parentFolderId: FolderID;
 	wrappedFolder: ArFSFolderToUpload;

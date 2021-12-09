@@ -15,6 +15,7 @@ import {
 	ArFSEntityToUpload,
 	WithDriveKey
 } from '../exports';
+import { CreateDriveRewardSettings } from './cost_estimator_types';
 
 /** Generic closure type that uses prepareArFSObjectTransaction (V2) or prepareArFSDataItem (bundle) */
 export type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
@@ -55,8 +56,7 @@ export type ArFSPrivateCreateFolderParams = ArFSCreateFolderParams<ArFSPrivateFo
 
 export interface ArFSCreatePublicDriveParams {
 	driveName: string;
-	driveRewardSettings: RewardSettings;
-	rootFolderRewardSettings: RewardSettings;
+	rewardSettings: CreateDriveRewardSettings;
 }
 export interface ArFSCreatePrivateDriveParams extends ArFSCreatePublicDriveParams {
 	newDriveData: PrivateDriveKeyData;
