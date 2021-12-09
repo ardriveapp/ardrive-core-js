@@ -64,7 +64,7 @@ import {
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
-} from './arfs_trx_data_types';
+} from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSDAOAnonymous } from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, graphQLURL } from '../utils/constants';
@@ -598,8 +598,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			fileDataRewardSettings,
 			metadataRewardSettings,
 			async (fileData, _dataContentType, fileId) => {
-				const trxData = await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey);
-				return new ArFSPrivateFileDataPrototype(trxData);
+				const txData = await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey);
+				return new ArFSPrivateFileDataPrototype(txData);
 			},
 			async (destinationFileName, fileSize, lastModifiedDateMS, dataTxId, dataContentType, fileId) => {
 				return await ArFSPrivateFileMetadataTransactionData.from(
@@ -615,8 +615,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			(metadataTxData, fileId) => {
 				return new ArFSPrivateFileMetaDataPrototype(metadataTxData, driveId, fileId, parentFolderId);
 			},
-			(result, trxData) => {
-				return { ...result, fileKey: trxData.fileKey }; // add the file key to the result data
+			(result, txData) => {
+				return { ...result, fileKey: txData.fileKey }; // add the file key to the result data
 			},
 			destFileName,
 			existingFileId
@@ -717,22 +717,22 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags];
 
 		// Create transaction
-		const trxAttributes: Partial<CreateTransactionInterface> = {
+		const txAttributes: Partial<CreateTransactionInterface> = {
 			data: objectMetaData.objectData.asTransactionData()
 		};
 
 		// If we provided our own reward setting, use it now
 		if (rewardSettings.reward) {
-			trxAttributes.reward = rewardSettings.reward.toString();
+			txAttributes.reward = rewardSettings.reward.toString();
 		}
 
 		// TODO: Use a mock arweave server instead
 		if (process.env.NODE_ENV === 'test') {
-			trxAttributes.last_tx = 'STUB';
+			txAttributes.last_tx = 'STUB';
 		}
 
 		const wallet = this.wallet as JWKWallet;
-		const transaction = await this.arweave.createTransaction(trxAttributes, wallet.getPrivateKey());
+		const transaction = await this.arweave.createTransaction(txAttributes, wallet.getPrivateKey());
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {

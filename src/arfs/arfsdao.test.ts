@@ -54,9 +54,9 @@ describe('The ArFSDAO class', async () => {
 
 			expect(tags.length).to.equal(8);
 
-			// Assert that the data JSON of the metadata trx is ArFS compliant
-			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
-			expect(trxData).to.deep.equal({
+			// Assert that the data JSON of the metadata tx is ArFS compliant
+			const txData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(txData).to.deep.equal({
 				name: 'Test Public Drive Metadata',
 				rootFolderId: '00000000-0000-0000-0000-000000000000'
 			});
@@ -118,9 +118,9 @@ describe('The ArFSDAO class', async () => {
 
 			expect(tags.length).to.equal(9);
 
-			// Assert that the data JSON of the metadata trx is ArFS compliant
-			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
-			expect(trxData).to.deep.equal({
+			// Assert that the data JSON of the metadata tx is ArFS compliant
+			const txData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(txData).to.deep.equal({
 				name: 'Test Public Folder Metadata'
 			});
 		});
@@ -156,7 +156,7 @@ describe('The ArFSDAO class', async () => {
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
 			const decryptedJSON = await JSON.parse(decryptedString);
 
-			// Assert that the data JSON of the metadata trx is ArFS compliant
+			// Assert that the data JSON of the metadata tx is ArFS compliant
 			expect(decryptedJSON).to.deep.equal({
 				name: 'Test Private Folder Metadata'
 			});
@@ -193,9 +193,9 @@ describe('The ArFSDAO class', async () => {
 
 			expect(tags.length).to.equal(9);
 
-			// Assert that the data JSON of the metadata trx is ArFS compliant
-			const trxData = JSON.parse(new TextDecoder().decode(transaction.data));
-			expect(trxData).to.deep.equal({
+			// Assert that the data JSON of the metadata tx is ArFS compliant
+			const txData = JSON.parse(new TextDecoder().decode(transaction.data));
+			expect(txData).to.deep.equal({
 				dataContentType: 'text/plain',
 				dataTxId: '0000000000000000000000000000000000000000000',
 				lastModifiedDate: 123456789,
@@ -236,7 +236,7 @@ describe('The ArFSDAO class', async () => {
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
 			const decryptedJSON = await JSON.parse(decryptedString);
 
-			// Assert that the data JSON of the metadata trx is ArFS compliant
+			// Assert that the data JSON of the metadata tx is ArFS compliant
 			expect(decryptedJSON).to.deep.equal({
 				dataContentType: 'text/plain',
 				dataTxId: '0000000000000000000000000000000000000000000',

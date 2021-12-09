@@ -48,7 +48,7 @@ import { WalletDAO } from '../../src/wallet_dao';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
-const trxIdRegex = /^(\w|-){43}$/;
+const txIdRegex = /^(\w|-){43}$/;
 const fileKeyRegex = /^([a-zA-Z]|[0-9]|-|_|\/|\+){43}$/;
 
 describe('ArDrive class - integrated', () => {
@@ -126,7 +126,7 @@ describe('ArDrive class - integrated', () => {
 				const result = await arDrive.sendCommunityTip({ communityWinstonTip: W('12345') });
 
 				// Can't know the txID ahead of time without mocking arweave deeply
-				expect(result.tipData.txId).to.match(trxIdRegex);
+				expect(result.tipData.txId).to.match(txIdRegex);
 				expect(`${result.tipData.recipient}`).to.equal(`${stubArweaveAddress()}`);
 				expect(`${result.tipData.winston}`).to.equal('12345');
 				expect(`${result.reward}`).to.equal('0');
@@ -150,7 +150,7 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
-		describe('createPrivateDrive', async () => {
+		describe('createPrivateDrive', () => {
 			it('returns the correct ArFSResult', async () => {
 				const stubDriveKey = await getStubDriveKey();
 				const stubPrivateDriveData: PrivateDriveKeyData = {
@@ -1140,7 +1140,8 @@ function assertCreateDriveExpectations(
 	expectedDriveKey?: string,
 	isBundled = false
 ) {
-	// Ensure that 2 arfs entities were created
+	// Ensure that 3 arfs entities are created with a bundled transaction,
+	// and 2 arfs entities are created during a v2 transaction
 	expect(result.created.length).to.equal(isBundled ? 3 : 2);
 
 	// Ensure that the drive entity looks healthy
@@ -1148,7 +1149,7 @@ function assertCreateDriveExpectations(
 	expect(driveEntity.dataTxId).to.be.undefined;
 	expect(driveEntity.entityId).to.match(entityIdRegex);
 	expect(driveEntity.key).to.equal(expectedDriveKey);
-	expect(driveEntity.metadataTxId).to.match(trxIdRegex);
+	expect(driveEntity.metadataTxId).to.match(txIdRegex);
 	expect(driveEntity.type).to.equal('drive');
 
 	// Ensure that the root folder entity looks healthy
@@ -1156,7 +1157,7 @@ function assertCreateDriveExpectations(
 	expect(rootFolderEntity.dataTxId).to.be.undefined;
 	expect(rootFolderEntity.entityId).to.match(entityIdRegex);
 	expect(rootFolderEntity.key).to.equal(expectedDriveKey);
-	expect(rootFolderEntity.metadataTxId).to.match(trxIdRegex);
+	expect(rootFolderEntity.metadataTxId).to.match(txIdRegex);
 	expect(rootFolderEntity.type).to.equal('folder');
 
 	// There should be no tips
@@ -1165,28 +1166,28 @@ function assertCreateDriveExpectations(
 	const feeKeys = Object.keys(result.fees);
 
 	if (isBundled) {
-		// Ensure that the bundle trx looks healthy
+		// Ensure that the bundle tx looks healthy
 		const bundleEntity = result.created[2];
 		expect(bundleEntity.dataTxId).to.be.undefined;
 		expect(bundleEntity.entityId).to.be.undefined;
 		expect(bundleEntity.key).to.be.undefined;
 		expect(bundleEntity.metadataTxId).to.be.undefined;
-		expect(bundleEntity.bundleTxId).to.match(trxIdRegex);
+		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
 		expect(bundleEntity.type).to.equal('bundle');
 
 		// Ensure that the bundle fee look healthy
 		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
-		expect(feeKeys[0]).to.match(trxIdRegex);
+		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${driveFee}`);
 	} else {
 		// Ensure that the V2 transaction fees look healthy
 		expect(feeKeys.length).to.equal(2);
 		expect(feeKeys[0]).to.equal(driveEntity.metadataTxId!.toString());
-		expect(feeKeys[0]).to.match(trxIdRegex);
+		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[driveEntity.metadataTxId!.toString()]}`).to.equal(`${driveFee}`);
 		expect(feeKeys[1]).to.equal(rootFolderEntity.metadataTxId!.toString());
-		expect(feeKeys[1]).to.match(trxIdRegex);
+		expect(feeKeys[1]).to.match(txIdRegex);
 		expect(`${result.fees[rootFolderEntity.metadataTxId!.toString()]}`).to.equal(`${folderFee}`);
 	}
 }
@@ -1200,7 +1201,7 @@ function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, 
 	expect(folderEntity.dataTxId).to.be.undefined;
 	expect(folderEntity.entityId).to.match(entityIdRegex);
 	expect(folderEntity.key).to.equal(expectedDriveKey);
-	expect(folderEntity.metadataTxId).to.match(trxIdRegex);
+	expect(folderEntity.metadataTxId).to.match(txIdRegex);
 	expect(folderEntity.type).to.equal('folder');
 
 	// There should be no tips
@@ -1209,7 +1210,7 @@ function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, 
 	// Ensure that the fees look healthy
 	const feeKeys = Object.keys(result.fees);
 	expect(feeKeys.length).to.equal(1);
-	expect(feeKeys[0]).to.match(trxIdRegex);
+	expect(feeKeys[0]).to.match(txIdRegex);
 	expect(feeKeys[0]).to.equal(folderEntity.metadataTxId!.toString());
 	expect(`${result.fees[folderEntity.metadataTxId!.toString()]}`).to.equal(`${folderFee}`);
 }
@@ -1228,7 +1229,7 @@ function assertUploadFileExpectations(
 
 	// Ensure that the file data entity looks healthy
 	const fileEntity = result.created[0];
-	expect(fileEntity.dataTxId).to.match(trxIdRegex);
+	expect(fileEntity.dataTxId).to.match(txIdRegex);
 	expect(fileEntity.entityId).to.match(entityIdRegex);
 
 	if (expectedFileId) {
@@ -1242,31 +1243,31 @@ function assertUploadFileExpectations(
 		case 'private':
 			expect(fileEntity.key).to.match(fileKeyRegex);
 	}
-	expect(fileEntity.metadataTxId).to.match(trxIdRegex);
+	expect(fileEntity.metadataTxId).to.match(txIdRegex);
 	expect(fileEntity.type).to.equal('file');
 
 	// There should be 1 tip
 	expect(result.tips.length).to.equal(1);
 	const uploadTip = result.tips[0];
-	expect(uploadTip.txId).to.match(trxIdRegex);
+	expect(uploadTip.txId).to.match(txIdRegex);
 	expect(`${uploadTip.winston}`).to.equal(`${expectedTip}`);
-	expect(uploadTip.recipient).to.match(trxIdRegex);
+	expect(uploadTip.recipient).to.match(txIdRegex);
 
 	// Ensure that the fees look healthy
 	expect(Object.keys(result.fees).length).to.equal(3);
 
 	const feeKeys = Object.keys(result.fees);
-	expect(feeKeys[0]).to.match(trxIdRegex);
+	expect(feeKeys[0]).to.match(txIdRegex);
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
-	expect(feeKeys[1]).to.match(trxIdRegex);
+	expect(feeKeys[1]).to.match(txIdRegex);
 	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
 
-	expect(feeKeys[2]).to.match(trxIdRegex);
+	expect(feeKeys[2]).to.match(txIdRegex);
 	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
 	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 }
@@ -1277,7 +1278,7 @@ function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, driveP
 
 	// Ensure that the file entity looks healthy
 	const fileEntity = result.created[0];
-	expect(fileEntity.dataTxId).to.match(trxIdRegex);
+	expect(fileEntity.dataTxId).to.match(txIdRegex);
 	expect(fileEntity.entityId).to.match(entityIdRegex);
 	switch (drivePrivacy) {
 		case 'public':
@@ -1286,7 +1287,7 @@ function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, driveP
 		case 'private':
 			expect(fileEntity.key).to.match(fileKeyRegex);
 	}
-	expect(fileEntity.metadataTxId).to.match(trxIdRegex);
+	expect(fileEntity.metadataTxId).to.match(txIdRegex);
 	expect(fileEntity.type).to.equal('file');
 
 	// There should be no tips
@@ -1295,7 +1296,7 @@ function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, driveP
 	// Ensure that the fees look healthy
 	const feeKeys = Object.keys(result.fees);
 	expect(feeKeys.length).to.equal(1);
-	expect(feeKeys[0]).to.match(trxIdRegex);
+	expect(feeKeys[0]).to.match(txIdRegex);
 	expect(feeKeys[0]).to.equal(fileEntity.metadataTxId!.toString());
 	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${fileFee}`);
 }
@@ -1314,36 +1315,36 @@ function assertUploadManifestExpectations(
 
 	// Ensure that the file data entity looks healthy
 	const fileEntity = result.created[0];
-	expect(fileEntity.dataTxId).to.match(trxIdRegex);
+	expect(fileEntity.dataTxId).to.match(txIdRegex);
 	expect(fileEntity.entityId).to.match(entityIdRegex);
 
 	if (expectedFileId) {
 		expect(fileEntity.entityId).to.equal(expectedFileId);
 	}
 
-	expect(fileEntity.metadataTxId).to.match(trxIdRegex);
+	expect(fileEntity.metadataTxId).to.match(txIdRegex);
 	expect(fileEntity.type).to.equal('file');
 
 	// There should be 1 tip
 	expect(result.tips.length).to.equal(1);
 	const uploadTip = result.tips[0];
-	expect(uploadTip.txId).to.match(trxIdRegex);
+	expect(uploadTip.txId).to.match(txIdRegex);
 	expect(`${uploadTip.winston}`).to.equal(`${expectedTip}`);
-	expect(uploadTip.recipient).to.match(trxIdRegex);
+	expect(uploadTip.recipient).to.match(txIdRegex);
 
 	// Ensure that the fees look healthy
 	expect(Object.keys(result.fees).length).to.equal(3);
 
 	const feeKeys = Object.keys(result.fees);
-	expect(feeKeys[0]).to.match(trxIdRegex);
+	expect(feeKeys[0]).to.match(txIdRegex);
 	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
 	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
-	expect(feeKeys[1]).to.match(trxIdRegex);
+	expect(feeKeys[1]).to.match(txIdRegex);
 	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
 
-	expect(feeKeys[2]).to.match(trxIdRegex);
+	expect(feeKeys[2]).to.match(txIdRegex);
 	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
 	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 

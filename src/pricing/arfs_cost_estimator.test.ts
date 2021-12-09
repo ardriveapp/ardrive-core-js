@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import { stubPrivateFolderMetaDataTx, stubPublicDriveMetaDataTx, stubPublicFolderMetaDataTx } from '../../tests/stubs';
+import {
+	stubPrivateDriveMetaDataTx,
+	stubPrivateFolderMetaDataTx,
+	stubPublicDriveMetaDataTx,
+	stubPublicFolderMetaDataTx
+} from '../../tests/stubs';
 import { FeeMultiple, W } from '../exports';
 import {
 	BundleRewardSettings,
@@ -86,7 +91,7 @@ describe('The ArFSCostEstimator class', () => {
 			const privateCreateDriveParams: () => Promise<EstimateCreateDriveParams> = async () => {
 				return {
 					rootFolderMetaDataPrototype: await stubPrivateFolderMetaDataTx,
-					driveMetaDataPrototype: stubPublicDriveMetaDataTx
+					driveMetaDataPrototype: await stubPrivateDriveMetaDataTx
 				};
 			};
 

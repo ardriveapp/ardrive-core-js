@@ -5,7 +5,7 @@ import {
 	ArFSFileMetaDataPrototype,
 	ArFSFolderMetaDataPrototype
 } from './arfs_prototypes';
-import { ArFSFileMetadataTransactionData } from './arfs_trx_data_types';
+import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
 
 import { DataContentType, DriveID, FileID, FolderID, ByteCount, TransactionID, UnixTime } from '../types';
 

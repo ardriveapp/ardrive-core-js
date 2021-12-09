@@ -1,6 +1,6 @@
 import { serializeTags } from 'arbundles/src/parser';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
-import { ArFSObjectTransactionData } from '../arfs/arfs_trx_data_types';
+import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
 import { ByteCount, FeeMultiple, GQLTagInterface, Winston } from '../types';
 import {
 	ArFSCostEstimatorConstructorParams,

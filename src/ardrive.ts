@@ -20,7 +20,7 @@ import {
 	ArFSPrivateDriveTransactionData,
 	ArFSFileMetadataTransactionData,
 	ArFSObjectTransactionData
-} from './arfs/arfs_trx_data_types';
+} from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey } from './utils/crypto';
@@ -124,7 +124,7 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		return {
-			tipData: { txId: transferResult.trxID, recipient: tokenHolder, winston: communityWinstonTip },
+			tipData: { txId: transferResult.txID, recipient: tokenHolder, winston: communityWinstonTip },
 			reward: transferResult.reward
 		};
 	}
@@ -1196,7 +1196,7 @@ export class ArDrive extends ArDriveAnonymous {
 				bundleTxId: createDriveResult.bundleTxId
 			});
 
-			// Bundled trx result:
+			// Bundled tx result:
 			return {
 				...arFSResults,
 				fees: {
@@ -1267,7 +1267,7 @@ export class ArDrive extends ArDriveAnonymous {
 				bundleTxId: createDriveResult.bundleTxId
 			});
 
-			// Bundled trx result:
+			// Bundled tx result:
 			return {
 				...arFSResults,
 				fees: {
@@ -1556,7 +1556,7 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.getDriveIdForFolderId(folderId);
 	}
 
-	// Provides for stubbing metadata during cost estimations since the data trx ID won't yet be known
+	// Provides for stubbing metadata during cost estimations since the data tx ID won't yet be known
 	private stubPublicFileMetadata(
 		wrappedFile: ArFSEntityToUpload,
 		destinationFileName?: string
@@ -1572,7 +1572,7 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 	}
 
-	// Provides for stubbing metadata during cost estimations since the data trx and File IDs won't yet be known
+	// Provides for stubbing metadata during cost estimations since the data tx and File IDs won't yet be known
 	private async stubPrivateFileMetadata(
 		wrappedFile: ArFSFileToUpload,
 		destinationFileName?: string

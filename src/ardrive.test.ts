@@ -2,7 +2,7 @@ import Arweave from 'arweave';
 import { expect } from 'chai';
 import { SinonStubbedInstance, stub } from 'sinon';
 import { ArDrive } from './ardrive';
-import { ArFSPublicFileMetadataTransactionData, ArFSPublicFolderTransactionData } from './arfs/arfs_trx_data_types';
+import { ArFSPublicFileMetadataTransactionData, ArFSPublicFolderTransactionData } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
 import { CommunityOracle } from './community/community_oracle';

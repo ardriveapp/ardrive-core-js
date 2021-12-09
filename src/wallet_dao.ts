@@ -20,7 +20,7 @@ import * as mnemonicKeys from 'arweave-mnemonic-keys';
 import { Wallet } from './wallet';
 
 export type ARTransferResult = {
-	trxID: TransactionID;
+	txID: TransactionID;
 	winston: Winston;
 	reward: NetworkReward;
 };
@@ -64,7 +64,7 @@ export class WalletDAO {
 		[
 			{ value: appName = this.appName },
 			{ value: appVersion = this.appVersion },
-			{ value: trxType = 'transfer' },
+			{ value: txType = 'transfer' },
 			...otherTags
 		]: GQLTagInterface[],
 		assertBalance = false
@@ -74,21 +74,21 @@ export class WalletDAO {
 		const winston: Winston = arAmount.toWinston();
 
 		// Create transaction
-		const trxAttributes: Partial<CreateTransactionInterface> = {
+		const txAttributes: Partial<CreateTransactionInterface> = {
 			target: toAddress.toString(),
 			quantity: winston.toString()
 		};
 
 		// If we provided our own reward settings, use them now
 		if (rewardSettings.reward) {
-			trxAttributes.reward = rewardSettings.reward.toString();
+			txAttributes.reward = rewardSettings.reward.toString();
 		}
 
 		// TODO: Use a mock arweave server instead
 		if (process.env.NODE_ENV === 'test') {
-			trxAttributes.last_tx = 'STUB';
+			txAttributes.last_tx = 'STUB';
 		}
-		const transaction = await this.arweave.createTransaction(trxAttributes, jwkWallet.getPrivateKey());
+		const transaction = await this.arweave.createTransaction(txAttributes, jwkWallet.getPrivateKey());
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
 		}
@@ -114,7 +114,7 @@ export class WalletDAO {
 		// Tag file with data upload Tipping metadata
 		transaction.addTag('App-Name', appName);
 		transaction.addTag('App-Version', appVersion);
-		transaction.addTag('Type', trxType);
+		transaction.addTag('Type', txType);
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.addTag('Boost', rewardSettings.feeMultiple.toString());
 		}
@@ -137,7 +137,7 @@ export class WalletDAO {
 		})();
 		if (response.status === 200 || response.status === 202) {
 			return Promise.resolve({
-				trxID: TxID(transaction.id),
+				txID: TxID(transaction.id),
 				winston,
 				reward: W(transaction.reward)
 			});

@@ -12,7 +12,7 @@ import {
 	ArFSPublicFileDataTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData
-} from './arfs_trx_data_types';
+} from './arfs_tx_data_types';
 import {
 	DataContentType,
 	DriveID,
