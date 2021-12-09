@@ -407,7 +407,7 @@ export abstract class ArFSFolderToDownload {
 		return relativePath;
 	}
 
-	ensureFolderExistence(folderPath: string, recursive = true): void {
+	ensureFolderExistence(folderPath: string, recursive = false): void {
 		try {
 			const stat = statSync(folderPath);
 			if (!stat.isDirectory()) {
