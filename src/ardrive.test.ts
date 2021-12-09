@@ -159,37 +159,21 @@ describe('ArDrive class', () => {
 		});
 	});
 
-	// TODO: Add tests for Assert and cost estimator
+	describe('assertWalletBalanceFunction function', () => {
+		it('throws an error when there is an insufficient wallet balance', async () => {
+			stub(walletDao, 'walletHasBalance').callsFake(() => {
+				return Promise.resolve(false);
+			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
+				return Promise.resolve(W(4));
+			});
 
-	// describe('estimateAndAssertCostOfDriveCreation function', () => {
-	// 	it('throws an error when there is an insufficient wallet balance', async () => {
-	// 		stub(walletDao, 'walletHasBalance').callsFake(() => {
-	// 			return Promise.resolve(false);
-	// 		});
-	// 		stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-	// 			return Promise.resolve(W(0));
-	// 		});
-	// 		await expectAsyncErrorThrow({
-	// 			promiseToError: arDrive.estimateAndAssertCostOfDriveCreation(
-	// 				stubPublicDriveMetadataTransactionData,
-	// 				stubPublicFolderTransactionData
-	// 			)
-	// 		});
-	// 	});
-
-	// 	it('returns the correct reward data', async () => {
-	// 		stub(walletDao, 'walletHasBalance').callsFake(() => {
-	// 			return Promise.resolve(true);
-	// 		});
-
-	// 		const actual = await arDrive.estimateAndAssertCostOfDriveCreation(
-	// 			stubPublicDriveMetadataTransactionData,
-	// 			stubPublicFolderTransactionData
-	// 		);
-	// 		expect(`${actual.driveMetaDataBaseReward}`).to.equal('73');
-	// 		expect(`${actual.rootFolderMetaDataBaseReward}`).to.equal('19');
-	// 	});
-	// });
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.assertWalletBalance(W(5)),
+				errorMessage: `Wallet balance of 4 Winston is not enough (5) for this action!`
+			});
+		});
+	});
 
 	describe('estimateAndAssertCostOfMoveFile function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {

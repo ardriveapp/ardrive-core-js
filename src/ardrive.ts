@@ -1441,7 +1441,7 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	/** Throw an error if wallet balance does not cover cost of the provided winston  */
-	private async assertWalletBalance(winston: Winston): Promise<void> {
+	async assertWalletBalance(winston: Winston): Promise<void> {
 		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, winston);
 
 		if (!walletHasBalance) {
