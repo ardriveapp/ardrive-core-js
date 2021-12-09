@@ -24,7 +24,7 @@ import {
 	ArFSDriveTransactionData,
 	ArFSFolderTransactionData
 } from './arfs/arfs_trx_data_types';
-import { ArFSDAO, ArFSDownloadPrivateFolderParams } from './arfs/arfsdao';
+import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
@@ -48,7 +48,8 @@ import {
 	ArFSManifestResult,
 	UploadPublicManifestParams,
 	DownloadPrivateFileParameters,
-	emptyManifestResult
+	emptyManifestResult,
+	DownloadPrivateFolderParameters
 } from './types';
 import {
 	CommunityTipParams,
@@ -1628,17 +1629,17 @@ export class ArDrive extends ArDriveAnonymous {
 		await fileToDownload.write();
 	}
 
-	async downloadPrivateFolder(args: {
-		folderId: FolderID;
-		destFolderPath: string;
-		maxDepth: number;
-		driveKey: DriveKey;
-		owner?: ArweaveAddress;
-	}): Promise<void> {
-		if (!args.owner) {
-			args.owner = await this.arFsDao.getDriveOwnerForFolderId(args.folderId);
+	async downloadPrivateFolder({
+		folderId,
+		destFolderPath,
+		maxDepth,
+		driveKey,
+		owner
+	}: DownloadPrivateFolderParameters): Promise<void> {
+		if (!owner) {
+			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		return this.arFsDao.downloadPrivateFolder(args as ArFSDownloadPrivateFolderParams);
+		return this.arFsDao.downloadPrivateFolder({ folderId, destFolderPath, maxDepth, driveKey, owner });
 	}
 }
