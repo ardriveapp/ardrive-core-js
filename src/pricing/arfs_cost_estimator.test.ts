@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import {
-	stubPrivateFolderMetaDataTrx,
-	stubPublicDriveMetaDataTrx,
-	stubPublicFolderMetaDataTrx
-} from '../../tests/stubs';
+import { stubPrivateFolderMetaDataTx, stubPublicDriveMetaDataTx, stubPublicFolderMetaDataTx } from '../../tests/stubs';
 import { FeeMultiple, W } from '../exports';
 import {
 	BundleRewardSettings,
@@ -46,8 +42,8 @@ describe('The ArFSCostEstimator class', () => {
 	describe('estimateCreateDrive function', () => {
 		describe('used on a public drive', () => {
 			const publicCreateDriveParams: EstimateCreateDriveParams = {
-				rootFolderMetaDataPrototype: stubPublicFolderMetaDataTrx,
-				driveMetaDataPrototype: stubPublicDriveMetaDataTrx
+				rootFolderMetaDataPrototype: stubPublicFolderMetaDataTx,
+				driveMetaDataPrototype: stubPublicDriveMetaDataTx
 			};
 
 			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
@@ -89,8 +85,8 @@ describe('The ArFSCostEstimator class', () => {
 		describe('used on a private drive', async () => {
 			const privateCreateDriveParams: () => Promise<EstimateCreateDriveParams> = async () => {
 				return {
-					rootFolderMetaDataPrototype: await stubPrivateFolderMetaDataTrx,
-					driveMetaDataPrototype: stubPublicDriveMetaDataTrx
+					rootFolderMetaDataPrototype: await stubPrivateFolderMetaDataTx,
+					driveMetaDataPrototype: stubPublicDriveMetaDataTx
 				};
 			};
 

@@ -39,7 +39,7 @@ import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
 	MoveEntityMetaDataFactory,
 	FileDataPrototypeFactory,
-	FileMetadataTrxDataFactory,
+	FileMetadataTxDataFactory,
 	FileMetaDataFactory
 } from './arfs_meta_data_factory';
 import {
@@ -174,11 +174,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			prepareArFSObject: (folderMetaData) =>
 				this.prepareArFSObjectTransaction({ objectMetaData: folderMetaData, rewardSettings })
 		});
-		const folderTrx = arFSObjects[0];
+		const folderTx = arFSObjects[0];
 
-		await this.sendTransactionsAsChunks([folderTrx]);
+		await this.sendTransactionsAsChunks([folderTx]);
 
-		return { metaDataTrxId: TxID(folderTrx.id), metaDataTrxReward: W(folderTrx.reward), folderId };
+		return { metaDataTxId: TxID(folderTx.id), metaDataTxReward: W(folderTx.reward), folderId };
 	}
 
 	/** Create a single private folder as a V2 transaction */
@@ -245,18 +245,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		});
 
 		// Pack data items into a bundle
-		const bundledTrx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
+		const bundledTx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
 
 		const [rootFolderDataItem, driveDataItem] = arFSObjects;
 		return {
-			transactions: [bundledTrx],
+			transactions: [bundledTx],
 			result: {
-				bundleTrxId: TxID(bundledTrx.id),
-				bundleTrxReward: W(bundledTrx.reward),
+				bundleTxId: TxID(bundledTx.id),
+				bundleTxReward: W(bundledTx.reward),
 				driveId,
-				metaDataTrxId: TxID(driveDataItem.id),
+				metaDataTxId: TxID(driveDataItem.id),
 				rootFolderId,
-				rootFolderTrxId: TxID(rootFolderDataItem.id)
+				rootFolderTxId: TxID(rootFolderDataItem.id)
 			}
 		};
 	}
@@ -279,16 +279,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
-		const [rootFolderTrx, driveTrx] = arFSObjects;
+		const [rootFolderTx, driveTx] = arFSObjects;
 		return {
 			transactions: arFSObjects,
 			result: {
-				metaDataTrxId: TxID(driveTrx.id),
-				metaDataTrxReward: W(driveTrx.reward),
+				metaDataTxId: TxID(driveTx.id),
+				metaDataTxReward: W(driveTx.reward),
 				driveId,
 				rootFolderId,
-				rootFolderTrxId: TxID(rootFolderTrx.id),
-				rootFolderTrxReward: W(rootFolderTrx.reward)
+				rootFolderTxId: TxID(rootFolderTx.id),
+				rootFolderTxReward: W(rootFolderTx.reward)
 			}
 		};
 	}
@@ -370,20 +370,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const metadataPrototype = metaDataFactory();
 
 		// Prepare meta data transaction
-		const metaDataTrx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.prepareArFSObjectTransaction({
 			objectMetaData: metadataPrototype,
 			rewardSettings: metaDataBaseReward
 		});
 
 		// Upload meta data
 		if (!this.dryRun) {
-			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTrx);
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
 			while (!metaDataUploader.isComplete) {
 				await metaDataUploader.uploadChunk();
 			}
 		}
 
-		return resultFactory({ metaDataTrxId: TxID(metaDataTrx.id), metaDataTrxReward: W(metaDataTrx.reward) });
+		return resultFactory({ metaDataTxId: TxID(metaDataTx.id), metaDataTxReward: W(metaDataTx.reward) });
 	}
 
 	async movePublicFile({
@@ -403,7 +403,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				);
 			},
 			(results) => {
-				return { ...results, dataTrxId: originalMetaData.dataTxId };
+				return { ...results, dataTxId: originalMetaData.dataTxId };
 			}
 		);
 	}
@@ -425,7 +425,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				);
 			},
 			(results) => {
-				return { ...results, dataTrxId: originalMetaData.dataTxId, fileKey: transactionData.fileKey };
+				return { ...results, dataTxId: originalMetaData.dataTxId, fileKey: transactionData.fileKey };
 			}
 		);
 	}
@@ -477,7 +477,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		fileDataRewardSettings: RewardSettings,
 		metadataRewardSettings: RewardSettings,
 		dataPrototypeFactoryFn: FileDataPrototypeFactory,
-		metadataTrxDataFactoryFn: FileMetadataTrxDataFactory<D>,
+		metadataTxDataFactoryFn: FileMetadataTxDataFactory<D>,
 		metadataFactoryFn: FileMetaDataFactory<D>,
 		resultFactoryFn: ArFSUploadFileResultFactory<R, D>,
 		destFileName?: string,
@@ -497,7 +497,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Build file data transaction
 		const fileDataPrototype = await dataPrototypeFactoryFn(fileData, dataContentType, fileId);
-		const dataTrx = await this.prepareArFSObjectTransaction({
+		const dataTx = await this.prepareArFSObjectTransaction({
 			objectMetaData: fileDataPrototype,
 			rewardSettings: fileDataRewardSettings,
 			excludedTagNames: ['ArFS']
@@ -505,30 +505,30 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Upload file data
 		if (!this.dryRun) {
-			const dataUploader = await this.arweave.transactions.getUploader(dataTrx);
+			const dataUploader = await this.arweave.transactions.getUploader(dataTx);
 			while (!dataUploader.isComplete) {
 				await dataUploader.uploadChunk();
 			}
 		}
 
 		// Prepare meta data transaction
-		const metadataTrxData = await metadataTrxDataFactoryFn(
+		const metadataTxData = await metadataTxDataFactoryFn(
 			destinationFileName,
 			fileSize,
 			lastModifiedDateMS,
-			TxID(dataTrx.id),
+			TxID(dataTx.id),
 			dataContentType,
 			fileId
 		);
-		const fileMetadata = metadataFactoryFn(metadataTrxData, fileId);
-		const metaDataTrx = await this.prepareArFSObjectTransaction({
+		const fileMetadata = metadataFactoryFn(metadataTxData, fileId);
+		const metaDataTx = await this.prepareArFSObjectTransaction({
 			objectMetaData: fileMetadata,
 			rewardSettings: metadataRewardSettings
 		});
 
 		// Upload meta data
 		if (!this.dryRun) {
-			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTrx);
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
 			while (!metaDataUploader.isComplete) {
 				await metaDataUploader.uploadChunk();
 			}
@@ -536,13 +536,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return resultFactoryFn(
 			{
-				dataTrxId: TxID(dataTrx.id),
-				dataTrxReward: W(dataTrx.reward),
-				metaDataTrxId: TxID(metaDataTrx.id),
-				metaDataTrxReward: W(metaDataTrx.reward),
+				dataTxId: TxID(dataTx.id),
+				dataTxReward: W(dataTx.reward),
+				metaDataTxId: TxID(metaDataTx.id),
+				metaDataTxReward: W(metaDataTx.reward),
 				fileId
 			},
-			metadataTrxData
+			metadataTxData
 		);
 	}
 
@@ -565,17 +565,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					dataContentType
 				);
 			},
-			async (destinationFileName, fileSize, lastModifiedDateMS, dataTrxId, dataContentType) => {
+			async (destinationFileName, fileSize, lastModifiedDateMS, dataTxId, dataContentType) => {
 				return new ArFSPublicFileMetadataTransactionData(
 					destinationFileName,
 					fileSize,
 					lastModifiedDateMS,
-					dataTrxId,
+					dataTxId,
 					dataContentType
 				);
 			},
-			(metadataTrxData, fileId) => {
-				return new ArFSPublicFileMetaDataPrototype(metadataTrxData, driveId, fileId, parentFolderId);
+			(metadataTxData, fileId) => {
+				return new ArFSPublicFileMetaDataPrototype(metadataTxData, driveId, fileId, parentFolderId);
 			},
 			(result) => result, // no change
 			destFileName,
@@ -601,19 +601,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const trxData = await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey);
 				return new ArFSPrivateFileDataPrototype(trxData);
 			},
-			async (destinationFileName, fileSize, lastModifiedDateMS, dataTrxId, dataContentType, fileId) => {
+			async (destinationFileName, fileSize, lastModifiedDateMS, dataTxId, dataContentType, fileId) => {
 				return await ArFSPrivateFileMetadataTransactionData.from(
 					destinationFileName,
 					fileSize,
 					lastModifiedDateMS,
-					dataTrxId,
+					dataTxId,
 					dataContentType,
 					fileId,
 					driveKey
 				);
 			},
-			(metadataTrxData, fileId) => {
-				return new ArFSPrivateFileMetaDataPrototype(metadataTrxData, driveId, fileId, parentFolderId);
+			(metadataTxData, fileId) => {
+				return new ArFSPrivateFileMetaDataPrototype(metadataTxData, driveId, fileId, parentFolderId);
 			},
 			(result, trxData) => {
 				return { ...result, fileKey: trxData.fileKey }; // add the file key to the result data

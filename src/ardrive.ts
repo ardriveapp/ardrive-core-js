@@ -184,14 +184,14 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTrxId,
-					dataTxId: moveFileResult.dataTrxId,
+					metadataTxId: moveFileResult.metaDataTxId,
+					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFileResult.metaDataTrxId}`]: moveFileResult.metaDataTrxReward
+				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
 			}
 		});
 	}
@@ -244,15 +244,15 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTrxId,
-					dataTxId: moveFileResult.dataTrxId,
+					metadataTxId: moveFileResult.metaDataTxId,
+					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
 					key: urlEncodeHashKey(moveFileResult.fileKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFileResult.metaDataTrxId}`]: moveFileResult.metaDataTrxReward
+				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
 			}
 		});
 	}
@@ -313,13 +313,13 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTrxId,
+					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFolderResult.metaDataTrxId}`]: moveFolderResult.metaDataTrxReward
+				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
 			}
 		});
 	}
@@ -388,14 +388,14 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTrxId,
+					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
 					key: urlEncodeHashKey(moveFolderResult.driveKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFolderResult.metaDataTrxId}`]: moveFolderResult.metaDataTrxReward
+				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
 			}
 		});
 	}
@@ -459,7 +459,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: wrappedFile.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -467,16 +467,16 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			}
 		});
 	}
@@ -523,14 +523,14 @@ export class ArDrive extends ArDriveAnonymous {
 			// Send community tip only if communityWinstonTip has a value
 			// This can be zero when a user uses this method to upload empty folders
 
-			const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 				communityWinstonTip: bulkEstimation.communityWinstonTip
 			});
 
 			return Promise.resolve({
 				created: results.entityResults,
 				tips: [tipData],
-				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTrxReward }
+				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTxReward }
 			});
 		}
 
@@ -580,14 +580,18 @@ export class ArDrive extends ArDriveAnonymous {
 				parentFolderId
 			});
 
-			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
+			const {
+				metaDataTxId: metaDataTxId,
+				folderId: newFolderId,
+				metaDataTxReward: metaDataTxReward
+			} = createFolderResult;
 
 			// Capture parent folder results
-			uploadEntityFees = { [`${metaDataTrxId}`]: metaDataTrxReward };
+			uploadEntityFees = { [`${metaDataTxId}`]: metaDataTxReward };
 			uploadEntityResults = [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: newFolderId
 				}
 			];
@@ -626,15 +630,15 @@ export class ArDrive extends ArDriveAnonymous {
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			];
@@ -743,7 +747,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: wrappedFile.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -751,17 +755,17 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			}
 		});
 	}
@@ -814,14 +818,14 @@ export class ArDrive extends ArDriveAnonymous {
 			// Send community tip only if communityWinstonTip has a value
 			// This can be zero when a user uses this method to upload empty folders
 
-			const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 				communityWinstonTip: bulkEstimation.communityWinstonTip
 			});
 
 			return Promise.resolve({
 				created: results.entityResults,
 				tips: [tipData],
-				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTrxReward }
+				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTxReward }
 			});
 		}
 
@@ -872,14 +876,18 @@ export class ArDrive extends ArDriveAnonymous {
 				parentFolderId
 			});
 
-			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
+			const {
+				metaDataTxId: metaDataTxId,
+				folderId: newFolderId,
+				metaDataTxReward: metaDataTxReward
+			} = createFolderResult;
 
 			// Capture parent folder results
-			uploadEntityFees = { [`${metaDataTrxId}`]: metaDataTrxReward };
+			uploadEntityFees = { [`${metaDataTxId}`]: metaDataTxReward };
 			uploadEntityResults = [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: newFolderId,
 					key: urlEncodeHashKey(driveKey)
 				}
@@ -919,15 +927,15 @@ export class ArDrive extends ArDriveAnonymous {
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
@@ -1017,7 +1025,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: arweaveManifest.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -1025,19 +1033,19 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			},
 			manifest: arweaveManifest.manifest,
-			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTrxId)
+			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
 		});
 	}
 
@@ -1058,7 +1066,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
 
 		// Create the folder and retrieve its folder ID
-		const { metaDataTrxId, metaDataTrxReward, folderId } = await this.arFsDao.createPublicFolder({
+		const {
+			metaDataTxId: metaDataTxId,
+			metaDataTxReward: metaDataTxReward,
+			folderId
+		} = await this.arFsDao.createPublicFolder({
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
@@ -1070,13 +1082,13 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${metaDataTrxId}`]: metaDataTrxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			}
 		});
 	}
@@ -1102,7 +1114,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
 
 		// Create the folder and retrieve its folder ID
-		const { metaDataTrxId, metaDataTrxReward, folderId } = await this.arFsDao.createPrivateFolder({
+		const {
+			metaDataTxId: metaDataTxId,
+			metaDataTxReward: metaDataTxReward,
+			folderId
+		} = await this.arFsDao.createPrivateFolder({
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
@@ -1114,14 +1130,14 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId,
 					key: urlEncodeHashKey(driveKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${metaDataTrxId}`]: metaDataTrxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			}
 		});
 	}
@@ -1161,12 +1177,12 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'drive',
-					metadataTxId: createDriveResult.metaDataTrxId,
+					metadataTxId: createDriveResult.metaDataTxId,
 					entityId: createDriveResult.driveId
 				},
 				{
 					type: 'folder',
-					metadataTxId: createDriveResult.rootFolderTrxId,
+					metadataTxId: createDriveResult.rootFolderTxId,
 					entityId: createDriveResult.rootFolderId
 				}
 			],
@@ -1177,14 +1193,14 @@ export class ArDrive extends ArDriveAnonymous {
 		if (isBundleResult(createDriveResult)) {
 			arFSResults.created.push({
 				type: 'bundle',
-				bundleTxId: createDriveResult.bundleTrxId
+				bundleTxId: createDriveResult.bundleTxId
 			});
 
 			// Bundled trx result:
 			return {
 				...arFSResults,
 				fees: {
-					[`${createDriveResult.bundleTrxId}`]: createDriveResult.bundleTrxReward
+					[`${createDriveResult.bundleTxId}`]: createDriveResult.bundleTxReward
 				}
 			};
 		}
@@ -1193,8 +1209,8 @@ export class ArDrive extends ArDriveAnonymous {
 		return {
 			...arFSResults,
 			fees: {
-				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
-				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
+				[`${createDriveResult.metaDataTxId}`]: createDriveResult.metaDataTxReward,
+				[`${createDriveResult.rootFolderTxId}`]: createDriveResult.rootFolderTxReward
 			}
 		};
 	}
@@ -1230,13 +1246,13 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'drive',
-					metadataTxId: createDriveResult.metaDataTrxId,
+					metadataTxId: createDriveResult.metaDataTxId,
 					entityId: createDriveResult.driveId,
 					key: urlEncodeHashKey(createDriveResult.driveKey)
 				},
 				{
 					type: 'folder',
-					metadataTxId: createDriveResult.rootFolderTrxId,
+					metadataTxId: createDriveResult.rootFolderTxId,
 					entityId: createDriveResult.rootFolderId,
 					key: urlEncodeHashKey(createDriveResult.driveKey)
 				}
@@ -1248,14 +1264,14 @@ export class ArDrive extends ArDriveAnonymous {
 		if (isBundleResult(createDriveResult)) {
 			arFSResults.created.push({
 				type: 'bundle',
-				bundleTxId: createDriveResult.bundleTrxId
+				bundleTxId: createDriveResult.bundleTxId
 			});
 
 			// Bundled trx result:
 			return {
 				...arFSResults,
 				fees: {
-					[`${createDriveResult.bundleTrxId}`]: createDriveResult.bundleTrxReward
+					[`${createDriveResult.bundleTxId}`]: createDriveResult.bundleTxReward
 				}
 			};
 		}
@@ -1264,8 +1280,8 @@ export class ArDrive extends ArDriveAnonymous {
 		return {
 			...arFSResults,
 			fees: {
-				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
-				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
+				[`${createDriveResult.metaDataTxId}`]: createDriveResult.metaDataTxReward,
+				[`${createDriveResult.rootFolderTxId}`]: createDriveResult.rootFolderTxReward
 			}
 		};
 	}
@@ -1298,7 +1314,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Don't estimate cost of folder metadata if using existing folder
 		if (!folderToUpload.existingId) {
-			const folderMetadataTrxData = await (async () => {
+			const folderMetadataTxData = await (async () => {
 				const folderName = folderToUpload.newFolderName ?? folderToUpload.getBaseFileName();
 
 				if (driveKey) {
@@ -1307,7 +1323,7 @@ export class ArDrive extends ArDriveAnonymous {
 				return new ArFSPublicFolderTransactionData(folderName);
 			})();
 			const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-				folderMetadataTrxData.sizeOf()
+				folderMetadataTxData.sizeOf()
 			);
 			const parentFolderWinstonPrice = metaDataBaseReward;
 

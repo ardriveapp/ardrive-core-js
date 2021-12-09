@@ -75,7 +75,7 @@ export const stubEntityIDParent = EID('00000000-0000-0000-0000-000000000003');
 export const stubEntityIDChild = EID('00000000-0000-0000-0000-000000000004');
 export const stubEntityIDGrandchild = EID('00000000-0000-0000-0000-000000000005');
 
-export const stubPublicFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
+export const stubPublicFileMetaDataTx = new ArFSPublicFileMetaDataPrototype(
 	new ArFSPublicFileMetadataTransactionData(
 		'Test Public File Metadata',
 		new ByteCount(10),
@@ -88,7 +88,7 @@ export const stubPublicFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
 	stubEntityIDAltTwo
 );
 
-export const stubPrivateFileMetaDataTrx = (async () =>
+export const stubPrivateFileMetaDataTx = (async () =>
 	new ArFSPrivateFileMetaDataPrototype(
 		await ArFSPrivateFileMetadataTransactionData.from(
 			'Test Private File Metadata',
@@ -104,18 +104,18 @@ export const stubPrivateFileMetaDataTrx = (async () =>
 		stubEntityIDAltTwo
 	))();
 
-export const stubPublicDriveMetaDataTrx = new ArFSPublicDriveMetaDataPrototype(
+export const stubPublicDriveMetaDataTx = new ArFSPublicDriveMetaDataPrototype(
 	new ArFSPublicDriveTransactionData('Test Public Drive Metadata', stubEntityID),
 	stubEntityID
 );
 
-export const stubPrivateDriveMetaDataTrx = (async () =>
+export const stubPrivateDriveMetaDataTx = (async () =>
 	new ArFSPrivateDriveMetaDataPrototype(
 		stubEntityID,
 		await ArFSPrivateDriveTransactionData.from('Test Private Drive Metadata', stubEntityID, await getStubDriveKey())
 	))();
 
-export const stubPublicFolderMetaDataTrx = new ArFSPublicFolderMetaDataPrototype(
+export const stubPublicFolderMetaDataTx = new ArFSPublicFolderMetaDataPrototype(
 	new ArFSPublicFolderTransactionData('Test Public Folder Metadata'),
 	stubEntityID,
 	stubEntityIDAlt,
@@ -128,7 +128,7 @@ export const stubRootFolderMetaData = new ArFSPublicFolderMetaDataPrototype(
 	stubEntityIDAlt
 );
 
-export const stubPrivateFolderMetaDataTrx = (async () =>
+export const stubPrivateFolderMetaDataTx = (async () =>
 	new ArFSPrivateFolderMetaDataPrototype(
 		stubEntityID,
 		stubEntityIDAlt,
@@ -136,12 +136,12 @@ export const stubPrivateFolderMetaDataTrx = (async () =>
 		stubEntityIDAltTwo
 	))();
 
-export const stubPublicFileDataTrx = new ArFSPublicFileDataPrototype(
+export const stubPublicFileDataTx = new ArFSPublicFileDataPrototype(
 	new ArFSPublicFileDataTransactionData(readFileSync('./test_wallet.json')),
 	'application/json'
 );
 
-export const stubPrivateFileDataTrx = (async () =>
+export const stubPrivateFileDataTx = (async () =>
 	new ArFSPrivateFileDataPrototype(
 		await ArFSPrivateFileDataTransactionData.from(
 			readFileSync('./test_wallet.json'),

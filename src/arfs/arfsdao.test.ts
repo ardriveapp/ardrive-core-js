@@ -4,14 +4,14 @@ import {
 	stubEntityID,
 	stubEntityIDAlt,
 	stubEntityIDAltTwo,
-	stubPrivateDriveMetaDataTrx,
-	stubPrivateFileDataTrx,
-	stubPrivateFileMetaDataTrx,
-	stubPrivateFolderMetaDataTrx,
-	stubPublicDriveMetaDataTrx,
-	stubPublicFileDataTrx,
-	stubPublicFileMetaDataTrx,
-	stubPublicFolderMetaDataTrx,
+	stubPrivateDriveMetaDataTx,
+	stubPrivateFileDataTx,
+	stubPrivateFileMetaDataTx,
+	stubPrivateFolderMetaDataTx,
+	stubPublicDriveMetaDataTx,
+	stubPublicFileDataTx,
+	stubPublicFileMetaDataTx,
+	stubPublicFolderMetaDataTx,
 	stubRootFolderMetaData
 } from '../../tests/stubs';
 import { FeeMultiple, FileKey, W } from '../types';
@@ -38,7 +38,7 @@ describe('The ArFSDAO class', async () => {
 	describe('prepareObjectTransaction function', () => {
 		it('produces an ArFS compliant public drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicDriveMetaDataTrx,
+				objectMetaData: stubPublicDriveMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -64,7 +64,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: await stubPrivateDriveMetaDataTrx,
+				objectMetaData: await stubPrivateDriveMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -101,7 +101,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant public folder metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFolderMetaDataTrx,
+				objectMetaData: stubPublicFolderMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -127,7 +127,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private folder metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: await stubPrivateFolderMetaDataTrx,
+				objectMetaData: await stubPrivateFolderMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -176,7 +176,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant public file metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -206,7 +206,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private file metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: await stubPrivateFileMetaDataTrx,
+				objectMetaData: await stubPrivateFileMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -248,7 +248,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant public file data transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileDataTrx,
+				objectMetaData: stubPublicFileDataTx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
@@ -264,7 +264,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('produces an ArFS compliant private file data transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: await stubPrivateFileDataTrx,
+				objectMetaData: await stubPrivateFileDataTx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
@@ -282,7 +282,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('includes the base ArFS tags by default', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -296,7 +296,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('includes the boost tag when boosted', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) }
 			});
 			const tags = getDecodedTags(transaction.tags);
@@ -307,7 +307,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('excludes the boost tag when boosted and boost tag is excluded', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) },
 				excludedTagNames: ['Boost']
 			});
@@ -319,7 +319,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('excludes ArFS tag if its within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS']
 			});
@@ -331,7 +331,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('can exclude multiple tags if provided within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['ArFS', 'App-Version', 'App-Name']
 			});
@@ -346,7 +346,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('can exclude tags from an ArFS object prototypes', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				rewardSettings: { reward: W(10) },
 				excludedTagNames: ['Drive-Id', 'Content-Type', 'Parent-Folder-Id']
 			});
@@ -362,7 +362,7 @@ describe('The ArFSDAO class', async () => {
 		it('throws an error error if provided otherTags collide with protected tags from an ArFS object prototypes', async () => {
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.prepareArFSObjectTransaction({
-					objectMetaData: stubPublicFileMetaDataTrx,
+					objectMetaData: stubPublicFileMetaDataTx,
 					rewardSettings: { reward: W(10) },
 					otherTags: [{ name: 'Drive-Id', value: 'ultimate drive ID of awesome' }]
 				}),
@@ -374,7 +374,7 @@ describe('The ArFSDAO class', async () => {
 	describe('prepareDataItems function', () => {
 		it('includes the base ArFS tags by default', async () => {
 			const dataItem = await arfsDao.prepareArFSDataItem({
-				objectMetaData: stubPublicFileMetaDataTrx
+				objectMetaData: stubPublicFileMetaDataTx
 			});
 			const tags = dataItem.tags;
 
@@ -387,7 +387,7 @@ describe('The ArFSDAO class', async () => {
 
 		it('can exclude tags from data item', async () => {
 			const dataItem = await arfsDao.prepareArFSDataItem({
-				objectMetaData: stubPublicFileMetaDataTrx,
+				objectMetaData: stubPublicFileMetaDataTx,
 				excludedTagNames: ['ArFS', 'App-Name']
 			});
 			const tags = dataItem.tags;
@@ -407,10 +407,10 @@ describe('The ArFSDAO class', async () => {
 			// Start each test with fresh data items
 			dataItems = [
 				await arfsDao.prepareArFSDataItem({
-					objectMetaData: stubPublicFileMetaDataTrx
+					objectMetaData: stubPublicFileMetaDataTx
 				}),
 				await arfsDao.prepareArFSDataItem({
-					objectMetaData: stubPublicFileDataTrx
+					objectMetaData: stubPublicFileDataTx
 				})
 			];
 		});
