@@ -13,7 +13,6 @@ export class ArFSEntityCache<K, V> {
 	}
 
 	get(key: K): Promise<V> | undefined {
-		console.log(`checking cache for key ${key}`);
 		return this.cache.read(`${key}`);
 	}
 
@@ -23,5 +22,9 @@ export class ArFSEntityCache<K, V> {
 
 	clear(): void {
 		this.cache.clear();
+	}
+
+	size(): number {
+		return this.cache.size();
 	}
 }
