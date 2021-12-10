@@ -74,7 +74,7 @@ import {
 	graphQLURL
 } from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
-import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
+import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -90,7 +90,8 @@ import {
 	DriveKey,
 	FolderID,
 	RewardSettings,
-	FileID
+	FileID,
+	FileKey
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -180,8 +181,22 @@ interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
 	driveKey: DriveKey;
 }
 
+interface ArFSPrivateFolderCacheKey {
+	folderId: FolderID;
+	owner: ArweaveAddress;
+	driveKey: DriveKey;
+}
+
+interface ArFSPrivateFileCacheKey {
+	fileId: FileID;
+	owner: ArweaveAddress;
+	fileKey: FileKey;
+}
+
 export class ArFSDAO extends ArFSDAOAnonymous {
 	protected privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
+	protected privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
+	protected privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
 
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
@@ -386,7 +401,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async moveEntity<R extends ArFSMoveEntityResult>(
 		metaDataBaseReward: RewardSettings,
 		metaDataFactory: MoveEntityMetaDataFactory,
-		resultFactory: ArFSMoveEntityResultFactory<R>
+		resultFactory: ArFSMoveEntityResultFactory<R>,
+		cacheInvalidateFn: () => Promise<void>
 	): Promise<R> {
 		const metadataPrototype = metaDataFactory();
 
@@ -403,6 +419,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				await metaDataUploader.uploadChunk();
 			}
 		}
+
+		await cacheInvalidateFn();
 
 		return resultFactory({ metaDataTrxId: TxID(metaDataTrx.id), metaDataTrxReward: W(metaDataTrx.reward) });
 	}
@@ -425,6 +443,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, dataTrxId: originalMetaData.dataTxId };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.publicFileCache.remove({ fileId: originalMetaData.entityId, owner });
 			}
 		);
 	}
@@ -447,6 +470,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, dataTrxId: originalMetaData.dataTxId, fileKey: transactionData.fileKey };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.privateFileCache.remove({
+					fileId: originalMetaData.entityId,
+					owner,
+					fileKey: transactionData.fileKey
+				});
 			}
 		);
 	}
@@ -457,6 +489,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPublicFolder, ArFSPublicFolderTransactionData>): Promise<ArFSMovePublicFolderResult> {
+		// Complete the move
 		return this.moveEntity<ArFSMovePublicFolderResult>(
 			metaDataBaseReward,
 			() => {
@@ -467,7 +500,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					newParentFolderId
 				);
 			},
-			(results) => results
+			(results) => results,
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.publicFolderCache.remove({ folderId: originalMetaData.entityId, owner });
+			}
 		);
 	}
 
@@ -477,6 +515,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPrivateFolder, ArFSPrivateFolderTransactionData>): Promise<ArFSMovePrivateFolderResult> {
+		// Complete the move
 		return this.moveEntity<ArFSMovePrivateFolderResult>(
 			metaDataBaseReward,
 			() => {
@@ -489,6 +528,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, driveKey: transactionData.driveKey };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.privateFolderCache.remove({
+					folderId: originalMetaData.entityId,
+					owner,
+					driveKey: transactionData.driveKey
+				});
 			}
 		);
 	}
@@ -720,11 +768,30 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	// Convenience function for known-private use cases
 	async getPrivateFolder(folderId: FolderID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFolder> {
-		return new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build();
+		const cacheKey = { folderId, driveKey, owner };
+		const cachedFolder = this.privateFolderCache.get(cacheKey);
+		if (cachedFolder) {
+			console.log(`private folder cache hit`);
+			return cachedFolder;
+		}
+		return this.privateFolderCache.put(
+			cacheKey,
+			new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build()
+		);
 	}
 
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
-		return new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build();
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const cacheKey = { fileId, owner, fileKey };
+		const cachedFile = this.privateFileCache.get(cacheKey);
+		if (cachedFile) {
+			console.log(`private file cache hit`);
+			return cachedFile;
+		}
+		return this.privateFileCache.put(
+			cacheKey,
+			new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build()
+		);
 	}
 
 	async getAllFoldersOfPrivateDrive({
@@ -756,11 +823,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const folders: Promise<ArFSPrivateFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				cursor = edge.cursor;
 				const { node } = edge;
-				const folderBuilder = await ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey);
-				return await folderBuilder.build(node);
+				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				// Build the folder so that we don't add something invalid to the cache
+				const folder = await folderBuilder.build(node);
+				const cacheKey = { folderId: folder.entityId, owner, driveKey };
+				return this.privateFolderCache.put(cacheKey, Promise.resolve(folder));
 			});
 			allFolders.push(...(await Promise.all(folders)));
 		}
+
 		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
 	}
 
@@ -792,8 +863,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const files: Promise<ArFSPrivateFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const fileBuilder = await ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
-				return await fileBuilder.build(node);
+				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				// Build the file so that we don't add something invalid to the cache
+				const file = await fileBuilder.build(node);
+				const cacheKey = {
+					fileId: file.fileId,
+					owner,
+					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
+				};
+				return this.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
 			allFiles.push(...(await Promise.all(files)));
 		}

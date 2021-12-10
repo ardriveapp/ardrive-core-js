@@ -54,6 +54,16 @@ export interface ArFSPublicDriveCacheKey {
 	owner: ArweaveAddress;
 }
 
+export interface ArFSPublicFolderCacheKey {
+	folderId: FolderID;
+	owner: ArweaveAddress;
+}
+
+export interface ArFSPublicFileCacheKey {
+	fileId: FileID;
+	owner: ArweaveAddress;
+}
+
 /**
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
@@ -61,6 +71,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	protected ownerCache = new ArFSEntityCache<DriveID, ArweaveAddress>(10);
 	protected driveIDCache = new ArFSEntityCache<EntityID, DriveID>(10);
 	protected publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
+	protected publicFolderCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10);
+	protected publicFileCache = new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10);
 
 	constructor(
 		protected readonly arweave: Arweave,
@@ -166,11 +178,29 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	// Convenience function for known-private use cases
 	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress): Promise<ArFSPublicFolder> {
-		return new ArFSPublicFolderBuilder({ entityId: folderId, arweave: this.arweave, owner }).build();
+		const cacheKey = { folderId, owner };
+		const cachedFolder = this.publicFolderCache.get(cacheKey);
+		if (cachedFolder) {
+			console.log(`public folder cache hit`);
+			return cachedFolder;
+		}
+		return this.publicFolderCache.put(
+			cacheKey,
+			new ArFSPublicFolderBuilder({ entityId: folderId, arweave: this.arweave, owner }).build()
+		);
 	}
 
 	async getPublicFile(fileId: FileID, owner: ArweaveAddress): Promise<ArFSPublicFile> {
-		return new ArFSPublicFileBuilder({ entityId: fileId, arweave: this.arweave, owner }).build();
+		const cacheKey = { fileId, owner };
+		const cachedFile = this.publicFileCache.get(cacheKey);
+		if (cachedFile) {
+			console.log(`public file cache hit`);
+			return cachedFile;
+		}
+		return this.publicFileCache.put(
+			cacheKey,
+			new ArFSPublicFileBuilder({ entityId: fileId, arweave: this.arweave, owner }).build()
+		);
 	}
 
 	async getAllDrivesForAddress(
@@ -196,8 +226,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				cursor = edge.cursor;
 
 				const driveBuilder = SafeArFSDriveBuilder.fromArweaveNode(node, this.arweave, privateKeyData);
-
-				return driveBuilder.build(node);
+				const drive = await driveBuilder.build(node);
+				if (drive.drivePrivacy === 'public') {
+					const cacheKey = { driveId: drive.driveId, owner: address };
+					return this.publicDriveCache.put(cacheKey, Promise.resolve(drive as ArFSPublicDrive));
+				} else {
+					// TODO: No access to private drive cache from here
+					return Promise.resolve(drive);
+				}
 			});
 
 			allDrives.push(...(await Promise.all(drives)));
@@ -234,7 +270,9 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.arweave);
-				return fileBuilder.build(node);
+				const file = await fileBuilder.build(node);
+				const cacheKey = { fileId: file.fileId, owner };
+				return this.publicFileCache.put(cacheKey, Promise.resolve(file));
 			});
 			allFiles.push(...(await Promise.all(files)));
 		}
@@ -270,7 +308,9 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave);
-				return await folderBuilder.build(node);
+				const folder = await folderBuilder.build(node);
+				const cacheKey = { folderId: folder.entityId, owner };
+				return this.publicFolderCache.put(cacheKey, Promise.resolve(folder));
 			});
 			allFolders.push(...(await Promise.all(folders)));
 		}
