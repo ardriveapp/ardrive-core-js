@@ -103,7 +103,7 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
-import { ArFSEntityCache } from './ArFSEntityCache';
+import { ArFSEntityCache } from './arfs_entity_cache';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}

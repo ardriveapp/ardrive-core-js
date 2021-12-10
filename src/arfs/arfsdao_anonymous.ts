@@ -26,7 +26,7 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-import { ArFSEntityCache } from './ArFSEntityCache';
+import { ArFSEntityCache } from './arfs_entity_cache';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
