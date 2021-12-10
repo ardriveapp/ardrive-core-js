@@ -87,7 +87,7 @@ import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/co
 import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
-} from './utils/estimation_prototypes';
+} from './pricing/estimation_prototypes';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(

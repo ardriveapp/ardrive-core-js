@@ -11,7 +11,7 @@ import {
 	CreatePublicDriveParams
 } from '../exports';
 import { EstimateCreateDriveParams } from '../types/cost_estimator_types';
-import { fakeEntityId } from './constants';
+import { fakeEntityId } from '../utils/constants';
 
 export async function getPrivateCreateDriveEstimationPrototypes({
 	driveName,
