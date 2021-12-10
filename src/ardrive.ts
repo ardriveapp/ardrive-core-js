@@ -100,10 +100,22 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
-		private readonly bundle: boolean = true
+		private readonly bundle: boolean = true,
+		readonly injectedCostEstimator?: ArFSCostEstimator
 	) {
 		super(arFsDao);
+
+		this.costEstimator =
+			injectedCostEstimator ??
+			new ArFSCostEstimator({
+				bundle: this.bundle,
+				baseTags: this.arFsDao.baselineArFSTags,
+				feeMultiple: this.feeMultiple,
+				priceEstimator: this.priceEstimator
+			});
 	}
+
+	private readonly costEstimator: ArFSCostEstimator;
 
 	// NOTE: Presumes that there's a sufficient wallet balance
 	async sendCommunityTip({ communityWinstonTip, assertBalance = false }: CommunityTipParams): Promise<TipResult> {
@@ -1138,13 +1150,6 @@ export class ArDrive extends ArDriveAnonymous {
 			}
 		});
 	}
-
-	private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
-		bundle: this.bundle,
-		baseTags: this.arFsDao.baselineArFSTags,
-		feeMultiple: this.feeMultiple,
-		priceEstimator: this.priceEstimator
-	});
 
 	private async createDrive(
 		arFSPrototypes: EstimateCreateDriveParams,
