@@ -1632,6 +1632,7 @@ export class ArDrive extends ArDriveAnonymous {
 	async downloadPrivateFolder({
 		folderId,
 		destFolderPath,
+		customFolderName,
 		maxDepth,
 		driveKey,
 		owner
@@ -1640,6 +1641,13 @@ export class ArDrive extends ArDriveAnonymous {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		return this.arFsDao.downloadPrivateFolder({ folderId, destFolderPath, maxDepth, driveKey, owner });
+		return this.arFsDao.downloadPrivateFolder({
+			folderId,
+			destFolderPath,
+			customFolderName,
+			maxDepth,
+			driveKey,
+			owner
+		});
 	}
 }

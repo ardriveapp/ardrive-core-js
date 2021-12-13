@@ -203,6 +203,7 @@ export type DownloadPrivateFileParameters = DownloadPublicFileParameters & WithD
 export interface DownloadPublicFolderParameters {
 	folderId: FolderID;
 	destFolderPath: string;
+	customFolderName?: string;
 	maxDepth: number;
 	owner?: ArweaveAddress;
 }

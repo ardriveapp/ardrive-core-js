@@ -399,12 +399,17 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 export abstract class ArFSFolderToDownload {
 	abstract readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
 
-	constructor(protected readonly hierarchy: FolderHierarchy) {}
+	constructor(protected readonly hierarchy: FolderHierarchy, protected readonly customName?: string) {}
 
 	getPathRelativeToSubtree(entity: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths): string {
-		const rootFolderParentPath = dirname(this.rootFolderWithPaths.path);
-		const relativePath = entity.path.replace(new RegExp(`^${rootFolderParentPath}/`), '');
-		return relativePath;
+		const rootFolderPath = this.rootFolderWithPaths.path;
+		const rootFolderParentPath = dirname(rootFolderPath);
+		if (this.customName) {
+			const relative = entity.path.replace(new RegExp(`^${rootFolderPath}`), '').replace(/^\//, '');
+			return joinPath(this.customName, relative);
+		} else {
+			return entity.path.replace(new RegExp(`^${rootFolderParentPath}/`), '');
+		}
 	}
 
 	ensureFolderExistence(folderPath: string, recursive = false): void {
@@ -422,8 +427,8 @@ export abstract class ArFSFolderToDownload {
 export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
 	readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths;
 
-	constructor(rootFolderEntity: ArFSPublicFolder, hierarchy: FolderHierarchy) {
-		super(hierarchy);
+	constructor(rootFolderEntity: ArFSPublicFolder, hierarchy: FolderHierarchy, customName?: string) {
+		super(hierarchy, customName);
 		this.rootFolderWithPaths = new ArFSPublicFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
 	}
 }
@@ -431,8 +436,8 @@ export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
 export class ArFSPrivateFolderToDownload extends ArFSFolderToDownload {
 	readonly rootFolderWithPaths: ArFSPrivateFileOrFolderWithPaths;
 
-	constructor(rootFolderEntity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
-		super(hierarchy);
+	constructor(rootFolderEntity: ArFSPrivateFolder, hierarchy: FolderHierarchy, customName?: string) {
+		super(hierarchy, customName);
 		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
 	}
 }
