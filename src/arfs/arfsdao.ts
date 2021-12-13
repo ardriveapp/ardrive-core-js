@@ -69,8 +69,10 @@ import {
 import { FolderHierarchy } from './folderHierarchy';
 import {
 	ArFSAllPublicFoldersOfDriveParams,
+	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
 	ArFSPublicDriveCacheKey,
+	defaultArFSAnonymousCache,
 	graphQLURL
 } from './arfsdao_anonymous';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
@@ -193,20 +195,28 @@ interface ArFSPrivateFileCacheKey {
 	fileKey: FileKey;
 }
 
-export class ArFSDAO extends ArFSDAOAnonymous {
-	protected privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
-	protected privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
-	protected privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
+interface ArFSCache extends ArFSAnonymousCache {
+	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
+	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
+	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+}
 
+export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION
+		protected appVersion = DEFAULT_APP_VERSION,
+		protected caches: ArFSCache = {
+			...defaultArFSAnonymousCache,
+			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
+			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10)
+		}
 	) {
-		super(arweave, appName, appVersion);
+		super(arweave, appName, appVersion, caches);
 	}
 
 	// For generic use with public and private drives. Generic types should all be harmonious.
@@ -447,7 +457,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			async () => {
 				// Invalidate any cached entry
 				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
-				this.publicFileCache.remove({ fileId: originalMetaData.entityId, owner });
+				this.caches.publicFileCache.remove({ fileId: originalMetaData.entityId, owner });
 			}
 		);
 	}
@@ -474,7 +484,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			async () => {
 				// Invalidate any cached entry
 				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
-				this.privateFileCache.remove({
+				this.caches.privateFileCache.remove({
 					fileId: originalMetaData.entityId,
 					owner,
 					fileKey: transactionData.fileKey
@@ -504,7 +514,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			async () => {
 				// Invalidate any cached entry
 				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
-				this.publicFolderCache.remove({ folderId: originalMetaData.entityId, owner });
+				this.caches.publicFolderCache.remove({ folderId: originalMetaData.entityId, owner });
 			}
 		);
 	}
@@ -532,7 +542,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			async () => {
 				// Invalidate any cached entry
 				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
-				this.privateFolderCache.remove({
+				this.caches.privateFolderCache.remove({
 					folderId: originalMetaData.entityId,
 					owner,
 					driveKey: transactionData.driveKey
@@ -755,12 +765,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	// Convenience function for known-private use cases
 	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
 		const cacheKey = { driveId, driveKey, owner };
-		const cachedDrive = this.privateDriveCache.get(cacheKey);
+		const cachedDrive = this.caches.privateDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			console.log(`private drive cache hit`);
 			return cachedDrive;
 		}
-		return this.privateDriveCache.put(
+		return this.caches.privateDriveCache.put(
 			cacheKey,
 			new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build()
 		);
@@ -769,12 +779,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	// Convenience function for known-private use cases
 	async getPrivateFolder(folderId: FolderID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFolder> {
 		const cacheKey = { folderId, driveKey, owner };
-		const cachedFolder = this.privateFolderCache.get(cacheKey);
+		const cachedFolder = this.caches.privateFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			console.log(`private folder cache hit`);
 			return cachedFolder;
 		}
-		return this.privateFolderCache.put(
+		return this.caches.privateFolderCache.put(
 			cacheKey,
 			new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build()
 		);
@@ -783,12 +793,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const cacheKey = { fileId, owner, fileKey };
-		const cachedFile = this.privateFileCache.get(cacheKey);
+		const cachedFile = this.caches.privateFileCache.get(cacheKey);
 		if (cachedFile) {
 			console.log(`private file cache hit`);
 			return cachedFile;
 		}
-		return this.privateFileCache.put(
+		return this.caches.privateFileCache.put(
 			cacheKey,
 			new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build()
 		);
@@ -827,7 +837,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				// Build the folder so that we don't add something invalid to the cache
 				const folder = await folderBuilder.build(node);
 				const cacheKey = { folderId: folder.entityId, owner, driveKey };
-				return this.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+				return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
 			});
 			allFolders.push(...(await Promise.all(folders)));
 		}
@@ -871,7 +881,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					owner,
 					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
 				};
-				return this.privateFileCache.put(cacheKey, Promise.resolve(file));
+				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
 			allFiles.push(...(await Promise.all(files)));
 		}
@@ -1016,13 +1026,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
-		const cachedOwner = this.ownerCache.get(driveId);
+		const cachedOwner = this.caches.ownerCache.get(driveId);
 		if (cachedOwner) {
 			console.log(`owner cache hit!`);
 			return cachedOwner;
 		}
 
-		return this.ownerCache.put(
+		return this.caches.ownerCache.put(
 			driveId,
 			(async () => {
 				console.log(`fetching owner of driveID ${driveId}`);

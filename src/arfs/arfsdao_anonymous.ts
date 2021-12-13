@@ -64,32 +64,43 @@ export interface ArFSPublicFileCacheKey {
 	owner: ArweaveAddress;
 }
 
+export interface ArFSAnonymousCache {
+	ownerCache: ArFSEntityCache<DriveID, ArweaveAddress>;
+	driveIdCache: ArFSEntityCache<EntityID, DriveID>;
+	publicDriveCache: ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>;
+	publicFolderCache: ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>;
+	publicFileCache: ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>;
+}
+
+export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
+	ownerCache: new ArFSEntityCache<DriveID, ArweaveAddress>(10),
+	driveIdCache: new ArFSEntityCache<EntityID, DriveID>(10),
+	publicDriveCache: new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10),
+	publicFolderCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10),
+	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10)
+};
+
 /**
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
 export class ArFSDAOAnonymous extends ArFSDAOType {
-	protected ownerCache = new ArFSEntityCache<DriveID, ArweaveAddress>(10);
-	protected driveIDCache = new ArFSEntityCache<EntityID, DriveID>(10);
-	protected publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
-	protected publicFolderCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10);
-	protected publicFileCache = new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10);
-
 	constructor(
 		protected readonly arweave: Arweave,
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION
+		protected appVersion = DEFAULT_APP_VERSION,
+		protected caches = defaultArFSAnonymousCache
 	) {
 		super();
 	}
 
 	public async getOwnerForDriveId(driveId: DriveID): Promise<ArweaveAddress> {
-		const cachedOwner = this.ownerCache.get(driveId);
+		const cachedOwner = this.caches.ownerCache.get(driveId);
 		if (cachedOwner) {
 			console.log(`owner cache hit!`);
 			return cachedOwner;
 		}
 
-		return this.ownerCache.put(
+		return this.caches.ownerCache.put(
 			driveId,
 			(async () => {
 				const gqlQuery = buildQuery({
@@ -115,13 +126,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	async getDriveIDForEntityId(entityId: AnyEntityID, gqlTypeTag: 'File-Id' | 'Folder-Id'): Promise<DriveID> {
-		const cachedDriveID = this.driveIDCache.get(entityId);
+		const cachedDriveID = this.caches.driveIdCache.get(entityId);
 		if (cachedDriveID) {
 			console.log(`drive cache hit for entity ID`);
 			return cachedDriveID;
 		}
 
-		return this.driveIDCache.put(
+		return this.caches.driveIdCache.put(
 			entityId,
 			(async () => {
 				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
@@ -165,12 +176,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	// Convenience function for known-public use cases
 	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress): Promise<ArFSPublicDrive> {
 		const cacheKey = { driveId, owner };
-		const cachedDrive = this.publicDriveCache.get(cacheKey);
+		const cachedDrive = this.caches.publicDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			console.log(`public drive cache hit`);
 			return cachedDrive;
 		}
-		return this.publicDriveCache.put(
+		return this.caches.publicDriveCache.put(
 			cacheKey,
 			new ArFSPublicDriveBuilder({ entityId: driveId, arweave: this.arweave, owner }).build()
 		);
@@ -179,12 +190,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	// Convenience function for known-private use cases
 	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress): Promise<ArFSPublicFolder> {
 		const cacheKey = { folderId, owner };
-		const cachedFolder = this.publicFolderCache.get(cacheKey);
+		const cachedFolder = this.caches.publicFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			console.log(`public folder cache hit`);
 			return cachedFolder;
 		}
-		return this.publicFolderCache.put(
+		return this.caches.publicFolderCache.put(
 			cacheKey,
 			new ArFSPublicFolderBuilder({ entityId: folderId, arweave: this.arweave, owner }).build()
 		);
@@ -192,12 +203,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	async getPublicFile(fileId: FileID, owner: ArweaveAddress): Promise<ArFSPublicFile> {
 		const cacheKey = { fileId, owner };
-		const cachedFile = this.publicFileCache.get(cacheKey);
+		const cachedFile = this.caches.publicFileCache.get(cacheKey);
 		if (cachedFile) {
 			console.log(`public file cache hit`);
 			return cachedFile;
 		}
-		return this.publicFileCache.put(
+		return this.caches.publicFileCache.put(
 			cacheKey,
 			new ArFSPublicFileBuilder({ entityId: fileId, arweave: this.arweave, owner }).build()
 		);
@@ -229,7 +240,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const drive = await driveBuilder.build(node);
 				if (drive.drivePrivacy === 'public') {
 					const cacheKey = { driveId: drive.driveId, owner: address };
-					return this.publicDriveCache.put(cacheKey, Promise.resolve(drive as ArFSPublicDrive));
+					return this.caches.publicDriveCache.put(cacheKey, Promise.resolve(drive as ArFSPublicDrive));
 				} else {
 					// TODO: No access to private drive cache from here
 					return Promise.resolve(drive);
@@ -272,7 +283,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.arweave);
 				const file = await fileBuilder.build(node);
 				const cacheKey = { fileId: file.fileId, owner };
-				return this.publicFileCache.put(cacheKey, Promise.resolve(file));
+				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 			});
 			allFiles.push(...(await Promise.all(files)));
 		}
@@ -310,7 +321,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave);
 				const folder = await folderBuilder.build(node);
 				const cacheKey = { folderId: folder.entityId, owner };
-				return this.publicFolderCache.put(cacheKey, Promise.resolve(folder));
+				return this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
 			});
 			allFolders.push(...(await Promise.all(folders)));
 		}
