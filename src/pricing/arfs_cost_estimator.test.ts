@@ -7,7 +7,8 @@ import {
 	stubPublicDriveMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
-import { FeeMultiple, W } from '../exports';
+import { ArFSTagBuilder } from '../arfs/arfs_tag_builder';
+import { FeeMultiple, W } from '../types';
 import {
 	BundleRewardSettings,
 	CreateDriveV2TxRewardSettings,
@@ -20,22 +21,22 @@ import { GatewayOracle } from './gateway_oracle';
 describe('The ArFSCostEstimator class', () => {
 	const arweaveOracle = new GatewayOracle();
 	const priceEstimator = new ARDataPriceChunkEstimator(true, arweaveOracle);
-	const baseTags = [{ name: 'Generic-Test-Tag', value: 'This was a fabulous test' }];
+	const arFSTagBuilder = new ArFSTagBuilder('Fabulous-Test', '1.2');
 
 	const bundledCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
-		baseTags
+		arFSTagBuilder
 	});
 
 	const v2TxCostEstimator = new ArFSCostEstimator({
 		bundle: false,
 		priceEstimator,
-		baseTags
+		arFSTagBuilder
 	});
 
 	const boostedCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
-		baseTags,
+		arFSTagBuilder,
 		feeMultiple: new FeeMultiple(10)
 	});
 

@@ -1,7 +1,8 @@
 import { serializeTags } from 'arbundles/src/parser';
+import { ArFSTagBuilder } from '../arfs/arfs_tag_builder';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, FeeMultiple, GQLTagInterface, Winston } from '../types';
+import { ByteCount, FeeMultiple, Winston } from '../types';
 import {
 	ArFSCostEstimatorConstructorParams,
 	BundleRewardSettings,
@@ -16,18 +17,18 @@ export class ArFSCostEstimator {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly bundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
-	private readonly baseTags: GQLTagInterface[];
+	private readonly arFSTagBuilder: ArFSTagBuilder;
 
 	constructor({
 		bundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
-		baseTags
+		arFSTagBuilder
 	}: ArFSCostEstimatorConstructorParams) {
 		this.priceEstimator = priceEstimator;
 		this.bundle = bundle;
 		this.feeMultiple = feeMultiple;
-		this.baseTags = baseTags;
+		this.arFSTagBuilder = arFSTagBuilder;
 	}
 
 	/** Estimate the cost of a create drive */
@@ -88,7 +89,7 @@ export class ArFSCostEstimator {
 		const anchorLength = 1;
 
 		// Get byte length of tags after being serialized for avro schema
-		const serializedTags = serializeTags([...objectPrototype.gqlTags, ...this.baseTags]);
+		const serializedTags = serializeTags(this.arFSTagBuilder.withBaseArFSTags(objectPrototype.gqlTags));
 		const tagsLength = 16 + serializedTags.byteLength;
 
 		const arweaveSignerLength = 512;
