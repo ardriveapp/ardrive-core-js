@@ -67,7 +67,7 @@ import {
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSDAOAnonymous } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION, graphQLURL } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -123,6 +123,7 @@ import {
 	CreateDriveV2TxRewardSettings,
 	isBundleRewardSetting
 } from '../types/cost_estimator_types';
+import { ArFSTagBuilder } from './arfs_tag_builder';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -141,10 +142,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
+		/** @deprecated appName is now always read from ArFSTagBuilder */
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION
+		/** @deprecated appVersion is now always read from ArFSTagBuilder */
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		protected appVersion = DEFAULT_APP_VERSION,
+		protected readonly arFSTagBuilder: ArFSTagBuilder
 	) {
-		super(arweave, appName, appVersion);
+		super(arweave, appName, appVersion, arFSTagBuilder);
 	}
 
 	/** Prepare an ArFS folder entity for upload */
@@ -623,14 +631,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	get baselineArFSTags(): GQLTagInterface[] {
-		return [
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'ArFS', value: CURRENT_ARFS_VERSION }
-		];
-	}
-
 	async prepareArFSDataItem({
 		objectMetaData,
 		excludedTagNames = [],
@@ -639,10 +639,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags].filter(
-			// Filter out all excluded tags
-			(tag) => !excludedTagNames.includes(tag.name)
-		);
+		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
 
 		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
 
@@ -678,31 +675,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
 		});
 
-		const tags: GQLTagInterface[] = [
-			...this.baselineArFSTags,
-			...otherTags,
-			{ name: 'Bundle-Format', value: 'binary' },
-			{ name: 'Bundle-Version', value: '2.0.0' }
-		];
+		const tags: GQLTagInterface[] = this.arFSTagBuilder.withBaseBundleTags(otherTags, excludedTagNames);
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			bundledDataTx.reward = rewardSettings.feeMultiple.boostReward(bundledDataTx.reward);
 
-			// Add a Boost tag
-			tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+			// Add a Boost tag if not excluded
+			if (!excludedTagNames.includes('Boost')) {
+				tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+			}
 		}
 
-		tags.filter(
-			// Filter out all excluded tags, bundles dont include ArFS tag by default
-			(tag) => ![...excludedTagNames, 'ArFS'].includes(tag.name)
-		).forEach((tag) => {
-			// Add remaining tags to transaction
+		for (const tag of tags) {
 			bundledDataTx.addTag(tag.name, tag.value);
-		});
+		}
 
 		await this.arweave.transactions.sign(bundledDataTx, wallet.getPrivateKey());
-
 		return bundledDataTx;
 	}
 
@@ -714,7 +703,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSPrepareObjectTransactionParams): Promise<Transaction> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
-		const tags = [...this.baselineArFSTags, ...objectMetaData.gqlTags, ...otherTags];
+
+		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags]);
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {
@@ -738,17 +728,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
 
-			// Add a Boost tag
-			tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+			// Add a Boost tag if not excluded
+			if (!excludedTagNames.includes('Boost')) {
+				tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
+			}
 		}
 
-		tags.filter(
-			// Filter out all excluded tags
-			(tag) => !excludedTagNames.includes(tag.name)
-		).forEach((tag) => {
-			// Add remaining tags to transaction
+		for (const tag of tags) {
 			transaction.addTag(tag.name, tag.value);
-		});
+		}
 
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());

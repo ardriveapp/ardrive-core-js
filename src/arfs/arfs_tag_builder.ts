@@ -18,12 +18,24 @@ export class ArFSTagBuilder {
 		return [...this.baseAppTags, { name: 'ArFS', value: this.arFSVersion }];
 	}
 
+	get baseBundleTags(): GQLTagInterface[] {
+		return [
+			...this.baseAppTags,
+			{ name: 'Bundle-Format', value: 'binary' },
+			{ name: 'Bundle-Version', value: '2.0.0' }
+		];
+	}
+
 	// TODO: Does this need to be dynamic yet? `TipType` type only accepts 'data-upload'
 	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
 		return [...this.baseAppTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: tipType }];
 	}
 
-	withBaseArFSTags(tags: GQLTagInterface[]): GQLTagInterface[] {
-		return [...this.baseArFSTags, ...tags];
+	withBaseArFSTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
+		return [...this.baseArFSTags, ...tags].filter((tag) => !excludedTagNames.includes(tag.name));
+	}
+
+	withBaseBundleTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
+		return [...this.baseBundleTags, ...tags].filter((tag) => !excludedTagNames.includes(tag.name));
 	}
 }
