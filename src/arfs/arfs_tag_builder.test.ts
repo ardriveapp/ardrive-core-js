@@ -46,7 +46,7 @@ describe('ArFSTagBuilder class', () => {
 			]);
 		});
 
-		it('returns provided tags combined with the base arfs tags', () => {
+		it('can exclude any specified tags names', () => {
 			expect(arFSTagBuilder.withBaseArFSTags([], ['App-Version', 'ArFS'])).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' }
 			]);
@@ -70,7 +70,7 @@ describe('ArFSTagBuilder class', () => {
 			]);
 		});
 
-		it('can exclude any specified tags names ', () => {
+		it('can exclude any specified tags names', () => {
 			expect(arFSTagBuilder.withBaseBundleTags([], ['App-Name', 'Bundle-Format'])).to.deep.equal([
 				{ name: 'App-Version', value: '1.2' },
 				{ name: 'Bundle-Version', value: '2.0.0' }

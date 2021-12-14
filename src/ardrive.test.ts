@@ -48,7 +48,7 @@ describe('ArDrive class', () => {
 
 		const arFSTagBuilder = new ArFSTagBuilder('Unit Test', '1.2');
 		const costEstimator = new ArFSCostEstimator({ arFSTagBuilder, priceEstimator });
-		// const bundledCostEstimator = new ArFSCostEstimator({ bundle: false, arFSTagBuilder, priceEstimator });
+
 		arDrive = new ArDrive(
 			wallet,
 			walletDao,
