@@ -32,10 +32,14 @@ export class ArFSTagBuilder {
 	}
 
 	withBaseArFSTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
-		return [...this.baseArFSTags, ...tags].filter((tag) => !excludedTagNames.includes(tag.name));
+		return this.filterExcludedTagNames([...this.baseArFSTags, ...tags], excludedTagNames);
 	}
 
 	withBaseBundleTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
-		return [...this.baseBundleTags, ...tags].filter((tag) => !excludedTagNames.includes(tag.name));
+		return this.filterExcludedTagNames([...this.baseBundleTags, ...tags], excludedTagNames);
+	}
+
+	private filterExcludedTagNames(tags: GQLTagInterface[], excludedTagNames: string[]): GQLTagInterface[] {
+		return tags.filter((tag) => !excludedTagNames.includes(tag.name));
 	}
 }
