@@ -704,7 +704,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags]);
+		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {

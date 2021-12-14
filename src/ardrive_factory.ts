@@ -11,11 +11,14 @@ import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
+import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSTagBuilder } from './arfs/arfs_tag_builder';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
 	appVersion?: string;
 	appName?: string;
+	arFSTagBuilder?: ArFSTagBuilder;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	wallet: Wallet;
@@ -26,6 +29,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	bundle?: boolean;
+	costEstimator?: ArFSCostEstimator;
 }
 
 const defaultArweave = Arweave.init({
@@ -37,36 +41,45 @@ const defaultArweave = Arweave.init({
 });
 
 export function arDriveFactory({
+	wallet,
 	arweave = defaultArweave,
 	priceEstimator = new ARDataPriceChunkEstimator(true),
 	communityOracle = new ArDriveCommunityOracle(arweave),
-	wallet,
-	walletDao,
-	dryRun,
-	feeMultiple,
-	arfsDao,
+	dryRun = false,
+	feeMultiple = new FeeMultiple(1.0),
 	appName = DEFAULT_APP_NAME,
 	appVersion = DEFAULT_APP_VERSION,
-	bundle = true
+	walletDao = new WalletDAO(arweave, appName, appVersion),
+	bundle = true,
+	arFSTagBuilder = new ArFSTagBuilder(appName, appVersion),
+	costEstimator = new ArFSCostEstimator({
+		bundle,
+		feeMultiple,
+		priceEstimator,
+		arFSTagBuilder
+	}),
+	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagBuilder)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
-		walletDao ?? new WalletDAO(arweave, appName, appVersion),
-		arfsDao ?? new ArFSDAO(wallet, arweave, dryRun, appName, appVersion),
+		walletDao,
+		arfsDao,
 		communityOracle,
 		appName,
 		appVersion,
 		priceEstimator,
 		feeMultiple,
 		dryRun,
-		bundle
+		arFSTagBuilder,
+		costEstimator
 	);
 }
 
 export function arDriveAnonymousFactory({
 	arweave = defaultArweave,
 	appName = DEFAULT_APP_NAME,
-	appVersion = DEFAULT_APP_VERSION
+	appVersion = DEFAULT_APP_VERSION,
+	arFSTagBuilder = new ArFSTagBuilder(appName, appVersion)
 }: ArDriveSettingsAnonymous): ArDriveAnonymous {
-	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion));
+	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion, arFSTagBuilder));
 }

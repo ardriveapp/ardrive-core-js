@@ -22,6 +22,7 @@ import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
+import { ArFSTagBuilder } from './arfs_tag_builder';
 
 describe('The ArFSDAO class', async () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -33,7 +34,8 @@ describe('The ArFSDAO class', async () => {
 		timeout: 600000
 	});
 
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0');
+	const arFSTagBuilder = new ArFSTagBuilder('ArFSDAO-Test', '1.0');
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagBuilder);
 
 	describe('prepareObjectTransaction function', () => {
 		it('produces an ArFS compliant public drive metadata transaction', async () => {
