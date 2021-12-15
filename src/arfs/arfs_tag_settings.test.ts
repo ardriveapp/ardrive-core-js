@@ -4,7 +4,7 @@ import { stub1025CharString, stub3073CharString } from '../../tests/stubs';
 import { GQLTagInterface } from '../types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 
-describe('ArFSTagBuilder class', () => {
+describe('ArFSTagSettings class', () => {
 	const arFSTagSettings = new ArFSTagSettings({
 		appName: 'Tag-Builder-Test',
 		appVersion: '1.2',
@@ -39,7 +39,7 @@ describe('ArFSTagBuilder class', () => {
 
 	describe('assembleBaseArFSTags method', () => {
 		it('returns provided tags combined with the base arfs tags', () => {
-			const assertSpy = spy(arFSTagSettings.assertTagLimits);
+			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
 				arFSTagSettings.assembleBaseArFSTags({
@@ -67,7 +67,7 @@ describe('ArFSTagBuilder class', () => {
 
 	describe('assembleBaseBundleTags method', () => {
 		it('returns provided tags combined with the base bundle tags', () => {
-			const assertSpy = spy(arFSTagSettings.assertTagLimits);
+			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
 				arFSTagSettings.assembleBaseBundleTags({
