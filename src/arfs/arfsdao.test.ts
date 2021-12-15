@@ -1,16 +1,12 @@
 import Arweave from 'arweave';
-import { stubArweaveAddress, stubEntityID, stubPrivateDrive } from '../../tests/stubs';
 import {
-	ArweaveAddress,
-	ByteCount,
-	DriveID,
-	DriveKey,
-	EntityID,
-	FeeMultiple,
-	stubTransactionID,
-	UnixTime,
-	W
-} from '../types';
+	stubArweaveAddress,
+	stubEntityID,
+	stubPrivateDrive,
+	stubPrivateFile,
+	stubPrivateFolder
+} from '../../tests/stubs';
+import { ByteCount, DriveKey, FeeMultiple, stubTransactionID, UnixTime, W } from '../types';
 import { readJWKFile } from '../utils/common';
 import {
 	ArFSCache,
@@ -24,15 +20,8 @@ import { ArFSPublicFileMetadataTransactionData } from './arfs_trx_data_types';
 import { expect } from 'chai';
 import { Tag } from 'arweave/node/lib/transaction';
 import { ArFSEntityCache } from './arfs_entity_cache';
-import {
-	ArFSPrivateDrive,
-	ArFSPrivateFile,
-	ArFSPrivateFolder,
-	ArFSPublicDrive,
-	ArFSPublicFile,
-	ArFSPublicFolder
-} from './arfs_entities';
-import { ArFSPublicDriveCacheKey, ArFSPublicFileCacheKey, ArFSPublicFolderCacheKey } from './arfsdao_anonymous';
+import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
+import { defaultArFSAnonymousCache } from './arfsdao_anonymous';
 import { stub } from 'sinon';
 import { deriveDriveKey, JWKWallet } from '../exports';
 
@@ -50,16 +39,12 @@ describe('The ArFSDAO class', () => {
 		timeout: 600000
 	});
 
+	let arfsDao: ArFSDAO;
 	let caches: ArFSCache;
-	const ownerCache = new ArFSEntityCache<DriveID, ArweaveAddress>(10);
-	const driveIdCache = new ArFSEntityCache<EntityID, DriveID>(10);
-	const publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
-	const publicFolderCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10);
-	const publicFileCache = new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10);
 	const privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
 	const privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
 	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
-	let arfsDao: ArFSDAO;
+
 	let stubDriveKey: DriveKey;
 
 	const stubFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
@@ -78,11 +63,7 @@ describe('The ArFSDAO class', () => {
 	beforeEach(async () => {
 		// Start each test with a newly wrapped file
 		caches = {
-			ownerCache,
-			driveIdCache,
-			publicDriveCache,
-			publicFolderCache,
-			publicFileCache,
+			...defaultArFSAnonymousCache,
 			privateDriveCache,
 			privateFolderCache,
 			privateFileCache
@@ -159,8 +140,8 @@ describe('The ArFSDAO class', () => {
 				);
 			});
 
-			// // TODO: Implement once ArweaveService is implemented
-			// it('returns the cached promise to fetch the drive ID on a cache miss', async () => {
+			// TODO: Implement once ArweaveService is implemented
+			// it('returns the cached promise to fetch the drive on a cache miss', async () => {
 			// 	const cachedDrive = stubPrivateDrive;
 			// 	const promise = Promise.resolve(cachedDrive);
 			// 	stub(privateDriveCache, 'put').returns(promise);
@@ -170,40 +151,46 @@ describe('The ArFSDAO class', () => {
 			// });
 		});
 
-		// describe('getPublicFolder function', () => {
-		// 	it('returns a drive ID for a specified folder ID from cache when cached entry is available', async () => {
-		// 		const cachedFolder = stubPublicFolder({});
-		// 		const promise = Promise.resolve(cachedFolder);
-		// 		stub(publicFolderCache, 'get').returns(promise);
-		// 		expect(await arfsDaoAnonymous.getPublicFolder(stubEntityID, stubArweaveAddress())).to.equal(
-		// 			cachedFolder
-		// 		);
-		// 	});
+		describe('getPrivateFolder function', () => {
+			it('returns a drive ID for a specified folder ID from cache when cached entry is available', async () => {
+				const cachedFolder = stubPrivateFolder({});
+				const promise = Promise.resolve(cachedFolder);
+				stub(privateFolderCache, 'get').returns(promise);
+				expect(await arfsDao.getPrivateFolder(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
+					cachedFolder
+				);
+			});
 
-		// 	// // TODO: Implement once ArweaveService is implemented
-		// 	// it('returns the cached promise to fetch the drive ID on a cache miss', async () => {
-		// 	// 	const cachedFolder = stubPublicFolder({});
-		// 	// 	const promise = Promise.resolve(cachedFolder);
-		// 	// 	stub(publicFolderCache, 'put').returns(promise);
-		// 	// 	expect(await arfsDaoAnonymous.getPublicFolder(stubEntityID, stubArweaveAddress())).to.equal(cachedFolder);
-		// 	// });
-		// });
+			// TODO: Implement once ArweaveService is implemented
+			// it('returns the cached promise to fetch the folder on a cache miss', async () => {
+			// 	const cachedFolder = stubPrivateFolder({});
+			// 	const promise = Promise.resolve(cachedFolder);
+			// 	stub(privateFolderCache, 'put').returns(promise);
+			// 	expect(await arfsDao.getPrivateFolder(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
+			// 		cachedFolder
+			// 	);
+			// });
+		});
 
-		// describe('getPublicFile function', () => {
-		// 	it('returns a drive ID for a specified folder ID from cache when cached entry is available', async () => {
-		// 		const cachedFile = stubPublicFile({});
-		// 		const promise = Promise.resolve(cachedFile);
-		// 		stub(publicFileCache, 'get').returns(promise);
-		// 		expect(await arfsDaoAnonymous.getPublicFile(stubEntityID, stubArweaveAddress())).to.equal(cachedFile);
-		// 	});
+		describe('getPrivateFile function', () => {
+			it('returns a file for a specified file ID from cache when cached entry is available', async () => {
+				const cachedFile = stubPrivateFile({});
+				const promise = Promise.resolve(cachedFile);
+				stub(privateFileCache, 'get').returns(promise);
+				expect(await arfsDao.getPrivateFile(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
+					cachedFile
+				);
+			});
 
-		// 	// // TODO: Implement once ArweaveService is implemented
-		// 	// it('returns the cached promise to fetch the drive ID on a cache miss', async () => {
-		// 	// 	const cachedFile = stubPublicFile({});
-		// 	// 	const promise = Promise.resolve(cachedFile);
-		// 	// 	stub(publicFileCache, 'put').returns(promise);
-		// 	// 	expect(await arfsDaoAnonymous.getPublicFile(stubEntityID, stubArweaveAddress())).to.equal(cachedFile);
-		// 	// });
-		// });
+			// // TODO: Implement once ArweaveService is implemented
+			// it('returns the cached promise to fetch the file on a cache miss', async () => {
+			// 	const cachedFile = stubPrivateFile({});
+			// 	const promise = Promise.resolve(cachedFile);
+			// 	stub(privateFileCache, 'put').returns(promise);
+			// 	expect(await arfsDao.getPrivateFile(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
+			// 		cachedFile
+			// 	);
+			// });
+		});
 	});
 });
