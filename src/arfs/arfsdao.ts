@@ -123,7 +123,7 @@ import {
 	CreateDriveV2TxRewardSettings,
 	isBundleRewardSetting
 } from '../types/cost_estimator_types';
-import { ArFSTagBuilder } from './arfs_tag_builder';
+import { ArFSTagSettings } from './arfs_tag_builder';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -150,7 +150,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagBuilder: ArFSTagBuilder
+		protected readonly arFSTagBuilder: ArFSTagSettings
 	) {
 		super(arweave, appName, appVersion, arFSTagBuilder);
 	}

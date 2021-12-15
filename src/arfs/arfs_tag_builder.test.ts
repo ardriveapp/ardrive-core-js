@@ -1,8 +1,12 @@
 import { expect } from 'chai';
-import { ArFSTagBuilder } from './arfs_tag_builder';
+import { ArFSTagSettings } from './arfs_tag_builder';
 
 describe('ArFSTagBuilder class', () => {
-	const arFSTagBuilder = new ArFSTagBuilder('Tag-Builder-Test', '1.2', '0.101');
+	const arFSTagBuilder = new ArFSTagSettings({
+		appName: 'Tag-Builder-Test',
+		appVersion: '1.2',
+		arFSVersion: '0.101'
+	});
 
 	it('returns the expected baseline arfs tags', () => {
 		expect(arFSTagBuilder.baseArFSTags).to.deep.equal([

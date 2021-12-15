@@ -7,7 +7,7 @@ import {
 	stubPublicDriveMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
-import { ArFSTagBuilder } from '../arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../arfs/arfs_tag_builder';
 import { FeeMultiple, W } from '../types';
 import {
 	BundleRewardSettings,
@@ -21,7 +21,7 @@ import { GatewayOracle } from './gateway_oracle';
 describe('The ArFSCostEstimator class', () => {
 	const arweaveOracle = new GatewayOracle();
 	const priceEstimator = new ARDataPriceChunkEstimator(true, arweaveOracle);
-	const arFSTagBuilder = new ArFSTagBuilder('Fabulous-Test', '1.2');
+	const arFSTagBuilder = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
 
 	const bundledCostEstimator = new ArFSCostEstimator({
 		priceEstimator,

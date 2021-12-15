@@ -1,11 +1,11 @@
 import { FeeMultiple, Winston, RewardSettings } from '.';
 import { ArFSDriveMetaDataPrototype, ArFSFolderMetaDataPrototype } from '../arfs/arfs_prototypes';
-import { ArFSTagBuilder } from '../arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../arfs/arfs_tag_builder';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 export interface ArFSCostEstimatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
-	arFSTagBuilder: ArFSTagBuilder;
+	arFSTagBuilder: ArFSTagSettings;
 	feeMultiple?: FeeMultiple;
 	bundle?: boolean;
 }

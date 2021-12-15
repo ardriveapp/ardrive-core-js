@@ -13,7 +13,7 @@ import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple } from './types'
 import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
-import { ArFSTagBuilder } from './arfs/arfs_tag_builder';
+import { ArFSTagSettings } from './arfs/arfs_tag_builder';
 import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
 
 describe('ArDrive class', () => {
@@ -46,7 +46,7 @@ describe('ArDrive class', () => {
 		priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracleStub);
 		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
 
-		const arFSTagBuilder = new ArFSTagBuilder('Unit Test', '1.2');
+		const arFSTagBuilder = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
 		const costEstimator = new ArFSCostEstimator({ arFSTagBuilder, priceEstimator });
 
 		arDrive = new ArDrive(

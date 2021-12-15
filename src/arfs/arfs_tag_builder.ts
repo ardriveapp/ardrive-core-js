@@ -1,11 +1,26 @@
-import { CURRENT_ARFS_VERSION, GQLTagInterface, TipType } from '../types';
+import { GQLTagInterface, TipType } from '../types';
+import { CURRENT_ARFS_VERSION, DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
 
-export class ArFSTagBuilder {
-	constructor(
-		private readonly appName: string,
-		private readonly appVersion: string,
-		private readonly arFSVersion: string = CURRENT_ARFS_VERSION
-	) {}
+interface ArFSTagSettingsParams {
+	appName?: string;
+	appVersion?: string;
+	arFSVersion?: string;
+}
+
+export class ArFSTagSettings {
+	private readonly appName: string;
+	private readonly appVersion: string;
+	private readonly arFSVersion: string;
+
+	constructor({
+		appName = DEFAULT_APP_NAME,
+		appVersion = DEFAULT_APP_VERSION,
+		arFSVersion = CURRENT_ARFS_VERSION
+	}: ArFSTagSettingsParams) {
+		this.appName = appName;
+		this.appVersion = appVersion;
+		this.arFSVersion = arFSVersion;
+	}
 
 	get baseAppTags(): GQLTagInterface[] {
 		return [

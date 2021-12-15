@@ -18,6 +18,7 @@ import {
 import { PrivateKeyData } from './private_key_data';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
+import { ArFSTagSettings } from './arfs_tag_builder';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -39,7 +40,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagBuilder: ArFSTagBuilder
+		protected readonly arFSTagBuilder: ArFSTagSettings
 	) {
 		super();
 	}

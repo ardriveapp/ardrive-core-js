@@ -1,5 +1,5 @@
 import { serializeTags } from 'arbundles/src/parser';
-import { ArFSTagBuilder } from '../arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../arfs/arfs_tag_builder';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
 import { ByteCount, FeeMultiple, Winston } from '../types';
@@ -17,7 +17,7 @@ export class ArFSCostEstimator {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly bundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
-	private readonly arFSTagBuilder: ArFSTagBuilder;
+	private readonly arFSTagBuilder: ArFSTagSettings;
 
 	constructor({
 		bundle = true,

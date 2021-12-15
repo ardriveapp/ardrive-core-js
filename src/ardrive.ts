@@ -86,7 +86,7 @@ import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
-import { ArFSTagBuilder } from './arfs/arfs_tag_builder';
+import { ArFSTagSettings } from './arfs/arfs_tag_builder';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -105,7 +105,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
-		private readonly arFSTagBuilder: ArFSTagBuilder,
+		private readonly arFSTagBuilder: ArFSTagSettings,
 		private readonly costEstimator: ArFSCostEstimator
 	) {
 		super(arFsDao);
