@@ -73,7 +73,7 @@ describe('ArDrive class - integrated', () => {
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.2');
 	const arFSTagBuilder = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
 	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagBuilder);
-	const costEstimator = new ArFSCostEstimator({ bundle: false, arFSTagBuilder, priceEstimator });
+	const costEstimator = new ArFSCostEstimator({ shouldBundle: false, arFSTagBuilder, priceEstimator });
 	const bundledCostEstimator = new ArFSCostEstimator({ arFSTagBuilder, priceEstimator });
 
 	const arDrive = new ArDrive(

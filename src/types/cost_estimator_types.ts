@@ -7,7 +7,7 @@ export interface ArFSCostEstimatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
 	arFSTagBuilder: ArFSTagSettings;
 	feeMultiple?: FeeMultiple;
-	bundle?: boolean;
+	shouldBundle?: boolean;
 }
 
 export interface EstimateCreateDriveParams {

@@ -29,7 +29,7 @@ describe('The ArFSCostEstimator class', () => {
 	});
 
 	const v2TxCostEstimator = new ArFSCostEstimator({
-		bundle: false,
+		shouldBundle: false,
 		priceEstimator,
 		arFSTagBuilder
 	});

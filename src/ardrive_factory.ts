@@ -28,7 +28,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	feeMultiple?: FeeMultiple;
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
-	bundle?: boolean;
+	shouldBundle?: boolean;
 	costEstimator?: ArFSCostEstimator;
 }
 
@@ -50,10 +50,10 @@ export function arDriveFactory({
 	appName = DEFAULT_APP_NAME,
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
-	bundle = true,
+	shouldBundle = true,
 	arFSTagBuilder = new ArFSTagSettings({ appName, appVersion }),
 	costEstimator = new ArFSCostEstimator({
-		bundle,
+		shouldBundle,
 		feeMultiple,
 		priceEstimator,
 		arFSTagBuilder

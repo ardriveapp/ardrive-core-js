@@ -15,25 +15,25 @@ import { ARDataPriceEstimator } from './ar_data_price_estimator';
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSCostEstimator {
 	private readonly priceEstimator: ARDataPriceEstimator;
-	private readonly bundle: boolean;
+	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
 	private readonly arFSTagBuilder: ArFSTagSettings;
 
 	constructor({
-		bundle = true,
+		shouldBundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
 		arFSTagBuilder
 	}: ArFSCostEstimatorConstructorParams) {
 		this.priceEstimator = priceEstimator;
-		this.bundle = bundle;
+		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;
 		this.arFSTagBuilder = arFSTagBuilder;
 	}
 
 	/** Estimate the cost of a create drive */
 	public async estimateCreateDrive(arFSPrototypes: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
-		if (this.bundle) {
+		if (this.shouldBundle) {
 			return this.costOfCreateBundledDrive(arFSPrototypes);
 		}
 
