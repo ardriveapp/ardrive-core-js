@@ -633,7 +633,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagSettings.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
+		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+			tags: [...objectMetaData.gqlTags, ...otherTags],
+			excludedTagNames
+		});
 
 		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
 
@@ -669,7 +672,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
 		});
 
-		const tags: GQLTagInterface[] = this.arFSTagSettings.withBaseBundleTags(otherTags, excludedTagNames);
+		const tags: GQLTagInterface[] = this.arFSTagSettings.assembleBaseBundleTags({
+			tags: otherTags,
+			excludedTagNames
+		});
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
@@ -698,7 +704,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagSettings.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
+		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+			tags: [...objectMetaData.gqlTags, ...otherTags],
+			excludedTagNames
+		});
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {

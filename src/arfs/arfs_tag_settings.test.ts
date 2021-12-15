@@ -37,10 +37,12 @@ describe('ArFSTagBuilder class', () => {
 	describe('withBaseArFSTags method', () => {
 		it('returns provided tags combined with the base arfs tags', () => {
 			expect(
-				arFSTagBuilder.withBaseArFSTags([
-					{ name: 'Custom-Tag-1', value: 'Gibberish' },
-					{ name: 'Custom-Tag-2', value: 'Excited penguin' }
-				])
+				arFSTagBuilder.assembleBaseArFSTags({
+					tags: [
+						{ name: 'Custom-Tag-1', value: 'Gibberish' },
+						{ name: 'Custom-Tag-2', value: 'Excited penguin' }
+					]
+				})
 			).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' },
 				{ name: 'App-Version', value: '1.2' },
@@ -51,7 +53,7 @@ describe('ArFSTagBuilder class', () => {
 		});
 
 		it('can exclude any specified tags names', () => {
-			expect(arFSTagBuilder.withBaseArFSTags([], ['App-Version', 'ArFS'])).to.deep.equal([
+			expect(arFSTagBuilder.assembleBaseArFSTags({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' }
 			]);
 		});
@@ -60,10 +62,12 @@ describe('ArFSTagBuilder class', () => {
 	describe('withBaseBundleTags method', () => {
 		it('returns provided tags combined with the base bundle tags', () => {
 			expect(
-				arFSTagBuilder.withBaseBundleTags([
-					{ name: 'Custom-Tag-5', value: 'Monkey paradise' },
-					{ name: 'Custom-Tag-8', value: 'Mountain sun' }
-				])
+				arFSTagBuilder.assembleBaseBundleTags({
+					tags: [
+						{ name: 'Custom-Tag-5', value: 'Monkey paradise' },
+						{ name: 'Custom-Tag-8', value: 'Mountain sun' }
+					]
+				})
 			).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' },
 				{ name: 'App-Version', value: '1.2' },
@@ -75,7 +79,9 @@ describe('ArFSTagBuilder class', () => {
 		});
 
 		it('can exclude any specified tags names', () => {
-			expect(arFSTagBuilder.withBaseBundleTags([], ['App-Name', 'Bundle-Format'])).to.deep.equal([
+			expect(
+				arFSTagBuilder.assembleBaseBundleTags({ excludedTagNames: ['App-Name', 'Bundle-Format'] })
+			).to.deep.equal([
 				{ name: 'App-Version', value: '1.2' },
 				{ name: 'Bundle-Version', value: '2.0.0' }
 			]);

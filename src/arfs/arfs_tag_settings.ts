@@ -41,20 +41,26 @@ export class ArFSTagSettings {
 		];
 	}
 
-	// TODO: Does this need to be dynamic yet? `TipType` type only accepts 'data-upload'
 	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
 		return [...this.baseAppTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: tipType }];
 	}
 
-	withBaseArFSTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
-		return this.filterExcludedTagNames([...this.baseArFSTags, ...tags], excludedTagNames);
+	assembleBaseArFSTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+		tags = [...this.baseArFSTags, ...tags];
+		return this.filterExcludedTagNames({ tags, excludedTagNames });
 	}
 
-	withBaseBundleTags(tags: GQLTagInterface[], excludedTagNames: string[] = []): GQLTagInterface[] {
-		return this.filterExcludedTagNames([...this.baseBundleTags, ...tags], excludedTagNames);
+	assembleBaseBundleTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+		tags = [...this.baseBundleTags, ...tags];
+		return this.filterExcludedTagNames({ tags, excludedTagNames });
 	}
 
-	private filterExcludedTagNames(tags: GQLTagInterface[], excludedTagNames: string[]): GQLTagInterface[] {
+	private filterExcludedTagNames({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
 		return tags.filter((tag) => !excludedTagNames.includes(tag.name));
 	}
+}
+
+interface TagAssembleParams {
+	tags?: GQLTagInterface[];
+	excludedTagNames?: string[];
 }
