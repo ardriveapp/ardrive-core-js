@@ -12,7 +12,7 @@ import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
-import { ArFSTagSettings } from './arfs/arfs_tag_builder';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;

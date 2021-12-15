@@ -123,7 +123,7 @@ import {
 	CreateDriveV2TxRewardSettings,
 	isBundleRewardSetting
 } from '../types/cost_estimator_types';
-import { ArFSTagSettings } from './arfs_tag_builder';
+import { ArFSTagSettings } from './arfs_tag_settings';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {

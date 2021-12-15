@@ -22,7 +22,7 @@ import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
-import { ArFSTagSettings } from './arfs_tag_builder';
+import { ArFSTagSettings } from './arfs_tag_settings';
 
 describe('The ArFSDAO class', async () => {
 	const wallet = readJWKFile('./test_wallet.json');

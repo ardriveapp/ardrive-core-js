@@ -86,7 +86,7 @@ import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
-import { ArFSTagSettings } from './arfs/arfs_tag_builder';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(

@@ -7,7 +7,7 @@ import {
 	stubPublicDriveMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
-import { ArFSTagSettings } from '../arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { FeeMultiple, W } from '../types';
 import {
 	BundleRewardSettings,

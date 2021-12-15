@@ -18,7 +18,7 @@ import {
 import { PrivateKeyData } from './private_key_data';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
-import { ArFSTagSettings } from './arfs_tag_builder';
+import { ArFSTagSettings } from './arfs_tag_settings';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;

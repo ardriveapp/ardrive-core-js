@@ -46,7 +46,7 @@ import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSCostEstimator } from '../../src/pricing/arfs_cost_estimator';
-import { ArFSTagSettings } from '../../src/arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;

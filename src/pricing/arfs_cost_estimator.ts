@@ -1,5 +1,5 @@
 import { serializeTags } from 'arbundles/src/parser';
-import { ArFSTagSettings } from '../arfs/arfs_tag_builder';
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
 import { ByteCount, FeeMultiple, Winston } from '../types';
