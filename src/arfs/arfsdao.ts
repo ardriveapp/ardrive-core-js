@@ -672,20 +672,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
 		});
 
-		const tags: GQLTagInterface[] = this.arFSTagSettings.assembleBaseBundleTags({
-			tags: otherTags,
-			excludedTagNames
-		});
-
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			bundledDataTx.reward = rewardSettings.feeMultiple.boostReward(bundledDataTx.reward);
 
-			// Add a Boost tag if not excluded
-			if (!excludedTagNames.includes('Boost')) {
-				tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
-			}
+			// Add a Boost tag
+			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
+
+		const tags: GQLTagInterface[] = this.arFSTagSettings.assembleBaseBundleTags({
+			tags: otherTags,
+			excludedTagNames
+		});
 
 		for (const tag of tags) {
 			bundledDataTx.addTag(tag.name, tag.value);
@@ -703,11 +701,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSPrepareObjectTransactionParams): Promise<Transaction> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
-
-		const tags = this.arFSTagSettings.assembleBaseArFSTags({
-			tags: [...objectMetaData.gqlTags, ...otherTags],
-			excludedTagNames
-		});
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {
@@ -731,11 +724,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
 
-			// Add a Boost tag if not excluded
-			if (!excludedTagNames.includes('Boost')) {
-				tags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
-			}
+			// Add a Boost tag
+			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
+
+		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+			tags: [...objectMetaData.gqlTags, ...otherTags],
+			excludedTagNames
+		});
 
 		for (const tag of tags) {
 			transaction.addTag(tag.name, tag.value);
