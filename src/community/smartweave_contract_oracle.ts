@@ -12,6 +12,8 @@ export class SmartweaveContractReader implements ContractReader {
 
 	/** Fetches smartweave contracts from Arweave with smartweave-js */
 	async readContract(txId: TransactionID): Promise<unknown> {
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
 		return readContract(this.arweave, `${txId}`);
 	}
 }
