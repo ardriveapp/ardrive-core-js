@@ -142,17 +142,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
-		/** @deprecated appName is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		protected appName = DEFAULT_APP_NAME,
-		/** @deprecated appVersion is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagBuilder: ArFSTagSettings
+		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 	) {
-		super(arweave, appName, appVersion, arFSTagBuilder);
+		super(arweave, appName, appVersion, arFSTagSettings);
 	}
 
 	/** Prepare an ArFS folder entity for upload */
@@ -639,7 +633,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
+		const tags = this.arFSTagSettings.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
 
 		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
 
@@ -675,7 +669,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
 		});
 
-		const tags: GQLTagInterface[] = this.arFSTagBuilder.withBaseBundleTags(otherTags, excludedTagNames);
+		const tags: GQLTagInterface[] = this.arFSTagSettings.withBaseBundleTags(otherTags, excludedTagNames);
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
@@ -704,7 +698,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagBuilder.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
+		const tags = this.arFSTagSettings.withBaseArFSTags([...objectMetaData.gqlTags, ...otherTags], excludedTagNames);
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {

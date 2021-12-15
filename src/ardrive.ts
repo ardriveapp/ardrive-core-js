@@ -94,19 +94,17 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
-		/** @deprecated appName is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		private readonly appName: string,
-		/** @deprecated appVersion is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		private readonly appVersion: string,
+		protected readonly appName: string,
+		protected readonly appVersion: string,
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
-		private readonly arFSTagBuilder: ArFSTagSettings,
-		private readonly costEstimator: ArFSCostEstimator
+		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+		private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
+			priceEstimator,
+			arFSTagBuilder: arFSTagSettings,
+			feeMultiple
+		})
 	) {
 		super(arFsDao);
 	}
@@ -122,7 +120,7 @@ export class ArDrive extends ArDriveAnonymous {
 			tokenHolder,
 			{ reward: arTransferBaseFee, feeMultiple: this.feeMultiple },
 			this.dryRun,
-			this.arFSTagBuilder.getTipTags(),
+			this.arFSTagSettings.getTipTags(),
 			assertBalance
 		);
 

@@ -32,15 +32,9 @@ export abstract class ArFSDAOType {
 export class ArFSDAOAnonymous extends ArFSDAOType {
 	constructor(
 		protected readonly arweave: Arweave,
-		/** @deprecated appName is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		protected appName = DEFAULT_APP_NAME,
-		/** @deprecated appVersion is now always read from ArFSTagBuilder */
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagBuilder: ArFSTagSettings
+		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 	) {
 		super();
 	}
