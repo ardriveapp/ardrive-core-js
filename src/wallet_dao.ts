@@ -6,8 +6,6 @@ import {
 	TransactionID,
 	Winston,
 	NetworkReward,
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION,
 	SeedPhrase,
 	ArweaveAddress,
 	W,
@@ -18,6 +16,7 @@ import {
 } from './types';
 import * as mnemonicKeys from 'arweave-mnemonic-keys';
 import { Wallet } from './wallet';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 
 export type ARTransferResult = {
 	txID: TransactionID;

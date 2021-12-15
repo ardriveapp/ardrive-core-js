@@ -2,17 +2,7 @@
 import Arweave from 'arweave';
 import { GQLEdgeInterface } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
-import {
-	DriveID,
-	FolderID,
-	FileID,
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION,
-	AnyEntityID,
-	ArweaveAddress,
-	EID,
-	ADDR
-} from '../types';
+import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
@@ -27,8 +17,7 @@ import {
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
-import { graphQLURL } from '../utils/constants';
-import { ArFSTagBuilder } from './arfs_tag_builder';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;

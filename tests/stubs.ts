@@ -33,7 +33,6 @@ import {
 } from '../src/exports';
 import {
 	ADDR,
-	ArFS_O_11,
 	ArweaveAddress,
 	ByteCount,
 	DriveID,
@@ -48,6 +47,7 @@ import {
 	TxID,
 	UnixTime
 } from '../src/types';
+import { ArFS_O_11 } from '../src/utils/constants';
 
 export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'): ArweaveAddress => {
 	return ADDR(address);
