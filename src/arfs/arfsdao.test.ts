@@ -34,8 +34,8 @@ describe('The ArFSDAO class', async () => {
 		timeout: 600000
 	});
 
-	const arFSTagBuilder = new ArFSTagSettings({ appName: 'ArFSDAO-Test', appVersion: '1.0' });
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagBuilder);
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArFSDAO-Test', appVersion: '1.0' });
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagSettings);
 
 	describe('prepareObjectTransaction function', () => {
 		it('produces an ArFS compliant public drive metadata transaction', async () => {

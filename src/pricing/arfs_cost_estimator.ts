@@ -17,18 +17,18 @@ export class ArFSCostEstimator {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
-	private readonly arFSTagBuilder: ArFSTagSettings;
+	private readonly arFSTagSettings: ArFSTagSettings;
 
 	constructor({
 		shouldBundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
-		arFSTagBuilder
+		arFSTagSettings
 	}: ArFSCostEstimatorConstructorParams) {
 		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;
-		this.arFSTagBuilder = arFSTagBuilder;
+		this.arFSTagSettings = arFSTagSettings;
 	}
 
 	/** Estimate the cost of a create drive */
@@ -90,7 +90,7 @@ export class ArFSCostEstimator {
 
 		// Get byte length of tags after being serialized for avro schema
 		const serializedTags = serializeTags(
-			this.arFSTagBuilder.assembleBaseArFSTags({ tags: objectPrototype.gqlTags })
+			this.arFSTagSettings.assembleBaseArFSTags({ tags: objectPrototype.gqlTags })
 		);
 		const tagsLength = 16 + serializedTags.byteLength;
 

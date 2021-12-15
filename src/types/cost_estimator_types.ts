@@ -5,7 +5,7 @@ import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 export interface ArFSCostEstimatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
-	arFSTagBuilder: ArFSTagSettings;
+	arFSTagSettings: ArFSTagSettings;
 	feeMultiple?: FeeMultiple;
 	shouldBundle?: boolean;
 }

@@ -18,7 +18,7 @@ export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
 	appVersion?: string;
 	appName?: string;
-	arFSTagBuilder?: ArFSTagSettings;
+	arFSTagSettings?: ArFSTagSettings;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	wallet: Wallet;
@@ -51,14 +51,14 @@ export function arDriveFactory({
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
-	arFSTagBuilder = new ArFSTagSettings({ appName, appVersion }),
+	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 	costEstimator = new ArFSCostEstimator({
 		shouldBundle,
 		feeMultiple,
 		priceEstimator,
-		arFSTagBuilder
+		arFSTagSettings
 	}),
-	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagBuilder)
+	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
@@ -70,7 +70,7 @@ export function arDriveFactory({
 		priceEstimator,
 		feeMultiple,
 		dryRun,
-		arFSTagBuilder,
+		arFSTagSettings,
 		costEstimator
 	);
 }
@@ -79,7 +79,7 @@ export function arDriveAnonymousFactory({
 	arweave = defaultArweave,
 	appName = DEFAULT_APP_NAME,
 	appVersion = DEFAULT_APP_VERSION,
-	arFSTagBuilder = new ArFSTagSettings({ appName, appVersion })
+	arFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 }: ArDriveSettingsAnonymous): ArDriveAnonymous {
-	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion, arFSTagBuilder));
+	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion, arFSTagSettings));
 }

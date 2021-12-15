@@ -46,20 +46,20 @@ describe('ArDrive class', () => {
 		priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracleStub);
 		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
 
-		const arFSTagBuilder = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
-		const costEstimator = new ArFSCostEstimator({ arFSTagBuilder, priceEstimator });
+		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
+		const costEstimator = new ArFSCostEstimator({ arFSTagSettings: arFSTagSettings, priceEstimator });
 
 		arDrive = new ArDrive(
 			wallet,
 			walletDao,
-			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagBuilder),
+			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
 			communityOracleStub,
 			'Unit Test',
 			'1.0',
 			priceEstimator,
 			new FeeMultiple(1.0),
 			true,
-			arFSTagBuilder,
+			arFSTagSettings,
 			costEstimator
 		);
 	});

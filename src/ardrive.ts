@@ -102,7 +102,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 		private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
 			priceEstimator,
-			arFSTagBuilder: arFSTagSettings,
+			arFSTagSettings: arFSTagSettings,
 			feeMultiple
 		})
 	) {

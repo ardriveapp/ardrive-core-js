@@ -21,22 +21,22 @@ import { GatewayOracle } from './gateway_oracle';
 describe('The ArFSCostEstimator class', () => {
 	const arweaveOracle = new GatewayOracle();
 	const priceEstimator = new ARDataPriceChunkEstimator(true, arweaveOracle);
-	const arFSTagBuilder = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
 
 	const bundledCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
-		arFSTagBuilder
+		arFSTagSettings: arFSTagSettings
 	});
 
 	const v2TxCostEstimator = new ArFSCostEstimator({
 		shouldBundle: false,
 		priceEstimator,
-		arFSTagBuilder
+		arFSTagSettings: arFSTagSettings
 	});
 
 	const boostedCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
-		arFSTagBuilder,
+		arFSTagSettings: arFSTagSettings,
 		feeMultiple: new FeeMultiple(10)
 	});
 

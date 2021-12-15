@@ -71,10 +71,14 @@ describe('ArDrive class - integrated', () => {
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.2');
-	const arFSTagBuilder = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagBuilder);
-	const costEstimator = new ArFSCostEstimator({ shouldBundle: false, arFSTagBuilder, priceEstimator });
-	const bundledCostEstimator = new ArFSCostEstimator({ arFSTagBuilder, priceEstimator });
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagSettings);
+	const costEstimator = new ArFSCostEstimator({
+		shouldBundle: false,
+		arFSTagSettings: arFSTagSettings,
+		priceEstimator
+	});
+	const bundledCostEstimator = new ArFSCostEstimator({ arFSTagSettings: arFSTagSettings, priceEstimator });
 
 	const arDrive = new ArDrive(
 		wallet,
@@ -86,7 +90,7 @@ describe('ArDrive class - integrated', () => {
 		priceEstimator,
 		new FeeMultiple(1.0),
 		true,
-		arFSTagBuilder,
+		arFSTagSettings,
 		costEstimator
 	);
 
@@ -100,7 +104,7 @@ describe('ArDrive class - integrated', () => {
 		priceEstimator,
 		new FeeMultiple(1.0),
 		true,
-		arFSTagBuilder,
+		arFSTagSettings,
 		bundledCostEstimator
 	);
 
