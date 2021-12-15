@@ -179,23 +179,23 @@ interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsPa
 	driveKey: DriveKey;
 }
 
-interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
+export interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
 	driveKey: DriveKey;
 }
 
-interface ArFSPrivateFolderCacheKey {
+export interface ArFSPrivateFolderCacheKey {
 	folderId: FolderID;
 	owner: ArweaveAddress;
 	driveKey: DriveKey;
 }
 
-interface ArFSPrivateFileCacheKey {
+export interface ArFSPrivateFileCacheKey {
 	fileId: FileID;
 	owner: ArweaveAddress;
 	fileKey: FileKey;
 }
 
-interface ArFSCache extends ArFSAnonymousCache {
+export interface ArFSCache extends ArFSAnonymousCache {
 	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
 	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
 	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
