@@ -14,3 +14,4 @@ export * from './type_guards';
 export * from './types';
 export * from './ardrive_types';
 export { CipherIVQueryResult } from './cipher_iv_query_result';
+export * from './upload_conflict_types';

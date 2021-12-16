@@ -13,9 +13,8 @@ import {
 	ManifestPathMap,
 	TransactionID
 } from '../types';
-import { BulkFileBaseCosts, MetaDataBaseCosts } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
-import { EntityNamesAndIds } from '../utils/mapper_functions';
+import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import {
 	ArFSPrivateFile,
@@ -76,13 +75,18 @@ export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload |
 export function isFolder(fileOrFolder: ArFSFileToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
 	return fileOrFolder instanceof ArFSFolderToUpload;
 }
-export interface ArFSEntityToUpload {
-	gatherFileInfo: () => FileInfo;
-	getFileDataBuffer: () => Buffer;
-	getBaseFileName: () => BaseFileName;
+export abstract class ArFSEntityToUpload {
+	abstract gatherFileInfo(): FileInfo;
+	abstract getFileDataBuffer(): Buffer;
+	abstract getBaseFileName(): BaseFileName;
+
+	abstract lastModifiedDate: UnixTime;
+	existingId?: FileID;
+	newFileName?: string;
+	conflictResolution?: FileConflictResolution;
 }
 
-export class ArFSManifestToUpload implements ArFSEntityToUpload {
+export class ArFSManifestToUpload extends ArFSEntityToUpload {
 	manifest: Manifest;
 	lastModifiedDateMS: UnixTime;
 
@@ -90,6 +94,8 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 		public readonly folderToGenManifest: ArFSPublicFileOrFolderWithPaths[],
 		public readonly destManifestName: string
 	) {
+		super();
+
 		const sortedChildren = folderToGenManifest.sort((a, b) => alphabeticalOrder(a.path, b.path));
 		const baseFolderPath = sortedChildren[0].path;
 
@@ -164,7 +170,7 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	}
 
 	public getBaseFileName(): BaseFileName {
-		return this.destManifestName;
+		return this.newFileName ?? this.destManifestName;
 	}
 
 	public getFileDataBuffer(): Buffer {
@@ -174,19 +180,24 @@ export class ArFSManifestToUpload implements ArFSEntityToUpload {
 	public get size(): ByteCount {
 		return new ByteCount(Buffer.byteLength(JSON.stringify(this.manifest)));
 	}
+
+	public get lastModifiedDate(): UnixTime {
+		return this.lastModifiedDateMS;
+	}
 }
 
-export class ArFSFileToUpload implements ArFSEntityToUpload {
+export type FolderConflictResolution = typeof skipOnConflicts | undefined;
+export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
+
+export class ArFSFileToUpload extends ArFSEntityToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+		super();
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
 	}
 
 	baseCosts?: BulkFileBaseCosts;
-	existingId?: FileID;
-	existingFolderAtDestConflict = false;
-	hasSameLastModifiedDate = false;
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -235,8 +246,8 @@ export class ArFSFolderToUpload {
 
 	baseCosts?: MetaDataBaseCosts;
 	existingId?: FolderID;
-	destinationName?: string;
-	existingFileAtDestConflict = false;
+	newFolderName?: string;
+	conflictResolution: FolderConflictResolution = undefined;
 
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
 		const entitiesInFolder = readdirSync(this.filePath);
@@ -255,72 +266,6 @@ export class ArFSFolderToUpload {
 				if (childFile.getBaseFileName() !== '.DS_Store') {
 					this.files.push(childFile);
 				}
-			}
-		}
-	}
-
-	public async checkAndAssignExistingNames(
-		getExistingNamesFn: (parentFolderId: FolderID) => Promise<EntityNamesAndIds>
-	): Promise<void> {
-		if (!this.existingId) {
-			// Folder has no existing ID to check
-			return;
-		}
-
-		const existingEntityNamesAndIds = await getExistingNamesFn(this.existingId);
-
-		for await (const file of this.files) {
-			const baseFileName = file.getBaseFileName();
-
-			const existingFolderAtDestConflict = existingEntityNamesAndIds.folders.find(
-				({ folderName }) => folderName === baseFileName
-			);
-
-			if (existingFolderAtDestConflict) {
-				// Folder name cannot conflict with a file name
-				file.existingFolderAtDestConflict = true;
-				continue;
-			}
-
-			const existingFileAtDestConflict = existingEntityNamesAndIds.files.find(
-				({ fileName }) => fileName === baseFileName
-			);
-
-			// Conflicting file name creates a REVISION by default
-			if (existingFileAtDestConflict) {
-				file.existingId = existingFileAtDestConflict.fileId;
-
-				if (existingFileAtDestConflict.lastModifiedDate.valueOf() === file.lastModifiedDate.valueOf()) {
-					// Check last modified date and set to true to resolve upsert conditional
-					file.hasSameLastModifiedDate = true;
-				}
-			}
-		}
-
-		for await (const folder of this.folders) {
-			const baseFolderName = folder.getBaseFileName();
-
-			const existingFileAtDestConflict = existingEntityNamesAndIds.files.find(
-				({ fileName }) => fileName === baseFolderName
-			);
-
-			if (existingFileAtDestConflict) {
-				// Folder name cannot conflict with a file name
-				this.existingFileAtDestConflict = true;
-				continue;
-			}
-
-			const existingFolderAtDestConflict = existingEntityNamesAndIds.folders.find(
-				({ folderName }) => folderName === baseFolderName
-			);
-
-			// Conflicting folder name uses EXISTING folder by default
-			if (existingFolderAtDestConflict) {
-				// Assigns existing id for later use
-				folder.existingId = existingFolderAtDestConflict.folderId;
-
-				// Recurse into existing folder on folder name conflict
-				await folder.checkAndAssignExistingNames(getExistingNamesFn);
 			}
 		}
 	}
