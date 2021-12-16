@@ -19,7 +19,8 @@ import {
 	Winston,
 	DrivePrivacy,
 	FileID,
-	ArFSManifestResult
+	ArFSManifestResult,
+	FileConflictPrompts
 } from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
@@ -487,10 +488,16 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		describe('file function', () => {
-			describe('uploadPublicFile', () => {
-				const wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			const stubbedFileAskPrompts: FileConflictPrompts = {
+				fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+				fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
+			};
+			let wrappedFile: ArFSFileToUpload;
 
+			describe('uploadPublicFile', () => {
 				beforeEach(() => {
+					wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+
 					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 
@@ -562,21 +569,18 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3204), W(171), W(0), W(1), 'public', existingFileId);
 				});
 
-				it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'upsert'
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPublicFile({
+							parentFolderId: stubEntityID,
+							wrappedFile,
+							destinationFileName: 'CONFLICTING_FILE_NAME',
+							conflictResolution: 'upsert'
+						}),
+						errorMessage: 'The file to upload matches an existing file entity!'
 					});
 				});
 
@@ -595,6 +599,62 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3204), W(162), W(0), W('1'), 'public', existingFileId);
 				});
 
+				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'rename',
+						newFileName: 'New File!'
+					});
+
+					const result = await arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						prompts: stubbedFileAskPrompts
+					});
+
+					assertUploadFileExpectations(result, W(3204), W(159), W(0), W('1'), 'public');
+				});
+
+				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'replace'
+					});
+
+					const result = await arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						prompts: stubbedFileAskPrompts
+					});
+
+					assertUploadFileExpectations(result, W(3204), W(171), W(0), W('1'), 'public', existingFileId);
+				});
+
+				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'skip'
+					});
+
+					const result = await arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						prompts: stubbedFileAskPrompts
+					});
+
+					expect(result).to.deep.equal({
+						created: [],
+						tips: [],
+						fees: {}
+					});
+				});
+
 				it('returns the correct ArFSResult', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
@@ -607,9 +667,9 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			describe('uploadPrivateFile', () => {
-				const wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
-
 				beforeEach(() => {
+					wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+
 					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 
@@ -643,7 +703,7 @@ describe('ArDrive class - integrated', () => {
 
 					await expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: stubEntityID,
+							parentFolderId: EID(stubEntityID.toString()),
 							wrappedFile,
 							driveKey: await getStubDriveKey(),
 							destinationFileName: 'CONFLICTING_FOLDER_NAME'
@@ -685,22 +745,19 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3220), W(187), W(0), W(1), 'private', existingFileId);
 				});
 
-				it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'upsert',
-						driveKey: await getStubDriveKey()
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
+					await expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPrivateFile({
+							parentFolderId: EID(stubEntityID.toString()),
+							wrappedFile,
+							driveKey: await getStubDriveKey(),
+							destinationFileName: 'CONFLICTING_FILE_NAME',
+							conflictResolution: 'upsert'
+						}),
+						errorMessage: 'The file to upload matches an existing file entity!'
 					});
 				});
 
@@ -718,6 +775,65 @@ describe('ArDrive class - integrated', () => {
 
 					// Pass expected existing file id, so that the file would be considered a revision
 					assertUploadFileExpectations(result, W(3220), W(178), W(0), W('1'), 'private', existingFileId);
+				});
+
+				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'rename',
+						newFileName: 'New File!'
+					});
+
+					const result = await arDrive.uploadPrivateFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						driveKey: await getStubDriveKey(),
+						prompts: stubbedFileAskPrompts
+					});
+
+					assertUploadFileExpectations(result, W(3220), W(175), W(0), W('1'), 'private');
+				});
+
+				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'replace'
+					});
+
+					const result = await arDrive.uploadPrivateFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						driveKey: await getStubDriveKey(),
+						prompts: stubbedFileAskPrompts
+					});
+
+					assertUploadFileExpectations(result, W(3220), W(187), W(0), W('1'), 'private', existingFileId);
+				});
+
+				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+						resolution: 'skip'
+					});
+
+					const result = await arDrive.uploadPrivateFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'ask',
+						driveKey: await getStubDriveKey(),
+						prompts: stubbedFileAskPrompts
+					});
+
+					expect(result).to.deep.equal({
+						created: [],
+						tips: [],
+						fees: {}
+					});
 				});
 
 				it('returns the correct ArFSResult', async () => {
@@ -930,6 +1046,7 @@ describe('ArDrive class - integrated', () => {
 				created: [],
 				tips: [],
 				fees: {},
+				manifest: {},
 				links: []
 			});
 		});
@@ -1176,8 +1293,8 @@ function assertUploadManifestExpectations(
 	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
 	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 
-	// Verify links are healthy
 	if (specialCharacters) {
+		// Verify links are healthy
 		expect(result.links.length).to.equal(4);
 		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
 		expect(result.links[1]).to.equal(
@@ -1189,7 +1306,24 @@ function assertUploadManifestExpectations(
 		expect(result.links[3]).to.equal(
 			`https://arweave.net/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
 		);
+
+		// Assert manifest shape
+		expect(result.manifest).to.deep.equal({
+			manifest: 'arweave/paths',
+			version: '0.1.0',
+			index: { path: '%&@*(%&(@*:">?{}[]' },
+			paths: {
+				'%&@*(%&(@*:">?{}[]': { id: '0000000000000000000000000000000000000000001' },
+				"~!@#$%^&*()_+{}|[]:\";<>?,./`/'/''_\\___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()_+{}:\">?":
+					// eslint-disable-next-line prettier/prettier
+					{ id: '0000000000000000000000000000000000000000003' },
+				'~!@#$%^&*()_+{}|[]:";<>?,./`/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm,uiqwerioeqwndjkla': {
+					id: '0000000000000000000000000000000000000000002'
+				}
+			}
+		});
 	} else {
+		// Verify links are healthy
 		expect(result.links.length).to.equal(4);
 		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
 		expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
@@ -1199,5 +1333,17 @@ function assertUploadManifestExpectations(
 		expect(result.links[3]).to.equal(
 			`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`
 		);
+
+		// Assert manifest shape
+		expect(result.manifest).to.deep.equal({
+			manifest: 'arweave/paths',
+			version: '0.1.0',
+			index: { path: 'file-in-root' },
+			paths: {
+				'file-in-root': { id: '0000000000000000000000000000000000000000001' },
+				'parent-folder/child-folder/file-in-child': { id: '0000000000000000000000000000000000000000003' },
+				'parent-folder/file-in-parent': { id: '0000000000000000000000000000000000000000002' }
+			}
+		});
 	}
 }
