@@ -767,7 +767,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const cacheKey = { driveId, driveKey, owner };
 		const cachedDrive = this.caches.privateDriveCache.get(cacheKey);
 		if (cachedDrive) {
-			console.log(`private drive cache hit`);
 			return cachedDrive;
 		}
 		return this.caches.privateDriveCache.put(
@@ -781,7 +780,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const cacheKey = { folderId, driveKey, owner };
 		const cachedFolder = this.caches.privateFolderCache.get(cacheKey);
 		if (cachedFolder) {
-			console.log(`private folder cache hit`);
 			return cachedFolder;
 		}
 		return this.caches.privateFolderCache.put(
@@ -795,7 +793,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const cacheKey = { fileId, owner, fileKey };
 		const cachedFile = this.caches.privateFileCache.get(cacheKey);
 		if (cachedFile) {
-			console.log(`private file cache hit`);
 			return cachedFile;
 		}
 		return this.caches.privateFileCache.put(
@@ -1028,14 +1025,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
 		const cachedOwner = this.caches.ownerCache.get(driveId);
 		if (cachedOwner) {
-			console.log(`owner cache hit!`);
 			return cachedOwner;
 		}
 
 		return this.caches.ownerCache.put(
 			driveId,
 			(async () => {
-				console.log(`fetching owner of driveID ${driveId}`);
 				const gqlQuery = buildQuery({
 					tags: [
 						{ name: 'Entity-Type', value: 'drive' },

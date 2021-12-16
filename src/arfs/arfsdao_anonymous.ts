@@ -178,7 +178,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const cacheKey = { driveId, owner };
 		const cachedDrive = this.caches.publicDriveCache.get(cacheKey);
 		if (cachedDrive) {
-			console.log(`public drive cache hit`);
 			return cachedDrive;
 		}
 		return this.caches.publicDriveCache.put(
@@ -192,7 +191,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const cacheKey = { folderId, owner };
 		const cachedFolder = this.caches.publicFolderCache.get(cacheKey);
 		if (cachedFolder) {
-			console.log(`public folder cache hit`);
 			return cachedFolder;
 		}
 		return this.caches.publicFolderCache.put(
@@ -205,7 +203,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const cacheKey = { fileId, owner };
 		const cachedFile = this.caches.publicFileCache.get(cacheKey);
 		if (cachedFile) {
-			console.log(`public file cache hit`);
 			return cachedFile;
 		}
 		return this.caches.publicFileCache.put(
