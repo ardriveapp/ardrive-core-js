@@ -701,6 +701,16 @@ describe('ArDrive class - integrated', () => {
 					});
 				});
 
+				it('returns the correct bundled ArFSResult', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+					const result = await bundledArDrive.uploadPublicFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile
+					});
+					assertUploadFileExpectations(result, W(5959), W(166), W(0), W(1), 'public', undefined, true);
+				});
+
 				it('returns the correct ArFSResult', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
@@ -880,6 +890,18 @@ describe('ArDrive class - integrated', () => {
 						tips: [],
 						fees: {}
 					});
+				});
+
+				it('returns the correct bundled ArFSResult', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+					const stubDriveKey = await getStubDriveKey();
+
+					const result = await bundledArDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile,
+						driveKey: stubDriveKey
+					});
+					assertUploadFileExpectations(result, W(6052), W(182), W(0), W(1), 'private', undefined, true);
 				});
 
 				it('returns the correct ArFSResult', async () => {
@@ -1231,10 +1253,12 @@ function assertUploadFileExpectations(
 	tipFee: Winston,
 	expectedTip: Winston,
 	drivePrivacy: DrivePrivacy,
-	expectedFileId?: FileID
+	expectedFileId?: FileID,
+	isBundled = false
 ) {
-	// Ensure that 1 arfs entity was created
-	expect(result.created.length).to.equal(1);
+	// Ensure that 2 arfs entities are created with a bundled transaction,
+	// and 1 arfs entity is created during a v2 transaction
+	expect(result.created.length).to.equal(isBundled ? 2 : 1);
 
 	// Ensure that the file data entity looks healthy
 	const fileEntity = result.created[0];
@@ -1262,23 +1286,44 @@ function assertUploadFileExpectations(
 	expect(`${uploadTip.winston}`).to.equal(`${expectedTip}`);
 	expect(uploadTip.recipient).to.match(txIdRegex);
 
-	// Ensure that the fees look healthy
-	expect(Object.keys(result.fees).length).to.equal(3);
-
 	const feeKeys = Object.keys(result.fees);
-	expect(feeKeys[0]).to.match(txIdRegex);
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
-	expect(feeKeys[1]).to.match(txIdRegex);
-	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
-	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
+	if (isBundled) {
+		// Ensure that the bundle tx looks healthy
+		const bundleEntity = result.created[1];
+		expect(bundleEntity.dataTxId).to.be.undefined;
+		expect(bundleEntity.entityId).to.be.undefined;
+		expect(bundleEntity.key).to.be.undefined;
+		expect(bundleEntity.metadataTxId).to.be.undefined;
+		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
+		expect(bundleEntity.type).to.equal('bundle');
 
-	expect(feeKeys[2]).to.match(txIdRegex);
-	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+		// Ensure that the bundle fee look healthy
+		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
+		expect(feeKeys[0]).to.match(txIdRegex);
+		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
+
+		// Ensure tip fee looks healthy
+		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
+		expect(feeKeys[1]).to.match(txIdRegex);
+		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+	} else {
+		// Ensure that the fees look healthy
+		expect(feeKeys.length).to.equal(3);
+
+		expect(feeKeys[0]).to.match(txIdRegex);
+		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
+		expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
+
+		expect(feeKeys[1]).to.match(txIdRegex);
+		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
+		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
+
+		expect(feeKeys[2]).to.match(txIdRegex);
+		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
+		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+	}
 }
 
 function assertMoveFileExpectations(result: ArFSResult, fileFee: Winston, drivePrivacy: DrivePrivacy) {
