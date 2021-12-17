@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version: DEFAULT_APP_VERSION } = require('../../package.json');
-import { EID, TxID } from '../types';
+import { EID, JSON_CONTENT_TYPE, PRIVATE_CONTENT_TYPE, TxID } from '../types';
 import { CipherType } from '../types/type_guards';
 
 export const ArFS_O_11 = '0.11';
@@ -38,5 +38,5 @@ export const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
 /** Estimated AR price for most metadata transactions */
 export const assumedMetadataTxARPrice = 0.000_002_500_000;
 
-//Note: Just to easily copy paste later where it's needed
-//import {prodAppUrl,stagingAppUrl,gatewayURL,appName,webAppName,appVersion,arFSVersion,cipher} from './constants';
+export const publicJsonContentTypeTag = { name: 'Content-Type', value: JSON_CONTENT_TYPE };
+export const privateOctetContentTypeTag = { name: 'Content-Type', value: PRIVATE_CONTENT_TYPE };

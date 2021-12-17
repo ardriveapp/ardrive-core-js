@@ -8,6 +8,7 @@ import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { ByteCount } from './byte_count';
+import { GQLTagInterface } from './gql_Types';
 
 export interface ArFSCostEstimatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
@@ -25,6 +26,7 @@ export interface EstimateCreateDriveParams {
 export interface EstimateUploadFileParams {
 	fileMetaDataPrototype: ArFSFileMetaDataPrototype;
 	fileDataSize: ByteCount;
+	contentTypeTag: GQLTagInterface;
 }
 
 export interface EstimateResult<T> {
