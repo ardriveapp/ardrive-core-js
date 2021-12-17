@@ -76,7 +76,7 @@ import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
-import { fakeEntityId } from './utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 import { ArFSCreateBundledDriveResult, ArFSCreateDriveResult, isBundleResult } from './arfs/arfs_entity_result_factory';
@@ -94,8 +94,10 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
-		protected readonly appName: string,
-		protected readonly appVersion: string,
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
+		protected readonly appName: string = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
+		protected readonly appVersion: string = DEFAULT_APP_VERSION,
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,

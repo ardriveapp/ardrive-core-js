@@ -22,8 +22,6 @@ export interface ArDriveSettingsAnonymous {
 	appName?: string;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
-	appVersion?: string;
-	appName?: string;
 	wallet: Wallet;
 	walletDao?: WalletDAO;
 	priceEstimator?: ARDataPriceEstimator;

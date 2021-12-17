@@ -142,7 +142,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
 		protected appName = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
 		protected appVersion = DEFAULT_APP_VERSION,
 		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 	) {
