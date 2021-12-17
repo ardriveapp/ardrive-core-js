@@ -24,7 +24,7 @@ import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 
-describe('The ArFSDAO class', async () => {
+describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const fakeArweave = Arweave.init({
