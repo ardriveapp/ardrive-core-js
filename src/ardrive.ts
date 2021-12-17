@@ -9,7 +9,8 @@ import {
 	ArFSFolderToUpload,
 	ArFSFileToUpload,
 	ArFSEntityToUpload,
-	ArFSManifestToUpload
+	ArFSManifestToUpload,
+	isFolder
 } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
@@ -43,7 +44,9 @@ import {
 	errorOnConflict,
 	skipOnConflicts,
 	upsertOnConflicts,
-	emptyManifestResult
+	emptyManifestResult,
+	UploadAllPublicEntitiesParams,
+	VerifiedPublicUploadOrder
 } from './types';
 import {
 	CommunityTipParams,
@@ -495,6 +498,62 @@ export class ArDrive extends ArDriveAnonymous {
 				[`${tipData.txId}`]: communityTipTxReward
 			}
 		};
+	}
+
+	// private async uploadAllEntities({}): Promise<ArFSResult> {}
+
+	public async uploadAllThesePublicEntities({
+		entitiesToUpload,
+		conflictResolution = upsertOnConflicts,
+		prompts
+	}: UploadAllPublicEntitiesParams): Promise<ArFSResult> {
+		const verifiedEntities: VerifiedPublicUploadOrder[] = [];
+		for (const { destFolderId, destName, wrappedEntity } of entitiesToUpload) {
+			const driveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
+
+			const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
+			await this.assertOwnerAddress(owner);
+
+			// Derive destination name and names already within provided destination folder
+			const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(destFolderId);
+
+			const destinationName = destName ?? wrappedEntity.getBaseFileName();
+
+			const resolveConflictParams = {
+				nameConflictInfo,
+				conflictResolution,
+				getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId),
+				prompts
+			};
+
+			if (isFolder(wrappedEntity)) {
+				await resolveFolderNameConflicts({
+					wrappedFolder: wrappedEntity,
+					destinationFolderName: destinationName,
+					...resolveConflictParams
+				});
+			} else {
+				await resolveFileNameConflicts({
+					wrappedFile: wrappedEntity,
+					destinationFileName: destinationName,
+					...resolveConflictParams
+				});
+			}
+
+			verifiedEntities.push({ destFolderId, destName: destinationName, driveId, wrappedEntity });
+		}
+
+		// const bulkEstimate = await this.costEstimator.estimateUploadEntities(verifiedEntities);
+
+		// Send estimate result and entities to ArFSDAO to consume
+		// const result = this.arFsDao.uploadAllPublicEntities({ entities: verifiedEntities, bulkEstimate })
+
+		// Need all entity ids, trx ids, and reward info returned
+
+		// Send community tip
+
+		// TODO: return real results
+		return emptyArFSResult;
 	}
 
 	public async createPublicFolderAndUploadChildren({

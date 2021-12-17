@@ -39,6 +39,15 @@ export interface EstimateUploadResult<T> extends EstimateResult<T> {
 	communityWinstonTip: Winston;
 }
 
+export interface EstimateBulkResult {
+	bundleRewardSettings: BundleRewardSettings[];
+	totalWinstonPrice: Winston;
+	communityWinstonTip: Winston;
+}
+
+export type EstimateBulkBundleResult = EstimateUploadResult<BundleRewardSettings[]>;
+export type EstimateBulkV2TxResult = EstimateUploadResult<never>;
+
 export interface BundleRewardSettings {
 	bundleRewardSettings: RewardSettings;
 }

@@ -9,7 +9,8 @@ import {
 	MANIFEST_CONTENT_TYPE,
 	Manifest,
 	ManifestPathMap,
-	TransactionID
+	TransactionID,
+	V2FileBaseCosts
 } from '../types';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { extToMime } from '../utils/common';
@@ -189,6 +190,9 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 		}
 	}
 
+	bundleIndex?: number;
+	v2TxBaseCost?: V2FileBaseCosts;
+	metaDataBundleIndex?: number;
 	baseCosts?: BulkFileBaseCosts;
 
 	public gatherFileInfo(): FileInfo {
@@ -237,6 +241,7 @@ export class ArFSFolderToUpload {
 	folders: ArFSFolderToUpload[] = [];
 
 	baseCosts?: MetaDataBaseCosts;
+	bundleIndex?: number;
 	existingId?: FolderID;
 	newFolderName?: string;
 	conflictResolution: FolderConflictResolution = undefined;

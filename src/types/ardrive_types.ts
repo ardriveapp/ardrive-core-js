@@ -73,6 +73,10 @@ export interface MetaDataBaseCosts {
 export interface BulkFileBaseCosts extends MetaDataBaseCosts {
 	fileDataBaseReward: Winston;
 }
+
+export interface V2FileBaseCosts {
+	fileDataBaseReward: Winston;
+}
 export interface FileUploadBaseCosts extends BulkFileBaseCosts {
 	communityWinstonTip: Winston;
 }
@@ -109,6 +113,27 @@ export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 export interface UploadParams {
 	parentFolderId: FolderID;
 	conflictResolution?: FileNameConflictResolution;
+}
+
+export interface BundlePublicUploadOrder extends VerifiedPublicUploadOrder {
+	/** The index of the bundle where the dataItem for this entity will be bundled  */
+	bundleIndex: number;
+}
+export interface VerifiedPublicUploadOrder extends PublicUploadOrder {
+	destName: string;
+	driveId: DriveID;
+}
+export interface PublicUploadOrder {
+	wrappedEntity: ArFSFileToUpload | ArFSFolderToUpload;
+	destFolderId: FolderID;
+	destName?: string;
+}
+export type PrivateUploadOrder = PublicUploadOrder & WithDriveKey;
+
+export interface UploadAllPublicEntitiesParams {
+	entitiesToUpload: PublicUploadOrder[];
+	conflictResolution?: FileNameConflictResolution;
+	prompts?: FolderConflictPrompts;
 }
 
 export interface BulkPublicUploadParams extends UploadParams {
