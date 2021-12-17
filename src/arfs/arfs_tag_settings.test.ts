@@ -42,7 +42,7 @@ describe('ArFSTagSettings class', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
-				arFSTagSettings.assembleBaseArFSTags({
+				arFSTagSettings.baseArFSTagsIncluding({
 					tags: [
 						{ name: 'Custom-Tag-1', value: 'Gibberish' },
 						{ name: 'Custom-Tag-2', value: 'Excited penguin' }
@@ -59,7 +59,7 @@ describe('ArFSTagSettings class', () => {
 		});
 
 		it('can exclude any specified tags names', () => {
-			expect(arFSTagSettings.assembleBaseArFSTags({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
+			expect(arFSTagSettings.baseArFSTagsIncluding({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' }
 			]);
 		});
@@ -70,7 +70,7 @@ describe('ArFSTagSettings class', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
-				arFSTagSettings.assembleBaseBundleTags({
+				arFSTagSettings.baseBundleTagsIncluding({
 					tags: [
 						{ name: 'Custom-Tag-5', value: 'Monkey paradise' },
 						{ name: 'Custom-Tag-8', value: 'Mountain sun' }
@@ -89,7 +89,7 @@ describe('ArFSTagSettings class', () => {
 
 		it('can exclude any specified tags names', () => {
 			expect(
-				arFSTagSettings.assembleBaseBundleTags({ excludedTagNames: ['App-Name', 'Bundle-Format'] })
+				arFSTagSettings.baseBundleTagsIncluding({ excludedTagNames: ['App-Name', 'Bundle-Format'] })
 			).to.deep.equal([
 				{ name: 'App-Version', value: '1.2' },
 				{ name: 'Bundle-Version', value: '2.0.0' }
@@ -179,7 +179,7 @@ describe('ArFSTagSettings class', () => {
 			);
 		});
 
-		it('throws an error if the name field is an empty string', () => {
+		it('throws an error if the value field is an empty string', () => {
 			const tag: GQLTagInterface = {
 				name: 'Value field empty string test',
 				value: ''
@@ -191,7 +191,7 @@ describe('ArFSTagSettings class', () => {
 			);
 		});
 
-		it('throws an error if the name field is not a string', () => {
+		it('throws an error if the value field is not a string', () => {
 			const tag: GQLTagInterface = ({
 				name: 'Value field wrong type test',
 				value: 12345

@@ -90,7 +90,7 @@ export class ArFSCostEstimator {
 
 		// Get byte length of tags after being serialized for avro schema
 		const serializedTags = serializeTags(
-			this.arFSTagSettings.assembleBaseArFSTags({ tags: objectPrototype.gqlTags })
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: objectPrototype.gqlTags })
 		);
 		const tagsLength = 16 + serializedTags.byteLength;
 
