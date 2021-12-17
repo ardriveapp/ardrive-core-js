@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { GQLEdgeInterface } from '../types';
+import { GQLEdgeInterface, TransactionID } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
@@ -18,6 +18,9 @@ import {
 import { PrivateKeyData } from './private_key_data';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
+import axios, { AxiosRequestConfig } from 'axios';
+import { gatewayURL } from '../utils/constants';
+import { Readable } from 'stream';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -262,5 +265,21 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		const entitiesWithPath = children.map((entity) => new ArFSPublicFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
+	}
+
+	/**
+	 * Returns the data stream of a public file
+	 * @param fileTxId - the transaction ID of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
+		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream'
+		};
+		const response = await axios(requestConfig);
+		return response.data;
 	}
 }
