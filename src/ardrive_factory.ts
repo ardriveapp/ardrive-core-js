@@ -16,12 +16,16 @@ import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
-	/** @deprecated App Version is an unused parameter on anonymous ArDrive */
+	/** @deprecated App Version is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appVersion?: string;
-	/** @deprecated App Name is an unused parameter on anonymous ArDrive */
+	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
+	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
+	appVersion?: string;
+	/** @deprecated App Name will be removed in a future release. Use ArFSTagSettings instead */
+	appName?: string;
 	wallet: Wallet;
 	walletDao?: WalletDAO;
 	priceEstimator?: ARDataPriceEstimator;
