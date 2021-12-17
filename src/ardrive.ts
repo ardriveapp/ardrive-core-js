@@ -86,7 +86,7 @@ import {
 	isBundleResult,
 	WithFileKey
 } from './arfs/arfs_entity_result_factory';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/cost_estimator_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
@@ -108,7 +108,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
 		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-		private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
+		private readonly uploadPlanner: ArFSUploadPlanner = new ArFSUploadPlanner({
 			priceEstimator,
 			arFSTagSettings: arFSTagSettings,
 			feeMultiple,
@@ -438,7 +438,7 @@ export class ArDrive extends ArDriveAnonymous {
 			}
 		}
 
-		const { rewardSettings, totalWinstonPrice, communityWinstonTip } = await this.costEstimator.estimateUploadFile({
+		const { rewardSettings, totalWinstonPrice, communityWinstonTip } = await this.uploadPlanner.estimateUploadFile({
 			fileDataSize: wrappedFile.size,
 			fileMetaDataPrototype: getPublicUploadFileEstimationPrototype(wrappedFile),
 			contentTypeTag: publicJsonContentTypeTag
@@ -735,7 +735,7 @@ export class ArDrive extends ArDriveAnonymous {
 			destinationFileName = wrappedFile.newFileName;
 		}
 
-		const { rewardSettings, totalWinstonPrice, communityWinstonTip } = await this.costEstimator.estimateUploadFile({
+		const { rewardSettings, totalWinstonPrice, communityWinstonTip } = await this.uploadPlanner.estimateUploadFile({
 			fileDataSize: this.encryptedDataSize(wrappedFile.size),
 			fileMetaDataPrototype: await getPrivateUploadFileEstimationPrototype(wrappedFile, driveKey),
 			contentTypeTag: privateOctetContentTypeTag
@@ -815,12 +815,13 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
-		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId);
+		const nameConflictInfo = await this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey);
 
 		await resolveFolderNameConflicts({
 			conflictResolution,
 			destinationFolderName: destParentFolderName,
-			getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId),
+			getConflictInfoFn: (folderId: FolderID) =>
+				this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, driveKey),
 			nameConflictInfo,
 			wrappedFolder,
 			prompts
@@ -1175,7 +1176,7 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const { rewardSettings, totalWinstonPrice } = await this.costEstimator.estimateCreateDrive(arFSPrototypes);
+		const { rewardSettings, totalWinstonPrice } = await this.uploadPlanner.estimateCreateDrive(arFSPrototypes);
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		const createDriveResult = await arFSCreateDrive(rewardSettings);

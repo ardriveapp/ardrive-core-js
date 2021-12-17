@@ -10,7 +10,7 @@ import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { ByteCount } from './byte_count';
 import { GQLTagInterface } from './gql_Types';
 
-export interface ArFSCostEstimatorConstructorParams {
+export interface ArFSUploadPlannerConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
 	arFSTagSettings: ArFSTagSettings;
 	communityOracle: CommunityOracle;

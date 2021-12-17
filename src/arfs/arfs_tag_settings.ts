@@ -54,13 +54,13 @@ export class ArFSTagSettings {
 		return [...this.baseAppTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: tipType }];
 	}
 
-	assembleBaseArFSTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+	baseArFSTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
 		tags = [...this.baseArFSTags, ...tags];
 
 		return this.assembleTags({ tags, excludedTagNames });
 	}
 
-	assembleBaseBundleTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+	baseBundleTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
 		tags = [...this.baseBundleTags, ...tags];
 
 		return this.assembleTags({ tags, excludedTagNames });

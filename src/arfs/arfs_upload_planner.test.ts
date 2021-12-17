@@ -21,30 +21,30 @@ import {
 	UploadFileV2TxRewardSettings
 } from '../types/cost_estimator_types';
 import { privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
-import { ArFSCostEstimator } from './arfs_cost_estimator';
-import { ARDataPriceChunkEstimator } from './ar_data_price_chunk_estimator';
-import { GatewayOracle } from './gateway_oracle';
+import { ArFSUploadPlanner } from './arfs_upload_planner';
+import { ARDataPriceChunkEstimator } from '../pricing/ar_data_price_chunk_estimator';
+import { GatewayOracle } from '../pricing/gateway_oracle';
 
-describe('The ArFSCostEstimator class', () => {
+describe('The ArFSUploadPlanner class', () => {
 	const arweaveOracle = new GatewayOracle();
 	const priceEstimator = new ARDataPriceChunkEstimator(true, arweaveOracle);
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 
-	const bundledCostEstimator = new ArFSCostEstimator({
+	const bundledUploadPlanner = new ArFSUploadPlanner({
 		priceEstimator,
 		arFSTagSettings: arFSTagSettings,
 		communityOracle
 	});
 
-	const v2TxCostEstimator = new ArFSCostEstimator({
+	const v2TxUploadPlanner = new ArFSUploadPlanner({
 		shouldBundle: false,
 		priceEstimator,
 		arFSTagSettings: arFSTagSettings,
 		communityOracle
 	});
 
-	const boostedCostEstimator = new ArFSCostEstimator({
+	const boostedUploadPlanner = new ArFSUploadPlanner({
 		priceEstimator,
 		arFSTagSettings: arFSTagSettings,
 		feeMultiple: new FeeMultiple(10),
@@ -67,7 +67,7 @@ describe('The ArFSCostEstimator class', () => {
 			};
 
 			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await bundledCostEstimator.estimateCreateDrive(
+				const { rewardSettings, totalWinstonPrice } = await bundledUploadPlanner.estimateCreateDrive(
 					publicCreateDriveParams
 				);
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
@@ -78,7 +78,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
-				const { rewardSettings, totalWinstonPrice } = await v2TxCostEstimator.estimateCreateDrive(
+				const { rewardSettings, totalWinstonPrice } = await v2TxUploadPlanner.estimateCreateDrive(
 					publicCreateDriveParams
 				);
 				const v2RewardSettings = rewardSettings as CreateDriveV2TxRewardSettings;
@@ -91,7 +91,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a fee boosted bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await boostedCostEstimator.estimateCreateDrive(
+				const { rewardSettings, totalWinstonPrice } = await boostedUploadPlanner.estimateCreateDrive(
 					publicCreateDriveParams
 				);
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
@@ -111,7 +111,7 @@ describe('The ArFSCostEstimator class', () => {
 			};
 
 			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await bundledCostEstimator.estimateCreateDrive(
+				const { rewardSettings, totalWinstonPrice } = await bundledUploadPlanner.estimateCreateDrive(
 					await privateCreateDriveParams()
 				);
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
@@ -122,7 +122,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
-				const { rewardSettings, totalWinstonPrice } = await v2TxCostEstimator.estimateCreateDrive(
+				const { rewardSettings, totalWinstonPrice } = await v2TxUploadPlanner.estimateCreateDrive(
 					await privateCreateDriveParams()
 				);
 				const v2RewardSettings = rewardSettings as CreateDriveV2TxRewardSettings;
@@ -145,7 +145,7 @@ describe('The ArFSCostEstimator class', () => {
 			};
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a bundle', async () => {
-				const result = await bundledCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const result = await bundledUploadPlanner.estimateUploadFile(publicUploadFileParams);
 				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
 
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
@@ -158,7 +158,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction', async () => {
-				const result = await v2TxCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const result = await v2TxUploadPlanner.estimateUploadFile(publicUploadFileParams);
 				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
 
 				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
@@ -173,7 +173,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a fee boosted bundle', async () => {
-				const result = await boostedCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const result = await boostedUploadPlanner.estimateUploadFile(publicUploadFileParams);
 				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
 
@@ -195,7 +195,7 @@ describe('The ArFSCostEstimator class', () => {
 			};
 
 			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
-				const result = await bundledCostEstimator.estimateUploadFile(await privateUploadFileParams());
+				const result = await bundledUploadPlanner.estimateUploadFile(await privateUploadFileParams());
 				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
 				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
 
@@ -207,7 +207,7 @@ describe('The ArFSCostEstimator class', () => {
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
-				const result = await v2TxCostEstimator.estimateUploadFile(await privateUploadFileParams());
+				const result = await v2TxUploadPlanner.estimateUploadFile(await privateUploadFileParams());
 				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
 				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
 

@@ -649,7 +649,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
 			tags: [...objectMetaData.gqlTags, ...otherTags],
 			excludedTagNames
 		});
@@ -696,7 +696,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		const tags: GQLTagInterface[] = this.arFSTagSettings.assembleBaseBundleTags({
+		const tags: GQLTagInterface[] = this.arFSTagSettings.baseBundleTagsIncluding({
 			tags: otherTags,
 			excludedTagNames
 		});
@@ -744,7 +744,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
 			tags: [...objectMetaData.gqlTags, ...otherTags],
 			excludedTagNames
 		});

@@ -45,7 +45,7 @@ import {
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
-import { ArFSCostEstimator } from '../../src/pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 
 // Don't use the existing constants just to make sure our expectations don't change
@@ -66,13 +66,13 @@ describe('ArDrive class - integrated', () => {
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.2');
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
 	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagSettings);
-	const costEstimator = new ArFSCostEstimator({
+	const uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle: false,
 		arFSTagSettings: arFSTagSettings,
 		priceEstimator,
 		communityOracle
 	});
-	const bundledCostEstimator = new ArFSCostEstimator({
+	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings: arFSTagSettings,
 		priceEstimator,
 		communityOracle
@@ -89,7 +89,7 @@ describe('ArDrive class - integrated', () => {
 		new FeeMultiple(1.0),
 		true,
 		arFSTagSettings,
-		costEstimator
+		uploadPlanner
 	);
 
 	const bundledArDrive = new ArDrive(
@@ -103,7 +103,7 @@ describe('ArDrive class - integrated', () => {
 		new FeeMultiple(1.0),
 		true,
 		arFSTagSettings,
-		bundledCostEstimator
+		bundledUploadPlanner
 	);
 
 	const walletOwner = stubArweaveAddress();

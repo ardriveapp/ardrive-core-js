@@ -37,12 +37,12 @@ describe('ArFSTagSettings class', () => {
 		]);
 	});
 
-	describe('assembleBaseArFSTags method', () => {
+	describe('baseArFSTagsIncluding method', () => {
 		it('returns provided tags combined with the base arfs tags', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
-				arFSTagSettings.assembleBaseArFSTags({
+				arFSTagSettings.baseArFSTagsIncluding({
 					tags: [
 						{ name: 'Custom-Tag-1', value: 'Gibberish' },
 						{ name: 'Custom-Tag-2', value: 'Excited penguin' }
@@ -59,18 +59,18 @@ describe('ArFSTagSettings class', () => {
 		});
 
 		it('can exclude any specified tags names', () => {
-			expect(arFSTagSettings.assembleBaseArFSTags({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
+			expect(arFSTagSettings.baseArFSTagsIncluding({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' }
 			]);
 		});
 	});
 
-	describe('assembleBaseBundleTags method', () => {
+	describe('baseBundleTagsIncluding method', () => {
 		it('returns provided tags combined with the base bundle tags', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
 			expect(
-				arFSTagSettings.assembleBaseBundleTags({
+				arFSTagSettings.baseBundleTagsIncluding({
 					tags: [
 						{ name: 'Custom-Tag-5', value: 'Monkey paradise' },
 						{ name: 'Custom-Tag-8', value: 'Mountain sun' }
@@ -89,7 +89,7 @@ describe('ArFSTagSettings class', () => {
 
 		it('can exclude any specified tags names', () => {
 			expect(
-				arFSTagSettings.assembleBaseBundleTags({ excludedTagNames: ['App-Name', 'Bundle-Format'] })
+				arFSTagSettings.baseBundleTagsIncluding({ excludedTagNames: ['App-Name', 'Bundle-Format'] })
 			).to.deep.equal([
 				{ name: 'App-Version', value: '1.2' },
 				{ name: 'Bundle-Version', value: '2.0.0' }
@@ -105,6 +105,16 @@ describe('ArFSTagSettings class', () => {
 	// • both the key and value are non-empty strings
 
 	describe('assertTagLimits method', () => {
+		it('resolves without error if there are the maximum allowed GQL tags', () => {
+			const tags: GQLTagInterface[] = [];
+			while (tags.length < 128) {
+				// Create a gql tag interface array with 128 tags
+				tags.push({ name: `Test-Tag-${tags.length}`, value: `Best value ${tags.length}` });
+			}
+
+			expect(() => arFSTagSettings.assertTagLimits(tags)).to.not.throw(Error);
+		});
+
 		it('throws an error if there are too many GQL tags', () => {
 			const tags: GQLTagInterface[] = [];
 			while (tags.length < 129) {
@@ -131,6 +141,15 @@ describe('ArFSTagSettings class', () => {
 			);
 		});
 
+		it('resolves without error if the name field on a tag has the maximum allowed bytes', () => {
+			const tag: GQLTagInterface = {
+				name: stub1025CharString.slice(1),
+				value: 'Name field byte limit test'
+			};
+
+			expect(() => arFSTagSettings.assertTagLimits([tag])).to.not.throw(Error);
+		});
+
 		it('throws an error if the name field on a tag has too many bytes', () => {
 			const tag: GQLTagInterface = {
 				name: stub1025CharString,
@@ -141,6 +160,15 @@ describe('ArFSTagSettings class', () => {
 				Error,
 				'GQL tag "name" field byte size (1025) has exceeded the maximum byte limit allowed of 1024!'
 			);
+		});
+
+		it('resolves without error if the value field on a tag has the maximum allowed bytes', () => {
+			const tag: GQLTagInterface = {
+				name: 'Value field byte limit test',
+				value: stub3073CharString.slice(1)
+			};
+
+			expect(() => arFSTagSettings.assertTagLimits([tag])).to.not.throw(Error);
 		});
 
 		it('throws an error if the value field on a tag has too many bytes', () => {
@@ -168,18 +196,18 @@ describe('ArFSTagSettings class', () => {
 		});
 
 		it('throws an error if the name field is not a string', () => {
-			const tag: GQLTagInterface = ({
+			const tag = {
 				name: 89,
 				value: 'Name field wrong type test'
-			} as unknown) as GQLTagInterface;
+			} as unknown;
 
-			expect(() => arFSTagSettings.assertTagLimits([tag])).to.throw(
+			expect(() => arFSTagSettings.assertTagLimits([tag as GQLTagInterface])).to.throw(
 				Error,
 				'GQL tag "name" must be a non-empty string!'
 			);
 		});
 
-		it('throws an error if the name field is an empty string', () => {
+		it('throws an error if the value field is an empty string', () => {
 			const tag: GQLTagInterface = {
 				name: 'Value field empty string test',
 				value: ''
@@ -191,13 +219,13 @@ describe('ArFSTagSettings class', () => {
 			);
 		});
 
-		it('throws an error if the name field is not a string', () => {
-			const tag: GQLTagInterface = ({
+		it('throws an error if the value field is not a string', () => {
+			const tag = {
 				name: 'Value field wrong type test',
 				value: 12345
-			} as unknown) as GQLTagInterface;
+			} as unknown;
 
-			expect(() => arFSTagSettings.assertTagLimits([tag])).to.throw(
+			expect(() => arFSTagSettings.assertTagLimits([tag as GQLTagInterface])).to.throw(
 				Error,
 				'GQL tag "value" must be a non-empty string!'
 			);

@@ -4,7 +4,7 @@ import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
 import { ByteCount, FeeMultiple, GQLTagInterface, Winston } from '../types';
 import {
-	ArFSCostEstimatorConstructorParams,
+	ArFSUploadPlannerConstructorParams,
 	BundleRewardSettings,
 	CreateDriveV2TxRewardSettings,
 	EstimateCreateDriveParams,
@@ -13,12 +13,12 @@ import {
 	EstimateUploadFileResult,
 	UploadFileV2TxRewardSettings
 } from '../types/cost_estimator_types';
-import { ARDataPriceEstimator } from './ar_data_price_estimator';
 import { CommunityOracle } from '../community/community_oracle';
+import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 const MAX_BUNDLE_SIZE = 262_144_000; // 250 MB
 /** A utility class for calculating the cost of an ArFS write action */
-export class ArFSCostEstimator {
+export class ArFSUploadPlanner {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
@@ -31,7 +31,7 @@ export class ArFSCostEstimator {
 		feeMultiple = new FeeMultiple(1),
 		arFSTagSettings,
 		communityOracle
-	}: ArFSCostEstimatorConstructorParams) {
+	}: ArFSUploadPlannerConstructorParams) {
 		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;
@@ -84,11 +84,11 @@ export class ArFSCostEstimator {
 	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
 		const metaDataItemSize = this.sizeAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.assembleBaseArFSTags({ tags: fileMetaDataPrototype.gqlTags })
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
 		);
 		const fileDataDataItemSize = this.sizeAsDataItem(
 			fileDataSize,
-			this.arFSTagSettings.assembleBaseArFSTags({ tags: [contentTypeTag], excludedTagNames: ['ArFS'] })
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: [contentTypeTag], excludedTagNames: ['ArFS'] })
 		);
 
 		const bundleSize = this.bundledSizeOfDataItems([metaDataItemSize, fileDataDataItemSize]);
@@ -211,7 +211,7 @@ export class ArFSCostEstimator {
 	/** Calculate the cost of uploading an array of ArFS Prototypes together as a bundle */
 	private async bundledCostOfPrototypes(arFSPrototypes: ArFSObjectMetadataPrototype[]): Promise<Winston> {
 		const dataItemSizes = arFSPrototypes.map((p) =>
-			this.sizeAsDataItem(p.objectData.sizeOf(), this.arFSTagSettings.assembleBaseArFSTags({ tags: p.gqlTags }))
+			this.sizeAsDataItem(p.objectData.sizeOf(), this.arFSTagSettings.baseArFSTagsIncluding({ tags: p.gqlTags }))
 		);
 		const bundledSize = this.bundledSizeOfDataItems(dataItemSizes);
 		return this.priceEstimator.getBaseWinstonPriceForByteCount(bundledSize);
