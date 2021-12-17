@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version: DEFAULT_APP_VERSION } = require('../../package.json');
-import { EID } from '../types';
+import { EID, TxID } from '../types';
 import { CipherType } from '../types/type_guards';
 
 export const ArFS_O_11 = '0.11';
@@ -21,6 +21,7 @@ export const webAppName = 'ArDrive-Web';
 export const defaultCipher: CipherType = 'AES256-GCM';
 
 export const fakeEntityId = EID('00000000-0000-0000-0000-000000000000');
+export const fakeTxID = TxID('0000000000000000000000000000000000000000000');
 
 /**
  * Minimum ArDrive community tip from the Community Improvement Proposal Doc:
