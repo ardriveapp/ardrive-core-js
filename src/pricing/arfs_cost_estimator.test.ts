@@ -2,12 +2,14 @@
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import {
+	fakeArweave,
 	stubPrivateDriveMetaDataTx,
 	stubPrivateFolderMetaDataTx,
 	stubPublicDriveMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
+import { ArDriveCommunityOracle } from '../community/ardrive_community_oracle';
 import { FeeMultiple, W } from '../types';
 import {
 	BundleRewardSettings,
@@ -22,22 +24,26 @@ describe('The ArFSCostEstimator class', () => {
 	const arweaveOracle = new GatewayOracle();
 	const priceEstimator = new ARDataPriceChunkEstimator(true, arweaveOracle);
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
+	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 
 	const bundledCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
-		arFSTagSettings: arFSTagSettings
+		arFSTagSettings: arFSTagSettings,
+		communityOracle
 	});
 
 	const v2TxCostEstimator = new ArFSCostEstimator({
 		shouldBundle: false,
 		priceEstimator,
-		arFSTagSettings: arFSTagSettings
+		arFSTagSettings: arFSTagSettings,
+		communityOracle
 	});
 
 	const boostedCostEstimator = new ArFSCostEstimator({
 		priceEstimator,
 		arFSTagSettings: arFSTagSettings,
-		feeMultiple: new FeeMultiple(10)
+		feeMultiple: new FeeMultiple(10),
+		communityOracle
 	});
 
 	beforeEach(() => {

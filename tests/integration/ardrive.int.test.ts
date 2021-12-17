@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import Arweave from 'arweave';
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { ArDrive } from '../../src/ardrive';
@@ -40,7 +39,8 @@ import {
 	stubPrivateFile,
 	stubPublicEntitiesWithPaths,
 	stubSpecialCharEntitiesWithPaths,
-	stubEntitiesWithNoFilesWithPaths
+	stubEntitiesWithNoFilesWithPaths,
+	fakeArweave
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -60,13 +60,6 @@ describe('ArDrive class - integrated', () => {
 		return deriveDriveKey('stubPassword', `${stubEntityID}`, JSON.stringify((wallet as JWKWallet).getPrivateKey()));
 	};
 
-	const fakeArweave = Arweave.init({
-		host: 'localhost',
-		port: 443,
-		protocol: 'https',
-		timeout: 600000
-	});
-
 	const arweaveOracle = new GatewayOracle();
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
@@ -76,9 +69,14 @@ describe('ArDrive class - integrated', () => {
 	const costEstimator = new ArFSCostEstimator({
 		shouldBundle: false,
 		arFSTagSettings: arFSTagSettings,
-		priceEstimator
+		priceEstimator,
+		communityOracle
 	});
-	const bundledCostEstimator = new ArFSCostEstimator({ arFSTagSettings: arFSTagSettings, priceEstimator });
+	const bundledCostEstimator = new ArFSCostEstimator({
+		arFSTagSettings: arFSTagSettings,
+		priceEstimator,
+		communityOracle
+	});
 
 	const arDrive = new ArDrive(
 		wallet,

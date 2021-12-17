@@ -103,7 +103,8 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
 			priceEstimator,
 			arFSTagSettings: arFSTagSettings,
-			feeMultiple
+			feeMultiple,
+			communityOracle
 		})
 	) {
 		super(arFsDao);

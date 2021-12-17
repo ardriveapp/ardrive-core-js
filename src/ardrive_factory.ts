@@ -56,7 +56,8 @@ export function arDriveFactory({
 		shouldBundle,
 		feeMultiple,
 		priceEstimator,
-		arFSTagSettings
+		arFSTagSettings,
+		communityOracle
 	}),
 	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings)
 }: ArDriveSettings): ArDrive {

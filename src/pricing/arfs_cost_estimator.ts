@@ -11,6 +11,7 @@ import {
 	EstimateCreateDriveResult
 } from '../types/cost_estimator_types';
 import { ARDataPriceEstimator } from './ar_data_price_estimator';
+import { CommunityOracle } from '../community/community_oracle';
 
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSCostEstimator {
@@ -18,17 +19,20 @@ export class ArFSCostEstimator {
 	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
 	private readonly arFSTagSettings: ArFSTagSettings;
+	private readonly communityOracle: CommunityOracle;
 
 	constructor({
 		shouldBundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
-		arFSTagSettings
+		arFSTagSettings,
+		communityOracle
 	}: ArFSCostEstimatorConstructorParams) {
 		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;
 		this.arFSTagSettings = arFSTagSettings;
+		this.communityOracle = communityOracle;
 	}
 
 	/** Estimate the cost of a create drive */

@@ -1,3 +1,4 @@
+import Arweave from 'arweave';
 import { readFileSync } from 'fs';
 import {
 	ArFSPublicDrive,
@@ -48,6 +49,13 @@ import {
 	UnixTime
 } from '../src/types';
 import { ArFS_O_11 } from '../src/utils/constants';
+
+export const fakeArweave = Arweave.init({
+	host: 'localhost',
+	port: 443,
+	protocol: 'https',
+	timeout: 600000
+});
 
 export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'): ArweaveAddress => {
 	return ADDR(address);

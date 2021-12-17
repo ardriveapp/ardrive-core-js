@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { expect } from 'chai';
 import { SinonStubbedInstance, stub } from 'sinon';
 import { ArDrive } from './ardrive';
@@ -15,6 +14,7 @@ import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { fakeArweave } from '../tests/stubs';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
@@ -22,12 +22,7 @@ describe('ArDrive class', () => {
 	let communityOracleStub: SinonStubbedInstance<CommunityOracle>;
 	let priceEstimator: ARDataPriceRegressionEstimator;
 	let walletDao: WalletDAO;
-	const fakeArweave = Arweave.init({
-		host: 'localhost',
-		port: 443,
-		protocol: 'https',
-		timeout: 600000
-	});
+
 	const wallet = readJWKFile('./test_wallet.json');
 	const stubPublicFileTransactionData = new ArFSPublicFileMetadataTransactionData(
 		'stubName',
@@ -47,7 +42,11 @@ describe('ArDrive class', () => {
 		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
 
 		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
-		const costEstimator = new ArFSCostEstimator({ arFSTagSettings: arFSTagSettings, priceEstimator });
+		const costEstimator = new ArFSCostEstimator({
+			arFSTagSettings: arFSTagSettings,
+			priceEstimator,
+			communityOracle: communityOracleStub
+		});
 
 		arDrive = new ArDrive(
 			wallet,
