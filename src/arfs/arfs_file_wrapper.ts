@@ -72,6 +72,10 @@ export abstract class ArFSEntityToUpload {
 	existingId?: FileID;
 	newFileName?: string;
 	conflictResolution?: FileConflictResolution;
+
+	public get name(): string {
+		return this.newFileName ?? this.getBaseFileName();
+	}
 }
 
 export class ArFSManifestToUpload extends ArFSEntityToUpload {
