@@ -37,7 +37,7 @@ describe('ArFSTagSettings class', () => {
 		]);
 	});
 
-	describe('assembleBaseArFSTags method', () => {
+	describe('baseArFSTagsIncluding method', () => {
 		it('returns provided tags combined with the base arfs tags', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
@@ -65,7 +65,7 @@ describe('ArFSTagSettings class', () => {
 		});
 	});
 
-	describe('assembleBaseBundleTags method', () => {
+	describe('baseBundleTagsIncluding method', () => {
 		it('returns provided tags combined with the base bundle tags', () => {
 			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
 
