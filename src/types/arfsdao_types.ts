@@ -13,9 +13,12 @@ import {
 	ArFSFileOrFolderEntity,
 	ArFSObjectTransactionData,
 	ArFSEntityToUpload,
-	WithDriveKey
+	WithDriveKey,
+	ArFSFileDataPrototype,
+	ArFSFileMetaDataPrototype
 } from '../exports';
-import { CreateDriveRewardSettings } from './cost_estimator_types';
+import { CreateDriveRewardSettings, UploadFileRewardSettings } from './cost_estimator_types';
+import { TransactionID } from './transaction_id';
 
 /** Generic closure type that uses prepareArFSObjectTransaction (V2) or prepareArFSDataItem (bundle) */
 export type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
@@ -23,6 +26,13 @@ export type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaD
 export interface ArFSPrepareFolderParams<T> {
 	folderPrototypeFactory: (folderId: FolderID) => ArFSFolderMetaDataPrototype;
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype>;
+}
+
+export interface ArFSPrepareFileParams<T extends DataItem | Transaction> {
+	wrappedFile: ArFSEntityToUpload;
+	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
+	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
 }
 
 export interface ArFSPrepareDriveParams<T> {
@@ -43,6 +53,10 @@ export interface ArFSPrepareFolderResult<T> extends ArFSPrepareResult<T> {
 export interface ArFSPrepareDriveResult<T> extends ArFSPrepareResult<T> {
 	rootFolderId: FolderID;
 	driveId: DriveID;
+}
+
+export interface ArFSPrepareFileResult<T> extends ArFSPrepareResult<T> {
+	fileId: FileID;
 }
 
 export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {
@@ -80,10 +94,7 @@ export interface ArFSUploadPublicFileParams {
 	parentFolderId: FolderID;
 	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
-	fileDataRewardSettings: RewardSettings;
-	metadataRewardSettings: RewardSettings;
-	destFileName?: string;
-	existingFileId?: FileID;
+	rewardSettings: UploadFileRewardSettings;
 }
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
