@@ -28,20 +28,15 @@ import {
 	ArFSMovePublicFolderResult,
 	ArFSMovePrivateFolderResult,
 	ArFSUploadFileResult,
-	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult,
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
-	ArFSCreatePublicBundledDriveResult
+	ArFSCreatePublicBundledDriveResult,
+	ArFSUploadBundledFileResult,
+	ArFSUploadFileV2TxResult
 } from './arfs_entity_result_factory';
-import { ArFSEntityToUpload } from './arfs_file_wrapper';
-import {
-	MoveEntityMetaDataFactory,
-	FileDataPrototypeFactory,
-	FileMetadataTxDataFactory,
-	FileMetaDataFactory
-} from './arfs_meta_data_factory';
+import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPrivateFolderMetaDataPrototype,
@@ -52,7 +47,8 @@ import {
 	ArFSPrivateFileDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype
+	ArFSPublicDriveMetaDataPrototype,
+	ArFSFileMetaDataPrototype
 } from './arfs_prototypes';
 import {
 	ArFSPublicFolderTransactionData,
@@ -60,7 +56,6 @@ import {
 	ArFSPrivateDriveTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
-	ArFSFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
@@ -83,7 +78,8 @@ import {
 	DriveKey,
 	FolderID,
 	RewardSettings,
-	FileID
+	FileID,
+	FileKey
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -116,12 +112,16 @@ import {
 	ArFSListPrivateFolderParams,
 	ArFSTxResult,
 	ArFSPrepareDataItemsParams,
-	ArFSPrepareObjectBundleParams
+	ArFSPrepareObjectBundleParams,
+	ArFSPrepareFileParams,
+	ArFSPrepareFileResult
 } from '../types/arfsdao_types';
 import {
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
-	isBundleRewardSetting
+	isBundleRewardSetting,
+	UploadFileRewardSettings,
+	UploadFileV2TxRewardSettings
 } from '../types/cost_estimator_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 
@@ -474,115 +474,131 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async uploadFile<R extends ArFSUploadFileResult, D extends ArFSFileMetadataTransactionData>(
-		wrappedFile: ArFSEntityToUpload,
-		fileDataRewardSettings: RewardSettings,
-		metadataRewardSettings: RewardSettings,
-		dataPrototypeFactoryFn: FileDataPrototypeFactory,
-		metadataTxDataFactoryFn: FileMetadataTxDataFactory<D>,
-		metadataFactoryFn: FileMetaDataFactory<D>,
-		resultFactoryFn: ArFSUploadFileResultFactory<R, D>,
-		destFileName?: string,
-		existingFileId?: FileID
-	): Promise<R> {
-		// Establish destination file name
-		const destinationFileName = destFileName ?? wrappedFile.getBaseFileName();
-
+	async prepareFile<T extends DataItem | Transaction>({
+		wrappedFile,
+		dataPrototypeFactoryFn,
+		metadataTxDataFactoryFn,
+		prepareArFSObject
+	}: ArFSPrepareFileParams<T>): Promise<ArFSPrepareFileResult<T>> {
 		// Use existing file ID (create a revision) or generate new file ID
-		const fileId = existingFileId ?? EID(uuidv4());
-
-		// Gather file information
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+		const fileId = wrappedFile.existingId ?? EID(uuidv4());
 
 		// Read file data into memory
 		const fileData = wrappedFile.getFileDataBuffer();
 
-		// Build file data transaction
-		const fileDataPrototype = await dataPrototypeFactoryFn(fileData, dataContentType, fileId);
-		const dataTx = await this.prepareArFSObjectTransaction({
-			objectMetaData: fileDataPrototype,
-			rewardSettings: fileDataRewardSettings,
-			excludedTagNames: ['ArFS']
+		// Build file data transaction or dataItem
+		const fileDataPrototype = await dataPrototypeFactoryFn(fileData, fileId);
+		const dataArFSObject = await prepareArFSObject(fileDataPrototype);
+
+		const metaDataPrototype = await metadataTxDataFactoryFn(fileId, TxID(dataArFSObject.id));
+		const metaDataArFSObject = await prepareArFSObject(metaDataPrototype);
+
+		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
+	}
+
+	private async uploadFileV2Tx(
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject'>,
+		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings
+	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
+		const { arFSObjects, fileId } = await this.prepareFile({
+			...prepFileParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings:
+						// Type-check the metadata to conditionally pass correct reward setting
+						objectMetaData instanceof ArFSFileMetaDataPrototype
+							? metaDataRewardSettings
+							: dataTxRewardSettings
+				})
 		});
 
-		// Upload file data
-		if (!this.dryRun) {
-			const dataUploader = await this.arweave.transactions.getUploader(dataTx);
-			while (!dataUploader.isComplete) {
-				await dataUploader.uploadChunk();
-			}
-		}
-
-		// Prepare meta data transaction
-		const metadataTxData = await metadataTxDataFactoryFn(
-			destinationFileName,
-			fileSize,
-			lastModifiedDateMS,
-			TxID(dataTx.id),
-			dataContentType,
-			fileId
-		);
-		const fileMetadata = metadataFactoryFn(metadataTxData, fileId);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
-			objectMetaData: fileMetadata,
-			rewardSettings: metadataRewardSettings
-		});
-
-		// Upload meta data
-		if (!this.dryRun) {
-			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
-			while (!metaDataUploader.isComplete) {
-				await metaDataUploader.uploadChunk();
-			}
-		}
-
-		return resultFactoryFn(
-			{
+		const [dataTx, metaDataTx] = arFSObjects;
+		return {
+			transactions: arFSObjects,
+			result: {
 				dataTxId: TxID(dataTx.id),
 				dataTxReward: W(dataTx.reward),
+				fileId,
 				metaDataTxId: TxID(metaDataTx.id),
-				metaDataTxReward: W(metaDataTx.reward),
-				fileId
-			},
-			metadataTxData
-		);
+				metaDataTxReward: W(metaDataTx.reward)
+			}
+		};
+	}
+
+	private async uploadBundledFile(
+		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject'>,
+		rewardSettings: RewardSettings
+	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
+		const { arFSObjects, fileId } = await this.prepareFile({
+			...prepFileParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSDataItem({
+					objectMetaData
+				})
+		});
+
+		// Pack data items into a bundle
+		const bundledTx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
+
+		const [dataTxDataItem, metaDataDataItem] = arFSObjects;
+		return {
+			transactions: [bundledTx],
+			result: {
+				dataTxId: TxID(dataTxDataItem.id),
+				fileId,
+				bundleTxId: TxID(bundledTx.id),
+				bundleTxReward: W(bundledTx.reward),
+				metaDataTxId: TxID(metaDataDataItem.id)
+			}
+		};
+	}
+
+	async uploadFile(
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'>,
+		rewardSettings: UploadFileRewardSettings
+	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
+		const { transactions, result } = isBundleRewardSetting(rewardSettings)
+			? await this.uploadBundledFile(prepFileParams, rewardSettings.bundleRewardSettings)
+			: await this.uploadFileV2Tx(prepFileParams, rewardSettings);
+
+		// Upload all v2 transactions or direct to network bundles
+		await this.sendTransactionsAsChunks(transactions);
+		return result;
 	}
 
 	async uploadPublicFile({
 		parentFolderId,
 		wrappedFile,
 		driveId,
-		fileDataRewardSettings,
-		metadataRewardSettings,
-		destFileName,
-		existingFileId
+		rewardSettings
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
-		return this.uploadFile(
+		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
 			wrappedFile,
-			fileDataRewardSettings,
-			metadataRewardSettings,
-			async (fileData, dataContentType) => {
-				return new ArFSPublicFileDataPrototype(
-					new ArFSPublicFileDataTransactionData(fileData),
-					dataContentType
-				);
-			},
-			async (destinationFileName, fileSize, lastModifiedDateMS, dataTxId, dataContentType) => {
-				return new ArFSPublicFileMetadataTransactionData(
-					destinationFileName,
-					fileSize,
-					lastModifiedDateMS,
-					dataTxId,
-					dataContentType
-				);
-			},
-			(metadataTxData, fileId) => {
-				return new ArFSPublicFileMetaDataPrototype(metadataTxData, driveId, fileId, parentFolderId);
-			},
-			(result) => result, // no change
-			destFileName,
-			existingFileId
-		);
+			dataPrototypeFactoryFn: (fileData) =>
+				Promise.resolve(
+					new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
+				),
+			metadataTxDataFactoryFn: (fileId, dataTxId) =>
+				Promise.resolve(
+					new ArFSPublicFileMetaDataPrototype(
+						new ArFSPublicFileMetadataTransactionData(
+							wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
+							fileSize,
+							lastModifiedDateMS,
+							dataTxId,
+							dataContentType
+						),
+						driveId,
+						fileId,
+						parentFolderId
+					)
+				)
+		};
+
+		return this.uploadFile(prepFileParams, rewardSettings);
 	}
 
 	async uploadPrivateFile({
@@ -590,22 +606,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedFile,
 		driveId,
 		driveKey,
-		fileDataRewardSettings,
-		metadataRewardSettings,
-		destFileName,
-		existingFileId
+		rewardSettings
 	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadPrivateFileResult> {
-		return this.uploadFile(
+		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+		let fileKey: FileKey;
+
+		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
 			wrappedFile,
-			fileDataRewardSettings,
-			metadataRewardSettings,
-			async (fileData, _dataContentType, fileId) => {
-				const txData = await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey);
-				return new ArFSPrivateFileDataPrototype(txData);
-			},
-			async (destinationFileName, fileSize, lastModifiedDateMS, dataTxId, dataContentType, fileId) => {
-				return await ArFSPrivateFileMetadataTransactionData.from(
-					destinationFileName,
+			dataPrototypeFactoryFn: async (fileData, fileId) =>
+				new ArFSPrivateFileDataPrototype(
+					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
+				),
+			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
+				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
+					wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
 					fileSize,
 					lastModifiedDateMS,
 					dataTxId,
@@ -613,16 +627,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					fileId,
 					driveKey
 				);
-			},
-			(metadataTxData, fileId) => {
-				return new ArFSPrivateFileMetaDataPrototype(metadataTxData, driveId, fileId, parentFolderId);
-			},
-			(result, txData) => {
-				return { ...result, fileKey: txData.fileKey }; // add the file key to the result data
-			},
-			destFileName,
-			existingFileId
-		);
+
+				// Preserve file key on private metadata for return
+				fileKey = metaDataTxData.fileKey;
+
+				return new ArFSPrivateFileMetaDataPrototype(metaDataTxData, driveId, fileId, parentFolderId);
+			}
+		};
+
+		const uploadFileResult = await this.uploadFile(prepFileParams, rewardSettings);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		return { ...uploadFileResult, fileKey: fileKey! };
 	}
 
 	async prepareArFSDataItem({
