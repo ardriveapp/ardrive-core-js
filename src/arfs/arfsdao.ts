@@ -146,7 +146,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		protected appVersion = DEFAULT_APP_VERSION,
 		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 	) {
-		super(arweave, appName, appVersion, arFSTagSettings);
+		super(arweave);
 	}
 
 	/** Prepare an ArFS folder entity for upload */

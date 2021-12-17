@@ -18,7 +18,6 @@ import {
 import { PrivateKeyData } from './private_key_data';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSListPublicFolderParams } from '../types/arfsdao_types';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
-import { ArFSTagSettings } from './arfs_tag_settings';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -32,9 +31,10 @@ export abstract class ArFSDAOType {
 export class ArFSDAOAnonymous extends ArFSDAOType {
 	constructor(
 		protected readonly arweave: Arweave,
+		/** @deprecated App Name is an unused parameter on anonymous ArFSDAO */
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
+		/** @deprecated App Version is an unused parameter on anonymous ArFSDAO */
+		protected appVersion = DEFAULT_APP_VERSION
 	) {
 		super();
 	}
