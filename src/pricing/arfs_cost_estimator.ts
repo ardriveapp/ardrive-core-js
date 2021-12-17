@@ -16,6 +16,7 @@ import {
 import { ARDataPriceEstimator } from './ar_data_price_estimator';
 import { CommunityOracle } from '../community/community_oracle';
 
+const MAX_BUNDLE_SIZE = 262_144_000; // 250 MB
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSCostEstimator {
 	private readonly priceEstimator: ARDataPriceEstimator;
