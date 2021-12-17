@@ -11,7 +11,7 @@ import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export interface ArDriveSettingsAnonymous {
@@ -29,7 +29,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
-	costEstimator?: ArFSCostEstimator;
+	uploadPlanner?: ArFSUploadPlanner;
 }
 
 const defaultArweave = Arweave.init({
@@ -52,7 +52,7 @@ export function arDriveFactory({
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-	costEstimator = new ArFSCostEstimator({
+	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		feeMultiple,
 		priceEstimator,
@@ -71,7 +71,7 @@ export function arDriveFactory({
 		feeMultiple,
 		dryRun,
 		arFSTagSettings,
-		costEstimator
+		uploadPlanner
 	);
 }
 

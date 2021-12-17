@@ -3,7 +3,7 @@ import { ArFSDriveMetaDataPrototype, ArFSFolderMetaDataPrototype } from '../arfs
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
-export interface ArFSCostEstimatorConstructorParams {
+export interface ArFSUploadPlannerConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
 	arFSTagSettings: ArFSTagSettings;
 	feeMultiple?: FeeMultiple;

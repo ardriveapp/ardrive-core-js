@@ -80,7 +80,7 @@ import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 import { ArFSCreateBundledDriveResult, ArFSCreateDriveResult, isBundleResult } from './arfs/arfs_entity_result_factory';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/cost_estimator_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
@@ -100,7 +100,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
 		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-		private readonly costEstimator: ArFSCostEstimator = new ArFSCostEstimator({
+		private readonly uploadPlanner: ArFSUploadPlanner = new ArFSUploadPlanner({
 			priceEstimator,
 			arFSTagSettings: arFSTagSettings,
 			feeMultiple
@@ -1140,7 +1140,7 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const { rewardSettings, totalWinstonPrice } = await this.costEstimator.estimateCreateDrive(arFSPrototypes);
+		const { rewardSettings, totalWinstonPrice } = await this.uploadPlanner.estimateCreateDrive(arFSPrototypes);
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		const createDriveResult = await arFSCreateDrive(rewardSettings);

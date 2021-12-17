@@ -4,16 +4,16 @@ import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
 import { ByteCount, FeeMultiple, Winston } from '../types';
 import {
-	ArFSCostEstimatorConstructorParams,
+	ArFSUploadPlannerConstructorParams,
 	BundleRewardSettings,
 	CreateDriveV2TxRewardSettings,
 	EstimateCreateDriveParams,
 	EstimateCreateDriveResult
 } from '../types/cost_estimator_types';
-import { ARDataPriceEstimator } from './ar_data_price_estimator';
+import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 /** A utility class for calculating the cost of an ArFS write action */
-export class ArFSCostEstimator {
+export class ArFSUploadPlanner {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
@@ -24,7 +24,7 @@ export class ArFSCostEstimator {
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
 		arFSTagSettings
-	}: ArFSCostEstimatorConstructorParams) {
+	}: ArFSUploadPlannerConstructorParams) {
 		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;

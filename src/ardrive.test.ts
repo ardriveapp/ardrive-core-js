@@ -14,7 +14,7 @@ import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
@@ -47,7 +47,7 @@ describe('ArDrive class', () => {
 		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
 
 		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
-		const costEstimator = new ArFSCostEstimator({ arFSTagSettings: arFSTagSettings, priceEstimator });
+		const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings: arFSTagSettings, priceEstimator });
 
 		arDrive = new ArDrive(
 			wallet,
@@ -60,7 +60,7 @@ describe('ArDrive class', () => {
 			new FeeMultiple(1.0),
 			true,
 			arFSTagSettings,
-			costEstimator
+			uploadPlanner
 		);
 	});
 
