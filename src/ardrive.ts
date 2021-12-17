@@ -781,12 +781,13 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
-		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId);
+		const nameConflictInfo = await this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey);
 
 		await resolveFolderNameConflicts({
 			conflictResolution,
 			destinationFolderName: destParentFolderName,
-			getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId),
+			getConflictInfoFn: (folderId: FolderID) =>
+				this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, driveKey),
 			nameConflictInfo,
 			wrappedFolder,
 			prompts
