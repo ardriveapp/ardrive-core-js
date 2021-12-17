@@ -1,5 +1,5 @@
-import { createWriteStream, readdirSync, readFileSync, Stats, statSync, utimesSync } from 'fs';
-import { basename, join } from 'path';
+import { createWriteStream, readdirSync, readFileSync, Stats, statSync } from 'fs';
+import { basename, join as joinPath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
@@ -246,7 +246,7 @@ export class ArFSFolderToUpload {
 		const entitiesInFolder = readdirSync(this.filePath);
 
 		for (const entityPath of entitiesInFolder) {
-			const absoluteEntityPath = join(this.filePath, entityPath);
+			const absoluteEntityPath = joinPath(this.filePath, entityPath);
 			const entityStats = statSync(absoluteEntityPath);
 
 			if (entityStats.isDirectory()) {
@@ -297,11 +297,12 @@ export abstract class ArFSFileToDownload {
 
 	abstract write(): Promise<void>;
 
+	// FIXME: make it compatible with Windows
 	protected setLastModifiedDate = (): void => {
 		// update the last-modified-date
-		const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
-		const accessTime = Date.now();
-		utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
+		// const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+		// const accessTime = Date.now();
+		// utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
 	};
 }
 
