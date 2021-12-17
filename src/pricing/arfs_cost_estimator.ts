@@ -63,14 +63,14 @@ export class ArFSCostEstimator {
 			metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
 		};
 
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
-			this.feeMultiple.boostedWinstonReward(fileDataReward)
-		);
+		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataReward);
+		const tipTxBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
 		const totalWinstonPrice = this.feeMultiple
 			.boostedWinstonReward(fileDataReward)
 			.plus(this.feeMultiple.boostedWinstonReward(metaDataReward))
-			.plus(communityWinstonTip);
+			.plus(communityWinstonTip)
+			.plus(this.feeMultiple.boostedWinstonReward(tipTxBaseFee));
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}

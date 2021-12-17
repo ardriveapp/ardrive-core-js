@@ -4,18 +4,23 @@ import { stub } from 'sinon';
 import {
 	fakeArweave,
 	stubPrivateDriveMetaDataTx,
+	stubPrivateFileMetaDataTx,
 	stubPrivateFolderMetaDataTx,
 	stubPublicDriveMetaDataTx,
+	stubPublicFileMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArDriveCommunityOracle } from '../community/ardrive_community_oracle';
-import { FeeMultiple, W } from '../types';
+import { ByteCount, FeeMultiple, W } from '../types';
 import {
 	BundleRewardSettings,
 	CreateDriveV2TxRewardSettings,
-	EstimateCreateDriveParams
+	EstimateCreateDriveParams,
+	EstimateUploadFileParams,
+	UploadFileV2TxRewardSettings
 } from '../types/cost_estimator_types';
+import { privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
 import { ArFSCostEstimator } from './arfs_cost_estimator';
 import { ARDataPriceChunkEstimator } from './ar_data_price_chunk_estimator';
 import { GatewayOracle } from './gateway_oracle';
@@ -49,6 +54,9 @@ describe('The ArFSCostEstimator class', () => {
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
 		stub(arweaveOracle, 'getWinstonPriceForByteCount').callsFake((input) => Promise.resolve(W(+input)));
+
+		// Stub community tip to always be 2 Winston
+		stub(communityOracle, 'getCommunityWinstonTip').resolves(W(2));
 	});
 
 	describe('estimateCreateDrive function', () => {
@@ -124,6 +132,92 @@ describe('The ArFSCostEstimator class', () => {
 				expect(+v2RewardSettings.driveRewardSettings.feeMultiple!).to.equal(1);
 				expect(+v2RewardSettings.rootFolderRewardSettings.reward!).to.equal(3);
 				expect(+v2RewardSettings.rootFolderRewardSettings.feeMultiple!).to.equal(1);
+			});
+		});
+	});
+
+	describe('estimateUploadFile function', () => {
+		describe('used on a public file', () => {
+			const publicUploadFileParams: EstimateUploadFileParams = {
+				fileDataSize: new ByteCount(10),
+				fileMetaDataPrototype: stubPublicFileMetaDataTx,
+				contentTypeTag: publicJsonContentTypeTag
+			};
+
+			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a bundle', async () => {
+				const result = await bundledCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+
+				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
+
+				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(3);
+				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
+				expect(+communityWinstonTip).to.equal(2);
+
+				expect(+totalWinstonPrice).to.equal(7);
+			});
+
+			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction', async () => {
+				const result = await v2TxCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+
+				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
+
+				expect(+v2RewardSettings.dataTxRewardSettings.reward!).to.equal(3);
+				expect(+v2RewardSettings.dataTxRewardSettings.feeMultiple!).to.equal(1);
+				expect(+v2RewardSettings.metaDataRewardSettings.reward!).to.equal(3);
+				expect(+v2RewardSettings.metaDataRewardSettings.feeMultiple!).to.equal(1);
+				expect(+communityWinstonTip).to.equal(2);
+
+				expect(+totalWinstonPrice).to.equal(10);
+			});
+
+			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a fee boosted bundle', async () => {
+				const result = await boostedCostEstimator.estimateUploadFile(publicUploadFileParams);
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
+
+				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(3);
+				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(10);
+				expect(+communityWinstonTip).to.equal(2);
+
+				expect(+totalWinstonPrice).to.equal(34);
+			});
+		});
+
+		describe('used on a private file', async () => {
+			const privateUploadFileParams: () => Promise<EstimateUploadFileParams> = async () => {
+				return {
+					fileDataSize: new ByteCount(10),
+					fileMetaDataPrototype: await stubPrivateFileMetaDataTx,
+					contentTypeTag: privateOctetContentTypeTag
+				};
+			};
+
+			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
+				const result = await bundledCostEstimator.estimateUploadFile(await privateUploadFileParams());
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
+
+				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(3);
+				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
+				expect(+communityWinstonTip).to.equal(2);
+
+				expect(+totalWinstonPrice).to.equal(7);
+			});
+
+			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
+				const result = await v2TxCostEstimator.estimateUploadFile(await privateUploadFileParams());
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
+
+				expect(+v2RewardSettings.dataTxRewardSettings.reward!).to.equal(3);
+				expect(+v2RewardSettings.dataTxRewardSettings.feeMultiple!).to.equal(1);
+				expect(+v2RewardSettings.metaDataRewardSettings.reward!).to.equal(3);
+				expect(+v2RewardSettings.metaDataRewardSettings.feeMultiple!).to.equal(1);
+				expect(+communityWinstonTip).to.equal(2);
+
+				expect(+totalWinstonPrice).to.equal(10);
 			});
 		});
 	});
