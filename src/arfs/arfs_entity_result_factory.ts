@@ -63,6 +63,12 @@ export type ArFSCreatePrivateFolderResult = ArFSCreateFolderResult & WithDriveKe
 export type ArFSUploadPublicFileResult = ArFSUploadFileResult;
 export type ArFSUploadPrivateFileResult = ArFSUploadFileResult & WithFileKey;
 
+export function isPrivateResult(
+	result: ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult
+): result is ArFSUploadPrivateFileResult {
+	return Object.keys(result as ArFSUploadPrivateFileResult).includes('fileKey');
+}
+
 export type ArFSMovePublicFolderResult = ArFSMoveEntityResult;
 export type ArFSMovePrivateFolderResult = ArFSMoveEntityResult & WithDriveKey;
 

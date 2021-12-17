@@ -585,7 +585,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				Promise.resolve(
 					new ArFSPublicFileMetaDataPrototype(
 						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
+							wrappedFile.name,
 							fileSize,
 							lastModifiedDateMS,
 							dataTxId,
@@ -611,6 +611,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		let fileKey: FileKey;
 
+		console.log('wrappedFile.name ARFS', wrappedFile.name);
 		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
@@ -619,7 +620,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
 				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-					wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
+					wrappedFile.name,
 					fileSize,
 					lastModifiedDateMS,
 					dataTxId,
