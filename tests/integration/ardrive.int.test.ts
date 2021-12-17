@@ -45,6 +45,8 @@ import {
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
+import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
+import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -68,8 +70,15 @@ describe('ArDrive class - integrated', () => {
 	const arweaveOracle = new GatewayOracle();
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
-	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.0');
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.0');
+	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.2');
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
+	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagSettings);
+	const uploadPlanner = new ArFSUploadPlanner({
+		shouldBundle: false,
+		arFSTagSettings: arFSTagSettings,
+		priceEstimator
+	});
+	const bundledUploadPlanner = new ArFSUploadPlanner({ arFSTagSettings: arFSTagSettings, priceEstimator });
 
 	const arDrive = new ArDrive(
 		wallet,
@@ -81,7 +90,8 @@ describe('ArDrive class - integrated', () => {
 		priceEstimator,
 		new FeeMultiple(1.0),
 		true,
-		false
+		arFSTagSettings,
+		uploadPlanner
 	);
 
 	const bundledArDrive = new ArDrive(
@@ -94,7 +104,8 @@ describe('ArDrive class - integrated', () => {
 		priceEstimator,
 		new FeeMultiple(1.0),
 		true,
-		true
+		arFSTagSettings,
+		bundledUploadPlanner
 	);
 
 	const walletOwner = stubArweaveAddress();

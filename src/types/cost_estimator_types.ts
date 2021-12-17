@@ -1,12 +1,13 @@
-import { GQLTagInterface, FeeMultiple, Winston, RewardSettings } from '.';
+import { FeeMultiple, Winston, RewardSettings } from '.';
 import { ArFSDriveMetaDataPrototype, ArFSFolderMetaDataPrototype } from '../arfs/arfs_prototypes';
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
-export interface ArFSCostEstimatorConstructorParams {
+export interface ArFSUploadPlannerConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
-	baseTags: GQLTagInterface[];
+	arFSTagSettings: ArFSTagSettings;
 	feeMultiple?: FeeMultiple;
-	bundle?: boolean;
+	shouldBundle?: boolean;
 }
 
 export interface EstimateCreateDriveParams {
@@ -17,6 +18,7 @@ export interface EstimateCreateDriveParams {
 export interface EstimateResult<T> {
 	totalWinstonPrice: Winston;
 	rewardSettings: T;
+	// TODO: Add Bundle Plan { numOfBundles: number , ... }
 }
 
 export interface BundleRewardSettings {

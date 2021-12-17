@@ -1,38 +1,39 @@
 import { serializeTags } from 'arbundles/src/parser';
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, FeeMultiple, GQLTagInterface, Winston } from '../types';
+import { ByteCount, FeeMultiple, Winston } from '../types';
 import {
-	ArFSCostEstimatorConstructorParams,
+	ArFSUploadPlannerConstructorParams,
 	BundleRewardSettings,
 	CreateDriveV2TxRewardSettings,
 	EstimateCreateDriveParams,
 	EstimateCreateDriveResult
 } from '../types/cost_estimator_types';
-import { ARDataPriceEstimator } from './ar_data_price_estimator';
+import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 /** A utility class for calculating the cost of an ArFS write action */
-export class ArFSCostEstimator {
+export class ArFSUploadPlanner {
 	private readonly priceEstimator: ARDataPriceEstimator;
-	private readonly bundle: boolean;
+	private readonly shouldBundle: boolean;
 	private readonly feeMultiple: FeeMultiple;
-	private readonly baseTags: GQLTagInterface[];
+	private readonly arFSTagSettings: ArFSTagSettings;
 
 	constructor({
-		bundle = true,
+		shouldBundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
-		baseTags
-	}: ArFSCostEstimatorConstructorParams) {
+		arFSTagSettings
+	}: ArFSUploadPlannerConstructorParams) {
 		this.priceEstimator = priceEstimator;
-		this.bundle = bundle;
+		this.shouldBundle = shouldBundle;
 		this.feeMultiple = feeMultiple;
-		this.baseTags = baseTags;
+		this.arFSTagSettings = arFSTagSettings;
 	}
 
 	/** Estimate the cost of a create drive */
 	public async estimateCreateDrive(arFSPrototypes: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
-		if (this.bundle) {
+		if (this.shouldBundle) {
 			return this.costOfCreateBundledDrive(arFSPrototypes);
 		}
 
@@ -88,7 +89,9 @@ export class ArFSCostEstimator {
 		const anchorLength = 1;
 
 		// Get byte length of tags after being serialized for avro schema
-		const serializedTags = serializeTags([...objectPrototype.gqlTags, ...this.baseTags]);
+		const serializedTags = serializeTags(
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: objectPrototype.gqlTags })
+		);
 		const tagsLength = 16 + serializedTags.byteLength;
 
 		const arweaveSignerLength = 512;

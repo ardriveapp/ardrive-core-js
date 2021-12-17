@@ -28,8 +28,6 @@ import {
 	ArweaveAddress,
 	ByteCount,
 	AR,
-	TipType,
-	GQLTagInterface,
 	W,
 	FolderID,
 	DriveKey,
@@ -82,12 +80,13 @@ import { fakeEntityId } from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 import { ArFSCreateBundledDriveResult, ArFSCreateDriveResult, isBundleResult } from './arfs/arfs_entity_result_factory';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/cost_estimator_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -95,27 +94,20 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
-		private readonly appName: string,
-		private readonly appVersion: string,
+		protected readonly appName: string,
+		protected readonly appVersion: string,
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
-		private readonly bundle: boolean = true,
-		readonly injectedCostEstimator?: ArFSCostEstimator
+		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+		private readonly uploadPlanner: ArFSUploadPlanner = new ArFSUploadPlanner({
+			priceEstimator,
+			arFSTagSettings: arFSTagSettings,
+			feeMultiple
+		})
 	) {
 		super(arFsDao);
-
-		this.costEstimator =
-			injectedCostEstimator ??
-			new ArFSCostEstimator({
-				bundle: this.bundle,
-				baseTags: this.arFsDao.baselineArFSTags,
-				feeMultiple: this.feeMultiple,
-				priceEstimator: this.priceEstimator
-			});
 	}
-
-	private readonly costEstimator: ArFSCostEstimator;
 
 	// NOTE: Presumes that there's a sufficient wallet balance
 	async sendCommunityTip({ communityWinstonTip, assertBalance = false }: CommunityTipParams): Promise<TipResult> {
@@ -128,7 +120,7 @@ export class ArDrive extends ArDriveAnonymous {
 			tokenHolder,
 			{ reward: arTransferBaseFee, feeMultiple: this.feeMultiple },
 			this.dryRun,
-			this.getTipTags(),
+			this.arFSTagSettings.getTipTags(),
 			assertBalance
 		);
 
@@ -136,15 +128,6 @@ export class ArDrive extends ArDriveAnonymous {
 			tipData: { txId: transferResult.txID, recipient: tokenHolder, winston: communityWinstonTip },
 			reward: transferResult.reward
 		};
-	}
-
-	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
-		return [
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'Type', value: 'fee' },
-			{ name: 'Tip-Type', value: tipType }
-		];
 	}
 
 	public async movePublicFile({ fileId, newParentFolderId }: MovePublicFileParams): Promise<ArFSResult> {
@@ -1157,7 +1140,7 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const { rewardSettings, totalWinstonPrice } = await this.costEstimator.estimateCreateDrive(arFSPrototypes);
+		const { rewardSettings, totalWinstonPrice } = await this.uploadPlanner.estimateCreateDrive(arFSPrototypes);
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		const createDriveResult = await arFSCreateDrive(rewardSettings);

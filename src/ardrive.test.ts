@@ -9,10 +9,12 @@ import { CommunityOracle } from './community/community_oracle';
 import { ArweaveOracle } from './pricing/arweave_oracle';
 import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from './pricing/gateway_oracle';
-import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple, TipType } from './types';
+import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple } from './types';
 import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
@@ -42,17 +44,23 @@ describe('ArDrive class', () => {
 		arweaveOracleStub.getWinstonPriceForByteCount.callsFake((input) => Promise.resolve(W(+input)));
 		communityOracleStub = stub(new ArDriveCommunityOracle(fakeArweave));
 		priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracleStub);
-		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.0');
+		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
+
+		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
+		const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings: arFSTagSettings, priceEstimator });
+
 		arDrive = new ArDrive(
 			wallet,
 			walletDao,
-			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.0'),
+			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
 			communityOracleStub,
 			'Unit Test',
 			'1.0',
 			priceEstimator,
 			new FeeMultiple(1.0),
-			true
+			true,
+			arFSTagSettings,
+			uploadPlanner
 		);
 	});
 
@@ -73,25 +81,6 @@ describe('ArDrive class', () => {
 			inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
 				const actualSize = arDrive.encryptedDataSize(input);
 				expect(actualSize.equals(expectedOutput), `${actualSize} === ${expectedOutput}`).to.be.true;
-			});
-		});
-	});
-
-	describe('getTipTags function', () => {
-		it('returns the expected tags', () => {
-			const baseTags = [
-				{ name: 'App-Name', value: 'Unit Test' },
-				{ name: 'App-Version', value: '1.0' }
-			];
-			const inputsAndExpectedOutputs = [
-				[undefined, [...baseTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: 'data upload' }]],
-				[
-					'data upload',
-					[...baseTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: 'data upload' }]
-				]
-			];
-			inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
-				expect(arDrive.getTipTags(input as TipType)).to.deep.equal(expectedOutput);
 			});
 		});
 	});
