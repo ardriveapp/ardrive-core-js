@@ -68,7 +68,13 @@ import {
 } from './arfs_trx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSAllPublicFoldersOfDriveParams, ArFSDAOAnonymous, graphQLURL } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, CURRENT_ARFS_VERSION } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	CURRENT_ARFS_VERSION,
+	gatewayURL,
+	authTagLength
+} from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -85,7 +91,11 @@ import {
 	DriveKey,
 	FolderID,
 	RewardSettings,
-	FileID
+	FileID,
+	TransactionID,
+	CipherIV,
+	CipherIVQueryResult,
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -97,6 +107,8 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
 
 export class PrivateDriveKeyData {
 	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
@@ -1055,5 +1067,96 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		) {
 			throw new Error(`Invalid password! Please type the same as your other private drives!`);
 		}
+	}
+
+	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
+		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
+		if (results.length !== 1) {
+			throw new Error(`Could not fetch the CipherIV for transaction with id: ${txId}`);
+		}
+		const [fileCipherIvResult] = results;
+		return fileCipherIvResult.cipherIV;
+	}
+
+	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		const result: CipherIVQueryResult[] = [];
+		const wallet = this.wallet;
+		const walletAddress = await wallet.getAddress();
+		let cursor = '';
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const query = buildQuery({
+				tags: [],
+				owner: walletAddress,
+				ids: txIDs,
+				cursor
+			});
+			const response = await this.arweave.api.post(graphQLURL, query);
+			const { data } = response.data;
+			const { errors } = response.data;
+			if (errors) {
+				throw new Error(`GQL error: ${JSON.stringify(errors)}`);
+			}
+			const { transactions }: { transactions: GQLTransactionsResultInterface } = data;
+			const { edges } = transactions;
+			hasNextPage = transactions.pageInfo.hasNextPage;
+			if (!edges.length) {
+				throw new Error(`No such private transactions with IDs: "${txIDs}"`);
+			}
+			edges.forEach((edge) => {
+				cursor = edge.cursor;
+				const { node } = edge;
+				const { tags } = node;
+				const txId = TxID(node.id);
+				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
+				if (!cipherIVTag) {
+					throw new Error("The private file doesn't have a valid Cipher-IV");
+				}
+				const cipherIV = cipherIVTag.value;
+				result.push({ txId, cipherIV });
+			});
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the data stream of a private file
+	 * @param privateFile - the entity of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream',
+			headers: {
+				Range: `bytes=0-${+authTagIndex - 1}`
+			}
+		};
+		const response = await axios(requestConfig);
+		return response.data;
+	}
+
+	async getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const response = await axios({
+			method: 'GET',
+			url: `${gatewayURL}${privateFile.dataTxId}`,
+			headers: {
+				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+			},
+			responseType: 'arraybuffer'
+		});
+		const { data }: { data: Buffer } = response;
+		if (data.length === authTagLength) {
+			return data;
+		}
+		throw new Error(
+			`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${data.length}`
+		);
 	}
 }

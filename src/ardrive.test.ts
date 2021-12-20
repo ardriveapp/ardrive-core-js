@@ -62,27 +62,6 @@ describe('ArDrive class', () => {
 		);
 	});
 
-	describe('encryptedDataSize function', () => {
-		it('throws an error when passed a value too large for computation', () => {
-			expect(() => arDrive.encryptedDataSize(new ByteCount(Number.MAX_SAFE_INTEGER - 15))).to.throw(Error);
-		});
-
-		it('returns the expected values for valid inputs', () => {
-			const inputsAndExpectedOutputs = [
-				[0, 16],
-				[1, 17],
-				[15, 31],
-				[16, 32],
-				[17, 33],
-				[Number.MAX_SAFE_INTEGER - 16, Number.MAX_SAFE_INTEGER]
-			].map((pair) => pair.map((vol) => new ByteCount(vol)));
-			inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
-				const actualSize = arDrive.encryptedDataSize(input);
-				expect(actualSize.equals(expectedOutput), `${actualSize} === ${expectedOutput}`).to.be.true;
-			});
-		});
-	});
-
 	describe('getTipTags function', () => {
 		it('returns the expected tags', () => {
 			const baseTags = [
