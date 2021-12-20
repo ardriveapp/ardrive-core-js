@@ -21,12 +21,9 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths,
-	ArFSPrivateFolder,
 	ArFSPublicFile,
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSPublicFolder
+	ArFSPublicFileOrFolderWithPaths
 } from './arfs_entities';
-import { FolderHierarchy } from './folderHierarchy';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -344,10 +341,8 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 	}
 }
 
-export abstract class ArFSFolderToDownload {
-	abstract readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
-
-	constructor(protected readonly hierarchy: FolderHierarchy) {}
+export class ArFSFolderToDownload<P extends ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths> {
+	constructor(readonly folderWithPaths: P) {}
 
 	getPathRelativeToSubtree(entityPath: string): string {
 		const rootFolderParentPath = dirname(this.folderWithPaths.path);
@@ -365,23 +360,5 @@ export abstract class ArFSFolderToDownload {
 		} catch {
 			mkdirSync(folderPath, { recursive });
 		}
-	}
-}
-
-export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
-	readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths;
-
-	constructor(rootFolderEntity: ArFSPublicFolder, hierarchy: FolderHierarchy) {
-		super(hierarchy);
-		this.rootFolderWithPaths = new ArFSPublicFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
-	}
-}
-
-export class ArFSPrivateFolderToDownload extends ArFSFolderToDownload {
-	readonly rootFolderWithPaths: ArFSPrivateFileOrFolderWithPaths;
-
-	constructor(rootFolderEntity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
-		super(hierarchy);
-		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
 	}
 }
