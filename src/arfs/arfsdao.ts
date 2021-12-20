@@ -47,8 +47,7 @@ import {
 	ArFSPrivateFileDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype,
-	ArFSFileMetaDataPrototype
+	ArFSPublicDriveMetaDataPrototype
 } from './arfs_prototypes';
 import {
 	ArFSPublicFolderTransactionData,
@@ -478,7 +477,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedFile,
 		dataPrototypeFactoryFn,
 		metadataTxDataFactoryFn,
-		prepareArFSObject
+		prepareArFSObject,
+		prepareMetaDataArFSObject
 	}: ArFSPrepareFileParams<T>): Promise<ArFSPrepareFileResult<T>> {
 		// Use existing file ID (create a revision) or generate new file ID
 		const fileId = wrappedFile.existingId ?? EID(uuidv4());
@@ -491,13 +491,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const dataArFSObject = await prepareArFSObject(fileDataPrototype);
 
 		const metaDataPrototype = await metadataTxDataFactoryFn(fileId, TxID(dataArFSObject.id));
-		const metaDataArFSObject = await prepareArFSObject(metaDataPrototype);
+		const metaDataArFSObject = await prepareMetaDataArFSObject(metaDataPrototype);
 
 		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
 	}
 
 	private async uploadFileV2Tx(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject'>,
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
 		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings
 	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
@@ -505,11 +505,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			prepareArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
-					rewardSettings:
-						// Type-check the metadata to conditionally pass correct reward setting
-						objectMetaData instanceof ArFSFileMetaDataPrototype
-							? metaDataRewardSettings
-							: dataTxRewardSettings
+					rewardSettings: dataTxRewardSettings
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: metaDataRewardSettings
 				})
 		});
 
@@ -527,12 +528,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadBundledFile(
-		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject'>,
+		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
 		rewardSettings: RewardSettings
 	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSDataItem({
+					objectMetaData
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSDataItem({
 					objectMetaData
 				})
@@ -555,7 +560,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async uploadFile(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'>,
+		prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		>,
 		rewardSettings: UploadFileRewardSettings
 	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
 		const { transactions, result } = isBundleRewardSetting(rewardSettings)
@@ -575,7 +583,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
-		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
+		const prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		> = {
 			wrappedFile,
 			dataPrototypeFactoryFn: (fileData) =>
 				Promise.resolve(
@@ -611,8 +622,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		let fileKey: FileKey;
 
-		console.log('wrappedFile.name ARFS', wrappedFile.name);
-		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
+		const prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		> = {
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
 				new ArFSPrivateFileDataPrototype(

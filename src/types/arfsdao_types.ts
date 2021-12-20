@@ -31,6 +31,7 @@ export interface ArFSPrepareFolderParams<T> {
 export interface ArFSPrepareFileParams<T extends DataItem | Transaction> {
 	wrappedFile: ArFSEntityToUpload;
 	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
 	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
 	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
 }
