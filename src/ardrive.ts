@@ -48,11 +48,11 @@ import {
 	ArFSManifestResult,
 	UploadPublicManifestParams,
 	DownloadPrivateFileParameters,
-	emptyManifestResult,
 	DownloadPrivateFolderParameters,
 	errorOnConflict,
 	skipOnConflicts,
-	upsertOnConflicts
+	upsertOnConflicts,
+	emptyManifestResult
 } from './types';
 import {
 	CommunityTipParams,
