@@ -8,6 +8,7 @@ import {
 import {
 	ArFSFolderToUpload,
 	ArFSFileToUpload,
+	ArFSPrivateFileToDownload,
 	ArFSEntityToUpload,
 	ArFSManifestToUpload
 } from './arfs/arfs_file_wrapper';
@@ -21,7 +22,7 @@ import {
 } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
-import { deriveDriveKey } from './utils/crypto';
+import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import {
 	FeeMultiple,
@@ -40,6 +41,7 @@ import {
 	UploadPrivateFileParams,
 	ArFSManifestResult,
 	UploadPublicManifestParams,
+	DownloadPrivateFileParameters,
 	errorOnConflict,
 	skipOnConflicts,
 	upsertOnConflicts,
@@ -71,13 +73,22 @@ import {
 	MetaDataBaseCosts,
 	FileUploadBaseCosts
 } from './types';
-import { urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
-import { fakeEntityId, privateOctetContentTypeTag, publicJsonContentTypeTag } from './utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	fakeEntityId,
+	privateOctetContentTypeTag,
+	publicJsonContentTypeTag
+} from './utils/constants';
 import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
+import { StreamDecrypt } from './utils/stream_decrypt';
+import { assertFolderExists } from './utils/assert_folder';
+import { join as joinPath } from 'path';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 import {
 	ArFSCreateBundledDriveResult,
@@ -111,8 +122,10 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
-		protected readonly appName: string,
-		protected readonly appVersion: string,
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
+		protected readonly appName: string = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
+		protected readonly appVersion: string = DEFAULT_APP_VERSION,
 		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
@@ -537,7 +550,7 @@ export class ArDrive extends ArDriveAnonymous {
 			(parentFolderId) => this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey),
 			async (wrappedFile) =>
 				this.uploadPlanner.estimateUploadFile({
-					fileDataSize: this.encryptedDataSize(wrappedFile.size),
+					fileDataSize: encryptedDataSize(wrappedFile.size),
 					fileMetaDataPrototype: await getPrivateUploadFileEstimationPrototype(wrappedFile, driveKey),
 					contentTypeTag: privateOctetContentTypeTag
 				}),
@@ -737,15 +750,6 @@ export class ArDrive extends ArDriveAnonymous {
 			entityResults: uploadEntityResults,
 			feeResults: uploadEntityFees
 		};
-	}
-
-	/** Computes the size of a private file encrypted with AES256-GCM */
-	encryptedDataSize(dataSize: ByteCount): ByteCount {
-		// TODO: Refactor to utils?
-		if (+dataSize > Number.MAX_SAFE_INTEGER - 16) {
-			throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - 16}!`);
-		}
-		return new ByteCount((+dataSize / 16 + 1) * 16);
 	}
 
 	public async createPrivateFolderAndUploadChildren({
@@ -1402,7 +1406,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<FileUploadBaseCosts> {
 		let fileSize = decryptedFileSize;
 		if (drivePrivacy === 'private') {
-			fileSize = this.encryptedDataSize(fileSize);
+			fileSize = encryptedDataSize(fileSize);
 		}
 
 		let totalPrice = W(0);
@@ -1505,5 +1509,24 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async assertValidPassword(password: string): Promise<void> {
 		await this.arFsDao.assertValidPassword(password);
+	}
+
+	async downloadPrivateFile({
+		fileId,
+		driveKey,
+		destFolderPath,
+		defaultFileName
+	}: DownloadPrivateFileParameters): Promise<void> {
+		assertFolderExists(destFolderPath);
+		const privateFile = await this.getPrivateFile({ fileId, driveKey });
+		const outputFileName = defaultFileName ?? privateFile.name;
+		const fullPath = joinPath(destFolderPath, outputFileName);
+		const data = await this.arFsDao.getPrivateDataStream(privateFile);
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
+		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
+		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
+		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
+		await fileToDownload.write();
 	}
 }

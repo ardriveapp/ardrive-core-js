@@ -16,11 +16,16 @@ import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
+	/** @deprecated App Version is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appVersion?: string;
+	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
-	arFSTagSettings?: ArFSTagSettings;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
+	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
+	appVersion?: string;
+	/** @deprecated App Name will be removed in a future release. Use ArFSTagSettings instead */
+	appName?: string;
 	wallet: Wallet;
 	walletDao?: WalletDAO;
 	priceEstimator?: ARDataPriceEstimator;
@@ -30,6 +35,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
 	uploadPlanner?: ArFSUploadPlanner;
+	arFSTagSettings?: ArFSTagSettings;
 }
 
 const defaultArweave = Arweave.init({
@@ -76,11 +82,6 @@ export function arDriveFactory({
 	);
 }
 
-export function arDriveAnonymousFactory({
-	arweave = defaultArweave,
-	appName = DEFAULT_APP_NAME,
-	appVersion = DEFAULT_APP_VERSION,
-	arFSTagSettings = new ArFSTagSettings({ appName, appVersion })
-}: ArDriveSettingsAnonymous): ArDriveAnonymous {
-	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion, arFSTagSettings));
+export function arDriveAnonymousFactory({ arweave = defaultArweave }: ArDriveSettingsAnonymous): ArDriveAnonymous {
+	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave));
 }

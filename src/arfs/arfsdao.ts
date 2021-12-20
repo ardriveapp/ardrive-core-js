@@ -61,7 +61,7 @@ import {
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSDAOAnonymous } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gatewayURL, authTagLength, graphQLURL } from '../utils/constants';
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -78,7 +78,10 @@ import {
 	FolderID,
 	RewardSettings,
 	FileID,
-	FileKey
+	FileKey,
+	TransactionID,
+	CipherIV,
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -123,6 +126,9 @@ import {
 	UploadFileV2TxRewardSettings
 } from '../types/cost_estimator_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
+import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -141,11 +147,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
 		protected appName = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
 		protected appVersion = DEFAULT_APP_VERSION,
 		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
 	) {
-		super(arweave, appName, appVersion, arFSTagSettings);
+		super(arweave);
 	}
 
 	/** Prepare an ArFS folder entity for upload */
@@ -1149,5 +1157,96 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		) {
 			throw new Error(`Invalid password! Please type the same as your other private drives!`);
 		}
+	}
+
+	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
+		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
+		if (results.length !== 1) {
+			throw new Error(`Could not fetch the CipherIV for transaction with id: ${txId}`);
+		}
+		const [fileCipherIvResult] = results;
+		return fileCipherIvResult.cipherIV;
+	}
+
+	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		const result: CipherIVQueryResult[] = [];
+		const wallet = this.wallet;
+		const walletAddress = await wallet.getAddress();
+		let cursor = '';
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const query = buildQuery({
+				tags: [],
+				owner: walletAddress,
+				ids: txIDs,
+				cursor
+			});
+			const response = await this.arweave.api.post(graphQLURL, query);
+			const { data } = response.data;
+			const { errors } = response.data;
+			if (errors) {
+				throw new Error(`GQL error: ${JSON.stringify(errors)}`);
+			}
+			const { transactions }: { transactions: GQLTransactionsResultInterface } = data;
+			const { edges } = transactions;
+			hasNextPage = transactions.pageInfo.hasNextPage;
+			if (!edges.length) {
+				throw new Error(`No such private transactions with IDs: "${txIDs}"`);
+			}
+			edges.forEach((edge) => {
+				cursor = edge.cursor;
+				const { node } = edge;
+				const { tags } = node;
+				const txId = TxID(node.id);
+				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
+				if (!cipherIVTag) {
+					throw new Error("The private file doesn't have a valid Cipher-IV");
+				}
+				const cipherIV = cipherIVTag.value;
+				result.push({ txId, cipherIV });
+			});
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the data stream of a private file
+	 * @param privateFile - the entity of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream',
+			headers: {
+				Range: `bytes=0-${+authTagIndex - 1}`
+			}
+		};
+		const response = await axios(requestConfig);
+		return response.data;
+	}
+
+	async getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const response = await axios({
+			method: 'GET',
+			url: `${gatewayURL}${privateFile.dataTxId}`,
+			headers: {
+				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+			},
+			responseType: 'arraybuffer'
+		});
+		const { data }: { data: Buffer } = response;
+		if (data.length === authTagLength) {
+			return data;
+		}
+		throw new Error(
+			`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${data.length}`
+		);
 	}
 }

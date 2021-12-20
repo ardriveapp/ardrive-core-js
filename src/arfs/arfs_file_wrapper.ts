@@ -1,5 +1,7 @@
-import * as fs from 'fs';
-import { basename, join } from 'path';
+import { createWriteStream, readdirSync, readFileSync, Stats, statSync } from 'fs';
+import { basename, join as joinPath } from 'path';
+import { Duplex, pipeline, Readable } from 'stream';
+import { promisify } from 'util';
 import {
 	ByteCount,
 	DataContentType,
@@ -11,10 +13,13 @@ import {
 	ManifestPathMap,
 	TransactionID
 } from '../types';
+import { encryptedDataSize, extToMime } from '../utils/common';
+import { ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
-import { extToMime } from '../utils/common';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
+
+const pipelinePromise = promisify(pipeline);
 
 type BaseFileName = string;
 type FilePath = string;
@@ -50,7 +55,7 @@ export interface FileInfo {
  *
  */
 export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload | ArFSFolderToUpload {
-	const entityStats = fs.statSync(fileOrFolderPath);
+	const entityStats = statSync(fileOrFolderPath);
 
 	if (entityStats.isDirectory()) {
 		return new ArFSFolderToUpload(fileOrFolderPath, entityStats);
@@ -183,7 +188,7 @@ export type FolderConflictResolution = typeof skipOnConflicts | undefined;
 export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
 
 export class ArFSFileToUpload extends ArFSEntityToUpload {
-	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
+	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
 		super();
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
@@ -216,7 +221,7 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 	}
 
 	public getFileDataBuffer(): Buffer {
-		return fs.readFileSync(this.filePath);
+		return readFileSync(this.filePath);
 	}
 
 	public get contentType(): DataContentType {
@@ -229,7 +234,7 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 
 	/** Computes the size of a private file encrypted with AES256-GCM */
 	public encryptedDataSize(): ByteCount {
-		return new ByteCount((this.fileStats.size / 16 + 1) * 16);
+		return encryptedDataSize(this.size);
 	}
 }
 
@@ -242,12 +247,12 @@ export class ArFSFolderToUpload {
 	newFolderName?: string;
 	conflictResolution: FolderConflictResolution = undefined;
 
-	constructor(public readonly filePath: FilePath, public readonly fileStats: fs.Stats) {
-		const entitiesInFolder = fs.readdirSync(this.filePath);
+	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+		const entitiesInFolder = readdirSync(this.filePath);
 
 		for (const entityPath of entitiesInFolder) {
-			const absoluteEntityPath = join(this.filePath, entityPath);
-			const entityStats = fs.statSync(absoluteEntityPath);
+			const absoluteEntityPath = joinPath(this.filePath, entityPath);
+			const entityStats = statSync(absoluteEntityPath);
 
 			if (entityStats.isDirectory()) {
 				// Child is a folder, build a new folder which will construct it's own children
@@ -285,5 +290,52 @@ export class ArFSFolderToUpload {
 		}
 
 		return new ByteCount(totalByteCount);
+	}
+}
+
+export abstract class ArFSFileToDownload {
+	constructor(
+		readonly fileEntity: ArFSPublicFile | ArFSPrivateFile,
+		readonly dataStream: Readable,
+		readonly localFilePath: string
+	) {}
+
+	abstract write(): Promise<void>;
+
+	// FIXME: make it compatible with Windows
+	protected setLastModifiedDate = (): void => {
+		// update the last-modified-date
+		// const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+		// const accessTime = Date.now();
+		// utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
+	};
+}
+
+export class ArFSPublicFileToDownload extends ArFSFileToDownload {
+	constructor(fileEntity: ArFSPublicFile, dataStream: Readable, localFilePath: string) {
+		super(fileEntity, dataStream, localFilePath);
+	}
+
+	async write(): Promise<void> {
+		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(this.dataStream, writeStream);
+		writePromise.finally(this.setLastModifiedDate);
+	}
+}
+
+export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
+	constructor(
+		fileEntity: ArFSPrivateFile,
+		dataStream: Readable,
+		localFilePath: string,
+		private readonly decryptingStream: Duplex
+	) {
+		super(fileEntity, dataStream, localFilePath);
+	}
+
+	async write(): Promise<void> {
+		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
+		const writePromise = pipelinePromise(this.dataStream, this.decryptingStream, writeStream);
+		return writePromise.finally(this.setLastModifiedDate);
 	}
 }
