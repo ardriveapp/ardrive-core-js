@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
-import { basename, dirname, join as joinPath } from 'path';
+import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
 // import { createWriteStream, readdirSync, readFileSync, Stats, statSync } from 'fs';
 // import { basename, join as joinPath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
@@ -349,16 +349,17 @@ export abstract class ArFSFolderToDownload {
 
 	constructor(protected readonly hierarchy: FolderHierarchy) {}
 
-	getPathRelativeToSubtree(entity: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths): string {
-		const rootFolderParentPath = dirname(this.rootFolderWithPaths.path);
-		const relativePath = entity.path.replace(new RegExp(`^${rootFolderParentPath}/`), '');
-		return relativePath;
+	getPathRelativeToSubtree(entityPath: string): string {
+		const rootFolderParentPath = dirname(this.folderWithPaths.path);
+		const relativeToSubTree = relativePath(rootFolderParentPath, entityPath);
+		return relativeToSubTree;
 	}
 
 	ensureFolderExistence(folderPath: string, recursive = false): void {
 		try {
 			const stat = statSync(folderPath);
 			if (!stat.isDirectory()) {
+				// FIXME: this error will be caught by the try..catch
 				throw new Error(`Path is not a directory: "${folderPath}"`);
 			}
 		} catch {
