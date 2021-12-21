@@ -50,6 +50,7 @@ export interface ArFSListPublicFolderParams {
 export interface ArFSDownloadPublicFolderParams {
 	folderId: FolderID;
 	destFolderPath: string;
+	customFolderName?: string;
 	maxDepth: number;
 	owner: ArweaveAddress;
 }
@@ -316,6 +317,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	async downloadPublicFolder({
 		folderId,
 		destFolderPath,
+		customFolderName,
 		maxDepth,
 		owner
 	}: ArFSDownloadPublicFolderParams): Promise<void> {
@@ -338,7 +340,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		// Fetch all file entities within all Folders of the drive
 		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
-		const folderWrapper = new ArFSFolderToDownload(new ArFSPublicFileOrFolderWithPaths(publicFolder, hierarchy));
+		const folderWrapper = new ArFSFolderToDownload(
+			new ArFSPublicFileOrFolderWithPaths(publicFolder, hierarchy),
+			customFolderName
+		);
 
 		for (const folder of [publicFolder, ...childrenFolderEntities]) {
 			// assert the existence of the folder in disk

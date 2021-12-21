@@ -94,6 +94,7 @@ export class ArDriveAnonymous extends ArDriveType {
 	async downloadPublicFolder({
 		folderId,
 		destFolderPath,
+		customFolderName,
 		maxDepth,
 		owner
 	}: DownloadPublicFolderParameters): Promise<void> {
@@ -101,6 +102,6 @@ export class ArDriveAnonymous extends ArDriveType {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		return this.arFsDao.downloadPublicFolder({ folderId, destFolderPath, maxDepth, owner });
+		return this.arFsDao.downloadPublicFolder({ folderId, destFolderPath, maxDepth, owner, customFolderName });
 	}
 }
