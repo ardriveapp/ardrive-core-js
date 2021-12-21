@@ -63,45 +63,6 @@ describe('ArDrive class', () => {
 		);
 	});
 
-	describe('estimateAndAssertCostOfFileUpload function', () => {
-		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
-			communityOracleStub.getCommunityWinstonTip.callsFake(() => {
-				return Promise.resolve(W(9876543210));
-			});
-			await expectAsyncErrorThrow({
-				promiseToError: arDrive.estimateAndAssertCostOfFileUpload(
-					new ByteCount(1),
-					stubPublicFileTransactionData,
-					'private'
-				)
-			});
-		});
-
-		it('returns the correct reward and tip data', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(true);
-			});
-			communityOracleStub.getCommunityWinstonTip.callsFake(() => {
-				return Promise.resolve(W(9876543210));
-			});
-
-			const actual = await arDrive.estimateAndAssertCostOfFileUpload(
-				new ByteCount(1234567),
-				stubPublicFileTransactionData,
-				'private'
-			);
-			expect(`${actual.metaDataBaseReward}`).to.equal('147');
-			expect(`${actual.fileDataBaseReward}`).to.equal('1234583');
-			expect(`${actual.communityWinstonTip}`).to.equal('9876543210');
-		});
-	});
-
 	describe('estimateAndAssertCostOfFolderUpload function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
 			stub(walletDao, 'walletHasBalance').callsFake(() => {

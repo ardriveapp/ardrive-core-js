@@ -7,7 +7,6 @@ import {
 } from './arfs/arfs_entities';
 import {
 	ArFSFolderToUpload,
-	ArFSFileToUpload,
 	ArFSPrivateFileToDownload,
 	ArFSEntityToUpload,
 	ArFSManifestToUpload
@@ -22,7 +21,7 @@ import {
 } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
-import { deriveDriveKey, deriveFileKey } from './utils/crypto';
+import { deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import {
 	FeeMultiple,
@@ -33,10 +32,8 @@ import {
 	FolderID,
 	DriveKey,
 	Winston,
-	DrivePrivacy,
 	FileID,
 	DriveID,
-	stubTransactionID,
 	UploadPublicFileParams,
 	UploadPrivateFileParams,
 	ArFSManifestResult,
@@ -70,18 +67,15 @@ import {
 	GetPrivateFolderParams,
 	GetPrivateFileParams,
 	ListPrivateFolderParams,
-	MetaDataBaseCosts,
-	FileUploadBaseCosts
+	MetaDataBaseCosts
 } from './types';
 import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
-import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
-	fakeEntityId,
 	privateOctetContentTypeTag,
 	publicJsonContentTypeTag
 } from './utils/constants';
@@ -1274,13 +1268,12 @@ export class ArDrive extends ArDriveAnonymous {
 			const fileSize = driveKey ? file.encryptedDataSize() : new ByteCount(file.fileStats.size);
 
 			const fileDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileSize);
-			const destFileName = file.name;
 
 			const stubFileMetaData = driveKey
-				? await this.stubPrivateFileMetadata(file, destFileName)
-				: this.stubPublicFileMetadata(file, destFileName);
+				? await getPrivateUploadFileEstimationPrototype(file, driveKey)
+				: getPublicUploadFileEstimationPrototype(file);
 			const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-				stubFileMetaData.sizeOf()
+				stubFileMetaData.objectData.sizeOf()
 			);
 
 			totalPrice = totalPrice.plus(fileDataBaseReward);
@@ -1418,49 +1411,6 @@ export class ArDrive extends ArDriveAnonymous {
 		return { metaDataBaseReward: fileMetaTransactionDataReward };
 	}
 
-	async estimateAndAssertCostOfFileUpload(
-		decryptedFileSize: ByteCount,
-		metaData: ArFSObjectTransactionData,
-		drivePrivacy: DrivePrivacy
-	): Promise<FileUploadBaseCosts> {
-		let fileSize = decryptedFileSize;
-		if (drivePrivacy === 'private') {
-			fileSize = encryptedDataSize(fileSize);
-		}
-
-		let totalPrice = W(0);
-		let fileDataBaseReward = W(0);
-		let communityWinstonTip = W(0);
-		if (fileSize) {
-			fileDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileSize);
-			communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataBaseReward);
-			const tipReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
-			totalPrice = totalPrice.plus(fileDataBaseReward);
-			totalPrice = totalPrice.plus(communityWinstonTip);
-			totalPrice = totalPrice.plus(tipReward);
-		}
-		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
-		totalPrice = totalPrice.plus(metaDataBaseReward);
-
-		const totalWinstonPrice = totalPrice;
-
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, totalWinstonPrice);
-
-		if (!walletHasBalance) {
-			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
-
-			throw new Error(
-				`Wallet balance of ${walletBalance} Winston is not enough (${totalWinstonPrice}) for data upload of size ${fileSize} bytes!`
-			);
-		}
-
-		return {
-			fileDataBaseReward: fileDataBaseReward,
-			metaDataBaseReward: metaDataBaseReward,
-			communityWinstonTip
-		};
-	}
-
 	async estimateAndAssertCostOfFolderUpload(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
 		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
 		const totalWinstonPrice = metaDataBaseReward;
@@ -1486,44 +1436,6 @@ export class ArDrive extends ArDriveAnonymous {
 
 	public async getDriveIdForFolderId(folderId: FolderID): Promise<DriveID> {
 		return this.arFsDao.getDriveIdForFolderId(folderId);
-	}
-
-	// Provides for stubbing metadata during cost estimations since the data tx ID won't yet be known
-	private stubPublicFileMetadata(
-		wrappedFile: ArFSEntityToUpload,
-		destinationFileName?: string
-	): ArFSPublicFileMetadataTransactionData {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-		return new ArFSPublicFileMetadataTransactionData(
-			destinationFileName ?? wrappedFile.getBaseFileName(),
-			fileSize,
-			lastModifiedDateMS,
-			stubTransactionID,
-			dataContentType
-		);
-	}
-
-	// Provides for stubbing metadata during cost estimations since the data tx and File IDs won't yet be known
-	private async stubPrivateFileMetadata(
-		wrappedFile: ArFSFileToUpload,
-		destinationFileName?: string
-	): Promise<ArFSPrivateFileMetadataTransactionData> {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-		return await ArFSPrivateFileMetadataTransactionData.from(
-			destinationFileName ?? wrappedFile.getBaseFileName(),
-			fileSize,
-			lastModifiedDateMS,
-			stubTransactionID,
-			dataContentType,
-			fakeEntityId,
-			await deriveDriveKey(
-				'stubPassword',
-				`${fakeEntityId}`,
-				JSON.stringify((this.wallet as JWKWallet).getPrivateKey())
-			)
-		);
 	}
 
 	async assertValidPassword(password: string): Promise<void> {
