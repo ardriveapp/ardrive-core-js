@@ -187,6 +187,7 @@ interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsPa
 export interface ArFSDownloadPrivateFolderParams {
 	folderId: FolderID;
 	destFolderPath: string;
+	customFolderName?: string;
 	maxDepth: number;
 	owner: ArweaveAddress;
 	driveKey: DriveKey;
@@ -1162,6 +1163,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async downloadPrivateFolder({
 		folderId,
 		destFolderPath,
+		customFolderName,
 		maxDepth,
 		driveKey,
 		owner
@@ -1175,7 +1177,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			driveKey,
 			maxDepth
 		);
-		const folderWrapper = new ArFSFolderToDownload(new ArFSPrivateFileOrFolderWithPaths(privateFolder, hierarchy));
+		const folderWrapper = new ArFSFolderToDownload(
+			new ArFSPrivateFileOrFolderWithPaths(privateFolder, hierarchy),
+			customFolderName
+		);
 
 		// Fetch the file CipherIVs
 		const fileDataTxIDs = childFiles.map((file) => file.dataTxId);
