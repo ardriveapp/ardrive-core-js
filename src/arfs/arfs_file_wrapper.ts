@@ -1,7 +1,5 @@
 import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
 import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
-// import { createWriteStream, readdirSync, readFileSync, Stats, statSync } from 'fs';
-// import { basename, join as joinPath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
