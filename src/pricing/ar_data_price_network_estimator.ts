@@ -14,7 +14,7 @@ export class ARDataPriceNetworkEstimator extends AbstractARDataPriceAndCapacityE
 		return Math.ceil(+bytes / +byteCountOfChunk);
 	}
 
-	private cachedPricePerChunk: { [chunks: string]: Winston } = {};
+	private cachedPricePerChunk: { [chunks: string]: Promise<Winston> } = {};
 
 	/**
 	 * Creates a new estimator.
@@ -43,10 +43,10 @@ export class ARDataPriceNetworkEstimator extends AbstractARDataPriceAndCapacityE
 			return cachedPrice;
 		}
 
-		const winstonPrice = await this.oracle.getWinstonPriceForByteCount(byteCount);
-		this.cachedPricePerChunk[`${chunks}`] = winstonPrice;
+		const winstonPricePromise = this.oracle.getWinstonPriceForByteCount(byteCount);
+		this.cachedPricePerChunk[`${chunks}`] = winstonPricePromise;
 
-		return winstonPrice;
+		return winstonPricePromise;
 	}
 
 	/**
