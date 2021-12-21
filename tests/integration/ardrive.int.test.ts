@@ -1141,6 +1141,16 @@ describe('ArDrive class - integrated', () => {
 			assertUploadManifestExpectations(result, W(336), W(183), W(0), W(1));
 		});
 
+		it('returns the correct bundled ArFSManifestResult', async () => {
+			stub(arfsDao, 'listPublicFolder').resolves(stubPublicEntitiesWithPaths);
+
+			const result = await bundledArDrive.uploadPublicManifest({
+				folderId: stubEntityID
+			});
+
+			assertUploadManifestExpectations(result, W(3108), W(183), W(0), W(1), undefined, undefined, true);
+		});
+
 		it('returns the correct ArFSManifestResult when using special characters', async () => {
 			stub(arfsDao, 'listPublicFolder').resolves(stubSpecialCharEntitiesWithPaths);
 
@@ -1362,10 +1372,12 @@ function assertUploadManifestExpectations(
 	tipFee: Winston,
 	expectedTip: Winston,
 	expectedFileId?: FileID,
-	specialCharacters = false
+	specialCharacters = false,
+	isBundled = false
 ) {
-	// Ensure that 1 arfs entity was created
-	expect(result.created.length).to.equal(1);
+	// Ensure that 2 arfs entities are created with a bundled transaction,
+	// and 1 arfs entity is created during a v2 transaction
+	expect(result.created.length).to.equal(isBundled ? 2 : 1);
 
 	// Ensure that the file data entity looks healthy
 	const fileEntity = result.created[0];
@@ -1386,21 +1398,44 @@ function assertUploadManifestExpectations(
 	expect(`${uploadTip.winston}`).to.equal(`${expectedTip}`);
 	expect(uploadTip.recipient).to.match(txIdRegex);
 
-	// Ensure that the fees look healthy
-	expect(Object.keys(result.fees).length).to.equal(3);
-
 	const feeKeys = Object.keys(result.fees);
-	expect(feeKeys[0]).to.match(txIdRegex);
-	expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
-	expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
 
-	expect(feeKeys[1]).to.match(txIdRegex);
-	expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
-	expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
+	if (isBundled) {
+		// Ensure that the bundle tx looks healthy
+		const bundleEntity = result.created[1];
+		expect(bundleEntity.dataTxId).to.be.undefined;
+		expect(bundleEntity.entityId).to.be.undefined;
+		expect(bundleEntity.key).to.be.undefined;
+		expect(bundleEntity.metadataTxId).to.be.undefined;
+		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
+		expect(bundleEntity.type).to.equal('bundle');
 
-	expect(feeKeys[2]).to.match(txIdRegex);
-	expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-	expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+		// Ensure that the bundle fee look healthy
+		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
+		expect(feeKeys[0]).to.match(txIdRegex);
+		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
+
+		// Ensure tip fee looks healthy
+		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
+		expect(feeKeys[1]).to.match(txIdRegex);
+		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+	} else {
+		// Ensure that the fees look healthy
+		expect(feeKeys.length).to.equal(3);
+
+		expect(feeKeys[0]).to.match(txIdRegex);
+		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
+		expect(`${result.fees[fileEntity.dataTxId!.toString()]}`).to.equal(`${fileFee}`);
+
+		expect(feeKeys[1]).to.match(txIdRegex);
+		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
+		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
+
+		expect(feeKeys[2]).to.match(txIdRegex);
+		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
+		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
+	}
 
 	if (specialCharacters) {
 		// Verify links are healthy
