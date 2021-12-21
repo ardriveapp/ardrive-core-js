@@ -991,29 +991,26 @@ export class ArDrive extends ArDriveAnonymous {
 			return emptyManifestResult;
 		}
 
-		const uploadBaseCosts = await this.estimateAndAssertCostOfFileUpload(
-			arweaveManifest.size,
-			this.stubPublicFileMetadata(arweaveManifest),
-			'public'
-		);
-		const fileDataRewardSettings = { reward: uploadBaseCosts.fileDataBaseReward, feeMultiple: this.feeMultiple };
-		const metadataRewardSettings = { reward: uploadBaseCosts.metaDataBaseReward, feeMultiple: this.feeMultiple };
+		const { totalWinstonPrice, communityWinstonTip, rewardSettings } = await this.uploadPlanner.estimateUploadFile({
+			fileDataSize: arweaveManifest.size,
+			fileMetaDataPrototype: getPublicUploadFileEstimationPrototype(arweaveManifest),
+			contentTypeTag: publicJsonContentTypeTag
+		});
 
-		const uploadFileResult = (await this.arFsDao.uploadPublicFile({
+		await this.assertWalletBalance(totalWinstonPrice);
+
+		const uploadFileResult = await this.arFsDao.uploadPublicFile({
 			parentFolderId: folderId,
 			wrappedFile: arweaveManifest,
 			driveId,
-			rewardSettings: {
-				dataTxRewardSettings: fileDataRewardSettings,
-				metaDataRewardSettings: metadataRewardSettings
-			}
-		})) as ArFSUploadFileV2TxResult;
-
-		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
-			communityWinstonTip: uploadBaseCosts.communityWinstonTip
+			rewardSettings
 		});
 
-		return Promise.resolve({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
+			communityWinstonTip: communityWinstonTip
+		});
+
+		const arFSResults: ArFSManifestResult = {
 			created: [
 				{
 					type: 'file',
@@ -1023,14 +1020,36 @@ export class ArDrive extends ArDriveAnonymous {
 				}
 			],
 			tips: [tipData],
+			fees: {},
+			manifest: arweaveManifest.manifest,
+			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
+		};
+
+		if (isBundleResult(uploadFileResult)) {
+			// Add bundle entity and return direct to network bundled tx result
+			arFSResults.created.push({
+				type: 'bundle',
+				bundleTxId: uploadFileResult.bundleTxId
+			});
+
+			return {
+				...arFSResults,
+				fees: {
+					[`${uploadFileResult.bundleTxId}`]: uploadFileResult.bundleTxReward,
+					[`${tipData.txId}`]: communityTipTxReward
+				}
+			};
+		}
+
+		// Return as V2 Transaction result
+		return {
+			...arFSResults,
 			fees: {
 				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
 				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
 				[`${tipData.txId}`]: communityTipTxReward
-			},
-			manifest: arweaveManifest.manifest,
-			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
-		});
+			}
+		};
 	}
 
 	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {
