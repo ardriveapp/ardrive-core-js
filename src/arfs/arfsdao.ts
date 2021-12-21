@@ -34,7 +34,7 @@ import {
 	ArFSUploadFileResultFactory,
 	ArFSUploadPrivateFileResult
 } from './arfs_entity_result_factory';
-import { ArFSEntityToUpload, ArFSPrivateFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
+import { ArFSEntityToUpload, ArFSFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
 import {
 	FolderMetaDataFactory,
 	CreateDriveMetaDataFactory,
@@ -1168,16 +1168,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		driveKey,
 		owner
 	}: ArFSDownloadPrivateFolderParams): Promise<void> {
-		const folder = await this.getPrivateFolder(folderId, driveKey, owner);
+		const privateFolder = await this.getPrivateFolder(folderId, driveKey, owner);
 
 		// Fetch all file and folder entities within all Folders of the drive
 		const { hierarchy, childFiles, childFolders } = await this.separatedHierarchyOfFolder(
-			folder,
+			privateFolder,
 			owner,
 			driveKey,
 			maxDepth
 		);
-		const folderWrapper = new ArFSPrivateFolderToDownload(folder, hierarchy, customFolderName);
+		const folderWrapper = new ArFSFolderToDownload(
+			new ArFSPrivateFileOrFolderWithPaths(privateFolder, hierarchy),
+			customFolderName
+		);
 
 		// Fetch the file CipherIVs
 		const fileDataTxIDs = childFiles.map((file) => file.dataTxId);
@@ -1187,19 +1190,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}, {});
 
 		// Iteratively download all child files in the hierarchy
-		for (const childFolder of [folder, ...childFolders]) {
+		for (const folder of [privateFolder, ...childFolders]) {
 			// assert the existence of the folder on disk
 			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
-				new ArFSPrivateFileOrFolderWithPaths(childFolder, hierarchy)
+				new ArFSPrivateFileOrFolderWithPaths(folder, hierarchy).path
 			);
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
 			// download child files into the folder
-			const childrenFiles = childFiles.filter((file) => file.parentFolderId.equals(childFolder.entityId));
+			const childrenFiles = childFiles.filter((file) => file.parentFolderId.equals(folder.entityId));
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getPathRelativeToSubtree(
-					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy)
+					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 

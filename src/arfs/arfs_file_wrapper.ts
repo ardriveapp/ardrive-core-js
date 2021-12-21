@@ -1,5 +1,5 @@
-import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync, utimesSync } from 'fs';
-import { basename, dirname, join as joinPath } from 'path';
+import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
+import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
@@ -19,12 +19,9 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths,
-	ArFSPrivateFolder,
 	ArFSPublicFile,
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSPublicFolder
+	ArFSPublicFileOrFolderWithPaths
 } from './arfs_entities';
-import { FolderHierarchy } from './folderHierarchy';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -304,11 +301,12 @@ export abstract class ArFSFileToDownload {
 
 	abstract write(): Promise<void>;
 
+	// FIXME: make it compatible with Windows
 	protected setLastModifiedDate = (): void => {
 		// update the last-modified-date
-		const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
-		const accessTime = Date.now();
-		utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
+		// const remoteFileLastModifiedDate = Math.ceil(+this.fileEntity.lastModifiedDate / 1000);
+		// const accessTime = Date.now();
+		// utimesSync(this.localFilePath, accessTime, remoteFileLastModifiedDate);
 	};
 }
 
@@ -341,19 +339,16 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 	}
 }
 
-export abstract class ArFSFolderToDownload {
-	abstract readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
+export class ArFSFolderToDownload<P extends ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths> {
+	constructor(readonly folderWithPaths: P, protected readonly customName?: string) {}
 
-	constructor(protected readonly hierarchy: FolderHierarchy, protected readonly customName?: string) {}
-
-	getPathRelativeToSubtree(entity: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths): string {
-		const rootFolderPath = this.rootFolderWithPaths.path;
+	getPathRelativeToSubtree(entityPath: string): string {
+		const rootFolderPath = this.folderWithPaths.path;
 		const rootFolderParentPath = dirname(rootFolderPath);
 		if (this.customName) {
-			const relative = entity.path.replace(new RegExp(`^${rootFolderPath}`), '').replace(/^\//, '');
-			return joinPath(this.customName, relative);
+			return joinPath(this.customName, relativePath(rootFolderPath, entityPath));
 		} else {
-			return entity.path.replace(new RegExp(`^${rootFolderParentPath}/`), '');
+			return relativePath(rootFolderParentPath, entityPath);
 		}
 	}
 
@@ -361,28 +356,11 @@ export abstract class ArFSFolderToDownload {
 		try {
 			const stat = statSync(folderPath);
 			if (!stat.isDirectory()) {
+				// FIXME: this error will be caught by the try..catch
 				throw new Error(`Path is not a directory: "${folderPath}"`);
 			}
 		} catch {
 			mkdirSync(folderPath, { recursive });
 		}
-	}
-}
-
-export class ArFSPublicFolderToDownload extends ArFSFolderToDownload {
-	readonly rootFolderWithPaths: ArFSPublicFileOrFolderWithPaths;
-
-	constructor(rootFolderEntity: ArFSPublicFolder, hierarchy: FolderHierarchy, customName?: string) {
-		super(hierarchy, customName);
-		this.rootFolderWithPaths = new ArFSPublicFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
-	}
-}
-
-export class ArFSPrivateFolderToDownload extends ArFSFolderToDownload {
-	readonly rootFolderWithPaths: ArFSPrivateFileOrFolderWithPaths;
-
-	constructor(rootFolderEntity: ArFSPrivateFolder, hierarchy: FolderHierarchy, customName?: string) {
-		super(hierarchy, customName);
-		this.rootFolderWithPaths = new ArFSPrivateFileOrFolderWithPaths(rootFolderEntity, this.hierarchy);
 	}
 }

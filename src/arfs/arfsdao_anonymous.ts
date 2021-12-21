@@ -30,7 +30,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { gatewayURL } from '../utils/constants';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
-import { ArFSPublicFileToDownload, ArFSPublicFolderToDownload } from './arfs_file_wrapper';
+import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 
 export const graphQLURL = 'https://arweave.net/graphql';
 
@@ -321,9 +321,9 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		maxDepth,
 		owner
 	}: ArFSDownloadPublicFolderParams): Promise<void> {
-		const folder = await this.getPublicFolder(folderId, owner);
+		const publicFolder = await this.getPublicFolder(folderId, owner);
 		// Fetch all of the folder entities within the drive
-		const driveIdOfFolder = folder.driveId;
+		const driveIdOfFolder = publicFolder.driveId;
 		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPublicDrive({
 			driveId: driveIdOfFolder,
 			owner,
@@ -332,31 +332,32 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
-		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth - 1);
-		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
+		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(publicFolder.entityId, maxDepth - 1);
+		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(publicFolder.entityId, maxDepth);
 		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
 			subFolderIDs.includes(folder.entityId)
 		);
 
 		// Fetch all file entities within all Folders of the drive
 		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
-		const folderWrapper = new ArFSPublicFolderToDownload(folder, hierarchy, customFolderName);
+		const folderWrapper = new ArFSFolderToDownload(
+			new ArFSPublicFileOrFolderWithPaths(publicFolder, hierarchy),
+			customFolderName
+		);
 
-		for (const childFolder of [folder, ...childrenFolderEntities]) {
+		for (const folder of [publicFolder, ...childrenFolderEntities]) {
 			// assert the existence of the folder in disk
 			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
-				new ArFSPublicFileOrFolderWithPaths(childFolder, hierarchy)
+				new ArFSPublicFileOrFolderWithPaths(folder, hierarchy).path
 			);
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
 			// download child files into the folder
-			const childrenFiles = childrenFileEntities.filter((file) =>
-				file.parentFolderId.equals(childFolder.entityId)
-			);
+			const childrenFiles = childrenFileEntities.filter((file) => file.parentFolderId.equals(folder.entityId));
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getPathRelativeToSubtree(
-					new ArFSPublicFileOrFolderWithPaths(file, hierarchy)
+					new ArFSPublicFileOrFolderWithPaths(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
