@@ -340,13 +340,13 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 }
 
 export class ArFSFolderToDownload<P extends ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths> {
-	constructor(readonly folderWithPaths: P, protected readonly customName?: string) {}
+	constructor(readonly folderWithPaths: P, protected readonly customBaseName?: string) {}
 
 	getPathRelativeToSubtree(entityPath: string): string {
 		const rootFolderPath = this.folderWithPaths.path;
 		const rootFolderParentPath = dirname(rootFolderPath);
-		if (this.customName) {
-			return joinPath(this.customName, relativePath(rootFolderPath, entityPath));
+		if (this.customBaseName) {
+			return joinPath(this.customBaseName, relativePath(rootFolderPath, entityPath));
 		} else {
 			return relativePath(rootFolderParentPath, entityPath);
 		}
