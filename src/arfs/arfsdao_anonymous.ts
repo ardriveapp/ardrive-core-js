@@ -347,7 +347,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		for (const folder of [publicFolder, ...childrenFolderEntities]) {
 			// assert the existence of the folder in disk
-			const relativeFolderPath = folderWrapper.getPathRelativeToSubtree(
+			const relativeFolderPath = folderWrapper.getRelativePathOf(
 				new ArFSPublicFileOrFolderWithPaths(folder, hierarchy).path
 			);
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
@@ -356,7 +356,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			// download child files into the folder
 			const childrenFiles = childrenFileEntities.filter((file) => file.parentFolderId.equals(folder.entityId));
 			for (const file of childrenFiles) {
-				const relativeFilePath = folderWrapper.getPathRelativeToSubtree(
+				const relativeFilePath = folderWrapper.getRelativePathOf(
 					new ArFSPublicFileOrFolderWithPaths(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
