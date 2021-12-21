@@ -3,7 +3,7 @@ import type { ArweaveOracle } from './arweave_oracle';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
 import { AR, ByteCount, Winston, ArDriveCommunityTip } from '../types';
 
-const byteCountOfChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
+const byteCountPerChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
 
 /**
  * A utility class for Arweave data pricing estimation.
@@ -11,7 +11,7 @@ const byteCountOfChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
  */
 export class ARDataPriceNetworkEstimator extends AbstractARDataPriceAndCapacityEstimator {
 	private bytesToChunks(bytes: ByteCount): number {
-		return Math.ceil(+bytes / +byteCountOfChunk);
+		return Math.ceil(+bytes / +byteCountPerChunk);
 	}
 
 	private cachedPricePerChunk: { [chunks: string]: Promise<Winston> } = {};
@@ -65,7 +65,7 @@ export class ARDataPriceNetworkEstimator extends AbstractARDataPriceAndCapacityE
 				+winston.minus(baseWinstonPrice).dividedBy(+perChunkEstCost, 'ROUND_DOWN')
 			);
 
-			return new ByteCount(estimatedChunks * +byteCountOfChunk);
+			return new ByteCount(estimatedChunks * +byteCountPerChunk);
 		}
 
 		// Return 0 if winston price given does not cover the base winston price for a 1 chunk transaction
