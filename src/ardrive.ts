@@ -425,6 +425,7 @@ export class ArDrive extends ArDriveAnonymous {
 			conflictResolution = upsertOnConflicts,
 			prompts
 		}: UploadPublicFileParams,
+		getOwnerAndAssertDrive: (driveId: DriveID) => Promise<ArweaveAddress>,
 		getConflictInfoFn: (parentFolderId: FolderID) => Promise<NameConflictInfo>,
 		prepareEstimationFn: (wrappedFile: ArFSEntityToUpload) => Promise<EstimateUploadFileResult>,
 		arFSUploadFile: (
@@ -435,7 +436,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<ArFSResult> {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 
-		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
+		const owner = await getOwnerAndAssertDrive(driveId);
 		await this.assertOwnerAddress(owner);
 
 		// Derive destination name and names already within provided destination folder
@@ -518,6 +519,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		return this.uploadFile(
 			uploadParams,
+			async (driveId) => this.arFsDao.getOwnerAndAssertDrive(driveId),
 			(parentFolderId) => this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId),
 			async (wrappedFile) =>
 				await this.uploadPlanner.estimateUploadFile({
@@ -541,6 +543,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		return this.uploadFile(
 			uploadParams,
+			async (driveId) => this.arFsDao.getOwnerAndAssertDrive(driveId, driveKey),
 			(parentFolderId) => this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey),
 			async (wrappedFile) =>
 				this.uploadPlanner.estimateUploadFile({
