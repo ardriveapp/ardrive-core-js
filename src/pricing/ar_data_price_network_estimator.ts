@@ -56,21 +56,14 @@ export class ARDataPriceNetworkEstimator extends AbstractARDataPriceAndCapacityE
 	 * @remarks The ArDrive community fee is not considered in this estimation
 	 */
 	public async getByteCountForWinston(winston: Winston): Promise<ByteCount> {
-		console.log('winston', winston);
 		const baseWinstonPrice = await this.getBaseWinstonPriceForByteCount(new ByteCount(0));
-		console.log('baseWinstonPrice', baseWinstonPrice);
 		const oneChunkWinstonPrice = await this.getBaseWinstonPriceForByteCount(new ByteCount(1));
-		console.log('oneChunkWinstonPrice', oneChunkWinstonPrice);
 
 		if (winston.isGreaterThanOrEqualTo(oneChunkWinstonPrice)) {
 			const perChunkEstCost = oneChunkWinstonPrice.minus(baseWinstonPrice);
-			console.log('perChunkEstCost', perChunkEstCost);
 			const estimatedChunks = Math.floor(
 				+winston.minus(baseWinstonPrice).dividedBy(+perChunkEstCost, 'ROUND_DOWN')
 			);
-			console.log('estimatedChunks', estimatedChunks);
-
-			// (price - base) / perChunkEst
 
 			return new ByteCount(estimatedChunks * +byteCountOfChunk);
 		}

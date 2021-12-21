@@ -35,7 +35,6 @@ describe('ARDataPriceNetworkEstimator class', () => {
 	it('makes one oracle call after the first price estimation request', async () => {
 		await calculator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
-		console.log(spiedOracle.getWinstonPriceForByteCount.callCount);
 		expect(spiedOracle.getWinstonPriceForByteCount.calledOnce).to.be.true;
 	});
 
@@ -96,10 +95,7 @@ describe('ARDataPriceNetworkEstimator class', () => {
 					new ByteCount(chunkSize)
 				)
 			).to.be.true;
-			console.log(
-				'await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk))',
-				await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))
-			);
+
 			expect(
 				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))).equals(
 					new ByteCount(chunkSize)
