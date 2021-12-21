@@ -16,12 +16,7 @@ import {
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import {
-	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths,
-	ArFSPublicFile,
-	ArFSPublicFileOrFolderWithPaths
-} from './arfs_entities';
+import { ArFSPrivateFile, ArFSPublicFile, ArFSPublicFileOrFolderWithPaths, ArFSWithPath } from './arfs_entities';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -339,7 +334,7 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 	}
 }
 
-export class ArFSFolderToDownload<P extends ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths> {
+export class ArFSFolderToDownload<P extends ArFSWithPath> {
 	constructor(readonly folderWithPaths: P) {}
 
 	getPathRelativeToSubtree(entityPath: string): string {
