@@ -3,7 +3,7 @@ import { ARDataPriceChunkEstimator } from './ar_data_price_chunk_estimator';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
 import { ARDataPriceNetworkEstimator } from './ar_data_price_network_estimator';
 
-export class ArDataPriceFallbackEstimator extends AbstractARDataPriceAndCapacityEstimator {
+export class ARDataPriceFallbackEstimator extends AbstractARDataPriceAndCapacityEstimator {
 	private currentPriceEstimatorIndex = 0;
 
 	private get priceEstimator(): AbstractARDataPriceAndCapacityEstimator {

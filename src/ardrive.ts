@@ -90,7 +90,7 @@ import { StreamDecrypt } from './utils/stream_decrypt';
 import { assertFolderExists } from './utils/assert_folder';
 import { join as joinPath } from 'path';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
-import { ArDataPriceFallbackEstimator } from './pricing/ar_data_price_fallback_estimator';
+import { ARDataPriceFallbackEstimator } from './pricing/ar_data_price_fallback_estimator';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -100,7 +100,7 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly communityOracle: CommunityOracle,
 		private readonly appName: string,
 		private readonly appVersion: string,
-		private readonly priceEstimator: ARDataPriceEstimator = new ArDataPriceFallbackEstimator(),
+		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceFallbackEstimator(),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false
 	) {

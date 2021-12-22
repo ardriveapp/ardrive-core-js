@@ -10,7 +10,7 @@ import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
-import { ArDataPriceFallbackEstimator } from './pricing/ar_data_price_fallback_estimator';
+import { ARDataPriceFallbackEstimator } from './pricing/ar_data_price_fallback_estimator';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 
@@ -39,7 +39,7 @@ const defaultArweave = Arweave.init({
 
 export function arDriveFactory({
 	arweave = defaultArweave,
-	priceEstimator = new ArDataPriceFallbackEstimator(),
+	priceEstimator = new ARDataPriceFallbackEstimator(),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	wallet,
 	walletDao,
