@@ -5,7 +5,7 @@ import * as types from '../types/base_Types';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import { authTagLength, stagingAppUrl } from './constants';
+import { authTagLength, byteCountPerChunk, stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
@@ -556,4 +556,8 @@ export function encryptedDataSize(dataSize: ByteCount): ByteCount {
 		throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - authTagLength}!`);
 	}
 	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
+}
+
+export function bytesToChunks(bytes: ByteCount): number {
+	return Math.ceil(+bytes / +byteCountPerChunk);
 }

@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version: DEFAULT_APP_VERSION } = require('../../package.json');
-import { EID } from '../types';
+import { ByteCount, EID } from '../types';
 import { CipherType } from '../types/type_guards';
 
 export const ArFS_O_11 = '0.11';
@@ -41,3 +41,5 @@ export const assumedMetadataTxARPrice = 0.000_002_500_000;
 //import {prodAppUrl,stagingAppUrl,gatewayURL,appName,webAppName,appVersion,arFSVersion,cipher} from './constants';
 
 export const authTagLength = 16;
+
+export const byteCountPerChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
