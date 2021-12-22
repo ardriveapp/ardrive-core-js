@@ -558,6 +558,6 @@ export function encryptedDataSize(dataSize: ByteCount): ByteCount {
 	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
 }
 
-export function bytesToChunks(bytes: ByteCount): number {
-	return Math.ceil(+bytes / +byteCountPerChunk);
+export function byteCountToChunks(byteCount: ByteCount): number {
+	return Math.ceil(+byteCount / +byteCountPerChunk);
 }

@@ -2,7 +2,7 @@ import type { ArweaveOracle } from './arweave_oracle';
 import { ByteCount, W, Winston } from '../types';
 import { BigNumber } from 'bignumber.js';
 import axios, { AxiosResponse } from 'axios';
-import { bytesToChunks } from '../utils/common';
+import { byteCountToChunks } from '../utils/common';
 
 export class GatewayOracle implements ArweaveOracle {
 	constructor(private readonly axiosRequest: (url: string) => Promise<AxiosResponse> = (url) => axios.get(url)) {}
@@ -27,7 +27,7 @@ export class CachedGatewayOracle extends GatewayOracle {
 			this.initialPriceRequest = false;
 		}
 
-		const chunks = bytesToChunks(byteCount);
+		const chunks = byteCountToChunks(byteCount);
 		const cachedPrice = this.cachedPricePerChunk[`${chunks}`];
 
 		if (cachedPrice) {
