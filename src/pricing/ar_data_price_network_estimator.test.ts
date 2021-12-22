@@ -38,19 +38,6 @@ describe('ARDataPriceNetworkEstimator class', () => {
 		expect(spiedOracle.getWinstonPriceForByteCount.calledOnce).to.be.true;
 	});
 
-	it('will return cached price if it matches the chunk size of a previous estimation', async () => {
-		const twoByteResult = await calculator.getBaseWinstonPriceForByteCount(new ByteCount(2));
-		expect(spiedOracle.getWinstonPriceForByteCount.calledOnce).to.be.true;
-
-		const nineByteResult = await calculator.getBaseWinstonPriceForByteCount(new ByteCount(9));
-
-		// Oracle was not called again
-		expect(spiedOracle.getWinstonPriceForByteCount.calledOnce).to.be.true;
-
-		// The results are expected to be the same, because they are both 1 chunk
-		expect(+twoByteResult).to.equal(+nineByteResult);
-	});
-
 	it('getWinstonPriceForByteCount function returns the expected value', async () => {
 		/* Validating that this works in the following scenarios:
 		• 0 bytes: base AR transmission fee
@@ -79,47 +66,47 @@ describe('ARDataPriceNetworkEstimator class', () => {
 			• 1 Winston: 0 bytes
 			• Base fee Winston: 0 bytes
 			• Base fee + 1 Winston: 0 bytes
-			• Base fee + marginal chunk price Winston: chunksize bytes
 			• Base fee + marginal chunk price + 1 Winston: chunksize bytes
-			• Base fee + (2 * marginal chunk price) Winston: 2 * chunksize bytes
-			• Base fee + (5 * marginal chunk price) + 1 Winston: 5 * chunksize bytes
-			• Base fee + (10 * marginal chunk price): 10 * chunksize bytes
-			• Base fee + (8000 * marginal chunk price) + 1600 Winston: 8000 * chunksize bytes
+			• Base fee + marginal chunk price + 2 Winston: chunksize bytes
+			• Base fee + (2 * marginal chunk price) + 2 Winston: 2 * chunksize bytes
+			• Base fee + (5 * marginal chunk price) + 5 Winston: 5 * chunksize bytes
+			• Base fee + (10 * marginal chunk price) + 10 Winston : 10 * chunksize bytes
+			• Base fee + (8000 * marginal chunk price) + 8000 Winston: 8000 * chunksize bytes
 			*/
 			expect((await calculator.getByteCountForWinston(W(0))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(1))).equals(new ByteCount(0))).to.be.true;
 			expect((await calculator.getByteCountForWinston(W(baseFee))).equals(new ByteCount(0))).to.be.true;
 
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))).equals(
 					new ByteCount(chunkSize)
 				)
 			).to.be.true;
 
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 1))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + marginalFeePerChunk + 2))).equals(
 					new ByteCount(chunkSize)
 				)
 			).to.be.true;
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + 2 * marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 2 * marginalFeePerChunk + 2))).equals(
 					new ByteCount(2 * chunkSize)
 				)
 			).to.be.true;
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + 5 * marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 5 * marginalFeePerChunk + 5))).equals(
 					new ByteCount(5 * chunkSize)
 				)
 			).to.be.true;
 
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + 10 * marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 10 * marginalFeePerChunk + 10))).equals(
 					new ByteCount(10 * chunkSize)
 				)
 			).to.be.true;
 
 			expect(
-				(await calculator.getByteCountForWinston(W(baseFee + 8000 * marginalFeePerChunk))).equals(
+				(await calculator.getByteCountForWinston(W(baseFee + 8000 * marginalFeePerChunk + 8000))).equals(
 					new ByteCount(8000 * chunkSize)
 				)
 			).to.be.true;
@@ -129,7 +116,7 @@ describe('ARDataPriceNetworkEstimator class', () => {
 	describe('getByteCountForAR function', () => {
 		it('returns the expected value', async () => {
 			const actualByteCountEstimation = await calculator.getByteCountForAR(
-				AR.from(0.000_000_001_265),
+				AR.from(0.000_000_001_266),
 				arDriveCommunityTip
 			);
 			expect(actualByteCountEstimation.equals(new ByteCount(chunkSize))).to.be.true;
