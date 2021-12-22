@@ -5,9 +5,6 @@ import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { GQLNodeInterface } from '../../types';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
 
-// TODO: Add private file builder test
-// TODO: Add builder tests for folders/drives
-
 describe('ArFSPublicFileBuilder', () => {
 	const stubPublicFileGQLNode: Partial<GQLNodeInterface> = {
 		id: `${stubTxID}`,
