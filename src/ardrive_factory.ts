@@ -10,9 +10,11 @@ import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
-import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -49,7 +51,7 @@ const defaultArweave = Arweave.init({
 export function arDriveFactory({
 	wallet,
 	arweave = defaultArweave,
-	priceEstimator = new ARDataPriceChunkEstimator(true),
+	priceEstimator = new ARDataPriceNetworkEstimator(),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	dryRun = false,
 	feeMultiple = new FeeMultiple(1.0),

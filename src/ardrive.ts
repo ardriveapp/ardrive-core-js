@@ -79,7 +79,6 @@ import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, fakeEntityId } from './utils/constants';
-import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
 import { StreamDecrypt } from './utils/stream_decrypt';
 import { assertFolderExists } from './utils/assert_folder';
 import { join as joinPath } from 'path';
@@ -92,6 +91,7 @@ import {
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -103,7 +103,7 @@ export class ArDrive extends ArDriveAnonymous {
 		protected readonly appName: string = DEFAULT_APP_NAME,
 		/** @deprecated App Version should be provided with ArFSTagSettings  */
 		protected readonly appVersion: string = DEFAULT_APP_VERSION,
-		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
+		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceNetworkEstimator(),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
 		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
