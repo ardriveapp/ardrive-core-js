@@ -19,7 +19,7 @@ export class ARDataPriceFallbackEstimator extends AbstractARDataPriceAndCapacity
 		super();
 	}
 
-	async useClosureAndFallbackOnFail<T>(
+	private async useClosureAndFallbackOnFail<T>(
 		closure: (priceEstimator: AbstractARDataPriceAndCapacityEstimator) => Promise<T>
 	): Promise<T> {
 		let result: T | undefined = undefined;
