@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
+import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { GQLNodeInterface } from '../../types';
-import { ArFSPublicFileBuilder } from './arfs_file_builders';
+import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
 
 // TODO: Add private file builder test
 // TODO: Add builder tests for folders/drives
@@ -58,5 +59,135 @@ describe('ArFSPublicFileBuilder', () => {
 		expect(+fileMetaData.lastModifiedDate).to.equal(1639073634269);
 		expect(fileMetaData.dataContentType).to.equal('unknown');
 		expect(`${fileMetaData.parentFolderId}`).to.equal('6c312b3e-4778-4a18-8243-f2b346f5e7cb');
+	});
+
+	it('returns the expected gql tags', () => {
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, fakeArweave);
+		expect(builder.getGqlQueryParameters()).to.deep.equal([
+			{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' },
+			{ name: 'Entity-Type', value: 'file' }
+		]);
+	});
+
+	it('fromArweaveNode method throws an error File-Id tag is missing', () => {
+		const stubNodeWithoutFileId = {
+			...stubPublicFileGQLNode,
+			tags: stubPublicFileGQLNode.tags?.filter((t) => t.name !== 'File-Id')
+		};
+
+		expect(() =>
+			ArFSPublicFileBuilder.fromArweaveNode(stubNodeWithoutFileId as GQLNodeInterface, fakeArweave)
+		).to.throw(Error, 'File-ID tag missing!');
+	});
+
+	it('fails to build if GQL tags are missing', async () => {
+		const stubNodeWithoutEntityType = {
+			...stubPublicFileGQLNode,
+			tags: stubPublicFileGQLNode.tags?.filter((t) => t.name !== 'Entity-Type')
+		};
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(
+			stubNodeWithoutEntityType as GQLNodeInterface,
+			fakeArweave
+		);
+
+		await expectAsyncErrorThrow({
+			promiseToError: builder.build(stubNodeWithoutEntityType as GQLNodeInterface),
+			errorMessage: 'Invalid file state'
+		});
+	});
+});
+
+describe('ArFSPrivateFileBuilder', () => {
+	const stubPrivateFileGQLNode: Partial<GQLNodeInterface> = {
+		id: `${stubTxID}`,
+		tags: [
+			{ name: 'App-Name', value: 'ArDrive-CLI' },
+			{ name: 'App-Version', value: '1.2.0' },
+			{ name: 'ArFS', value: '0.11' },
+			{ name: 'Content-Type', value: 'application/octet-stream' },
+			{ name: 'Drive-Id', value: '5ca7ddfe-effa-4fc5-8796-8f3e0502854a' },
+			{ name: 'Entity-Type', value: 'file' },
+			{ name: 'Unix-Time', value: '1639073649' },
+			{ name: 'Parent-Folder-Id', value: 'dde0a0ef-6cd2-45d1-a9b0-97350d9fec21' },
+			{ name: 'File-Id', value: '238e50a9-937b-4160-a3ac-5f8bb0325b70' },
+			{ name: 'Cipher', value: 'AES256-GCM' },
+			{ name: 'Cipher-IV', value: 'nzpsVIcV1vymvT/h' }
+		]
+	};
+
+	const driveKeyForStubPrivateFile = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
+
+	// prettier-ignore
+	const stubPrivateFileGetDataResult = Uint8Array.from([
+		191, 33, 16, 68, 196, 236, 87, 215, 82, 142, 114, 45, 167, 253, 197, 161, 23, 85, 54, 148, 155, 255, 204, 0, 4,
+		86, 52, 113, 88, 185, 50, 158, 169, 23, 118, 123, 120, 85, 233, 106, 227, 6, 71, 99, 254, 163, 237, 236, 237,
+		199, 10, 37, 233, 120, 63, 81, 245, 93, 77, 246, 191, 226, 1, 83, 248, 194, 69, 62, 69, 72, 90, 47, 41, 32, 32,
+		208, 183, 50, 17, 133, 246, 141, 120, 134, 135, 166, 76, 69, 84, 202, 166, 164, 255, 43, 225, 218, 153, 246,
+		195, 178, 174, 168, 85, 129, 133, 220, 120, 129, 14, 222, 186, 134, 86, 1, 51, 15, 113, 156, 147, 216, 156, 15,
+		11, 165, 204, 211, 204, 216, 138, 210, 74, 40, 117, 187, 160, 211, 161, 250, 132, 240, 122, 193, 166, 132, 139,
+		125, 178, 34, 4, 33, 108, 187, 176, 191, 151, 146, 234, 138
+	]);
+
+	it('constructs expected file from node', async () => {
+		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateFileGetDataResult);
+
+		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
+			stubPrivateFileGQLNode as GQLNodeInterface,
+			fakeArweave,
+			driveKeyForStubPrivateFile
+		);
+		const fileMetaData = await builder.build(stubPrivateFileGQLNode as GQLNodeInterface);
+
+		// Ensure GQL tags on metadata are consistent
+		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
+		expect(fileMetaData.appVersion).to.equal('1.2.0');
+		expect(fileMetaData.arFS).to.equal('0.11');
+		expect(fileMetaData.contentType).to.equal('application/octet-stream');
+		expect(`${fileMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
+		expect(fileMetaData.entityType).to.equal('file');
+		expect(`${fileMetaData.fileId}`).to.equal('238e50a9-937b-4160-a3ac-5f8bb0325b70');
+		expect(+fileMetaData.unixTime).to.equal(1639073649);
+
+		// Expect stubbed transaction ID
+		expect(`${fileMetaData.txId}`).to.equal('0000000000000000000000000000000000000000001');
+
+		// Verify that the data JSON field was successfully parsed
+		expect(fileMetaData.name).to.equal('2');
+		expect(+fileMetaData.size).to.equal(2048);
+		expect(+fileMetaData.lastModifiedDate).to.equal(1639073634269);
+		expect(fileMetaData.dataContentType).to.equal('unknown');
+		expect(`${fileMetaData.parentFolderId}`).to.equal('dde0a0ef-6cd2-45d1-a9b0-97350d9fec21');
+	});
+
+	it('fromArweaveNode method throws an error File-Id tag is missing', () => {
+		const stubNodeWithoutFileId = {
+			...stubPrivateFileGQLNode,
+			tags: stubPrivateFileGQLNode.tags?.filter((t) => t.name !== 'File-Id')
+		};
+
+		expect(() =>
+			ArFSPrivateFileBuilder.fromArweaveNode(
+				stubNodeWithoutFileId as GQLNodeInterface,
+				fakeArweave,
+				driveKeyForStubPrivateFile
+			)
+		).to.throw(Error, 'File-ID tag missing!');
+	});
+
+	it('fails to build if GQL tags are missing', async () => {
+		const stubNodeWithoutEntityType = {
+			...stubPrivateFileGQLNode,
+			tags: stubPrivateFileGQLNode.tags?.filter((t) => t.name !== 'Entity-Type')
+		};
+		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
+			stubNodeWithoutEntityType as GQLNodeInterface,
+			fakeArweave,
+			driveKeyForStubPrivateFile
+		);
+
+		await expectAsyncErrorThrow({
+			promiseToError: builder.build(stubNodeWithoutEntityType as GQLNodeInterface),
+			errorMessage: 'Invalid file state'
+		});
 	});
 });
