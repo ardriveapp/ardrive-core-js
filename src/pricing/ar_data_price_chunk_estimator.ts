@@ -2,8 +2,7 @@ import { GatewayOracle } from './gateway_oracle';
 import type { ArweaveOracle } from './arweave_oracle';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
 import { AR, ByteCount, Winston, W, ArDriveCommunityTip } from '../types';
-
-const byteCountPerChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
+import { byteCountPerChunk } from '../utils/constants';
 
 interface ChunkPricingInfo {
 	baseWinstonPrice: Winston;
@@ -48,10 +47,13 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 			const basePrice = await this.oracle.getWinstonPriceForByteCount(new ByteCount(0));
 			const oneChunkPrice = await this.oracle.getWinstonPriceForByteCount(new ByteCount(1));
 
+			// Add one winston per chunk due to unknown algorithmic anomalies
+			const magicBullet = W(1);
+
 			this.pricingInfo = {
-				baseWinstonPrice: basePrice.plus(W(2)),
+				baseWinstonPrice: basePrice,
 				oneChunkWinstonPrice: oneChunkPrice,
-				perChunkWinstonPrice: oneChunkPrice.minus(basePrice)
+				perChunkWinstonPrice: oneChunkPrice.minus(basePrice).plus(magicBullet)
 			};
 
 			return this.pricingInfo;
@@ -91,14 +93,9 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 
 		const numberOfChunksToUpload = Math.ceil(byteCount.valueOf() / byteCountPerChunk.valueOf());
 
-		// Every 5th chunk, arweave.net pricing adds 1 Winston, which they define as a
-		// mining reward as a proportion of the estimated transaction storage costs
-		const minerFeeShareResidual = W(Math.floor(numberOfChunksToUpload / 5));
-
 		const predictedPrice = this.pricingInfo.perChunkWinstonPrice
 			.times(numberOfChunksToUpload)
-			.plus(this.pricingInfo.baseWinstonPrice)
-			.plus(minerFeeShareResidual);
+			.plus(this.pricingInfo.baseWinstonPrice);
 
 		return predictedPrice;
 	}
@@ -122,16 +119,11 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 		const { oneChunkWinstonPrice, baseWinstonPrice, perChunkWinstonPrice } = this.pricingInfo;
 
 		if (winston.isGreaterThanOrEqualTo(oneChunkWinstonPrice)) {
-			const winstonToSpend = winston.minus(baseWinstonPrice);
+			const estimatedChunks = Math.floor(
+				+winston.minus(baseWinstonPrice).dividedBy(+perChunkWinstonPrice, 'ROUND_DOWN')
+			);
 
-			const fifthChunks = winstonToSpend
-				.dividedBy(perChunkWinstonPrice.toString(), 'ROUND_DOWN')
-				.dividedBy(5, 'ROUND_DOWN');
-			const actualWinstonToSpend = winstonToSpend.minus(fifthChunks);
-
-			const numChunks = actualWinstonToSpend.dividedBy(perChunkWinstonPrice.toString(), 'ROUND_DOWN');
-
-			return new ByteCount(+numChunks.times(byteCountPerChunk.toString()));
+			return new ByteCount(estimatedChunks * +byteCountPerChunk);
 		}
 
 		// Return 0 if winston price given does not cover the base winston price for a 1 chunk transaction
