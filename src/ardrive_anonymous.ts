@@ -5,8 +5,8 @@ import {
 	ArFSDriveEntity,
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSDAOType, ArFSDAOAnonymous, ArFSDownloadPublicFolderParams } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress, FileID, FolderID } from './types';
+import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
+import { DriveID, ArweaveAddress, DownloadPublicFileParameters, DownloadPublicFolderParameters } from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -16,6 +16,7 @@ import {
 } from './types';
 import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload } from './arfs/arfs_file_wrapper';
+import { assertFolderExists } from './utils/assert_folder';
 
 export abstract class ArDriveType {
 	protected abstract readonly arFsDao: ArFSDAOType;
@@ -80,29 +81,28 @@ export class ArDriveAnonymous extends ArDriveType {
 		return children;
 	}
 
-	async downloadPublicFile(
-		fileId: FileID,
-		destFolderPath: string
-		// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
-	): Promise<void> {
+	async downloadPublicFile({ fileId, destFolderPath, defaultFileName }: DownloadPublicFileParameters): Promise<void> {
+		assertFolderExists(destFolderPath);
 		const publicFile = await this.getPublicFile({ fileId });
-		const fullPath = joinPath(destFolderPath, publicFile.name);
+		const outputFileName = defaultFileName ?? publicFile.name;
+		const fullPath = joinPath(destFolderPath, outputFileName);
 		const data = await this.arFsDao.getPublicDataStream(publicFile.dataTxId);
 		const fileToDownload = new ArFSPublicFileToDownload(publicFile, data, fullPath);
 		await fileToDownload.write();
 	}
 
-	async downloadPublicFolder(args: {
-		folderId: FolderID;
-		destFolderPath: string;
-		maxDepth: number;
-		owner?: ArweaveAddress;
-	}): Promise<void> {
-		if (!args.owner) {
-			args.owner = await this.arFsDao.getDriveOwnerForFolderId(args.folderId);
+	async downloadPublicFolder({
+		folderId,
+		destFolderPath,
+		customFolderName,
+		maxDepth,
+		owner
+	}: DownloadPublicFolderParameters): Promise<void> {
+		if (!owner) {
+			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		return this.arFsDao.downloadPublicFolder(args as ArFSDownloadPublicFolderParams);
+		return this.arFsDao.downloadPublicFolder({ folderId, destFolderPath, maxDepth, owner, customFolderName });
 	}
 
 	async downloadPublicDrive(args: {

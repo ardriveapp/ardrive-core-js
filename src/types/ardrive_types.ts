@@ -1,4 +1,16 @@
-import { TransactionID, AnyEntityID, MakeOptional, ArweaveAddress, Winston, FolderID, DriveID, FileID } from '.';
+import {
+	TransactionID,
+	AnyEntityID,
+	MakeOptional,
+	ArweaveAddress,
+	Winston,
+	FolderID,
+	DriveID,
+	FileID,
+	FileConflictPrompts,
+	FileNameConflictResolution,
+	FolderConflictPrompts
+} from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
@@ -38,6 +50,7 @@ export interface ArFSResult {
 }
 
 export interface ArFSManifestResult extends ArFSResult {
+	manifest: Manifest | Record<string, never>;
 	links: string[];
 }
 
@@ -47,6 +60,11 @@ export const emptyArFSResult: ArFSResult = {
 	fees: {}
 };
 
+export const emptyManifestResult: ArFSManifestResult = {
+	...emptyArFSResult,
+	manifest: {},
+	links: []
+};
 export interface MetaDataBaseCosts {
 	metaDataBaseReward: Winston;
 }
@@ -68,7 +86,6 @@ export interface RecursivePublicBulkUploadParams {
 	wrappedFolder: ArFSFolderToUpload;
 	driveId: DriveID;
 	owner: ArweaveAddress;
-	conflictResolution: FileNameConflictResolution;
 }
 export type RecursivePrivateBulkUploadParams = RecursivePublicBulkUploadParams & WithDriveKey;
 
@@ -77,6 +94,7 @@ export interface UploadPublicManifestParams {
 	maxDepth?: number;
 	destManifestName?: string;
 	conflictResolution?: FileNameConflictResolution;
+	prompts?: FileConflictPrompts;
 }
 
 export interface CreatePublicManifestParams extends Required<UploadPublicManifestParams> {
@@ -91,14 +109,6 @@ export interface CreatePublicFolderParams {
 }
 export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 
-export const skipOnConflicts = 'skip';
-export const replaceOnConflicts = 'replace';
-export const upsertOnConflicts = 'upsert';
-// export  const askOnConflicts = 'ask';
-
-export type FileNameConflictResolution = typeof skipOnConflicts | typeof replaceOnConflicts | typeof upsertOnConflicts;
-// | typeof askOnConflicts;
-
 export interface UploadParams {
 	parentFolderId: FolderID;
 	conflictResolution?: FileNameConflictResolution;
@@ -106,12 +116,15 @@ export interface UploadParams {
 
 export interface BulkPublicUploadParams extends UploadParams {
 	wrappedFolder: ArFSFolderToUpload;
+	parentFolderId: FolderID;
+	prompts?: FolderConflictPrompts;
 	destParentFolderName?: string;
 }
 export type BulkPrivateUploadParams = BulkPublicUploadParams & WithDriveKey;
 
 export interface UploadPublicFileParams extends UploadParams {
 	wrappedFile: ArFSFileToUpload;
+	prompts?: FileConflictPrompts;
 	destinationFileName?: string;
 }
 export type UploadPrivateFileParams = UploadPublicFileParams & WithDriveKey;
@@ -184,3 +197,22 @@ export interface Manifest {
 	/** paths is an object of path objects */
 	paths: ManifestPathMap;
 }
+
+export interface DownloadPublicFileParameters {
+	fileId: FileID;
+	destFolderPath: string;
+	defaultFileName?: string;
+	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+}
+
+export type DownloadPrivateFileParameters = DownloadPublicFileParameters & WithDriveKey;
+
+export interface DownloadPublicFolderParameters {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner?: ArweaveAddress;
+}
+
+export type DownloadPrivateFolderParameters = DownloadPublicFolderParameters & WithDriveKey;

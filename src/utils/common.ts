@@ -5,7 +5,7 @@ import * as types from '../types/base_Types';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import { stagingAppUrl } from './constants';
+import { authTagLength, stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
@@ -423,6 +423,7 @@ export async function createPublicDriveSharingLink(driveToShare: types.ArFSDrive
 	return driveSharingUrl;
 }
 
+// FIXME: set the correct type for this argument
 export async function Utf8ArrayToStr(array: any): Promise<string> {
 	let out, i, c;
 	let char2, char3;
@@ -551,8 +552,8 @@ export function urlEncodeHashKey(keyBuffer: Buffer): string {
 
 /** Computes the size of a private file encrypted with AES256-GCM */
 export function encryptedDataSize(dataSize: ByteCount): ByteCount {
-	if (+dataSize > Number.MAX_SAFE_INTEGER - 16) {
-		throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - 16}!`);
+	if (+dataSize > Number.MAX_SAFE_INTEGER - authTagLength) {
+		throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - authTagLength}!`);
 	}
-	return new ByteCount((+dataSize / 16 + 1) * 16);
+	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
 }

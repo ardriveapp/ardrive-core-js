@@ -1,9 +1,9 @@
 import { createDecipheriv, DecipherGCM } from 'crypto';
 import { Transform } from 'stream';
 import { CipherIV, FileKey } from '../types';
+import { authTagLength } from './constants';
 
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
-const authTagLength = 16;
 
 export class StreamDecrypt extends Transform {
 	private readonly decipher: DecipherGCM;
