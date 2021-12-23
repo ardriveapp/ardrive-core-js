@@ -1,9 +1,10 @@
+import { AxiosResponse } from 'axios';
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { ArFSPrivateDrive } from '../../exports';
-import { GQLNodeInterface } from '../../types';
+import { EID, GQLNodeInterface } from '../../types';
 import { PrivateKeyData } from '../private_key_data';
 import { ArFSPrivateDriveBuilder, ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_drive_builders';
 
@@ -62,6 +63,40 @@ describe('ArFSPublicDriveBuilder', () => {
 			{ name: 'Entity-Type', value: 'drive' },
 			{ name: 'Drive-Privacy', value: 'public' }
 		]);
+	});
+
+	it('constructs the expected public drive when stubbing graph gql post result', async () => {
+		stub(fakeArweave.api, 'post').resolves({
+			data: { data: { transactions: { edges: [{ node: stubPublicDriveGQLNode }] } } }
+		} as AxiosResponse<unknown>);
+		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
+
+		const builder = new ArFSPublicDriveBuilder({
+			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
+			arweave: fakeArweave
+		});
+
+		const driveMetaData = await builder.build();
+
+		expect(`${driveMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
+		expect(driveMetaData.entityType).to.equal('drive');
+	});
+
+	it('throws an error when no edges are found in the gql response', async () => {
+		stub(fakeArweave.api, 'post').resolves({
+			data: { data: { transactions: { edges: [] } } }
+		} as AxiosResponse<unknown>);
+		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
+
+		const builder = new ArFSPublicDriveBuilder({
+			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
+			arweave: fakeArweave
+		});
+
+		await expectAsyncErrorThrow({
+			promiseToError: builder.build(),
+			errorMessage: 'Entity with ID e93cf9c4-5f20-4d7a-87c4-034777cbb51e not found!'
+		});
 	});
 
 	it('fromArweaveNode method throws an error Drive-Id tag is missing', () => {
