@@ -691,7 +691,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		dataItems,
 		rewardSettings = {},
 		excludedTagNames = [],
-		otherTags = []
+		otherTags = [],
+		communityTipSettings
 	}: ArFSPrepareObjectBundleParams): Promise<Transaction> {
 		const wallet = this.wallet as JWKWallet;
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
@@ -703,14 +704,31 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			throw new Error('Bundle format could not be verified!');
 		}
 
-		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
-		const bundledDataTx = await this.arweave.createTransaction({
-			data: bundle.getRaw(),
+		const txAttributes: Partial<CreateTransactionInterface> = {
+			data: bundle.getRaw()
+		};
+
+		if (rewardSettings.reward) {
 			// If we provided our own reward setting, use it now
-			reward: rewardSettings.reward ? rewardSettings.reward.toString() : undefined,
+			txAttributes.reward = rewardSettings.reward.toString();
+		}
+
+		if (process.env.NODE_ENV === 'test') {
 			// TODO: Use a mock arweave server instead
-			last_tx: process.env.NODE_ENV === 'test' ? 'STUB' : undefined
-		});
+			txAttributes.last_tx = 'STUB';
+		}
+
+		if (communityTipSettings) {
+			// Add community tip to the bundle trx
+			txAttributes.target = `${communityTipSettings.communityTipTarget}`;
+			txAttributes.quantity = `${communityTipSettings.communityWinstonTip}`;
+
+			// Add tip tags to transaction
+			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
+		}
+
+		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
+		const bundledDataTx = await this.arweave.createTransaction(txAttributes);
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
@@ -737,7 +755,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		objectMetaData,
 		rewardSettings = {},
 		excludedTagNames = [],
-		otherTags = []
+		otherTags = [],
+		communityTipSettings
 	}: ArFSPrepareObjectTransactionParams): Promise<Transaction> {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
@@ -755,6 +774,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// TODO: Use a mock arweave server instead
 		if (process.env.NODE_ENV === 'test') {
 			txAttributes.last_tx = 'STUB';
+		}
+
+		if (communityTipSettings) {
+			// Add community tip to the bundle trx
+			txAttributes.target = `${communityTipSettings.communityTipTarget}`;
+			txAttributes.quantity = `${communityTipSettings.communityWinstonTip}`;
+
+			// Add tip tags to transaction
+			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
 		}
 
 		const wallet = this.wallet as JWKWallet;
