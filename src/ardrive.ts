@@ -24,7 +24,7 @@ import {
 	ArFSDriveTransactionData,
 	ArFSFolderTransactionData
 } from './arfs/arfs_trx_data_types';
-import { ArFSDAO } from './arfs/arfsdao';
+import { ArFSDAO, ArFSDownloadPrivateFolderParams } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
