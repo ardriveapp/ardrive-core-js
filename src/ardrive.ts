@@ -49,6 +49,7 @@ import {
 	UploadPublicManifestParams,
 	DownloadPrivateFileParameters,
 	DownloadPrivateFolderParameters,
+	DownloadPrivateDriveParameters,
 	errorOnConflict,
 	skipOnConflicts,
 	upsertOnConflicts,
@@ -1595,24 +1596,26 @@ export class ArDrive extends ArDriveAnonymous {
 		});
 	}
 
-	async downloadPrivateDrive(args: {
-		driveId: DriveID;
-		destFolderPath: string;
-		maxDepth: number;
-		driveKey: DriveKey;
-		owner?: ArweaveAddress;
-	}): Promise<void> {
-		if (!args.owner) {
-			args.owner = await this.arFsDao.getOwnerForDriveId(args.driveId);
+	async downloadPrivateDrive({
+		driveId,
+		destFolderPath,
+		customFolderName,
+		maxDepth,
+		driveKey,
+		owner
+	}: DownloadPrivateDriveParameters): Promise<void> {
+		if (!owner) {
+			owner = await this.arFsDao.getOwnerForDriveId(driveId);
 		}
 
-		const drive = await this.arFsDao.getPrivateDrive(args.driveId, args.driveKey, args.owner);
+		const drive = await this.arFsDao.getPrivateDrive(driveId, driveKey, owner);
 		const downloadFolderArgs: ArFSDownloadPrivateFolderParams = {
 			folderId: drive.rootFolderId,
-			destFolderPath: args.destFolderPath,
-			maxDepth: args.maxDepth,
-			driveKey: args.driveKey,
-			owner: args.owner
+			destFolderPath,
+			customFolderName,
+			maxDepth,
+			driveKey,
+			owner
 		};
 
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
