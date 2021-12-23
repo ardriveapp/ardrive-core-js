@@ -17,7 +17,8 @@ describe('ArFSPublicFileBuilder', () => {
 			{ name: 'Entity-Type', value: 'file' },
 			{ name: 'Unix-Time', value: '1639073846' },
 			{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
-			{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' }
+			{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' },
+			{ name: 'Extra-Tag', value: 'for coverage' }
 		]
 	};
 
@@ -108,7 +109,8 @@ describe('ArFSPrivateFileBuilder', () => {
 			{ name: 'Parent-Folder-Id', value: 'dde0a0ef-6cd2-45d1-a9b0-97350d9fec21' },
 			{ name: 'File-Id', value: '238e50a9-937b-4160-a3ac-5f8bb0325b70' },
 			{ name: 'Cipher', value: 'AES256-GCM' },
-			{ name: 'Cipher-IV', value: 'nzpsVIcV1vymvT/h' }
+			{ name: 'Cipher-IV', value: 'nzpsVIcV1vymvT/h' },
+			{ name: 'Extra-Tag', value: 'for coverage' }
 		]
 	};
 

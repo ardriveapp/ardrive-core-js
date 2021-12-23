@@ -17,7 +17,8 @@ describe('ArFSPublicFolderBuilder', () => {
 			{ name: 'Entity-Type', value: 'folder' },
 			{ name: 'Unix-Time', value: '1638240951' },
 			{ name: 'Parent-Folder-Id', value: 'b465883f-b400-4496-9dc5-7cd2a6ff234c' },
-			{ name: 'Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' }
+			{ name: 'Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
+			{ name: 'Extra-Tag', value: 'for coverage' }
 		]
 	};
 
@@ -106,7 +107,8 @@ describe('ArFSPrivateFolderBuilder', () => {
 			{ name: 'Unix-Time', value: '1637266839' },
 			{ name: 'Folder-Id', value: 'dde0a0ef-6cd2-45d1-a9b0-97350d9fec21' },
 			{ name: 'Cipher', value: 'AES256-GCM' },
-			{ name: 'Cipher-IV', value: 'reHa0/wqVXM8cZMV' }
+			{ name: 'Cipher-IV', value: 'reHa0/wqVXM8cZMV' },
+			{ name: 'Extra-Tag', value: 'for coverage' }
 		]
 	};
 
