@@ -86,12 +86,10 @@ import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/up
 import {
 	ArFSCreateBundledDriveResult,
 	ArFSCreateDriveResult,
-	ArFSUploadFileV2TxResult,
 	ArFSUploadPrivateFileResult,
 	ArFSUploadPublicFileResult,
 	isBundleResult,
-	isPrivateResult,
-	WithFileKey
+	isPrivateResult
 } from './arfs/arfs_entity_result_factory';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import {
@@ -688,39 +686,59 @@ export class ArDrive extends ArDriveAnonymous {
 				continue;
 			}
 
-			const fileDataRewardSettings = {
+			const dataTxRewardSettings = {
 				reward: wrappedFile.getBaseCosts().fileDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
 
-			const metadataRewardSettings = {
+			const metaDataRewardSettings = {
 				reward: wrappedFile.getBaseCosts().metaDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
+			const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
-			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
-				parentFolderId: folderId,
-				wrappedFile,
-				driveId,
-				rewardSettings: {
-					dataTxRewardSettings: fileDataRewardSettings,
-					metaDataRewardSettings: metadataRewardSettings
-				}
-			})) as ArFSUploadFileV2TxResult;
+			const uploadFileResult = await this.arFsDao.uploadFileV2Tx(
+				{
+					wrappedFile,
+					dataPrototypeFactoryFn: (fileData) =>
+						Promise.resolve(
+							new ArFSPublicFileDataPrototype(
+								new ArFSPublicFileDataTransactionData(fileData),
+								dataContentType
+							)
+						),
+					metadataTxDataFactoryFn: (fileId, dataTxId) =>
+						Promise.resolve(
+							new ArFSPublicFileMetaDataPrototype(
+								new ArFSPublicFileMetadataTransactionData(
+									wrappedFile.name,
+									fileSize,
+									lastModifiedDateMS,
+									dataTxId,
+									dataContentType
+								),
+								driveId,
+								fileId,
+								parentFolderId
+							)
+						)
+				},
+				{ dataTxRewardSettings, metaDataRewardSettings }
+			);
 
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
-				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
+				[`${uploadFileResult.result.dataTxId}`]: uploadFileResult.result.dataTxReward,
+				[`${uploadFileResult.result.metaDataTxId}`]: uploadFileResult.result.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTxId,
-					dataTxId: uploadFileResult.dataTxId,
-					entityId: uploadFileResult.fileId
+					metadataTxId: uploadFileResult.result.metaDataTxId,
+					dataTxId: uploadFileResult.result.dataTxId,
+					entityId: uploadFileResult.result.fileId
 				}
 			];
 		}
@@ -884,41 +902,61 @@ export class ArDrive extends ArDriveAnonymous {
 				continue;
 			}
 
-			const fileDataRewardSettings = {
+			const dataTxRewardSettings = {
 				reward: wrappedFile.getBaseCosts().fileDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
-			const metadataRewardSettings = {
+			const metaDataRewardSettings = {
 				reward: wrappedFile.getBaseCosts().metaDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
 
+			const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+			let fileKey: FileKey;
+
 			// eslint-disable-next-line prettier/prettier
-			const uploadFileResult = (await this.arFsDao.uploadPrivateFile({
-				parentFolderId: folderId,
-				wrappedFile,
-				driveId,
-				driveKey,
-				rewardSettings: {
-					dataTxRewardSettings: fileDataRewardSettings,
-					metaDataRewardSettings: metadataRewardSettings
-				}
-			})) as ArFSUploadFileV2TxResult & WithFileKey;
+			const uploadFileResult = await this.arFsDao.uploadFileV2Tx(
+				{
+					wrappedFile,
+					dataPrototypeFactoryFn: async (fileData, fileId) =>
+						new ArFSPrivateFileDataPrototype(
+							await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
+						),
+					metadataTxDataFactoryFn: async (fileId, dataTxId) => {
+						const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
+							wrappedFile.name,
+							fileSize,
+							lastModifiedDateMS,
+							dataTxId,
+							dataContentType,
+							fileId,
+							driveKey
+						);
+
+						// Preserve file key on private metadata for return
+						fileKey = metaDataTxData.fileKey;
+
+						return new ArFSPrivateFileMetaDataPrototype(metaDataTxData, driveId, fileId, parentFolderId);
+					}
+				},
+				{ dataTxRewardSettings, metaDataRewardSettings }
+			);
 
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
-				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
+				[`${uploadFileResult.result.dataTxId}`]: uploadFileResult.result.dataTxReward,
+				[`${uploadFileResult.result.metaDataTxId}`]: uploadFileResult.result.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTxId,
-					dataTxId: uploadFileResult.dataTxId,
-					entityId: uploadFileResult.fileId,
-					key: urlEncodeHashKey(uploadFileResult.fileKey)
+					metadataTxId: uploadFileResult.result.metaDataTxId,
+					dataTxId: uploadFileResult.result.dataTxId,
+					entityId: uploadFileResult.result.fileId,
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					key: urlEncodeHashKey(fileKey!)
 				}
 			];
 		}

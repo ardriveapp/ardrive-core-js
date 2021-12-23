@@ -504,7 +504,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
 	}
 
-	private async uploadFileV2Tx(
+	// Temporarily public for bulk folder use case, which will be deprecated in PE-460
+	// Re-make this private once `uploadAllEntities` exists
+	/* private */ async uploadFileV2Tx(
 		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
 		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings
 	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
