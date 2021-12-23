@@ -116,7 +116,8 @@ import {
 	ArFSPrepareDataItemsParams,
 	ArFSPrepareObjectBundleParams,
 	ArFSPrepareFileParams,
-	ArFSPrepareFileResult
+	ArFSPrepareFileResult,
+	CommunityTipSettings
 } from '../types/arfsdao_types';
 import {
 	CreateDriveRewardSettings,
@@ -508,14 +509,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	// Re-make this private once `uploadAllEntities` exists
 	/* private */ async uploadFileV2Tx(
 		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
-		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings
+		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings,
+		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
-					rewardSettings: dataTxRewardSettings
+					rewardSettings: dataTxRewardSettings,
+					communityTipSettings
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
@@ -539,7 +542,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	private async uploadBundledFile(
 		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
-		rewardSettings: RewardSettings
+		rewardSettings: RewardSettings,
+		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
 			...prepFileParams,
@@ -554,7 +558,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		});
 
 		// Pack data items into a bundle
-		const bundledTx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
+		const bundledTx = await this.prepareArFSObjectBundle({
+			dataItems: arFSObjects,
+			rewardSettings,
+			communityTipSettings
+		});
 
 		const [dataTxDataItem, metaDataDataItem] = arFSObjects;
 		return {
@@ -574,11 +582,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			ArFSPrepareFileParams<Transaction | DataItem>,
 			'prepareArFSObject' | 'prepareMetaDataArFSObject'
 		>,
-		rewardSettings: UploadFileRewardSettings
+		rewardSettings: UploadFileRewardSettings,
+		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
 		const { transactions, result } = isBundleRewardSetting(rewardSettings)
-			? await this.uploadBundledFile(prepFileParams, rewardSettings.bundleRewardSettings)
-			: await this.uploadFileV2Tx(prepFileParams, rewardSettings);
+			? await this.uploadBundledFile(prepFileParams, rewardSettings.bundleRewardSettings, communityTipSettings)
+			: await this.uploadFileV2Tx(prepFileParams, rewardSettings, communityTipSettings);
 
 		// Upload all v2 transactions or direct to network bundles
 		await this.sendTransactionsAsChunks(transactions);
@@ -589,7 +598,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		parentFolderId,
 		wrappedFile,
 		driveId,
-		rewardSettings
+		rewardSettings,
+		communityTipSettings
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -619,7 +629,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				)
 		};
 
-		return this.uploadFile(prepFileParams, rewardSettings);
+		return this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
 	}
 
 	async uploadPrivateFile({
@@ -627,7 +637,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedFile,
 		driveId,
 		driveKey,
-		rewardSettings
+		rewardSettings,
+		communityTipSettings
 	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadPrivateFileResult> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		let fileKey: FileKey;
@@ -659,7 +670,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		};
 
-		const uploadFileResult = await this.uploadFile(prepFileParams, rewardSettings);
+		const uploadFileResult = await this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return { ...uploadFileResult, fileKey: fileKey! };
