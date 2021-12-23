@@ -145,7 +145,7 @@ export class ArDrive extends ArDriveAnonymous {
 			tokenHolder,
 			{ reward: arTransferBaseFee, feeMultiple: this.feeMultiple },
 			this.dryRun,
-			this.arFSTagSettings.getTipTags(),
+			this.arFSTagSettings.getTipTagsWithAppTags(),
 			assertBalance
 		);
 
