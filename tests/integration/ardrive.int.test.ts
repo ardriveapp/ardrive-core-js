@@ -1309,18 +1309,13 @@ function assertUploadFileExpectations(
 		expect(bundleEntity.type).to.equal('bundle');
 
 		// Ensure that the bundle fee look healthy
-		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
-
-		// Ensure tip fee looks healthy
-		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
-		expect(feeKeys[1]).to.match(txIdRegex);
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	} else {
 		// Ensure that the fees look healthy
-		expect(feeKeys.length).to.equal(3);
+		expect(feeKeys.length).to.equal(2);
 
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
@@ -1329,10 +1324,6 @@ function assertUploadFileExpectations(
 		expect(feeKeys[1]).to.match(txIdRegex);
 		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
-
-		expect(feeKeys[2]).to.match(txIdRegex);
-		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	}
 }
 
@@ -1411,18 +1402,13 @@ function assertUploadManifestExpectations(
 		expect(bundleEntity.type).to.equal('bundle');
 
 		// Ensure that the bundle fee look healthy
-		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
-
-		// Ensure tip fee looks healthy
-		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
-		expect(feeKeys[1]).to.match(txIdRegex);
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	} else {
 		// Ensure that the fees look healthy
-		expect(feeKeys.length).to.equal(3);
+		expect(feeKeys.length).to.equal(2);
 
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
@@ -1431,10 +1417,6 @@ function assertUploadManifestExpectations(
 		expect(feeKeys[1]).to.match(txIdRegex);
 		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
-
-		expect(feeKeys[2]).to.match(txIdRegex);
-		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	}
 
 	if (specialCharacters) {

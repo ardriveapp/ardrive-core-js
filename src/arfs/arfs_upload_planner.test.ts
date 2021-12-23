@@ -154,7 +154,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(7);
+				expect(+totalWinstonPrice).to.equal(5);
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction', async () => {
@@ -169,7 +169,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+v2RewardSettings.metaDataRewardSettings.feeMultiple!).to.equal(1);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(10);
+				expect(+totalWinstonPrice).to.equal(8);
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a fee boosted bundle', async () => {
@@ -181,7 +181,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(10);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(34);
+				expect(+totalWinstonPrice).to.equal(32);
 			});
 		});
 
@@ -203,7 +203,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(7);
+				expect(+totalWinstonPrice).to.equal(5);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
@@ -217,7 +217,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+v2RewardSettings.metaDataRewardSettings.feeMultiple!).to.equal(1);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(10);
+				expect(+totalWinstonPrice).to.equal(8);
 			});
 		});
 	});
