@@ -1,9 +1,9 @@
 import { Equatable } from './equatable';
 
-const trxIdRegex = /^(\w|-){43}$/;
+const txIdRegex = /^(\w|-){43}$/;
 export class TransactionID implements Equatable<TransactionID> {
 	constructor(private readonly transactionId: string) {
-		if (!transactionId.match(trxIdRegex)) {
+		if (!transactionId.match(txIdRegex)) {
 			throw new Error(
 				'Transaction ID should be a 43-character, alphanumeric string potentially including "=" and "_" characters.'
 			);
