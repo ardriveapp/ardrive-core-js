@@ -2,17 +2,7 @@
 import Arweave from 'arweave';
 import { GQLEdgeInterface, TransactionID } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
-import {
-	DriveID,
-	FolderID,
-	FileID,
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION,
-	AnyEntityID,
-	ArweaveAddress,
-	EID,
-	ADDR
-} from '../types';
+import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
@@ -26,34 +16,17 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
+import {
+	ArFSAllPublicFoldersOfDriveParams,
+	ArFSDownloadPublicFolderParams,
+	ArFSListPublicFolderParams
+} from '../types/arfsdao_types';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
 import axios, { AxiosRequestConfig } from 'axios';
 import { gatewayURL } from '../utils/constants';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
-
-export const graphQLURL = 'https://arweave.net/graphql';
-
-export interface ArFSAllPublicFoldersOfDriveParams {
-	driveId: DriveID;
-	owner: ArweaveAddress;
-	latestRevisionsOnly: boolean;
-}
-
-export interface ArFSListPublicFolderParams {
-	folderId: FolderID;
-	maxDepth: number;
-	includeRoot: boolean;
-	owner: ArweaveAddress;
-}
-
-export interface ArFSDownloadPublicFolderParams {
-	folderId: FolderID;
-	destFolderPath: string;
-	customFolderName?: string;
-	maxDepth: number;
-	owner: ArweaveAddress;
-}
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -67,7 +40,9 @@ export abstract class ArFSDAOType {
 export class ArFSDAOAnonymous extends ArFSDAOType {
 	constructor(
 		protected readonly arweave: Arweave,
+		/** @deprecated App Name is an unused parameter on anonymous ArFSDAO */
 		protected appName = DEFAULT_APP_NAME,
+		/** @deprecated App Version is an unused parameter on anonymous ArFSDAO */
 		protected appVersion = DEFAULT_APP_VERSION
 	) {
 		super();
