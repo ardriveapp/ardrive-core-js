@@ -14,16 +14,17 @@ import {
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
-import { ArFSListPublicFolderParams } from '../arfs/arfsdao_anonymous';
 import { PrivateKeyData } from '../arfs/private_key_data';
+import { ArFSListPublicFolderParams } from './arfsdao_types';
 
-export type ArFSEntityDataType = 'drive' | 'folder' | 'file';
+export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
 export interface ArFSEntityData {
 	type: ArFSEntityDataType;
-	metadataTxId: TransactionID;
+	bundleTxId?: TransactionID;
+	metadataTxId?: TransactionID;
 	dataTxId?: TransactionID;
-	entityId: AnyEntityID;
+	entityId?: AnyEntityID;
 	key?: string;
 }
 
@@ -76,11 +77,6 @@ export interface FileUploadBaseCosts extends BulkFileBaseCosts {
 	communityWinstonTip: Winston;
 }
 
-export interface DriveUploadBaseCosts {
-	driveMetaDataBaseReward: Winston;
-	rootFolderMetaDataBaseReward: Winston;
-}
-
 export interface RecursivePublicBulkUploadParams {
 	parentFolderId: FolderID;
 	wrappedFolder: ArFSFolderToUpload;
@@ -104,8 +100,9 @@ export interface CreatePublicManifestParams extends Required<UploadPublicManifes
 
 export interface CreatePublicFolderParams {
 	folderName: string;
-	driveId: DriveID;
 	parentFolderId: FolderID;
+	/** @deprecated ArFS cache makes passing driveId here redundant. This parameter makes the api confusing and will no longer used */
+	driveId?: DriveID;
 }
 export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 
@@ -197,3 +194,12 @@ export interface Manifest {
 	/** paths is an object of path objects */
 	paths: ManifestPathMap;
 }
+
+export interface DownloadPublicFileArguments {
+	fileId: FileID;
+	destFolderPath: string;
+	defaultFileName?: string;
+	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
+}
+
+export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;

@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { FeeMultiple } from './';
+import { spy } from 'sinon';
+import { FeeMultiple, W } from './';
 
 describe('FeeMultiple class', () => {
 	describe('constructor', () => {
@@ -79,6 +80,21 @@ describe('FeeMultiple class', () => {
 		it('returns the correct JSON value', () => {
 			const feeMultiple = new FeeMultiple(1.5);
 			expect(JSON.stringify({ feeMultiple })).to.equal('{"feeMultiple":1.5}');
+		});
+	});
+
+	describe('boostedWinstonReward function', () => {
+		it('returns the correct Winston value', () => {
+			const feeMultiple = new FeeMultiple(2);
+			expect(`${feeMultiple.boostedWinstonReward(W(10))}`).to.equal('20');
+		});
+
+		it('will not boost reward if feeMultiple would not boost reward', () => {
+			const feeMultiple = new FeeMultiple(1);
+			const boostRewardSpy = spy(feeMultiple, 'boostReward');
+
+			expect(`${feeMultiple.boostedWinstonReward(W(10))}`).to.equal('10');
+			expect(boostRewardSpy.called).to.be.false;
 		});
 	});
 });

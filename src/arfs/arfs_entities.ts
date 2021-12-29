@@ -16,6 +16,7 @@ import {
 	DrivePrivacy,
 	EntityType
 } from '../types';
+import { encryptedDataSize } from '../utils/common';
 
 // The primary ArFS entity that all other entities inherit from.
 export class ArFSEntity {
@@ -281,6 +282,10 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 			parentFolderId,
 			fileId
 		);
+	}
+
+	get encryptedDataSize(): ByteCount {
+		return encryptedDataSize(this.size);
 	}
 }
 

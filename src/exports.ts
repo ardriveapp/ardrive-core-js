@@ -20,7 +20,7 @@ export * from './arfs/arfs_entity_result_factory';
 export * from './arfs/arfs_file_wrapper';
 export * from './arfs/arfs_meta_data_factory';
 export * from './arfs/arfs_prototypes';
-export * from './arfs/arfs_trx_data_types';
+export * from './arfs/arfs_tx_data_types';
 export * from './arfs/folderHierarchy';
 export * from './arfs/arfs_builders/arfs_builders';
 export * from './arfs/arfs_builders/arfs_drive_builders';

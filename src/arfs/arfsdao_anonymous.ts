@@ -1,18 +1,14 @@
 /* eslint-disable no-console */
 import Arweave from 'arweave';
-import { EntityID, GQLEdgeInterface } from '../types';
-import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import {
-	DriveID,
-	FolderID,
-	FileID,
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION,
-	AnyEntityID,
-	ArweaveAddress,
-	EID,
-	ADDR
+	ArFSAllPublicFoldersOfDriveParams,
+	ArFSListPublicFolderParams,
+	EntityID,
+	GQLEdgeInterface,
+	TransactionID
 } from '../types';
+import { ASCENDING_ORDER, buildQuery } from '../utils/query';
+import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
 import { FolderHierarchy } from './folderHierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
@@ -26,22 +22,11 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
+import axios, { AxiosRequestConfig } from 'axios';
+import { gatewayURL } from '../utils/constants';
+import { Readable } from 'stream';
 import { ArFSEntityCache } from './arfs_entity_cache';
-
-export const graphQLURL = 'https://arweave.net/graphql';
-
-export interface ArFSAllPublicFoldersOfDriveParams {
-	driveId: DriveID;
-	owner: ArweaveAddress;
-	latestRevisionsOnly: boolean;
-}
-
-export interface ArFSListPublicFolderParams {
-	folderId: FolderID;
-	maxDepth: number;
-	includeRoot: boolean;
-	owner: ArweaveAddress;
-}
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -86,8 +71,10 @@ export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
 export class ArFSDAOAnonymous extends ArFSDAOType {
 	constructor(
 		protected readonly arweave: Arweave,
+		/** @deprecated App Name is an unused parameter on anonymous ArFSDAO */
 		protected appName = DEFAULT_APP_NAME,
-		protected appVersion = DEFAULT_APP_VERSION,
+		/** @deprecated App Version is an unused parameter on anonymous ArFSDAO */
+		protected appVersion = DEFAULT_APP_VERSION as string,
 		protected caches = defaultArFSAnonymousCache
 	) {
 		super();
@@ -372,5 +359,21 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		const entitiesWithPath = children.map((entity) => new ArFSPublicFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
+	}
+
+	/**
+	 * Returns the data stream of a public file
+	 * @param fileTxId - the transaction ID of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
+		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream'
+		};
+		const response = await axios(requestConfig);
+		return response.data;
 	}
 }

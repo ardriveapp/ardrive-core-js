@@ -2,22 +2,19 @@ import Arweave from 'arweave';
 import { expect } from 'chai';
 import { SinonStubbedInstance, stub } from 'sinon';
 import { ArDrive } from './ardrive';
-import {
-	ArFSPublicFileMetadataTransactionData,
-	ArFSPublicFolderTransactionData,
-	ArFSPublicDriveTransactionData
-} from './arfs/arfs_trx_data_types';
+import { ArFSPublicFileMetadataTransactionData, ArFSPublicFolderTransactionData } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
 import { CommunityOracle } from './community/community_oracle';
 import { ArweaveOracle } from './pricing/arweave_oracle';
 import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from './pricing/gateway_oracle';
-import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple, TipType } from './types';
+import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple } from './types';
 import { readJWKFile } from './utils/common';
-import { stubEntityID } from '../tests/stubs';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
@@ -40,7 +37,6 @@ describe('ArDrive class', () => {
 		'application/json'
 	);
 	const stubPublicFolderTransactionData = new ArFSPublicFolderTransactionData('stubName');
-	const stubPublicDriveMetadataTransactionData = new ArFSPublicDriveTransactionData('stubName', stubEntityID);
 
 	beforeEach(async () => {
 		// Set pricing algo up as x = y (bytes = Winston)
@@ -48,58 +44,24 @@ describe('ArDrive class', () => {
 		arweaveOracleStub.getWinstonPriceForByteCount.callsFake((input) => Promise.resolve(W(+input)));
 		communityOracleStub = stub(new ArDriveCommunityOracle(fakeArweave));
 		priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracleStub);
-		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.0');
+		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
+
+		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
+		const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings: arFSTagSettings, priceEstimator });
+
 		arDrive = new ArDrive(
 			wallet,
 			walletDao,
-			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.0'),
+			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
 			communityOracleStub,
 			'Unit Test',
 			'1.0',
 			priceEstimator,
 			new FeeMultiple(1.0),
-			true
+			true,
+			arFSTagSettings,
+			uploadPlanner
 		);
-	});
-
-	describe('encryptedDataSize function', () => {
-		it('throws an error when passed a value too large for computation', () => {
-			expect(() => arDrive.encryptedDataSize(new ByteCount(Number.MAX_SAFE_INTEGER - 15))).to.throw(Error);
-		});
-
-		it('returns the expected values for valid inputs', () => {
-			const inputsAndExpectedOutputs = [
-				[0, 16],
-				[1, 17],
-				[15, 31],
-				[16, 32],
-				[17, 33],
-				[Number.MAX_SAFE_INTEGER - 16, Number.MAX_SAFE_INTEGER]
-			].map((pair) => pair.map((vol) => new ByteCount(vol)));
-			inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
-				const actualSize = arDrive.encryptedDataSize(input);
-				expect(actualSize.equals(expectedOutput), `${actualSize} === ${expectedOutput}`).to.be.true;
-			});
-		});
-	});
-
-	describe('getTipTags function', () => {
-		it('returns the expected tags', () => {
-			const baseTags = [
-				{ name: 'App-Name', value: 'Unit Test' },
-				{ name: 'App-Version', value: '1.0' }
-			];
-			const inputsAndExpectedOutputs = [
-				[undefined, [...baseTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: 'data upload' }]],
-				[
-					'data upload',
-					[...baseTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: 'data upload' }]
-				]
-			];
-			inputsAndExpectedOutputs.forEach(([input, expectedOutput]) => {
-				expect(arDrive.getTipTags(input as TipType)).to.deep.equal(expectedOutput);
-			});
-		});
 	});
 
 	describe('estimateAndAssertCostOfFileUpload function', () => {
@@ -165,33 +127,19 @@ describe('ArDrive class', () => {
 		});
 	});
 
-	describe('estimateAndAssertCostOfDriveCreation function', () => {
+	describe('assertWalletBalanceFunction function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
 			stub(walletDao, 'walletHasBalance').callsFake(() => {
 				return Promise.resolve(false);
 			});
 			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
+				return Promise.resolve(W(4));
 			});
+
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.estimateAndAssertCostOfDriveCreation(
-					stubPublicDriveMetadataTransactionData,
-					stubPublicFolderTransactionData
-				)
+				promiseToError: arDrive.assertWalletBalance(W(5)),
+				errorMessage: `Wallet balance of 4 Winston is not enough (5) for this action!`
 			});
-		});
-
-		it('returns the correct reward data', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(true);
-			});
-
-			const actual = await arDrive.estimateAndAssertCostOfDriveCreation(
-				stubPublicDriveMetadataTransactionData,
-				stubPublicFolderTransactionData
-			);
-			expect(`${actual.driveMetaDataBaseReward}`).to.equal('73');
-			expect(`${actual.rootFolderMetaDataBaseReward}`).to.equal('19');
 		});
 	});
 
