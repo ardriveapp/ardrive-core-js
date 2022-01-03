@@ -100,7 +100,7 @@ import {
 	EstimateCreateDriveParams,
 	EstimateUploadFileResult,
 	UploadFileRewardSettings
-} from './types/cost_estimator_types';
+} from './types/upload_planner_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPrivateUploadFileEstimationPrototype,
@@ -454,7 +454,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		await resolveFileNameConflicts({
 			conflictResolution,
-			destinationFileName: wrappedFile.name,
+			destinationFileName: wrappedFile.destinationBaseName,
 			nameConflictInfo,
 			wrappedFile,
 			prompts
@@ -725,7 +725,7 @@ export class ArDrive extends ArDriveAnonymous {
 						Promise.resolve(
 							new ArFSPublicFileMetaDataPrototype(
 								new ArFSPublicFileMetadataTransactionData(
-									wrappedFile.name,
+									wrappedFile.destinationBaseName,
 									fileSize,
 									lastModifiedDateMS,
 									dataTxId,
@@ -938,7 +938,7 @@ export class ArDrive extends ArDriveAnonymous {
 						),
 					metadataTxDataFactoryFn: async (fileId, dataTxId) => {
 						const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-							wrappedFile.name,
+							wrappedFile.destinationBaseName,
 							fileSize,
 							lastModifiedDateMS,
 							dataTxId,

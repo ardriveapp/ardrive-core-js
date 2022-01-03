@@ -12,11 +12,12 @@ import {
 	EstimateUploadFileParams,
 	EstimateUploadFileResult,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
-const MAX_BUNDLE_SIZE = 524_288_000; // 500 MiB
+/** This limit is being chosen as a precaution due to potential gateway limitations */
+export const MAX_BUNDLE_SIZE = 524_288_000; // 500 MiB
 
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSUploadPlanner {
@@ -41,15 +42,28 @@ export class ArFSUploadPlanner {
 	}
 
 	/** Estimate the cost of a uploading a single file*/
-	public async estimateUploadFile(arFSPrototypes: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const totalSize = +arFSPrototypes.fileDataSize + +arFSPrototypes.fileMetaDataPrototype.objectData.sizeOf();
+	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
+		const { contentTypeTag, fileDataSize, fileMetaDataPrototype } = estUploadFileParams;
 
-		// Do not bundle if total size of data and meta data would exceed max bundle size limit
-		if (this.shouldBundle && totalSize <= MAX_BUNDLE_SIZE) {
-			return this.costOfUploadBundledFile(arFSPrototypes);
+		if (this.shouldBundle) {
+			const metaDataItemByteCount = this.byteCountAsDataItem(
+				fileMetaDataPrototype.objectData.sizeOf(),
+				this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+			);
+			const fileDataItemByteCount = this.byteCountAsDataItem(
+				fileDataSize,
+				this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
+			);
+
+			const totalByteCount = new ByteCount(+metaDataItemByteCount + +fileDataItemByteCount);
+
+			// Do not bundle if total byte count of data and meta data would exceed max bundle size limit
+			if (+totalByteCount <= MAX_BUNDLE_SIZE) {
+				return this.costOfUploadBundledFile({ metaDataItemByteCount, fileDataItemByteCount });
+			}
 		}
 
-		return this.costOfUploadFileV2Tx(arFSPrototypes);
+		return this.costOfUploadFileV2Tx(estUploadFileParams);
 	}
 
 	/** Calculate the cost of uploading a file data tx and its metadata tx as v2 transactions */
@@ -77,20 +91,13 @@ export class ArFSUploadPlanner {
 
 	/** Calculate the cost of uploading a file data tx and its metadata tx together as a bundle */
 	private async costOfUploadBundledFile({
-		fileDataSize,
-		contentTypeTag,
-		fileMetaDataPrototype
-	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const metaDataItemSize = this.sizeAsDataItem(
-			fileMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
-		);
-		const fileDataDataItemSize = this.sizeAsDataItem(
-			fileDataSize,
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: [contentTypeTag], excludedTagNames: ['ArFS'] })
-		);
-
-		const bundleSize = this.bundledSizeOfDataItems([metaDataItemSize, fileDataDataItemSize]);
+		fileDataItemByteCount,
+		metaDataItemByteCount
+	}: {
+		fileDataItemByteCount: ByteCount;
+		metaDataItemByteCount: ByteCount;
+	}): Promise<EstimateUploadFileResult> {
+		const bundleSize = this.bundledByteCountOfDataItems([fileDataItemByteCount, metaDataItemByteCount]);
 		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundleSize);
 
 		const rewardSettings: BundleRewardSettings = {
@@ -98,7 +105,7 @@ export class ArFSUploadPlanner {
 		};
 
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
-			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataSize)
+			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
 		);
 
 		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward).plus(communityWinstonTip);
@@ -139,7 +146,7 @@ export class ArFSUploadPlanner {
 	private async costOfCreateBundledDrive(
 		arFSPrototypes: EstimateCreateDriveParams
 	): Promise<EstimateCreateDriveResult> {
-		const bundleReward = await this.bundledCostOfPrototypes(Object.values(arFSPrototypes));
+		const bundleReward = await this.winstonCostOfBundledPrototypes(Object.values(arFSPrototypes));
 		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward);
 
 		const rewardSettings: BundleRewardSettings = {
@@ -156,7 +163,7 @@ export class ArFSUploadPlanner {
 	}
 
 	/** Calculate the size of an ArFS Prototype as a DataItem */
-	private sizeAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
+	private byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
 		// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
 
 		// We're not using the optional target and anchor fields, they will always be 1 byte
@@ -187,28 +194,31 @@ export class ArFSUploadPlanner {
 	}
 
 	/** Calculate the bundled size from an array of data item byte counts  */
-	private bundledSizeOfDataItems(dataItemSizes: ByteCount[]): ByteCount {
+	private bundledByteCountOfDataItems(dataItemByteCounts: ByteCount[]): ByteCount {
 		// 32 byte array for representing the number of data items in the bundle
-		const byteArray = 32;
+		const byteArraySize = 32;
 
 		// Get total byte length of combined binaries
 		let totalDataItemsSize = 0;
-		for (const dataItemSize of dataItemSizes) {
-			totalDataItemsSize = totalDataItemsSize + +dataItemSize;
+		for (const dataItemByteCount of dataItemByteCounts) {
+			totalDataItemsSize += +dataItemByteCount;
 		}
 
 		// Each data item gets a 64 byte header added to the bundle
-		const headersSize = dataItemSizes.length * 64;
+		const headersSize = dataItemByteCounts.length * 64;
 
-		return new ByteCount(byteArray + totalDataItemsSize + headersSize);
+		return new ByteCount(byteArraySize + totalDataItemsSize + headersSize);
 	}
 
 	/** Calculate the cost of uploading an array of ArFS Prototypes together as a bundle */
-	private async bundledCostOfPrototypes(arFSPrototypes: ArFSObjectMetadataPrototype[]): Promise<Winston> {
+	private async winstonCostOfBundledPrototypes(arFSPrototypes: ArFSObjectMetadataPrototype[]): Promise<Winston> {
 		const dataItemSizes = arFSPrototypes.map((p) =>
-			this.sizeAsDataItem(p.objectData.sizeOf(), this.arFSTagSettings.baseArFSTagsIncluding({ tags: p.gqlTags }))
+			this.byteCountAsDataItem(
+				p.objectData.sizeOf(),
+				this.arFSTagSettings.baseArFSTagsIncluding({ tags: p.gqlTags })
+			)
 		);
-		const bundledSize = this.bundledSizeOfDataItems(dataItemSizes);
+		const bundledSize = this.bundledByteCountOfDataItems(dataItemSizes);
 		return this.priceEstimator.getBaseWinstonPriceForByteCount(bundledSize);
 	}
 }

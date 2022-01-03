@@ -15,7 +15,7 @@ import {
 	CreatePublicDriveParams,
 	DriveKey
 } from '../exports';
-import { EstimateCreateDriveParams } from '../types/cost_estimator_types';
+import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 
 export async function getPrivateCreateDriveEstimationPrototypes({
@@ -58,7 +58,7 @@ export function getPublicUploadFileEstimationPrototype(
 
 	return new ArFSPublicFileMetaDataPrototype(
 		new ArFSPublicFileMetadataTransactionData(
-			wrappedFile.name,
+			wrappedFile.destinationBaseName,
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,
@@ -78,7 +78,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 
 	return new ArFSPrivateFileMetaDataPrototype(
 		await ArFSPrivateFileMetadataTransactionData.from(
-			wrappedFile.name,
+			wrappedFile.destinationBaseName,
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,

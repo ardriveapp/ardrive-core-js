@@ -125,7 +125,7 @@ import {
 	isBundleRewardSetting,
 	UploadFileRewardSettings,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
@@ -616,7 +616,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				Promise.resolve(
 					new ArFSPublicFileMetaDataPrototype(
 						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.name,
+							wrappedFile.destinationBaseName,
 							fileSize,
 							lastModifiedDateMS,
 							dataTxId,
@@ -654,7 +654,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
 				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-					wrappedFile.name,
+					wrappedFile.destinationBaseName,
 					fileSize,
 					lastModifiedDateMS,
 					dataTxId,
