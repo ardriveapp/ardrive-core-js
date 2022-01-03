@@ -93,7 +93,7 @@ export class ArFSUploadPlanner {
 		);
 		const fileDataDataItemSize = this.sizeAsDataItem(
 			fileDataSize,
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: [contentTypeTag], excludedTagNames: ['ArFS'] })
+			this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
 		);
 
 		const bundleSize = this.bundledSizeOfDataItems([metaDataItemSize, fileDataDataItemSize]);
