@@ -788,7 +788,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		if (communityTipSettings) {
-			// Add community tip to the bundle trx
+			// Add community tip to the v2 transaction
 			txAttributes.target = `${communityTipSettings.communityTipTarget}`;
 			txAttributes.quantity = `${communityTipSettings.communityWinstonTip}`;
 
