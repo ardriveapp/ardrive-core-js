@@ -21,7 +21,7 @@ import {
 	UploadFileV2TxRewardSettings
 } from '../types/upload_planner_types';
 import { privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
-import { ArFSUploadPlanner } from './arfs_upload_planner';
+import { ArFSUploadPlanner, MAX_BUNDLE_SIZE } from './arfs_upload_planner';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
 
 describe('The ArFSUploadPlanner class', () => {
@@ -196,6 +196,31 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+communityWinstonTip).to.equal(123_456);
 
 				expect(+totalWinstonPrice).to.equal(126_212);
+			});
+
+			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction if the total size of the bundle would exceed the max bundle size limit', async () => {
+				const hugeUploadFileParams = {
+					...publicUploadFileParams,
+					fileDataSize: new ByteCount(MAX_BUNDLE_SIZE + 1)
+				};
+
+				// We will expect a v2 transaction if the upload will be larger than the max bundle size
+				const result = await bundledUploadPlanner.estimateUploadFile(hugeUploadFileParams);
+
+				const { rewardSettings, totalWinstonPrice, communityWinstonTip } = result;
+				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
+
+				// Expect file data transaction of max bundle size + 1
+				expect(+v2RewardSettings.dataTxRewardSettings.reward!).to.equal(MAX_BUNDLE_SIZE + 1);
+				expect(+v2RewardSettings.dataTxRewardSettings.feeMultiple!).to.equal(1);
+
+				// Expected meta data transaction size is 163 bytes
+				expect(+v2RewardSettings.metaDataRewardSettings.reward!).to.equal(163);
+				expect(+v2RewardSettings.metaDataRewardSettings.feeMultiple!).to.equal(1);
+				expect(+communityWinstonTip).to.equal(123_456);
+
+				// Expect total price to be: MAX_BUNDLE_SIZE + 1 + (meta data price) + (community tip)
+				expect(+totalWinstonPrice).to.equal(MAX_BUNDLE_SIZE + 1 + 163 + 123456);
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction', async () => {
