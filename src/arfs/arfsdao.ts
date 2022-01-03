@@ -124,7 +124,7 @@ import {
 	isBundleRewardSetting,
 	UploadFileRewardSettings,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';

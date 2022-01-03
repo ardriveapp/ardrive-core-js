@@ -99,7 +99,7 @@ import {
 	EstimateCreateDriveParams,
 	EstimateUploadFileResult,
 	UploadFileRewardSettings
-} from './types/cost_estimator_types';
+} from './types/upload_planner_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPrivateUploadFileEstimationPrototype,

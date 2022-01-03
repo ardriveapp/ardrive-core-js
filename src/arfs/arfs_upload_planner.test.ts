@@ -19,7 +19,7 @@ import {
 	EstimateCreateDriveParams,
 	EstimateUploadFileParams,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { ARDataPriceChunkEstimator } from '../pricing/ar_data_price_chunk_estimator';

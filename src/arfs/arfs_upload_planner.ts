@@ -12,7 +12,7 @@ import {
 	EstimateUploadFileParams,
 	EstimateUploadFileResult,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
