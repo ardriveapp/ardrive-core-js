@@ -43,13 +43,23 @@ export class ArFSUploadPlanner {
 
 	/** Estimate the cost of a uploading a single file*/
 	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		if (this.shouldBundle) {
-			const totalSize =
-				+estUploadFileParams.fileDataSize + +estUploadFileParams.fileMetaDataPrototype.objectData.sizeOf();
+		const { contentTypeTag, fileDataSize, fileMetaDataPrototype } = estUploadFileParams;
 
-			// Do not bundle if total size of data and meta data would exceed max bundle size limit
-			if (totalSize <= MAX_BUNDLE_SIZE) {
-				return this.costOfUploadBundledFile(estUploadFileParams);
+		if (this.shouldBundle) {
+			const metaDataItemByteCount = this.sizeAsDataItem(
+				fileMetaDataPrototype.objectData.sizeOf(),
+				this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+			);
+			const fileDataItemByteCount = this.sizeAsDataItem(
+				fileDataSize,
+				this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
+			);
+
+			const totalByteCount = new ByteCount(+metaDataItemByteCount + +fileDataItemByteCount);
+
+			// Do not bundle if total byte count of data and meta data would exceed max bundle size limit
+			if (+totalByteCount <= MAX_BUNDLE_SIZE) {
+				return this.costOfUploadBundledFile({ metaDataItemByteCount, fileDataItemByteCount });
 			}
 		}
 
@@ -83,20 +93,13 @@ export class ArFSUploadPlanner {
 
 	/** Calculate the cost of uploading a file data tx and its metadata tx together as a bundle */
 	private async costOfUploadBundledFile({
-		fileDataSize,
-		contentTypeTag,
-		fileMetaDataPrototype
-	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const metaDataItemSize = this.sizeAsDataItem(
-			fileMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
-		);
-		const fileDataDataItemSize = this.sizeAsDataItem(
-			fileDataSize,
-			this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
-		);
-
-		const bundleSize = this.bundledSizeOfDataItems([metaDataItemSize, fileDataDataItemSize]);
+		fileDataItemByteCount,
+		metaDataItemByteCount
+	}: {
+		fileDataItemByteCount: ByteCount;
+		metaDataItemByteCount: ByteCount;
+	}): Promise<EstimateUploadFileResult> {
+		const bundleSize = this.bundledSizeOfDataItems([fileDataItemByteCount, metaDataItemByteCount]);
 		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundleSize);
 
 		const rewardSettings: BundleRewardSettings = {
@@ -104,7 +107,7 @@ export class ArFSUploadPlanner {
 		};
 
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
-			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataSize)
+			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
 		);
 		const tipTxBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
