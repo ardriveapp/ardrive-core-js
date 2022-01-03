@@ -42,15 +42,18 @@ export class ArFSUploadPlanner {
 	}
 
 	/** Estimate the cost of a uploading a single file*/
-	public async estimateUploadFile(arFSPrototypes: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const totalSize = +arFSPrototypes.fileDataSize + +arFSPrototypes.fileMetaDataPrototype.objectData.sizeOf();
+	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
+		if (this.shouldBundle) {
+			const totalSize =
+				+estUploadFileParams.fileDataSize + +estUploadFileParams.fileMetaDataPrototype.objectData.sizeOf();
 
-		// Do not bundle if total size of data and meta data would exceed max bundle size limit
-		if (this.shouldBundle && totalSize <= MAX_BUNDLE_SIZE) {
-			return this.costOfUploadBundledFile(arFSPrototypes);
+			// Do not bundle if total size of data and meta data would exceed max bundle size limit
+			if (totalSize <= MAX_BUNDLE_SIZE) {
+				return this.costOfUploadBundledFile(estUploadFileParams);
+			}
 		}
 
-		return this.costOfUploadFileV2Tx(arFSPrototypes);
+		return this.costOfUploadFileV2Tx(estUploadFileParams);
 	}
 
 	/** Calculate the cost of uploading a file data tx and its metadata tx as v2 transactions */
