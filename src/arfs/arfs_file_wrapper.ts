@@ -79,7 +79,7 @@ export abstract class ArFSEntityToUpload {
 	newFileName?: string;
 	conflictResolution?: FileConflictResolution;
 
-	public get name(): string {
+	public get destinationBaseName(): string {
 		return this.newFileName ?? this.getBaseFileName();
 	}
 }

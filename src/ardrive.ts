@@ -445,7 +445,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		await resolveFileNameConflicts({
 			conflictResolution,
-			destinationFileName: wrappedFile.name,
+			destinationFileName: wrappedFile.destinationBaseName,
 			nameConflictInfo,
 			wrappedFile,
 			prompts

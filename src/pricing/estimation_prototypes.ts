@@ -58,7 +58,7 @@ export function getPublicUploadFileEstimationPrototype(
 
 	return new ArFSPublicFileMetaDataPrototype(
 		new ArFSPublicFileMetadataTransactionData(
-			wrappedFile.name,
+			wrappedFile.destinationBaseName,
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,
@@ -78,7 +78,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 
 	return new ArFSPrivateFileMetaDataPrototype(
 		await ArFSPrivateFileMetadataTransactionData.from(
-			wrappedFile.name,
+			wrappedFile.destinationBaseName,
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,
