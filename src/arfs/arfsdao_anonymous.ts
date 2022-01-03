@@ -83,7 +83,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	public async getOwnerForDriveId(driveId: DriveID): Promise<ArweaveAddress> {
 		const cachedOwner = this.caches.ownerCache.get(driveId);
 		if (cachedOwner) {
-			console.log(`owner cache hit!`);
 			return cachedOwner;
 		}
 
@@ -115,7 +114,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	async getDriveIDForEntityId(entityId: AnyEntityID, gqlTypeTag: 'File-Id' | 'Folder-Id'): Promise<DriveID> {
 		const cachedDriveID = this.caches.driveIdCache.get(entityId);
 		if (cachedDriveID) {
-			console.log(`drive cache hit for entity ID`);
 			return cachedDriveID;
 		}
 
