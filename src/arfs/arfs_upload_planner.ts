@@ -111,7 +111,7 @@ export class ArFSUploadPlanner {
 		const totalWinstonPrice = this.feeMultiple
 			.boostedWinstonReward(bundleReward)
 			.plus(communityWinstonTip)
-			.plus(tipTxBaseFee);
+			.plus(this.feeMultiple.boostedWinstonReward(tipTxBaseFee));
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}

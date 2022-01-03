@@ -181,7 +181,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(10);
 				expect(+communityWinstonTip).to.equal(2);
 
-				expect(+totalWinstonPrice).to.equal(34);
+				expect(+totalWinstonPrice).to.equal(52);
 			});
 		});
 
