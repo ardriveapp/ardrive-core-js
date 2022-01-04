@@ -41,7 +41,7 @@ export class ArFSUploadPlanner {
 		this.communityOracle = communityOracle;
 	}
 
-	/** Estimate the cost of a uploading a single file*/
+	/** Estimate the cost of uploading a single file*/
 	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
 		const { contentTypeTag, fileDataSize, fileMetaDataPrototype } = estUploadFileParams;
 
