@@ -115,7 +115,8 @@ import {
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSPublicFileDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
-	FileKey
+	FileKey,
+	TipData
 } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -495,7 +496,7 @@ export class ArDrive extends ArDriveAnonymous {
 			fees: {}
 		};
 
-		const tipResult = { recipient: communityTipTarget, winston: communityWinstonTip };
+		const tipResult: Omit<TipData, 'txId'> = { recipient: communityTipTarget, winston: communityWinstonTip };
 
 		if (isBundleResult(uploadFileResult)) {
 			// Add bundle entity and return direct to network bundled tx result
