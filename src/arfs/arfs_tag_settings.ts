@@ -54,21 +54,20 @@ export class ArFSTagSettings {
 		return [...this.baseAppTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: tipType }];
 	}
 
-	assembleBaseArFSTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		tags = [...this.baseArFSTags, ...tags];
-
-		return this.assembleTags({ tags, excludedTagNames });
+	baseAppTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+		return this.assembleTags({ tags: [...this.baseAppTags, ...tags], excludedTagNames });
 	}
 
-	assembleBaseBundleTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		tags = [...this.baseBundleTags, ...tags];
-
-		return this.assembleTags({ tags, excludedTagNames });
+	baseArFSTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+		return this.assembleTags({ tags: [...this.baseArFSTags, ...tags], excludedTagNames });
 	}
 
-	private assembleTags({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+	baseBundleTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
+		return this.assembleTags({ tags: [...this.baseBundleTags, ...tags], excludedTagNames });
+	}
+
+	private assembleTags({ tags, excludedTagNames }: TagAssembleParams): GQLTagInterface[] {
 		tags = this.filterExcludedTagNames({ tags, excludedTagNames });
-
 		this.assertTagLimits(tags);
 
 		return tags;

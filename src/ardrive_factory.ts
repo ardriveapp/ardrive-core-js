@@ -10,17 +10,24 @@ import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
-import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
-import { ArFSCostEstimator } from './pricing/arfs_cost_estimator';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
+	/** @deprecated App Version is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appVersion?: string;
+	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
-	arFSTagSettings?: ArFSTagSettings;
 }
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
+	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
+	appVersion?: string;
+	/** @deprecated App Name will be removed in a future release. Use ArFSTagSettings instead */
+	appName?: string;
 	wallet: Wallet;
 	walletDao?: WalletDAO;
 	priceEstimator?: ARDataPriceEstimator;
@@ -29,7 +36,8 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
-	costEstimator?: ArFSCostEstimator;
+	uploadPlanner?: ArFSUploadPlanner;
+	arFSTagSettings?: ArFSTagSettings;
 }
 
 const defaultArweave = Arweave.init({
@@ -43,7 +51,7 @@ const defaultArweave = Arweave.init({
 export function arDriveFactory({
 	wallet,
 	arweave = defaultArweave,
-	priceEstimator = new ARDataPriceChunkEstimator(true),
+	priceEstimator = new ARDataPriceNetworkEstimator(),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	dryRun = false,
 	feeMultiple = new FeeMultiple(1.0),
@@ -52,7 +60,7 @@ export function arDriveFactory({
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-	costEstimator = new ArFSCostEstimator({
+	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		feeMultiple,
 		priceEstimator,
@@ -72,15 +80,10 @@ export function arDriveFactory({
 		feeMultiple,
 		dryRun,
 		arFSTagSettings,
-		costEstimator
+		uploadPlanner
 	);
 }
 
-export function arDriveAnonymousFactory({
-	arweave = defaultArweave,
-	appName = DEFAULT_APP_NAME,
-	appVersion = DEFAULT_APP_VERSION,
-	arFSTagSettings = new ArFSTagSettings({ appName, appVersion })
-}: ArDriveSettingsAnonymous): ArDriveAnonymous {
-	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave, appName, appVersion, arFSTagSettings));
+export function arDriveAnonymousFactory({ arweave = defaultArweave }: ArDriveSettingsAnonymous): ArDriveAnonymous {
+	return new ArDriveAnonymous(new ArFSDAOAnonymous(arweave));
 }

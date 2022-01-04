@@ -19,10 +19,11 @@ import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 
 interface FileMetaDataTransactionData {
+	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
 	name: string;
-	size: ByteCount;
-	lastModifiedDate: UnixTime;
-	dataTxId: TransactionID;
+	size: number;
+	lastModifiedDate: number;
+	dataTxId: string;
 	dataContentType: ContentType;
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
@@ -69,9 +70,9 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 
 			// Get fields from data JSON
 			this.name = dataJSON.name;
-			this.size = dataJSON.size;
-			this.lastModifiedDate = dataJSON.lastModifiedDate;
-			this.dataTxId = dataJSON.dataTxId;
+			this.size = new ByteCount(dataJSON.size);
+			this.lastModifiedDate = new UnixTime(dataJSON.lastModifiedDate);
+			this.dataTxId = new TransactionID(dataJSON.dataTxId);
 			this.dataContentType = dataJSON.dataContentType ?? extToMime(this.name);
 
 			if (
@@ -178,9 +179,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 
 			// Get fields from data JSON
 			this.name = decryptedFileJSON.name;
-			this.size = decryptedFileJSON.size;
-			this.lastModifiedDate = decryptedFileJSON.lastModifiedDate;
-			this.dataTxId = decryptedFileJSON.dataTxId;
+			this.size = new ByteCount(decryptedFileJSON.size);
+			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
+			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
 
 			if (

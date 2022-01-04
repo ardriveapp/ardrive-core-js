@@ -17,7 +17,7 @@ import {
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype
 } from '../exports';
-import { CreateDriveRewardSettings, UploadFileRewardSettings } from './cost_estimator_types';
+import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
 
 /** Generic closure type that uses prepareArFSObjectTransaction (V2) or prepareArFSDataItem (bundle) */
@@ -31,6 +31,7 @@ export interface ArFSPrepareFolderParams<T> {
 export interface ArFSPrepareFileParams<T extends DataItem | Transaction> {
 	wrappedFile: ArFSEntityToUpload;
 	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
 	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
 	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
 }

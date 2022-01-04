@@ -47,8 +47,7 @@ import {
 	ArFSPrivateFileDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype,
-	ArFSFileMetaDataPrototype
+	ArFSPublicDriveMetaDataPrototype
 } from './arfs_prototypes';
 import {
 	ArFSPublicFolderTransactionData,
@@ -61,9 +60,15 @@ import {
 	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
-import { ArFSDAOAnonymous } from './arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
-import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
+
+import {
+	ArFSAnonymousCache,
+	ArFSDAOAnonymous,
+	ArFSPublicDriveCacheKey,
+	defaultArFSAnonymousCache
+} from './arfsdao_anonymous';
+import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gatewayURL, authTagLength, graphQLURL } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -79,7 +84,10 @@ import {
 	FolderID,
 	RewardSettings,
 	FileID,
-	FileKey
+	FileKey,
+	TransactionID,
+	CipherIV,
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -91,6 +99,8 @@ import {
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
+import { ArFSEntityCache } from './arfs_entity_cache';
+
 import { bundleAndSignData, createData, DataItem } from 'arbundles';
 import { ArweaveSigner } from 'arbundles/src/signing';
 import {
@@ -122,8 +132,11 @@ import {
 	isBundleRewardSetting,
 	UploadFileRewardSettings,
 	UploadFileV2TxRewardSettings
-} from '../types/cost_estimator_types';
+} from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
+import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -136,17 +149,109 @@ export class PrivateDriveKeyData {
 	}
 }
 
+// export interface PrepareObjectTransactionParams {
+// 	objectMetaData: ArFSObjectMetadataPrototype;
+// 	rewardSettings?: RewardSettings;
+// 	excludedTagNames?: string[];
+// 	otherTags?: GQLTagInterface[];
+// }
+
+// export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
+// 	originalMetaData: O;
+// 	newParentFolderId: FolderID;
+// 	metaDataBaseReward: RewardSettings;
+// 	transactionData: T;
+// }
+
+// export type GetDriveFunction = () => Promise<ArFSPublicDrive | ArFSPrivateDrive>;
+// export type CreateFolderFunction = (driveId: DriveID) => Promise<ArFSCreateFolderResult>;
+// export type GenerateDriveIdFn = () => DriveID;
+
+// export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
+
+// export interface ArFSUploadPublicFileParams {
+// 	parentFolderId: FolderID;
+// 	wrappedFile: ArFSEntityToUpload;
+// 	driveId: DriveID;
+// 	fileDataRewardSettings: RewardSettings;
+// 	metadataRewardSettings: RewardSettings;
+// 	destFileName?: string;
+// 	existingFileId?: FileID;
+// }
+
+// export interface ArFSUploadPrivateFileParams extends ArFSUploadPublicFileParams {
+// 	driveKey: DriveKey;
+// }
+
+// export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
+
+// export interface CreateFolderSettings {
+// 	driveId: DriveID;
+// 	rewardSettings: RewardSettings;
+// 	parentFolderId?: FolderID;
+// 	syncParentFolderId?: boolean;
+// 	owner: ArweaveAddress;
+// }
+
+// export interface CreatePublicFolderSettings extends CreateFolderSettings {
+// 	folderData: ArFSPublicFolderTransactionData;
+// }
+
+// export interface CreatePrivateFolderSettings extends CreateFolderSettings {
+// 	folderData: ArFSPrivateFolderTransactionData;
+// 	driveKey: DriveKey;
+// }
+
+// interface getPublicChildrenFolderIdsParams {
+// 	folderId: FolderID;
+// 	driveId: DriveID;
+// 	owner: ArweaveAddress;
+// }
+// interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsParams {
+// 	driveKey: DriveKey;
+// }
+
+export interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
+	driveKey: DriveKey;
+}
+
+export interface ArFSPrivateFolderCacheKey {
+	folderId: FolderID;
+	owner: ArweaveAddress;
+	driveKey: DriveKey;
+}
+
+export interface ArFSPrivateFileCacheKey {
+	fileId: FileID;
+	owner: ArweaveAddress;
+	fileKey: FileKey;
+}
+
+export interface ArFSCache extends ArFSAnonymousCache {
+	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
+	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
+	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+}
+
 export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
 		private readonly wallet: Wallet,
 		arweave: Arweave,
 		private readonly dryRun = false,
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
 		protected appName = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
 		protected appVersion = DEFAULT_APP_VERSION,
-		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion })
+		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+		protected caches: ArFSCache = {
+			...defaultArFSAnonymousCache,
+			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
+			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10)
+		}
 	) {
-		super(arweave, appName, appVersion, arFSTagSettings);
+		super(arweave, undefined, undefined, caches);
 	}
 
 	/** Prepare an ArFS folder entity for upload */
@@ -367,7 +472,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async moveEntity<R extends ArFSMoveEntityResult>(
 		metaDataBaseReward: RewardSettings,
 		metaDataFactory: MoveEntityMetaDataFactory,
-		resultFactory: ArFSMoveEntityResultFactory<R>
+		resultFactory: ArFSMoveEntityResultFactory<R>,
+		cacheInvalidateFn: () => Promise<void>
 	): Promise<R> {
 		const metadataPrototype = metaDataFactory();
 
@@ -384,6 +490,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				await metaDataUploader.uploadChunk();
 			}
 		}
+
+		await cacheInvalidateFn();
 
 		return resultFactory({ metaDataTxId: TxID(metaDataTx.id), metaDataTxReward: W(metaDataTx.reward) });
 	}
@@ -406,6 +514,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, dataTxId: originalMetaData.dataTxId };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.caches.publicFileCache.remove({ fileId: originalMetaData.entityId, owner });
 			}
 		);
 	}
@@ -428,6 +541,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, dataTxId: originalMetaData.dataTxId, fileKey: transactionData.fileKey };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.caches.privateFileCache.remove({
+					fileId: originalMetaData.entityId,
+					owner,
+					fileKey: transactionData.fileKey
+				});
 			}
 		);
 	}
@@ -438,6 +560,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPublicFolder, ArFSPublicFolderTransactionData>): Promise<ArFSMovePublicFolderResult> {
+		// Complete the move
 		return this.moveEntity<ArFSMovePublicFolderResult>(
 			metaDataBaseReward,
 			() => {
@@ -448,7 +571,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					newParentFolderId
 				);
 			},
-			(results) => results
+			(results) => results,
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.caches.publicFolderCache.remove({ folderId: originalMetaData.entityId, owner });
+			}
 		);
 	}
 
@@ -458,6 +586,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPrivateFolder, ArFSPrivateFolderTransactionData>): Promise<ArFSMovePrivateFolderResult> {
+		// Complete the move
 		return this.moveEntity<ArFSMovePrivateFolderResult>(
 			metaDataBaseReward,
 			() => {
@@ -470,6 +599,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			},
 			(results) => {
 				return { ...results, driveKey: transactionData.driveKey };
+			},
+			async () => {
+				// Invalidate any cached entry
+				const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
+				this.caches.privateFolderCache.remove({
+					folderId: originalMetaData.entityId,
+					owner,
+					driveKey: transactionData.driveKey
+				});
 			}
 		);
 	}
@@ -478,7 +616,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedFile,
 		dataPrototypeFactoryFn,
 		metadataTxDataFactoryFn,
-		prepareArFSObject
+		prepareArFSObject,
+		prepareMetaDataArFSObject
 	}: ArFSPrepareFileParams<T>): Promise<ArFSPrepareFileResult<T>> {
 		// Use existing file ID (create a revision) or generate new file ID
 		const fileId = wrappedFile.existingId ?? EID(uuidv4());
@@ -491,13 +630,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const dataArFSObject = await prepareArFSObject(fileDataPrototype);
 
 		const metaDataPrototype = await metadataTxDataFactoryFn(fileId, TxID(dataArFSObject.id));
-		const metaDataArFSObject = await prepareArFSObject(metaDataPrototype);
+		const metaDataArFSObject = await prepareMetaDataArFSObject(metaDataPrototype);
 
 		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
 	}
 
 	private async uploadFileV2Tx(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject'>,
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
 		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings
 	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
@@ -505,11 +644,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			prepareArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
-					rewardSettings:
-						// Type-check the metadata to conditionally pass correct reward setting
-						objectMetaData instanceof ArFSFileMetaDataPrototype
-							? metaDataRewardSettings
-							: dataTxRewardSettings
+					rewardSettings: dataTxRewardSettings
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: metaDataRewardSettings
 				})
 		});
 
@@ -527,12 +667,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadBundledFile(
-		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject'>,
+		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
 		rewardSettings: RewardSettings
 	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
 		const { arFSObjects, fileId } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSDataItem({
+					objectMetaData
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSDataItem({
 					objectMetaData
 				})
@@ -555,7 +699,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async uploadFile(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'>,
+		prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		>,
 		rewardSettings: UploadFileRewardSettings
 	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
 		const { transactions, result } = isBundleRewardSetting(rewardSettings)
@@ -575,7 +722,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
-		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
+		const prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		> = {
 			wrappedFile,
 			dataPrototypeFactoryFn: (fileData) =>
 				Promise.resolve(
@@ -585,7 +735,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				Promise.resolve(
 					new ArFSPublicFileMetaDataPrototype(
 						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
+							wrappedFile.destinationBaseName,
 							fileSize,
 							lastModifiedDateMS,
 							dataTxId,
@@ -611,7 +761,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		let fileKey: FileKey;
 
-		const prepFileParams: Omit<ArFSPrepareFileParams<Transaction | DataItem>, 'prepareArFSObject'> = {
+		const prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction | DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		> = {
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
 				new ArFSPrivateFileDataPrototype(
@@ -619,7 +772,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
 				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-					wrappedFile.newFileName ?? wrappedFile.getBaseFileName(),
+					wrappedFile.destinationBaseName,
 					fileSize,
 					lastModifiedDateMS,
 					dataTxId,
@@ -649,7 +802,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Enforce that other tags are not protected
 		objectMetaData.assertProtectedTags(otherTags);
 
-		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
 			tags: [...objectMetaData.gqlTags, ...otherTags],
 			excludedTagNames
 		});
@@ -696,7 +849,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		const tags: GQLTagInterface[] = this.arFSTagSettings.assembleBaseBundleTags({
+		const tags: GQLTagInterface[] = this.arFSTagSettings.baseBundleTagsIncluding({
 			tags: otherTags,
 			excludedTagNames
 		});
@@ -744,7 +897,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
 		}
 
-		const tags = this.arFSTagSettings.assembleBaseArFSTags({
+		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
 			tags: [...objectMetaData.gqlTags, ...otherTags],
 			excludedTagNames
 		});
@@ -774,16 +927,41 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	// Convenience function for known-private use cases
 	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
-		return new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build();
+		const cacheKey = { driveId, driveKey, owner };
+		const cachedDrive = this.caches.privateDriveCache.get(cacheKey);
+		if (cachedDrive) {
+			return cachedDrive;
+		}
+		return this.caches.privateDriveCache.put(
+			cacheKey,
+			new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build()
+		);
 	}
 
 	// Convenience function for known-private use cases
 	async getPrivateFolder(folderId: FolderID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFolder> {
-		return new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build();
+		const cacheKey = { folderId, driveKey, owner };
+		const cachedFolder = this.caches.privateFolderCache.get(cacheKey);
+		if (cachedFolder) {
+			return cachedFolder;
+		}
+		return this.caches.privateFolderCache.put(
+			cacheKey,
+			new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build()
+		);
 	}
 
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
-		return new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build();
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const cacheKey = { fileId, owner, fileKey };
+		const cachedFile = this.caches.privateFileCache.get(cacheKey);
+		if (cachedFile) {
+			return cachedFile;
+		}
+		return this.caches.privateFileCache.put(
+			cacheKey,
+			new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build()
+		);
 	}
 
 	async getAllFoldersOfPrivateDrive({
@@ -815,11 +993,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const folders: Promise<ArFSPrivateFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				cursor = edge.cursor;
 				const { node } = edge;
-				const folderBuilder = await ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey);
-				return await folderBuilder.build(node);
+				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				// Build the folder so that we don't add something invalid to the cache
+				const folder = await folderBuilder.build(node);
+				const cacheKey = { folderId: folder.entityId, owner, driveKey };
+				return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
 			});
 			allFolders.push(...(await Promise.all(folders)));
 		}
+
 		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
 	}
 
@@ -851,8 +1033,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const files: Promise<ArFSPrivateFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const fileBuilder = await ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
-				return await fileBuilder.build(node);
+				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				// Build the file so that we don't add something invalid to the cache
+				const file = await fileBuilder.build(node);
+				const cacheKey = {
+					fileId: file.fileId,
+					owner,
+					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
+				};
+				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
 			allFiles.push(...(await Promise.all(files)));
 		}
@@ -997,54 +1186,64 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
-		const gqlQuery = buildQuery({
-			tags: [
-				{ name: 'Entity-Type', value: 'drive' },
-				{ name: 'Drive-Id', value: `${driveId}` }
-			],
-			sort: ASCENDING_ORDER
-		});
-		const response = await this.arweave.api.post(graphQLURL, gqlQuery);
-		const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
-
-		if (!edges.length) {
-			throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+		const cachedOwner = this.caches.ownerCache.get(driveId);
+		if (cachedOwner) {
+			return cachedOwner;
 		}
 
-		const edgeOfFirstDrive = edges[0];
+		return this.caches.ownerCache.put(
+			driveId,
+			(async () => {
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Entity-Type', value: 'drive' },
+						{ name: 'Drive-Id', value: `${driveId}` }
+					],
+					sort: ASCENDING_ORDER
+				});
+				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
-		const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
-		const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
+				if (!edges.length) {
+					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
+				}
 
-		if (!drivePrivacyFromTag) {
-			throw new Error('Target drive has no "Drive-Privacy" tag!');
-		}
+				const edgeOfFirstDrive = edges[0];
+				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+				const driveOwner = new ArweaveAddress(driveOwnerAddress);
 
-		if (drivePrivacyFromTag.value !== drivePrivacy) {
-			throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
-		}
+				const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
+				const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
 
-		if (driveKey) {
-			const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
-			if (!cipherIVFromTag) {
-				throw new Error('Target private drive has no "Cipher-IV" tag!');
-			}
+				if (!drivePrivacyFromTag) {
+					throw new Error('Target drive has no "Drive-Privacy" tag!');
+				}
 
-			const driveDataBuffer = Buffer.from(
-				await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
-			);
+				if (drivePrivacyFromTag.value !== drivePrivacy) {
+					throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
+				}
 
-			try {
-				// Attempt to decrypt drive to assert drive key is correct
-				await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
-			} catch {
-				throw new Error('Provided drive key or password could not decrypt target private drive!');
-			}
-		}
+				if (driveKey) {
+					const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
+					if (!cipherIVFromTag) {
+						throw new Error('Target private drive has no "Cipher-IV" tag!');
+					}
 
-		const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
+					const driveDataBuffer = Buffer.from(
+						await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
+					);
 
-		return new ArweaveAddress(driveOwnerAddress);
+					try {
+						// Attempt to decrypt drive to assert drive key is correct
+						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
+					} catch {
+						throw new Error('Provided drive key or password could not decrypt target private drive!');
+					}
+				}
+
+				return driveOwner;
+			})()
+		);
 	}
 
 	/**
@@ -1135,5 +1334,96 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		) {
 			throw new Error(`Invalid password! Please type the same as your other private drives!`);
 		}
+	}
+
+	async getPrivateTransactionCipherIV(txId: TransactionID): Promise<CipherIV> {
+		const results = await this.getCipherIVOfPrivateTransactionIDs([txId]);
+		if (results.length !== 1) {
+			throw new Error(`Could not fetch the CipherIV for transaction with id: ${txId}`);
+		}
+		const [fileCipherIvResult] = results;
+		return fileCipherIvResult.cipherIV;
+	}
+
+	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		const result: CipherIVQueryResult[] = [];
+		const wallet = this.wallet;
+		const walletAddress = await wallet.getAddress();
+		let cursor = '';
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const query = buildQuery({
+				tags: [],
+				owner: walletAddress,
+				ids: txIDs,
+				cursor
+			});
+			const response = await this.arweave.api.post(graphQLURL, query);
+			const { data } = response.data;
+			const { errors } = response.data;
+			if (errors) {
+				throw new Error(`GQL error: ${JSON.stringify(errors)}`);
+			}
+			const { transactions }: { transactions: GQLTransactionsResultInterface } = data;
+			const { edges } = transactions;
+			hasNextPage = transactions.pageInfo.hasNextPage;
+			if (!edges.length) {
+				throw new Error(`No such private transactions with IDs: "${txIDs}"`);
+			}
+			edges.forEach((edge) => {
+				cursor = edge.cursor;
+				const { node } = edge;
+				const { tags } = node;
+				const txId = TxID(node.id);
+				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
+				if (!cipherIVTag) {
+					throw new Error("The private file doesn't have a valid Cipher-IV");
+				}
+				const cipherIV = cipherIVTag.value;
+				result.push({ txId, cipherIV });
+			});
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the data stream of a private file
+	 * @param privateFile - the entity of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		const requestConfig: AxiosRequestConfig = {
+			method: 'get',
+			url: dataTxUrl,
+			responseType: 'stream',
+			headers: {
+				Range: `bytes=0-${+authTagIndex - 1}`
+			}
+		};
+		const response = await axios(requestConfig);
+		return response.data;
+	}
+
+	async getAuthTagForPrivateFile(privateFile: ArFSPrivateFile): Promise<Buffer> {
+		const dataLength = privateFile.encryptedDataSize;
+		const authTagIndex = +dataLength - authTagLength;
+		const response = await axios({
+			method: 'GET',
+			url: `${gatewayURL}${privateFile.dataTxId}`,
+			headers: {
+				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
+			},
+			responseType: 'arraybuffer'
+		});
+		const { data }: { data: Buffer } = response;
+		if (data.length === authTagLength) {
+			return data;
+		}
+		throw new Error(
+			`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${data.length}`
+		);
 	}
 }

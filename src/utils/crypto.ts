@@ -6,8 +6,8 @@ import { ArFSEncryptedData } from '../types/base_Types';
 import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
 import jwkToPem, { JWK } from 'jwk-to-pem';
+import { authTagLength } from './constants';
 
-const authTagLength = 16;
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
 const keyHash = 'SHA-256';

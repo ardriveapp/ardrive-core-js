@@ -1,12 +1,13 @@
 {
 	"name": "ardrive-core-js",
-	"version": "1.1.0",
+	"version": "1.5.0",
 	"description": "ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.",
 	"main": "./lib/exports.js",
 	"types": "./lib/exports.d.ts",
 	"dependencies": {
+		"@alexsasharegan/simple-cache": "^3.3.3",
 		"arbundles": "^0.5.5",
-		"arweave": "^1.10.18",
+		"arweave": "1.10.18",
 		"arweave-mnemonic-keys": "^0.0.9",
 		"axios": "^0.21.1",
 		"base64-js": "^1.5.1",

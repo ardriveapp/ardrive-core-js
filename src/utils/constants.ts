@@ -40,3 +40,5 @@ export const assumedMetadataTxARPrice = 0.000_002_500_000;
 
 export const publicJsonContentTypeTag = { name: 'Content-Type', value: JSON_CONTENT_TYPE };
 export const privateOctetContentTypeTag = { name: 'Content-Type', value: PRIVATE_CONTENT_TYPE };
+
+export const authTagLength = 16;
