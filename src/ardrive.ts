@@ -17,14 +17,10 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
-	ArFSPublicDriveTransactionData,
-	ArFSPrivateDriveTransactionData,
 	ArFSFileMetadataTransactionData,
-	ArFSObjectTransactionData,
-	ArFSDriveTransactionData,
-	ArFSFolderTransactionData
-} from './arfs/arfs_trx_data_types';
-import { ArFSDAO, ArFSDownloadPrivateFolderParams } from './arfs/arfsdao';
+	ArFSObjectTransactionData
+} from './arfs/arfs_tx_data_types';
+import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveDriveKey, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
@@ -33,8 +29,6 @@ import {
 	ArweaveAddress,
 	ByteCount,
 	AR,
-	TipType,
-	GQLTagInterface,
 	W,
 	FolderID,
 	DriveKey,
@@ -53,7 +47,8 @@ import {
 	errorOnConflict,
 	skipOnConflicts,
 	upsertOnConflicts,
-	emptyManifestResult
+	emptyManifestResult,
+	ArFSDownloadPrivateFolderParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -79,20 +74,27 @@ import {
 	GetPrivateFileParams,
 	ListPrivateFolderParams,
 	MetaDataBaseCosts,
-	FileUploadBaseCosts,
-	DriveUploadBaseCosts
+	FileUploadBaseCosts
 } from './types';
 import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { JWKWallet } from './jwk_wallet';
 import { WalletDAO } from './wallet_dao';
-import { fakeEntityId } from './utils/constants';
-import { ARDataPriceChunkEstimator } from './pricing/ar_data_price_chunk_estimator';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, fakeEntityId } from './utils/constants';
 import { StreamDecrypt } from './utils/stream_decrypt';
 import { assertFolderExists } from './utils/assert_folder';
 import { join as joinPath } from 'path';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
+import { ArFSCreateBundledDriveResult, ArFSCreateDriveResult, isBundleResult } from './arfs/arfs_entity_result_factory';
+import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
+import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/cost_estimator_types';
+import {
+	getPrivateCreateDriveEstimationPrototypes,
+	getPublicCreateDriveEstimationPrototypes
+} from './pricing/estimation_prototypes';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -100,11 +102,19 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
-		private readonly appName: string,
-		private readonly appVersion: string,
-		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceChunkEstimator(true),
+		/** @deprecated App Name should be provided with ArFSTagSettings  */
+		protected readonly appName: string = DEFAULT_APP_NAME,
+		/** @deprecated App Version should be provided with ArFSTagSettings  */
+		protected readonly appVersion: string = DEFAULT_APP_VERSION,
+		private readonly priceEstimator: ARDataPriceEstimator = new ARDataPriceNetworkEstimator(),
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
-		private readonly dryRun: boolean = false
+		private readonly dryRun: boolean = false,
+		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+		private readonly uploadPlanner: ArFSUploadPlanner = new ArFSUploadPlanner({
+			priceEstimator,
+			arFSTagSettings: arFSTagSettings,
+			feeMultiple
+		})
 	) {
 		super(arFsDao);
 	}
@@ -120,23 +130,14 @@ export class ArDrive extends ArDriveAnonymous {
 			tokenHolder,
 			{ reward: arTransferBaseFee, feeMultiple: this.feeMultiple },
 			this.dryRun,
-			this.getTipTags(),
+			this.arFSTagSettings.getTipTags(),
 			assertBalance
 		);
 
 		return {
-			tipData: { txId: transferResult.trxID, recipient: tokenHolder, winston: communityWinstonTip },
+			tipData: { txId: transferResult.txID, recipient: tokenHolder, winston: communityWinstonTip },
 			reward: transferResult.reward
 		};
-	}
-
-	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
-		return [
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'Type', value: 'fee' },
-			{ name: 'Tip-Type', value: tipType }
-		];
 	}
 
 	public async movePublicFile({ fileId, newParentFolderId }: MovePublicFileParams): Promise<ArFSResult> {
@@ -185,14 +186,14 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTrxId,
-					dataTxId: moveFileResult.dataTrxId,
+					metadataTxId: moveFileResult.metaDataTxId,
+					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFileResult.metaDataTrxId}`]: moveFileResult.metaDataTrxReward
+				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
 			}
 		});
 	}
@@ -245,15 +246,15 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTrxId,
-					dataTxId: moveFileResult.dataTrxId,
+					metadataTxId: moveFileResult.metaDataTxId,
+					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
 					key: urlEncodeHashKey(moveFileResult.fileKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFileResult.metaDataTrxId}`]: moveFileResult.metaDataTrxReward
+				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
 			}
 		});
 	}
@@ -314,13 +315,13 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTrxId,
+					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFolderResult.metaDataTrxId}`]: moveFolderResult.metaDataTrxReward
+				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
 			}
 		});
 	}
@@ -389,14 +390,14 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTrxId,
+					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
 					key: urlEncodeHashKey(moveFolderResult.driveKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${moveFolderResult.metaDataTrxId}`]: moveFolderResult.metaDataTrxReward
+				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
 			}
 		});
 	}
@@ -460,7 +461,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: wrappedFile.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -468,16 +469,16 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			}
 		});
 	}
@@ -524,14 +525,14 @@ export class ArDrive extends ArDriveAnonymous {
 			// Send community tip only if communityWinstonTip has a value
 			// This can be zero when a user uses this method to upload empty folders
 
-			const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 				communityWinstonTip: bulkEstimation.communityWinstonTip
 			});
 
 			return Promise.resolve({
 				created: results.entityResults,
 				tips: [tipData],
-				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTrxReward }
+				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTxReward }
 			});
 		}
 
@@ -578,19 +579,21 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: wrappedFolder.getBaseCosts().metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				},
-				parentFolderId,
-				syncParentFolderId: false,
-				owner
+				parentFolderId
 			});
 
-			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
+			const {
+				metaDataTxId: metaDataTxId,
+				folderId: newFolderId,
+				metaDataTxReward: metaDataTxReward
+			} = createFolderResult;
 
 			// Capture parent folder results
-			uploadEntityFees = { [`${metaDataTrxId}`]: metaDataTrxReward };
+			uploadEntityFees = { [`${metaDataTxId}`]: metaDataTxReward };
 			uploadEntityResults = [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: newFolderId
 				}
 			];
@@ -629,15 +632,15 @@ export class ArDrive extends ArDriveAnonymous {
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			];
@@ -737,7 +740,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: wrappedFile.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -745,17 +748,17 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			}
 		});
 	}
@@ -809,14 +812,14 @@ export class ArDrive extends ArDriveAnonymous {
 			// Send community tip only if communityWinstonTip has a value
 			// This can be zero when a user uses this method to upload empty folders
 
-			const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+			const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 				communityWinstonTip: bulkEstimation.communityWinstonTip
 			});
 
 			return Promise.resolve({
 				created: results.entityResults,
 				tips: [tipData],
-				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTrxReward }
+				fees: { ...results.feeResults, [`${tipData.txId}`]: communityTipTxReward }
 			});
 		}
 
@@ -864,20 +867,21 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: wrappedFolder.getBaseCosts().metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				},
-				parentFolderId,
-				driveKey,
-				syncParentFolderId: false,
-				owner
+				parentFolderId
 			});
 
-			const { metaDataTrxId, folderId: newFolderId, metaDataTrxReward } = createFolderResult;
+			const {
+				metaDataTxId: metaDataTxId,
+				folderId: newFolderId,
+				metaDataTxReward: metaDataTxReward
+			} = createFolderResult;
 
 			// Capture parent folder results
-			uploadEntityFees = { [`${metaDataTrxId}`]: metaDataTrxReward };
+			uploadEntityFees = { [`${metaDataTxId}`]: metaDataTxReward };
 			uploadEntityResults = [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: newFolderId,
 					key: urlEncodeHashKey(driveKey)
 				}
@@ -917,15 +921,15 @@ export class ArDrive extends ArDriveAnonymous {
 			// Capture all file results
 			uploadEntityFees = {
 				...uploadEntityFees,
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			};
 			uploadEntityResults = [
 				...uploadEntityResults,
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
@@ -1015,7 +1019,7 @@ export class ArDrive extends ArDriveAnonymous {
 			existingFileId: arweaveManifest.existingId
 		});
 
-		const { tipData, reward: communityTipTrxReward } = await this.sendCommunityTip({
+		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
 			communityWinstonTip: uploadBaseCosts.communityWinstonTip
 		});
 
@@ -1023,27 +1027,24 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: uploadFileResult.metaDataTrxId,
-					dataTxId: uploadFileResult.dataTrxId,
+					metadataTxId: uploadFileResult.metaDataTxId,
+					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId
 				}
 			],
 			tips: [tipData],
 			fees: {
-				[`${uploadFileResult.dataTrxId}`]: uploadFileResult.dataTrxReward,
-				[`${uploadFileResult.metaDataTrxId}`]: uploadFileResult.metaDataTrxReward,
-				[`${tipData.txId}`]: communityTipTrxReward
+				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
+				[`${tipData.txId}`]: communityTipTxReward
 			},
 			manifest: arweaveManifest.manifest,
-			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTrxId)
+			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
 		});
 	}
 
-	public async createPublicFolder({
-		folderName,
-		driveId,
-		parentFolderId
-	}: CreatePublicFolderParams): Promise<ArFSResult> {
+	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
 		await this.assertOwnerAddress(owner);
 
@@ -1059,12 +1060,15 @@ export class ArDrive extends ArDriveAnonymous {
 		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
 
 		// Create the folder and retrieve its folder ID
-		const { metaDataTrxId, metaDataTrxReward, folderId } = await this.arFsDao.createPublicFolder({
+		const {
+			metaDataTxId: metaDataTxId,
+			metaDataTxReward: metaDataTxReward,
+			folderId
+		} = await this.arFsDao.createPublicFolder({
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
-			parentFolderId,
-			owner
+			parentFolderId
 		});
 
 		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
@@ -1072,23 +1076,23 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId
 				}
 			],
 			tips: [],
 			fees: {
-				[`${metaDataTrxId}`]: metaDataTrxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			}
 		});
 	}
 
 	public async createPrivateFolder({
 		folderName,
-		driveId,
 		driveKey,
 		parentFolderId
 	}: CreatePrivateFolderParams): Promise<ArFSResult> {
+		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId, driveKey);
 		await this.assertOwnerAddress(owner);
 
@@ -1104,13 +1108,15 @@ export class ArDrive extends ArDriveAnonymous {
 		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
 
 		// Create the folder and retrieve its folder ID
-		const { metaDataTrxId, metaDataTrxReward, folderId } = await this.arFsDao.createPrivateFolder({
+		const {
+			metaDataTxId: metaDataTxId,
+			metaDataTxReward: metaDataTxReward,
+			folderId
+		} = await this.arFsDao.createPrivateFolder({
 			folderData,
 			driveId,
 			rewardSettings: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
-			driveKey,
-			parentFolderId,
-			owner
+			parentFolderId
 		});
 
 		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
@@ -1118,108 +1124,89 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: metaDataTrxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId,
 					key: urlEncodeHashKey(driveKey)
 				}
 			],
 			tips: [],
 			fees: {
-				[`${metaDataTrxId}`]: metaDataTrxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			}
 		});
 	}
 
-	public async createPublicDrive({ driveName }: CreatePublicDriveParams): Promise<ArFSResult> {
-		// Assert that there's enough AR available in the wallet
-		// Use stub data to estimate costs since actual data requires entity IDs generated by ArFSDao
-		const stubRootFolderData = new ArFSPublicFolderTransactionData(driveName);
-		const stubDriveData = new ArFSPublicDriveTransactionData(driveName, fakeEntityId);
-		const driveUploadCosts = await this.estimateAndAssertCostOfDriveCreation(stubDriveData, stubRootFolderData);
-		const driveRewardSettings = {
-			reward: driveUploadCosts.driveMetaDataBaseReward,
-			feeMultiple: this.feeMultiple
-		};
-		const rootFolderRewardSettings = {
-			reward: driveUploadCosts.rootFolderMetaDataBaseReward,
-			feeMultiple: this.feeMultiple
-		};
-		const createDriveResult = await this.arFsDao.createPublicDrive(
-			driveName,
-			driveRewardSettings,
-			rootFolderRewardSettings,
-			// There is no need to assert ownership during drive creation
-			await this.wallet.getAddress()
-		);
-		return Promise.resolve({
+	private async createDrive(
+		arFSPrototypes: EstimateCreateDriveParams,
+		arFSCreateDrive: (
+			rewardSettings: CreateDriveRewardSettings
+		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
+	): Promise<ArFSResult> {
+		const { rewardSettings, totalWinstonPrice } = await this.uploadPlanner.estimateCreateDrive(arFSPrototypes);
+		await this.assertWalletBalance(totalWinstonPrice);
+
+		const createDriveResult = await arFSCreateDrive(rewardSettings);
+
+		const arFSResults: ArFSResult = {
 			created: [
 				{
 					type: 'drive',
-					metadataTxId: createDriveResult.metaDataTrxId,
+					metadataTxId: createDriveResult.metaDataTxId,
 					entityId: createDriveResult.driveId
 				},
 				{
 					type: 'folder',
-					metadataTxId: createDriveResult.rootFolderTrxId,
+					metadataTxId: createDriveResult.rootFolderTxId,
 					entityId: createDriveResult.rootFolderId
 				}
 			],
 			tips: [],
+			fees: {}
+		};
+
+		if (isBundleResult(createDriveResult)) {
+			// Add bundle entity and return direct to network bundled tx result
+			arFSResults.created.push({
+				type: 'bundle',
+				bundleTxId: createDriveResult.bundleTxId
+			});
+			return {
+				...arFSResults,
+				fees: {
+					[`${createDriveResult.bundleTxId}`]: createDriveResult.bundleTxReward
+				}
+			};
+		}
+
+		// Return as V2 Transaction result
+		return {
+			...arFSResults,
 			fees: {
-				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
-				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
+				[`${createDriveResult.metaDataTxId}`]: createDriveResult.metaDataTxReward,
+				[`${createDriveResult.rootFolderTxId}`]: createDriveResult.rootFolderTxReward
 			}
-		});
+		};
 	}
 
-	public async createPrivateDrive({ driveName, newPrivateDriveData }: CreatePrivateDriveParams): Promise<ArFSResult> {
-		// Assert that there's enough AR available in the wallet
-		const stubRootFolderData = await ArFSPrivateFolderTransactionData.from(driveName, newPrivateDriveData.driveKey);
-		const stubDriveData = await ArFSPrivateDriveTransactionData.from(
-			driveName,
-			fakeEntityId,
-			newPrivateDriveData.driveKey
+	public async createPublicDrive(params: CreatePublicDriveParams): Promise<ArFSResult> {
+		return this.createDrive(getPublicCreateDriveEstimationPrototypes(params), (rewardSettings) =>
+			this.arFsDao.createPublicDrive({ driveName: params.driveName, rewardSettings })
 		);
-		const driveCreationCosts = await this.estimateAndAssertCostOfDriveCreation(stubDriveData, stubRootFolderData);
-		const driveRewardSettings = {
-			reward: driveCreationCosts.driveMetaDataBaseReward,
-			feeMultiple: this.feeMultiple
-		};
-		const rootFolderRewardSettings = {
-			reward: driveCreationCosts.rootFolderMetaDataBaseReward,
-			feeMultiple: this.feeMultiple
-		};
-		const createDriveResult = await this.arFsDao.createPrivateDrive(
-			driveName,
-			newPrivateDriveData,
-			driveRewardSettings,
-			rootFolderRewardSettings,
-			// Ownership of drive has been verified by assertValidPassword successfully decrypting
-			await this.wallet.getAddress()
+	}
+
+	public async createPrivateDrive(params: CreatePrivateDriveParams): Promise<ArFSResult> {
+		const { driveName, newPrivateDriveData: newDriveData } = params;
+
+		const createDriveResult = await this.createDrive(
+			await getPrivateCreateDriveEstimationPrototypes(params),
+			(rewardSettings) => this.arFsDao.createPrivateDrive({ driveName, newDriveData, rewardSettings })
 		);
 
-		// IN THE FUTURE WE MIGHT SEND A COMMUNITY TIP HERE
-		return Promise.resolve({
-			created: [
-				{
-					type: 'drive',
-					metadataTxId: createDriveResult.metaDataTrxId,
-					entityId: createDriveResult.driveId,
-					key: urlEncodeHashKey(createDriveResult.driveKey)
-				},
-				{
-					type: 'folder',
-					metadataTxId: createDriveResult.rootFolderTrxId,
-					entityId: createDriveResult.rootFolderId,
-					key: urlEncodeHashKey(createDriveResult.driveKey)
-				}
-			],
-			tips: [],
-			fees: {
-				[`${createDriveResult.metaDataTrxId}`]: createDriveResult.metaDataTrxReward,
-				[`${createDriveResult.rootFolderTrxId}`]: createDriveResult.rootFolderTrxReward
-			}
-		});
+		// Add drive keys to drive and folder entity results
+		createDriveResult.created[0].key = urlEncodeHashKey(newDriveData.driveKey);
+		createDriveResult.created[1].key = urlEncodeHashKey(newDriveData.driveKey);
+
+		return createDriveResult;
 	}
 
 	/**
@@ -1250,7 +1237,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Don't estimate cost of folder metadata if using existing folder
 		if (!folderToUpload.existingId) {
-			const folderMetadataTrxData = await (async () => {
+			const folderMetadataTxData = await (async () => {
 				const folderName = folderToUpload.newFolderName ?? folderToUpload.getBaseFileName();
 
 				if (driveKey) {
@@ -1259,7 +1246,7 @@ export class ArDrive extends ArDriveAnonymous {
 				return new ArFSPublicFolderTransactionData(folderName);
 			})();
 			const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-				folderMetadataTrxData.sizeOf()
+				folderMetadataTxData.sizeOf()
 			);
 			const parentFolderWinstonPrice = metaDataBaseReward;
 
@@ -1392,6 +1379,17 @@ export class ArDrive extends ArDriveAnonymous {
 		return children;
 	}
 
+	/** Throw an error if wallet balance does not cover cost of the provided winston  */
+	async assertWalletBalance(winston: Winston): Promise<void> {
+		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, winston);
+
+		if (!walletHasBalance) {
+			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
+
+			throw new Error(`Wallet balance of ${walletBalance} Winston is not enough (${winston}) for this action!`);
+		}
+	}
+
 	async estimateAndAssertCostOfMoveFile(
 		fileTransactionData: ArFSFileMetadataTransactionData
 	): Promise<MetaDataBaseCosts> {
@@ -1473,38 +1471,6 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	async estimateAndAssertCostOfDriveCreation(
-		driveMetaData: ArFSDriveTransactionData,
-		rootFolderMetaData: ArFSFolderTransactionData
-	): Promise<DriveUploadBaseCosts> {
-		let totalPrice = W(0);
-		const driveMetaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-			driveMetaData.sizeOf()
-		);
-		totalPrice = totalPrice.plus(driveMetaDataBaseReward);
-		const rootFolderMetaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-			rootFolderMetaData.sizeOf()
-		);
-		totalPrice = totalPrice.plus(rootFolderMetaDataBaseReward);
-
-		const totalWinstonPrice = totalPrice;
-
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, totalWinstonPrice);
-
-		if (!walletHasBalance) {
-			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
-
-			throw new Error(
-				`Wallet balance of ${walletBalance} Winston is not enough (${totalPrice}) for drive creation!`
-			);
-		}
-
-		return {
-			driveMetaDataBaseReward,
-			rootFolderMetaDataBaseReward
-		};
-	}
-
 	public async getDriveIdForFileId(fileId: FileID): Promise<DriveID> {
 		return this.arFsDao.getDriveIdForFileId(fileId);
 	}
@@ -1513,7 +1479,7 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.getDriveIdForFolderId(folderId);
 	}
 
-	// Provides for stubbing metadata during cost estimations since the data trx ID won't yet be known
+	// Provides for stubbing metadata during cost estimations since the data tx ID won't yet be known
 	private stubPublicFileMetadata(
 		wrappedFile: ArFSEntityToUpload,
 		destinationFileName?: string
@@ -1529,7 +1495,7 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 	}
 
-	// Provides for stubbing metadata during cost estimations since the data trx and File IDs won't yet be known
+	// Provides for stubbing metadata during cost estimations since the data tx and File IDs won't yet be known
 	private async stubPrivateFileMetadata(
 		wrappedFile: ArFSFileToUpload,
 		destinationFileName?: string

@@ -5,7 +5,7 @@ import {
 	ArFSFileMetaDataPrototype,
 	ArFSFolderMetaDataPrototype
 } from './arfs_prototypes';
-import { ArFSFileMetadataTransactionData } from './arfs_trx_data_types';
+import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
 
 import { DataContentType, DriveID, FileID, FolderID, ByteCount, TransactionID, UnixTime } from '../types';
 
@@ -19,17 +19,17 @@ export type FileDataPrototypeFactory = (
 	fileId: FileID
 ) => Promise<ArFSFileDataPrototype>;
 
-export type FileMetadataTrxDataFactory<D extends ArFSFileMetadataTransactionData> = (
+export type FileMetadataTxDataFactory<D extends ArFSFileMetadataTransactionData> = (
 	destinationFileName: string,
 	fileSize: ByteCount,
 	lastModifiedDateMS: UnixTime,
-	dataTrxId: TransactionID,
+	dataTxId: TransactionID,
 	dataContentType: DataContentType,
 	fileId: FileID
 ) => Promise<D>;
 
 export type FileMetaDataFactory<D extends ArFSFileMetadataTransactionData> = (
-	metadataTrxData: D,
+	metadataTxData: D,
 	fileId: FileID
 ) => ArFSFileMetaDataPrototype;
 

@@ -3,7 +3,7 @@ import type { ArweaveOracle } from './arweave_oracle';
 import { AbstractARDataPriceAndCapacityEstimator } from './ar_data_price_estimator';
 import { AR, ByteCount, Winston, W, ArDriveCommunityTip } from '../types';
 
-const byteCountOfChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
+const byteCountPerChunk = new ByteCount(Math.pow(2, 10) * 256); // 256 KiB
 
 interface ChunkPricingInfo {
 	baseWinstonPrice: Winston;
@@ -89,7 +89,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 			return this.pricingInfo.baseWinstonPrice;
 		}
 
-		const numberOfChunksToUpload = Math.ceil(byteCount.valueOf() / byteCountOfChunk.valueOf());
+		const numberOfChunksToUpload = Math.ceil(byteCount.valueOf() / byteCountPerChunk.valueOf());
 
 		// Every 5th chunk, arweave.net pricing adds 1 Winston, which they define as a
 		// mining reward as a proportion of the estimated transaction storage costs
@@ -131,7 +131,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 
 			const numChunks = actualWinstonToSpend.dividedBy(perChunkWinstonPrice.toString(), 'ROUND_DOWN');
 
-			return new ByteCount(+numChunks.times(byteCountOfChunk.toString()));
+			return new ByteCount(+numChunks.times(byteCountPerChunk.toString()));
 		}
 
 		// Return 0 if winston price given does not cover the base winston price for a 1 chunk transaction

@@ -1,4 +1,6 @@
+import { Tag } from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
+import { GQLTagInterface } from '../src/types';
 
 interface expectAsyncErrorThrowParams {
 	promiseToError: Promise<unknown>;
@@ -33,3 +35,10 @@ export async function expectAsyncErrorThrow({
 		expect(error?.message).to.equal(errorMessage);
 	}
 }
+
+// Helper function to grab the decoded gql tags off of a Transaction
+export const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
+	tags.map((tag) => ({
+		name: tag.get('name', { decode: true, string: true }),
+		value: tag.get('value', { decode: true, string: true })
+	}));

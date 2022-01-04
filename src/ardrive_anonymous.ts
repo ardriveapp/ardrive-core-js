@@ -5,13 +5,14 @@ import {
 	ArFSDriveEntity,
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSDAOType, ArFSDAOAnonymous, ArFSDownloadPublicFolderParams } from './arfs/arfsdao_anonymous';
+import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
 import {
 	DriveID,
 	ArweaveAddress,
 	DownloadPublicFileParameters,
 	DownloadPublicFolderParameters,
-	DownloadPublicDriveParameters
+	DownloadPublicDriveParameters,
+	ArFSDownloadPublicFolderParams
 } from './types';
 import {
 	GetPublicDriveParams,
