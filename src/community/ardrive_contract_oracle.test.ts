@@ -66,7 +66,7 @@ describe('The ArDriveContractOracle', () => {
 			});
 		});
 
-		it('throws an error if fee is not a number', async () => {
+		it('throws an error if fee is not greater than zero', async () => {
 			const stubContractReaderWithNegativeFee = {
 				async readContract() {
 					return {
