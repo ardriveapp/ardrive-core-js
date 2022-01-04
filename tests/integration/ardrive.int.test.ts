@@ -1307,7 +1307,7 @@ function assertUploadFileExpectations(
 		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
 		expect(bundleEntity.type).to.equal('bundle');
 
-		// Ensure that the bundle fee look healthy
+		// Ensure that the bundle fee looks healthy
 		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
 		expect(feeKeys[0]).to.match(txIdRegex);
