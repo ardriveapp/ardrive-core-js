@@ -97,7 +97,7 @@ export interface ArFSUploadPublicFileParams {
 	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
 	rewardSettings: UploadFileRewardSettings;
-	communityTipSettings: CommunityTipSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
