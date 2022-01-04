@@ -42,7 +42,8 @@ import {
 	errorOnConflict,
 	skipOnConflicts,
 	upsertOnConflicts,
-	emptyManifestResult
+	emptyManifestResult,
+	CommunityTipSettings
 } from './types';
 import {
 	CommunityTipParams,
@@ -109,6 +110,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -145,7 +147,7 @@ export class ArDrive extends ArDriveAnonymous {
 			tokenHolder,
 			{ reward: arTransferBaseFee, feeMultiple: this.feeMultiple },
 			this.dryRun,
-			this.arFSTagSettings.getTipTags(),
+			this.arFSTagSettings.getTipTagsWithAppTags(),
 			assertBalance
 		);
 
@@ -431,7 +433,8 @@ export class ArDrive extends ArDriveAnonymous {
 		arFSUploadFile: (
 			rewardSettings: UploadFileRewardSettings,
 			driveId: DriveID,
-			wrappedFile: ArFSEntityToUpload
+			wrappedFile: ArFSEntityToUpload,
+			communityTipSettings: CommunityTipSettings
 		) => Promise<ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult>
 	): Promise<ArFSResult> {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
@@ -467,11 +470,10 @@ export class ArDrive extends ArDriveAnonymous {
 		const { rewardSettings, totalWinstonPrice, communityWinstonTip } = await prepareEstimationFn(wrappedFile);
 		await this.assertWalletBalance(totalWinstonPrice);
 
-		const uploadFileResult = await arFSUploadFile(rewardSettings, driveId, wrappedFile);
+		const communityTipTarget = await this.communityOracle.selectTokenHolder();
+		const communityTipSettings: CommunityTipSettings = { communityTipTarget, communityWinstonTip };
 
-		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
-			communityWinstonTip
-		});
+		const uploadFileResult = await arFSUploadFile(rewardSettings, driveId, wrappedFile, communityTipSettings);
 
 		const arFSResults: ArFSResult = {
 			created: [
@@ -483,9 +485,11 @@ export class ArDrive extends ArDriveAnonymous {
 					key: isPrivateResult(uploadFileResult) ? urlEncodeHashKey(uploadFileResult.fileKey) : undefined
 				}
 			],
-			tips: [tipData],
+			tips: [],
 			fees: {}
 		};
+
+		const tipResult: Omit<TipData, 'txId'> = { recipient: communityTipTarget, winston: communityWinstonTip };
 
 		if (isBundleResult(uploadFileResult)) {
 			// Add bundle entity and return direct to network bundled tx result
@@ -496,9 +500,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 			return {
 				...arFSResults,
+				tips: [{ ...tipResult, txId: uploadFileResult.bundleTxId }],
 				fees: {
-					[`${uploadFileResult.bundleTxId}`]: uploadFileResult.bundleTxReward,
-					[`${tipData.txId}`]: communityTipTxReward
+					[`${uploadFileResult.bundleTxId}`]: uploadFileResult.bundleTxReward
 				}
 			};
 		}
@@ -506,10 +510,10 @@ export class ArDrive extends ArDriveAnonymous {
 		// Return as V2 Transaction result
 		return {
 			...arFSResults,
+			tips: [{ ...tipResult, txId: uploadFileResult.dataTxId }],
 			fees: {
 				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
-				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
-				[`${tipData.txId}`]: communityTipTxReward
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			}
 		};
 	}
@@ -527,12 +531,13 @@ export class ArDrive extends ArDriveAnonymous {
 					fileMetaDataPrototype: getPublicUploadFileEstimationPrototype(wrappedFile),
 					contentTypeTag: publicJsonContentTypeTag
 				}),
-			(rewardSettings, driveId, wrappedFile) => {
+			(rewardSettings, driveId, wrappedFile, communityTipSettings) => {
 				return this.arFsDao.uploadPublicFile({
 					parentFolderId,
 					wrappedFile,
 					rewardSettings,
-					driveId
+					driveId,
+					communityTipSettings
 				});
 			}
 		);
@@ -551,13 +556,14 @@ export class ArDrive extends ArDriveAnonymous {
 					fileMetaDataPrototype: await getPrivateUploadFileEstimationPrototype(wrappedFile, driveKey),
 					contentTypeTag: privateOctetContentTypeTag
 				}),
-			(rewardSettings, driveId, wrappedFile) =>
+			(rewardSettings, driveId, wrappedFile, communityTipSettings) =>
 				this.arFsDao.uploadPrivateFile({
 					parentFolderId,
 					wrappedFile,
 					rewardSettings,
 					driveId,
-					driveKey
+					driveKey,
+					communityTipSettings
 				})
 		);
 	}
@@ -688,23 +694,23 @@ export class ArDrive extends ArDriveAnonymous {
 				continue;
 			}
 
-			const fileDataRewardSettings = {
+			const dataTxRewardSettings = {
 				reward: wrappedFile.getBaseCosts().fileDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
 
-			const metadataRewardSettings = {
+			const metaDataRewardSettings = {
 				reward: wrappedFile.getBaseCosts().metaDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
 
 			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
-				parentFolderId: folderId,
 				wrappedFile,
 				driveId,
+				parentFolderId,
 				rewardSettings: {
-					dataTxRewardSettings: fileDataRewardSettings,
-					metaDataRewardSettings: metadataRewardSettings
+					dataTxRewardSettings,
+					metaDataRewardSettings
 				}
 			})) as ArFSUploadFileV2TxResult;
 
@@ -884,24 +890,22 @@ export class ArDrive extends ArDriveAnonymous {
 				continue;
 			}
 
-			const fileDataRewardSettings = {
+			const dataTxRewardSettings = {
 				reward: wrappedFile.getBaseCosts().fileDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
-			const metadataRewardSettings = {
+			const metaDataRewardSettings = {
 				reward: wrappedFile.getBaseCosts().metaDataBaseReward,
 				feeMultiple: this.feeMultiple
 			};
 
-			// eslint-disable-next-line prettier/prettier
-			const uploadFileResult = (await this.arFsDao.uploadPrivateFile({
-				parentFolderId: folderId,
+			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
 				wrappedFile,
 				driveId,
-				driveKey,
+				parentFolderId,
 				rewardSettings: {
-					dataTxRewardSettings: fileDataRewardSettings,
-					metaDataRewardSettings: metadataRewardSettings
+					dataTxRewardSettings,
+					metaDataRewardSettings
 				}
 			})) as ArFSUploadFileV2TxResult & WithFileKey;
 
@@ -918,6 +922,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
 			];
@@ -994,18 +999,20 @@ export class ArDrive extends ArDriveAnonymous {
 			contentTypeTag: publicJsonContentTypeTag
 		});
 
+		const communityTipTarget = await this.communityOracle.selectTokenHolder();
+		const communityTipSettings: CommunityTipSettings = { communityTipTarget, communityWinstonTip };
+
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		const uploadFileResult = await this.arFsDao.uploadPublicFile({
 			parentFolderId: folderId,
 			wrappedFile: arweaveManifest,
 			driveId,
-			rewardSettings
+			rewardSettings,
+			communityTipSettings
 		});
 
-		const { tipData, reward: communityTipTxReward } = await this.sendCommunityTip({
-			communityWinstonTip: communityWinstonTip
-		});
+		const tipResult = { recipient: communityTipTarget, winston: communityWinstonTip };
 
 		const arFSResults: ArFSManifestResult = {
 			created: [
@@ -1016,7 +1023,7 @@ export class ArDrive extends ArDriveAnonymous {
 					entityId: uploadFileResult.fileId
 				}
 			],
-			tips: [tipData],
+			tips: [],
 			fees: {},
 			manifest: arweaveManifest.manifest,
 			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
@@ -1031,9 +1038,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 			return {
 				...arFSResults,
+				tips: [{ ...tipResult, txId: uploadFileResult.bundleTxId }],
 				fees: {
-					[`${uploadFileResult.bundleTxId}`]: uploadFileResult.bundleTxReward,
-					[`${tipData.txId}`]: communityTipTxReward
+					[`${uploadFileResult.bundleTxId}`]: uploadFileResult.bundleTxReward
 				}
 			};
 		}
@@ -1041,10 +1048,10 @@ export class ArDrive extends ArDriveAnonymous {
 		// Return as V2 Transaction result
 		return {
 			...arFSResults,
+			tips: [{ ...tipResult, txId: uploadFileResult.dataTxId }],
 			fees: {
 				[`${uploadFileResult.dataTxId}`]: uploadFileResult.dataTxReward,
-				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward,
-				[`${tipData.txId}`]: communityTipTxReward
+				[`${uploadFileResult.metaDataTxId}`]: uploadFileResult.metaDataTxReward
 			}
 		};
 	}

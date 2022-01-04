@@ -50,8 +50,12 @@ export class ArFSTagSettings {
 		];
 	}
 
+	getTipTagsWithAppTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
+		return [...this.baseAppTags, ...this.getTipTags(tipType)];
+	}
+
 	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
-		return [...this.baseAppTags, { name: 'Type', value: 'fee' }, { name: 'Tip-Type', value: tipType }];
+		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
 	baseAppTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {

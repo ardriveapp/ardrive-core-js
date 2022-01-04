@@ -19,6 +19,7 @@ import {
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
+import { Winston } from './winston';
 
 /** Generic closure type that uses prepareArFSObjectTransaction (V2) or prepareArFSDataItem (bundle) */
 export type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
@@ -96,6 +97,7 @@ export interface ArFSUploadPublicFileParams {
 	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
 	rewardSettings: UploadFileRewardSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
@@ -110,6 +112,7 @@ export interface ArFSPrepareDataItemsParams extends ArFSPrepareObjectParams {
 
 export interface ArFSPrepareObjectTransactionParams extends ArFSPrepareDataItemsParams {
 	rewardSettings: RewardSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface ArFSPrepareObjectBundleParams extends Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> {
 	dataItems: DataItem[];
@@ -136,3 +139,8 @@ export interface ArFSGetPublicChildFolderIdsParams {
 	owner: ArweaveAddress;
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
+
+export type CommunityTipSettings = {
+	communityTipTarget: ArweaveAddress;
+	communityWinstonTip: Winston;
+};
