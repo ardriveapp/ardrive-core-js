@@ -29,10 +29,9 @@ describe('ArFSTagSettings class', () => {
 	});
 
 	it('returns the expected default tip tags', () => {
-		expect(arFSTagSettings.getTipTags()).to.deep.equal([
+		expect(arFSTagSettings.getTipTagsWithAppTags()).to.deep.equal([
 			{ name: 'App-Name', value: 'Tag-Builder-Test' },
 			{ name: 'App-Version', value: '1.2' },
-			{ name: 'Type', value: 'fee' },
 			{ name: 'Tip-Type', value: 'data upload' }
 		]);
 	});

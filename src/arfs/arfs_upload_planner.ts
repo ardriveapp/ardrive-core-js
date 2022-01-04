@@ -268,13 +268,11 @@ export class ArFSUploadPlanner {
 		};
 
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataReward);
-		const tipTxBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
 		const totalWinstonPrice = this.feeMultiple
 			.boostedWinstonReward(fileDataReward)
 			.plus(this.feeMultiple.boostedWinstonReward(metaDataReward))
-			.plus(communityWinstonTip)
-			.plus(this.feeMultiple.boostedWinstonReward(tipTxBaseFee));
+			.plus(communityWinstonTip);
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}
@@ -297,12 +295,8 @@ export class ArFSUploadPlanner {
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
 			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
 		);
-		const tipTxBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
-		const totalWinstonPrice = this.feeMultiple
-			.boostedWinstonReward(bundleReward)
-			.plus(communityWinstonTip)
-			.plus(this.feeMultiple.boostedWinstonReward(tipTxBaseFee));
+		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward).plus(communityWinstonTip);
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}

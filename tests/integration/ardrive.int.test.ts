@@ -612,7 +612,7 @@ describe('ArDrive class - integrated', () => {
 					});
 
 					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3204), W(171), W(0), W(1), 'public', existingFileId);
+					assertUploadFileExpectations(result, W(3204), W(171), W(1), 'public', existingFileId);
 				});
 
 				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
@@ -642,7 +642,7 @@ describe('ArDrive class - integrated', () => {
 					});
 
 					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3204), W(162), W(0), W('1'), 'public', existingFileId);
+					assertUploadFileExpectations(result, W(3204), W(162), W('1'), 'public', existingFileId);
 				});
 
 				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
@@ -660,7 +660,7 @@ describe('ArDrive class - integrated', () => {
 						prompts: stubbedFileAskPrompts
 					});
 
-					assertUploadFileExpectations(result, W(3204), W(159), W(0), W('1'), 'public');
+					assertUploadFileExpectations(result, W(3204), W(159), W('1'), 'public');
 				});
 
 				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
@@ -677,7 +677,7 @@ describe('ArDrive class - integrated', () => {
 						prompts: stubbedFileAskPrompts
 					});
 
-					assertUploadFileExpectations(result, W(3204), W(171), W(0), W('1'), 'public', existingFileId);
+					assertUploadFileExpectations(result, W(3204), W(171), W('1'), 'public', existingFileId);
 				});
 
 				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
@@ -708,7 +708,7 @@ describe('ArDrive class - integrated', () => {
 						parentFolderId: EID(stubEntityID.toString()),
 						wrappedFile
 					});
-					assertUploadFileExpectations(result, W(5959), W(166), W(0), W(1), 'public', undefined, true);
+					assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
 				});
 
 				it('returns the correct ArFSResult', async () => {
@@ -718,7 +718,7 @@ describe('ArDrive class - integrated', () => {
 						parentFolderId: EID(stubEntityID.toString()),
 						wrappedFile
 					});
-					assertUploadFileExpectations(result, W(3204), W(166), W(0), W(1), 'public');
+					assertUploadFileExpectations(result, W(3204), W(166), W(1), 'public');
 				});
 			});
 
@@ -798,7 +798,7 @@ describe('ArDrive class - integrated', () => {
 					});
 
 					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3220), W(187), W(0), W(1), 'private', existingFileId);
+					assertUploadFileExpectations(result, W(3220), W(187), W(1), 'private', existingFileId);
 				});
 
 				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
@@ -830,7 +830,7 @@ describe('ArDrive class - integrated', () => {
 					});
 
 					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3220), W(178), W(0), W('1'), 'private', existingFileId);
+					assertUploadFileExpectations(result, W(3220), W(178), W('1'), 'private', existingFileId);
 				});
 
 				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
@@ -849,7 +849,7 @@ describe('ArDrive class - integrated', () => {
 						prompts: stubbedFileAskPrompts
 					});
 
-					assertUploadFileExpectations(result, W(3220), W(175), W(0), W('1'), 'private');
+					assertUploadFileExpectations(result, W(3220), W(175), W('1'), 'private');
 				});
 
 				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
@@ -867,7 +867,7 @@ describe('ArDrive class - integrated', () => {
 						prompts: stubbedFileAskPrompts
 					});
 
-					assertUploadFileExpectations(result, W(3220), W(187), W(0), W('1'), 'private', existingFileId);
+					assertUploadFileExpectations(result, W(3220), W(187), W('1'), 'private', existingFileId);
 				});
 
 				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
@@ -901,7 +901,7 @@ describe('ArDrive class - integrated', () => {
 						wrappedFile,
 						driveKey: stubDriveKey
 					});
-					assertUploadFileExpectations(result, W(6052), W(182), W(0), W(1), 'private', undefined, true);
+					assertUploadFileExpectations(result, W(6052), W(182), W(1), 'private', undefined, true);
 				});
 
 				it('returns the correct ArFSResult', async () => {
@@ -913,7 +913,7 @@ describe('ArDrive class - integrated', () => {
 						wrappedFile,
 						driveKey: stubDriveKey
 					});
-					assertUploadFileExpectations(result, W(3220), W(182), W(0), W(1), 'private');
+					assertUploadFileExpectations(result, W(3220), W(182), W(1), 'private');
 				});
 			});
 
@@ -1086,7 +1086,7 @@ describe('ArDrive class - integrated', () => {
 				conflictResolution: 'replace'
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+			assertUploadManifestExpectations(result, W(336), W(186), W(1), existingFileId);
 		});
 
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to upsert', async () => {
@@ -1098,7 +1098,7 @@ describe('ArDrive class - integrated', () => {
 				conflictResolution: 'upsert'
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(186), W(0), W(1), existingFileId);
+			assertUploadManifestExpectations(result, W(336), W(186), W(1), existingFileId);
 		});
 
 		it('returns an empty ArFSManifestResult if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
@@ -1138,7 +1138,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(183), W(0), W(1));
+			assertUploadManifestExpectations(result, W(336), W(183), W(1));
 		});
 
 		it('returns the correct bundled ArFSManifestResult', async () => {
@@ -1148,7 +1148,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(3108), W(183), W(0), W(1), undefined, undefined, true);
+			assertUploadManifestExpectations(result, W(3108), W(183), W(1), undefined, undefined, true);
 		});
 
 		it('returns the correct ArFSManifestResult when using special characters', async () => {
@@ -1158,7 +1158,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(475), W(183), W(0), W(1), undefined, true);
+			assertUploadManifestExpectations(result, W(475), W(183), W(1), undefined, true);
 		});
 
 		it('throws an error if target folder has no files to put in the manifest', async () => {
@@ -1260,7 +1260,6 @@ function assertUploadFileExpectations(
 	result: ArFSResult,
 	fileFee: Winston,
 	metadataFee: Winston,
-	tipFee: Winston,
 	expectedTip: Winston,
 	drivePrivacy: DrivePrivacy,
 	expectedFileId?: FileID,
@@ -1308,19 +1307,14 @@ function assertUploadFileExpectations(
 		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
 		expect(bundleEntity.type).to.equal('bundle');
 
-		// Ensure that the bundle fees look healthy
-		expect(feeKeys.length).to.equal(2);
+		// Ensure that the bundle fee looks healthy
+		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
-
-		// Ensure tip fee looks healthy
-		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
-		expect(feeKeys[1]).to.match(txIdRegex);
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	} else {
 		// Ensure that the fees look healthy
-		expect(feeKeys.length).to.equal(3);
+		expect(feeKeys.length).to.equal(2);
 
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
@@ -1329,10 +1323,6 @@ function assertUploadFileExpectations(
 		expect(feeKeys[1]).to.match(txIdRegex);
 		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
-
-		expect(feeKeys[2]).to.match(txIdRegex);
-		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	}
 }
 
@@ -1369,7 +1359,6 @@ function assertUploadManifestExpectations(
 	result: ArFSManifestResult,
 	fileFee: Winston,
 	metadataFee: Winston,
-	tipFee: Winston,
 	expectedTip: Winston,
 	expectedFileId?: FileID,
 	specialCharacters = false,
@@ -1411,18 +1400,13 @@ function assertUploadManifestExpectations(
 		expect(bundleEntity.type).to.equal('bundle');
 
 		// Ensure that the bundle fee look healthy
-		expect(feeKeys.length).to.equal(2);
+		expect(feeKeys.length).to.equal(1);
 		expect(feeKeys[0]).to.equal(bundleEntity.bundleTxId!.toString());
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(`${result.fees[bundleEntity.bundleTxId!.toString()]}`).to.equal(`${fileFee}`);
-
-		// Ensure tip fee looks healthy
-		expect(feeKeys[1]).to.equal(uploadTip.txId.toString());
-		expect(feeKeys[1]).to.match(txIdRegex);
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	} else {
 		// Ensure that the fees look healthy
-		expect(feeKeys.length).to.equal(3);
+		expect(feeKeys.length).to.equal(2);
 
 		expect(feeKeys[0]).to.match(txIdRegex);
 		expect(feeKeys[0]).to.equal(fileEntity.dataTxId!.toString());
@@ -1431,10 +1415,6 @@ function assertUploadManifestExpectations(
 		expect(feeKeys[1]).to.match(txIdRegex);
 		expect(feeKeys[1]).to.equal(fileEntity.metadataTxId!.toString());
 		expect(`${result.fees[fileEntity.metadataTxId!.toString()]}`).to.equal(`${metadataFee}`);
-
-		expect(feeKeys[2]).to.match(txIdRegex);
-		expect(feeKeys[2]).to.equal(uploadTip.txId.toString());
-		expect(`${result.fees[uploadTip.txId.toString()]}`).to.equal(`${tipFee}`);
 	}
 
 	if (specialCharacters) {
