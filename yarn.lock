@@ -12,6 +12,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@alexsasharegan/simple-cache@npm:^3.3.3":
+  version: 3.3.3
+  resolution: "@alexsasharegan/simple-cache@npm:3.3.3"
+  dependencies:
+    safe-types: ^4.17.0
+  checksum: e36ce8368f74eb1ef3caf657d9baee7eaac1395d603730012ff48cbc6f502bf9b3bf594ada813a0fdfa5f58177e162058bb115f86e81a3bc3a7277f52b92e0ce
+  languageName: node
+  linkType: hard
+
 "@babel/code-frame@npm:7.12.11":
   version: 7.12.11
   resolution: "@babel/code-frame@npm:7.12.11"
@@ -1565,6 +1574,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ardrive-core-js@workspace:."
   dependencies:
+    "@alexsasharegan/simple-cache": ^3.3.3
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/chai": ^4.2.15
     "@types/fs-extra": ^9.0.8
@@ -5974,6 +5984,13 @@ fsevents@~2.3.1:
   version: 5.1.2
   resolution: "safe-buffer@npm:5.1.2"
   checksum: 2708587c1b5e70a5e420714ceb59f30f5791c6e831d39812125a008eca63a4ac18578abd020a0776ea497ff03b4543f2b2a223a7b9073bf2d6c7af9ec6829218
+  languageName: node
+  linkType: hard
+
+"safe-types@npm:^4.17.0":
+  version: 4.27.0
+  resolution: "safe-types@npm:4.27.0"
+  checksum: 182ce7d1d4d970776d39a10108d1a466f457c5a9043986441d2f5380abf57c4a617a2a1ab2c411013335f8caf31ac94a0de991acd97c4bc5fb98493b367e4397
   languageName: node
   linkType: hard
 
