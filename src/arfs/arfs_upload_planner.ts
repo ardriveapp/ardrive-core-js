@@ -17,7 +17,7 @@ import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 
 /** This limit is being chosen as a precaution due to potential gateway limitations */
-export const MAX_BUNDLE_SIZE = 524_288_0000; // 500 MiB
+export const MAX_BUNDLE_SIZE = 524_288_000; // 500 MiB
 
 /** A utility class for calculating the cost of an ArFS write action */
 export class ArFSUploadPlanner {
