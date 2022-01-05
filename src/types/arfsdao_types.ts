@@ -36,8 +36,8 @@ export interface PartialPrepareFileParams {
 }
 
 export interface ArFSPrepareFileParams<T extends DataItem | Transaction> extends PartialPrepareFileParams {
-	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
-	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+	prepareArFSObject: PrepareArFSObject<T, ArFSFileDataPrototype>;
+	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype>;
 }
 
 export interface PartialPrepareDriveParams {
