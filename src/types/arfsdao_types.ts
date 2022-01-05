@@ -29,18 +29,24 @@ export interface ArFSPrepareFolderParams<T> {
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype>;
 }
 
-export interface ArFSPrepareFileParams<T extends DataItem | Transaction> {
+export interface PartialPrepareFileParams {
 	wrappedFile: ArFSEntityToUpload;
-	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
-	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
 	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
 	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
 }
 
-export interface ArFSPrepareDriveParams<T> {
+export interface ArFSPrepareFileParams<T extends DataItem | Transaction> extends PartialPrepareFileParams {
+	prepareArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype | ArFSFileDataPrototype>;
+}
+
+export interface PartialPrepareDriveParams {
 	generateDriveIdFn: () => DriveID;
 	drivePrototypeFactory: CreateDriveMetaDataFactory;
 	rootFolderPrototypeFactory: (rootFolderId: FolderID, driveId: DriveID) => ArFSFolderMetaDataPrototype;
+}
+
+export interface ArFSPrepareDriveParams<T> extends PartialPrepareDriveParams {
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype | ArFSDriveMetaDataPrototype>;
 }
 

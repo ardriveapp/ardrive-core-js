@@ -125,7 +125,9 @@ import {
 	ArFSPrepareObjectBundleParams,
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
-	CommunityTipSettings
+	CommunityTipSettings,
+	PartialPrepareFileParams,
+	PartialPrepareDriveParams
 } from '../types/arfsdao_types';
 import {
 	CreateDriveRewardSettings,
@@ -341,7 +343,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	/** Create drive and root folder together as bundled transaction */
 	private async createBundledDrive(
-		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<DataItem>, 'prepareArFSObject'>,
+		sharedPrepDriveParams: PartialPrepareDriveParams,
 		rewardSettings: RewardSettings
 	): Promise<ArFSTxResult<ArFSCreateBundledDriveResult>> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
@@ -371,7 +373,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	/** Create drive and root folder as separate V2 transactions */
 	private async createV2TxDrive(
-		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction>, 'prepareArFSObject'>,
+		sharedPrepDriveParams: PartialPrepareDriveParams,
 		{ driveRewardSettings, rootFolderRewardSettings }: CreateDriveV2TxRewardSettings
 	): Promise<ArFSTxResult<ArFSCreateDriveResult>> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
@@ -410,7 +412,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 * determine the result type
 	 */
 	private async createDrive(
-		sharedPrepDriveParams: Omit<ArFSPrepareDriveParams<Transaction | DataItem>, 'prepareArFSObject'>,
+		sharedPrepDriveParams: PartialPrepareDriveParams,
 		rewardSettings: CreateDriveRewardSettings
 	): Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult> {
 		const { transactions, result } = isBundleRewardSetting(rewardSettings)
@@ -428,7 +430,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings
 	}: ArFSCreatePublicDriveParams): Promise<ArFSCreatePublicDriveResult | ArFSCreatePublicBundledDriveResult> {
 		const folderData = new ArFSPublicFolderTransactionData(driveName);
-		const prepPublicDriveParams = {
+
+		const prepPublicDriveParams: PartialPrepareDriveParams = {
 			rootFolderPrototypeFactory: (folderId: FolderID, driveId: DriveID) =>
 				new ArFSPublicFolderMetaDataPrototype(folderData, driveId, folderId),
 			generateDriveIdFn: () => EID(uuidv4()),
@@ -451,7 +454,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		newDriveData
 	}: ArFSCreatePrivateDriveParams): Promise<ArFSCreatePrivateDriveResult | ArFSCreatePrivateBundledDriveResult> {
 		const folderData = await ArFSPrivateFolderTransactionData.from(driveName, newDriveData.driveKey);
-		const prepPrivateDriveParams = {
+
+		const prepPrivateDriveParams: PartialPrepareDriveParams = {
 			rootFolderPrototypeFactory: (folderId: FolderID, driveId: DriveID) =>
 				new ArFSPrivateFolderMetaDataPrototype(driveId, folderId, folderData),
 			generateDriveIdFn: () => newDriveData.driveId,
@@ -637,7 +641,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadFileV2Tx(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		prepFileParams: PartialPrepareFileParams,
 		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings,
 		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
@@ -670,7 +674,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadBundledFile(
-		prepFileParams: Omit<ArFSPrepareFileParams<DataItem>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		prepFileParams: PartialPrepareFileParams,
 		rewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
@@ -707,10 +711,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async uploadFile(
-		prepFileParams: Omit<
-			ArFSPrepareFileParams<Transaction | DataItem>,
-			'prepareArFSObject' | 'prepareMetaDataArFSObject'
-		>,
+		prepFileParams: PartialPrepareFileParams,
 		rewardSettings: UploadFileRewardSettings,
 		communityTipSettings?: CommunityTipSettings
 	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
@@ -732,10 +733,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
-		const prepFileParams: Omit<
-			ArFSPrepareFileParams<Transaction | DataItem>,
-			'prepareArFSObject' | 'prepareMetaDataArFSObject'
-		> = {
+		const prepFileParams: PartialPrepareFileParams = {
 			wrappedFile,
 			dataPrototypeFactoryFn: (fileData) =>
 				Promise.resolve(
@@ -772,10 +770,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		let fileKey: FileKey;
 
-		const prepFileParams: Omit<
-			ArFSPrepareFileParams<Transaction | DataItem>,
-			'prepareArFSObject' | 'prepareMetaDataArFSObject'
-		> = {
+		const prepFileParams: PartialPrepareFileParams = {
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
 				new ArFSPrivateFileDataPrototype(
