@@ -64,7 +64,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.parentFolderId &&
 			this.entityId
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataString = await Utf8ArrayToStr(txData);
 			const dataJSON: FileMetaDataTransactionData = await JSON.parse(dataString);
 
@@ -169,7 +169,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.cipher?.length &&
 			this.cipherIV?.length
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 			const fileKey = this.fileKey ?? (await deriveFileKey(`${this.fileId}`, this.driveKey));
 

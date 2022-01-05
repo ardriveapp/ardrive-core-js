@@ -79,7 +79,7 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 			this.driveId.equals(this.entityId) &&
 			this.drivePrivacy?.length
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataString = await Utf8ArrayToStr(txData);
 			const dataJSON = await JSON.parse(dataString);
 
@@ -182,7 +182,7 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 			this.cipher?.length &&
 			this.cipherIV?.length
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey, dataBuffer);
 			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
@@ -306,7 +306,7 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 		) {
 			const isPrivate = this.drivePrivacy === 'private';
 
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 
 			// Data JSON will be false when a private drive cannot be decrypted

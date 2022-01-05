@@ -137,6 +137,7 @@ import {
 } from '../types/cost_estimator_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
+import axiosRetry, { exponentialDelay } from 'axios-retry';
 import { Readable } from 'stream';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 
@@ -1200,9 +1201,22 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
 
-					const driveDataBuffer = Buffer.from(
-						await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
-					);
+					const reqURL = `${this.arweave.api.config.protocol}://${this.arweave.api.config.host}/${edgeOfFirstDrive.node.id}`;
+					const axiosInstance = axios.create();
+					axiosRetry(axiosInstance, {
+						retries: 3,
+						retryDelay: (retryNumber) => {
+							console.error(`Error! Retying request to ${reqURL}`);
+							return exponentialDelay(retryNumber);
+						}
+					});
+					const {
+						data: driveDataBuffer
+					}: {
+						data: Buffer;
+					} = await axiosInstance.get(reqURL, {
+						responseType: 'arraybuffer'
+					});
 
 					try {
 						// Attempt to decrypt drive to assert drive key is correct
