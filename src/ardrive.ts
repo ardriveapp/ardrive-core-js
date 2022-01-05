@@ -922,7 +922,6 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					key: urlEncodeHashKey(uploadFileResult.fileKey)
 				}
 			];
