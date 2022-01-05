@@ -1424,7 +1424,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
 			// download child files into the folder
-			const childrenFiles = childFiles.filter((file) => file.parentFolderId.equals(folder.entityId));
+			const childrenFiles = childFiles.filter(
+				(file) => `${file.parentFolderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */
+			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
 					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy).path
@@ -1478,7 +1480,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const childFiles = await this.getPrivateFilesWithParentFolderIds(searchFolderIDs, driveKey, owner, true);
 
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
-		const childFolders = allFolderEntitiesOfDrive.filter((folder) => subFolderIDs.includes(folder.entityId));
+		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>
+			subFolderIDs.some((folderId) => `${folderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */)
+		);
 
 		return { hierarchy, childFiles, childFolders };
 	}
