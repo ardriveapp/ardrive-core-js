@@ -34,7 +34,9 @@ import {
 	ArFSCreatePublicDriveResult,
 	ArFSCreatePublicBundledDriveResult,
 	ArFSUploadBundledFileResult,
-	ArFSUploadFileV2TxResult
+	ArFSUploadFileV2TxResult,
+	ArFSUploadEntitiesResult,
+	FileResult
 } from './arfs_entity_result_factory';
 import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
@@ -87,7 +89,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	UploadOrder
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -132,12 +135,14 @@ import {
 	CreateDriveV2TxRewardSettings,
 	isBundleRewardSetting,
 	UploadFileRewardSettings,
-	UploadFileV2TxRewardSettings
+	UploadFileV2TxRewardSettings,
+	UploadPlan
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
+import { ArFSEntityToUpload, ArFSFolderToUpload, isFolder } from './arfs_file_wrapper';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -811,6 +816,309 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return { ...uploadFileResult, fileKey: fileKey! };
+	}
+
+	private async uploadFileAndMetaDataAsV2(
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		dataTxRewardSettings: RewardSettings,
+		metaDataRewardSettings: RewardSettings,
+		communityTipSettings?: CommunityTipSettings
+	): Promise<FileResult> {
+		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
+			...prepFileParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: dataTxRewardSettings,
+					communityTipSettings
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: metaDataRewardSettings
+				})
+		});
+
+		// Send both v2 transactions
+		await this.sendTransactionsAsChunks(arFSObjects);
+
+		const [dataTx, metaDataTx] = arFSObjects;
+		return {
+			fileDataTxId: TxID(dataTx.id),
+			fileDataReward: W(dataTx.reward),
+			fileId,
+			metaDataTxId: TxID(metaDataTx.id),
+			fileMetaDataReward: W(metaDataTx.reward),
+			fileKey
+		};
+	}
+
+	private async uploadOnlyFileAsV2(
+		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		dataTxRewardSettings: RewardSettings,
+		communityTipSettings?: CommunityTipSettings
+	): Promise<{ fileResult: FileResult; metaDataDataItem: DataItem }> {
+		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
+			...prepFileParams,
+			prepareArFSObject: (objectMetaData) =>
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: dataTxRewardSettings,
+					communityTipSettings
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
+				// TODO: Solve another way, Battling some type issues here...
+				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+				// @ts-ignore
+				this.prepareArFSDataItem({
+					objectMetaData
+				})
+		});
+
+		// TODO: Same as above, we should be able to adjust prepareFile's type information
+		// to make this type-safe. But I haven't solved that yet
+		const dataTx = arFSObjects[0] as Transaction;
+		const metaDataDataItem = arFSObjects[1] as DataItem;
+
+		// Send only file data as v2 transaction
+		await this.sendTransactionsAsChunks([dataTx]);
+
+		return {
+			fileResult: {
+				fileDataTxId: TxID(dataTx.id),
+				fileDataReward: W(dataTx.reward),
+				fileId,
+				metaDataTxId: TxID(metaDataDataItem.id),
+				fileKey
+			},
+			// Return the meta data data item
+			metaDataDataItem
+		};
+	}
+
+	/** Assembles data and metadata prototype factories to be used in prepareFile */
+	private getPrepFileParams({
+		destDriveId,
+		destFolderId,
+		wrappedEntity: wrappedFile,
+		driveKey
+	}: UploadOrder<ArFSEntityToUpload>): Omit<
+		ArFSPrepareFileParams<Transaction | DataItem>,
+		'prepareArFSObject' | 'prepareMetaDataArFSObject'
+	> {
+		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+		if (driveKey) {
+			return {
+				// Return factories for private prototypes
+				wrappedFile,
+				dataPrototypeFactoryFn: async (fileData, fileId) =>
+					new ArFSPrivateFileDataPrototype(
+						await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
+					),
+				metadataTxDataFactoryFn: async (fileId, dataTxId) => {
+					return new ArFSPrivateFileMetaDataPrototype(
+						await ArFSPrivateFileMetadataTransactionData.from(
+							wrappedFile.destinationBaseName,
+							fileSize,
+							lastModifiedDateMS,
+							dataTxId,
+							dataContentType,
+							fileId,
+							driveKey
+						),
+						destDriveId,
+						fileId,
+						destFolderId
+					);
+				}
+			};
+		}
+
+		return {
+			// Return factories for public prototypes
+			wrappedFile,
+			dataPrototypeFactoryFn: (fileData) =>
+				Promise.resolve(
+					new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
+				),
+			metadataTxDataFactoryFn: (fileId, dataTxId) =>
+				Promise.resolve(
+					new ArFSPublicFileMetaDataPrototype(
+						new ArFSPublicFileMetadataTransactionData(
+							wrappedFile.destinationBaseName,
+							fileSize,
+							lastModifiedDateMS,
+							dataTxId,
+							dataContentType
+						),
+						destDriveId,
+						fileId,
+						destFolderId
+					)
+				)
+		};
+	}
+
+	/** Assembles folder metadata prototype factory to be used in prepareFile */
+	private async getPrepFolderFactoryParams({
+		destDriveId,
+		destFolderId,
+		wrappedEntity: wrappedFolder,
+		driveKey
+	}: UploadOrder<ArFSFolderToUpload>): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
+		if (driveKey) {
+			// Return factory for private folder prototype
+			const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
+			return (folderId) =>
+				new ArFSPrivateFolderMetaDataPrototype(
+					destDriveId,
+					wrappedFolder.existingId ?? folderId,
+					folderData,
+					destFolderId
+				);
+		}
+
+		return (folderId) =>
+			// Return factory for public folder prototype
+			new ArFSPublicFolderMetaDataPrototype(
+				new ArFSPublicFolderTransactionData(wrappedFolder.destinationBaseName),
+				destDriveId,
+				wrappedFolder.existingId ?? folderId,
+				destFolderId
+			);
+	}
+
+	async uploadAllEntities({ bundlePlans, v2TxPlans }: UploadPlan): Promise<ArFSUploadEntitiesResult> {
+		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+
+		for (const { rewardSettings, uploadOrder, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
+			// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+
+			const { fileDataRewardSettings, metaDataRewardSettings } = rewardSettings;
+			const { wrappedEntity, driveKey } = uploadOrder;
+
+			if (fileDataRewardSettings) {
+				if (isFolder(wrappedEntity)) {
+					throw new Error(
+						// TODO: This never happens, solve type issues another way...
+						'Something has gone wrong with the upload plan, folders cannot have file data reward settings...'
+					);
+				}
+
+				const prepFileParams = this.getPrepFileParams({ ...uploadOrder, wrappedEntity });
+
+				let v2FileResult: FileResult;
+				if (metaDataRewardSettings) {
+					// Send file and metadata as v2 txs
+					v2FileResult = await this.uploadFileAndMetaDataAsV2(
+						prepFileParams,
+						fileDataRewardSettings,
+						metaDataRewardSettings,
+						communityTipSettings
+					);
+				} else {
+					if (!metaDataBundleIndex) {
+						throw new Error(
+							// TODO: This never happens, solve type issues another way...
+							'Something has gone wrong with the upload plan, file metadata has no reward settings or bundle index...'
+						);
+					}
+					// Send file as v2, but prepare the metadata as data item
+					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
+						prepFileParams,
+						fileDataRewardSettings,
+						communityTipSettings
+					);
+					v2FileResult = fileResult;
+
+					// Add data item to its intended bundle plan
+					bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
+				}
+				results.fileResults.push(v2FileResult);
+			} else if (metaDataRewardSettings) {
+				if (!isFolder(wrappedEntity)) {
+					// TODO: This never happens, solve type issues another way...
+					throw new Error('Something has gone wrong, files must have file data reward settings...');
+				}
+
+				// Send this folder metadata up as a v2 tx
+				const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
+					await this.getPrepFolderFactoryParams({ ...uploadOrder, wrappedEntity }),
+					metaDataRewardSettings
+				);
+
+				results.folderResults.push({
+					folderId,
+					folderTxId: metaDataTxId,
+					folderMetaDataReward: metaDataTxReward,
+					driveKey
+				});
+			}
+		}
+
+		for (const { uploadOrders, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
+			// The upload planner has planned to upload bundles, proceed with bundling
+			const dataItems: DataItem[] = [];
+
+			for (const uploadOrder of uploadOrders) {
+				const { wrappedEntity, driveKey } = uploadOrder;
+
+				if (isFolder(wrappedEntity)) {
+					// Prepare folder data item and results
+					const { arFSObjects, folderId } = await this.prepareFolder({
+						folderPrototypeFactory: await this.getPrepFolderFactoryParams({
+							...uploadOrder,
+							wrappedEntity
+						}),
+						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+					});
+					const folderDataItem = arFSObjects[0];
+
+					dataItems.push(folderDataItem);
+					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
+				} else {
+					// Prepare file data item and results
+					const prepFileParams = this.getPrepFileParams({ ...uploadOrder, wrappedEntity });
+					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
+						...prepFileParams,
+						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData }),
+						prepareMetaDataArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+					});
+
+					const [fileDataItem, metaDataItem] = arFSObjects;
+
+					dataItems.push(...arFSObjects);
+					results.fileResults.push({
+						fileId,
+						fileDataTxId: TxID(fileDataItem.id),
+						metaDataTxId: TxID(metaDataItem.id),
+						fileKey
+					});
+				}
+
+				// Add any metaData data items from over-sized files sent as v2
+				dataItems.push(...metaDataDataItems);
+			}
+
+			const bundle = await this.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: bundleRewardSettings,
+				communityTipSettings
+			});
+
+			// This bundle is now complete, send it off before starting a new one
+			await this.sendTransactionsAsChunks([bundle]);
+
+			results.bundleResults.push({
+				bundleTxId: TxID(bundle.id),
+				communityTipSettings,
+				bundleReward: W(bundle.reward)
+			});
+		}
+
+		// We did it 😎
+		return results;
 	}
 
 	async prepareArFSDataItem({
