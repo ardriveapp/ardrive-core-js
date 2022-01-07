@@ -1,5 +1,5 @@
 import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston } from '../types';
+import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, CommunityTipSettings } from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -16,6 +16,35 @@ export function isBundleResult(
 export interface ArFSWriteResult {
 	metaDataTxId: TransactionID;
 	metaDataTxReward: Winston;
+}
+
+export interface ArFSUploadEntitiesResult {
+	fileResults: FileResult[];
+	folderResults: FolderResult[];
+	bundleResults: BundleResult[];
+}
+
+export interface FolderResult {
+	folderTxId: TransactionID;
+	folderId: FolderID;
+	folderMetaDataReward?: Winston;
+	driveKey?: DriveKey;
+}
+
+export interface FileResult {
+	fileDataTxId: TransactionID;
+	metaDataTxId: TransactionID;
+	fileId: FileID;
+	fileDataReward?: Winston;
+	fileMetaDataReward?: Winston;
+	communityTipSettings?: CommunityTipSettings;
+	fileKey?: FileKey;
+}
+
+export interface BundleResult {
+	bundleTxId: TransactionID;
+	bundleReward: Winston;
+	communityTipSettings?: CommunityTipSettings;
 }
 
 export interface ArFSDriveResult {
