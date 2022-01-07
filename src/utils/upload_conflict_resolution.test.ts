@@ -59,7 +59,7 @@ describe('The resolveFileNameConflicts function', () => {
 			nameConflictInfo: stubConflictInfo
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.undefined;
 	});
@@ -75,7 +75,7 @@ describe('The resolveFileNameConflicts function', () => {
 		});
 
 		expect(wrappedFile.conflictResolution).to.be.undefined;
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId?.equals(stubEntityID)).to.be.true;
 	});
 
@@ -89,7 +89,7 @@ describe('The resolveFileNameConflicts function', () => {
 			nameConflictInfo: stubConflictInfo
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.equal(upsertOnConflicts);
 	});
@@ -102,7 +102,7 @@ describe('The resolveFileNameConflicts function', () => {
 			nameConflictInfo: stubConflictInfo
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.equal(skipOnConflicts);
 	});
@@ -126,7 +126,7 @@ describe('The resolveFileNameConflicts function', () => {
 			nameConflictInfo: stubConflictInfo
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.equal(errorOnConflict);
 	});
@@ -154,7 +154,7 @@ describe('The resolveFileNameConflicts function', () => {
 			prompts: stubbedFileAskPrompts
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.equal(skipOnConflicts);
 	});
@@ -170,7 +170,7 @@ describe('The resolveFileNameConflicts function', () => {
 			prompts: stubbedFileAskPrompts
 		});
 
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
 		expect(wrappedFile.conflictResolution).to.be.equal(skipOnConflicts);
 	});
@@ -187,7 +187,7 @@ describe('The resolveFileNameConflicts function', () => {
 		});
 
 		expect(wrappedFile.conflictResolution).to.be.undefined;
-		expect(wrappedFile.newFileName).to.be.undefined;
+		expect(wrappedFile.newName).to.be.undefined;
 		expect(wrappedFile.existingId?.equals(stubEntityID)).to.be.true;
 	});
 
@@ -207,7 +207,7 @@ describe('The resolveFileNameConflicts function', () => {
 
 		expect(wrappedFile.conflictResolution).to.be.undefined;
 		expect(wrappedFile.existingId).to.be.undefined;
-		expect(wrappedFile.newFileName).to.equal('non-conflicting-name');
+		expect(wrappedFile.newName).to.equal('non-conflicting-name');
 	});
 
 	it('throws an error when there is a file to file name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the file to another conflicting name', async () => {
@@ -272,7 +272,7 @@ describe('The resolveFolderNameConflicts function', () => {
 			getConflictInfoFn: stubGetConflictInfoFn
 		});
 
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 		expect(wrappedFolder.existingId).to.be.undefined;
 		expect(wrappedFolder.conflictResolution).to.be.undefined;
 	});
@@ -286,7 +286,7 @@ describe('The resolveFolderNameConflicts function', () => {
 			getConflictInfoFn: stubGetConflictInfoFn
 		});
 
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 		expect(wrappedFolder.existingId).to.be.undefined;
 		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
 	});
@@ -302,7 +302,7 @@ describe('The resolveFolderNameConflicts function', () => {
 
 		expect(wrappedFolder.conflictResolution).to.be.undefined;
 		expect(wrappedFolder.existingId?.equals(stubEntityIDAlt)).to.be.true;
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 	});
 
 	it('throws an error if resolution is set to ask and there are no prompts defined', async () => {
@@ -332,7 +332,7 @@ describe('The resolveFolderNameConflicts function', () => {
 		});
 
 		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 		expect(wrappedFolder.existingId).to.be.undefined;
 	});
 
@@ -349,7 +349,7 @@ describe('The resolveFolderNameConflicts function', () => {
 		});
 
 		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 		expect(wrappedFolder.existingId).to.be.undefined;
 	});
 
@@ -367,7 +367,7 @@ describe('The resolveFolderNameConflicts function', () => {
 
 		expect(wrappedFolder.conflictResolution).to.be.undefined;
 		expect(wrappedFolder.existingId?.equals(stubEntityIDAlt)).to.be.true;
-		expect(wrappedFolder.newFolderName).to.be.undefined;
+		expect(wrappedFolder.newName).to.be.undefined;
 	});
 
 	it('resolves wrappedFolder.conflictResolution to undefined and assigns the new folder name when there is a folder to folder name conflict in the destination folder, the resolution is set to ask, and the user chooses to rename the folder to a non conflicting name', async () => {
@@ -386,7 +386,7 @@ describe('The resolveFolderNameConflicts function', () => {
 		});
 
 		expect(wrappedFolder.conflictResolution).to.be.undefined;
-		expect(wrappedFolder.newFolderName).to.equal('non-conflicting-name');
+		expect(wrappedFolder.newName).to.equal('non-conflicting-name');
 		expect(wrappedFolder.existingId).to.be.undefined;
 	});
 

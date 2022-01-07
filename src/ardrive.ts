@@ -453,7 +453,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		// Derive destination name and names already within provided destination folder
-		wrappedFile.newFileName = destinationFileName;
+		wrappedFile.newName = destinationFileName;
 		const nameConflictInfo = await getConflictInfoFn(parentFolderId);
 
 		await resolveFileNameConflicts({
@@ -720,7 +720,7 @@ export class ArDrive extends ArDriveAnonymous {
 		} else {
 			// Create the parent folder
 			const folderData = new ArFSPublicFolderTransactionData(
-				wrappedFolder.newFolderName ?? wrappedFolder.getBaseFileName()
+				wrappedFolder.newName ?? wrappedFolder.getBaseFileName()
 			);
 
 			const createFolderResult = await this.arFsDao.createPublicFolder({
@@ -935,7 +935,7 @@ export class ArDrive extends ArDriveAnonymous {
 		} else {
 			// Create parent folder
 			const folderData = await ArFSPrivateFolderTransactionData.from(
-				wrappedFolder.newFolderName ?? wrappedFolder.getBaseFileName(),
+				wrappedFolder.newName ?? wrappedFolder.getBaseFileName(),
 				driveKey
 			);
 			const createFolderResult = await this.arFsDao.createPrivateFolder({
@@ -1358,7 +1358,7 @@ export class ArDrive extends ArDriveAnonymous {
 		// Don't estimate cost of folder metadata if using existing folder
 		if (!folderToUpload.existingId) {
 			const folderMetadataTxData = await (async () => {
-				const folderName = folderToUpload.newFolderName ?? folderToUpload.getBaseFileName();
+				const folderName = folderToUpload.newName ?? folderToUpload.getBaseFileName();
 
 				if (driveKey) {
 					return ArFSPrivateFolderTransactionData.from(folderName, driveKey);

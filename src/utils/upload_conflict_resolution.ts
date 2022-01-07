@@ -101,7 +101,7 @@ export async function resolveFileNameConflicts({
 			}
 
 			// Use specified new file name
-			wrappedFile.newFileName = userInput.newFileName;
+			wrappedFile.newName = userInput.newFileName;
 			return;
 
 		case replaceOnConflicts:
@@ -191,7 +191,7 @@ export async function resolveFolderNameConflicts({
 				}
 
 				// Use new folder name and upload all contents within new folder
-				wrappedFolder.newFolderName = userInput.newFolderName;
+				wrappedFolder.newName = userInput.newFolderName;
 
 				// Conflict resolved by rename -- return early, do NOT recurse into this folder
 				return;

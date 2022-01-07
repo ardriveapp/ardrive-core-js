@@ -66,7 +66,7 @@ export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload |
 }
 
 /** Type-guard function to determine if returned class is a File or Folder */
-export function isFolder(fileOrFolder: ArFSFileToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
+export function isFolder(fileOrFolder: ArFSEntityToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
 	return fileOrFolder instanceof ArFSFolderToUpload;
 }
 export abstract class ArFSEntityToUpload {
@@ -77,11 +77,12 @@ export abstract class ArFSEntityToUpload {
 	abstract lastModifiedDate: UnixTime;
 	abstract size: ByteCount;
 	existingId?: FileID;
-	newFileName?: string;
+	newName?: string;
 	conflictResolution?: FileConflictResolution;
+	metaDataBundleIndex?: number;
 
 	public get destinationBaseName(): string {
-		return this.newFileName ?? this.getBaseFileName();
+		return this.newName ?? this.getBaseFileName();
 	}
 }
 
@@ -169,7 +170,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 	}
 
 	public getBaseFileName(): BaseFileName {
-		return this.newFileName ?? this.destManifestName;
+		return this.newName ?? this.destManifestName;
 	}
 
 	public getFileDataBuffer(): Buffer {
@@ -198,7 +199,6 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 
 	bundleIndex?: number;
 	v2TxBaseCost?: V2FileBaseCosts;
-	metaDataBundleIndex?: number;
 	baseCosts?: BulkFileBaseCosts;
 
 	public gatherFileInfo(): FileInfo {
@@ -249,7 +249,7 @@ export class ArFSFolderToUpload {
 	baseCosts?: MetaDataBaseCosts;
 	bundleIndex?: number;
 	existingId?: FolderID;
-	newFolderName?: string;
+	newName?: string;
 	conflictResolution: FolderConflictResolution = undefined;
 
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
@@ -271,6 +271,10 @@ export class ArFSFolderToUpload {
 				}
 			}
 		}
+	}
+
+	public get destinationBaseName(): string {
+		return this.newName ?? this.getBaseFileName();
 	}
 
 	public getBaseCosts(): MetaDataBaseCosts {
