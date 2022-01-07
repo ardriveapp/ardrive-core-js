@@ -20,8 +20,8 @@ import {
 	EstimateUploadFileParams,
 	UploadFileV2TxRewardSettings
 } from '../types/upload_planner_types';
-import { privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
-import { ArFSUploadPlanner, MAX_BUNDLE_SIZE } from './arfs_upload_planner';
+import { MAX_BUNDLE_SIZE, privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
+import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
 
 describe('The ArFSUploadPlanner class', () => {

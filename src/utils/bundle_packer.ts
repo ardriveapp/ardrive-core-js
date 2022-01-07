@@ -1,5 +1,5 @@
-import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../arfs/arfs_upload_planner';
 import { ByteCount, UploadOrder } from '../types';
+import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from './constants';
 
 export type BundleIndex = number;
 
