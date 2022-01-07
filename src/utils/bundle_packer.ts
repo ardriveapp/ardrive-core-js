@@ -23,6 +23,13 @@ export abstract class BundlePacker {
  * but the fileMetaData will still be sent up with a bundle
  */
 export class LowestIndexBundlePacker extends BundlePacker {
+	constructor(
+		private readonly maxBundleSize = MAX_BUNDLE_SIZE,
+		private readonly maxDataItemLimit = MAX_DATA_ITEM_LIMIT
+	) {
+		super();
+	}
+
 	packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex {
 		const { byteCountAsDataItem, numberOfDataItems } = bundlePackParams;
 
@@ -36,7 +43,7 @@ export class LowestIndexBundlePacker extends BundlePacker {
 		}
 
 		// Otherwise we pack into a new bundle
-		this.bundles.push(new BundleToPack(bundlePackParams));
+		this.bundles.push(new BundleToPack(bundlePackParams, this.maxBundleSize, this.maxDataItemLimit));
 		return this.bundles.length - 1;
 	}
 }
@@ -48,13 +55,17 @@ class BundleToPack {
 	public totalDataItems = 0;
 
 	get remainingSize() {
-		return MAX_BUNDLE_SIZE - this.totalSize;
+		return this.maxBundleSize - this.totalSize;
 	}
 	get remainingDataItems() {
-		return MAX_DATA_ITEM_LIMIT - this.totalDataItems;
+		return this.maxDataItemLimit - this.totalDataItems;
 	}
 
-	constructor(initialBundlePackParams: BundlePackParams) {
+	constructor(
+		initialBundlePackParams: BundlePackParams,
+		private readonly maxBundleSize = MAX_BUNDLE_SIZE,
+		private readonly maxDataItemLimit = MAX_DATA_ITEM_LIMIT
+	) {
 		this.addToBundle(initialBundlePackParams);
 	}
 
