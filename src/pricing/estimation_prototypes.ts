@@ -13,37 +13,57 @@ import {
 	ArFSPublicFolderTransactionData,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
-	DriveKey
+	deriveDriveKey,
+	DriveKey,
+	JWKWallet,
+	readJWKFile
 } from '../exports';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 
+export const getFakeDriveKey = async (): Promise<DriveKey> => {
+	return deriveDriveKey(
+		'stubPassword',
+		`${fakeEntityId}`,
+		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
+	);
+};
+
+export async function getPrivateFolderEstimationPrototype(
+	folderName: string
+): Promise<ArFSPrivateFolderMetaDataPrototype> {
+	return new ArFSPrivateFolderMetaDataPrototype(
+		fakeEntityId,
+		fakeEntityId,
+		await ArFSPrivateFolderTransactionData.from(folderName, await getFakeDriveKey())
+	);
+}
+
 export async function getPrivateCreateDriveEstimationPrototypes({
-	driveName,
-	newPrivateDriveData
+	driveName
 }: CreatePrivateDriveParams): Promise<EstimateCreateDriveParams> {
 	return {
-		rootFolderMetaDataPrototype: new ArFSPrivateFolderMetaDataPrototype(
-			fakeEntityId,
-			fakeEntityId,
-			await ArFSPrivateFolderTransactionData.from(driveName, newPrivateDriveData.driveKey)
-		),
+		rootFolderMetaDataPrototype: await getPrivateFolderEstimationPrototype(driveName),
 		driveMetaDataPrototype: new ArFSPrivateDriveMetaDataPrototype(
 			fakeEntityId,
-			await ArFSPrivateDriveTransactionData.from(driveName, fakeEntityId, newPrivateDriveData.driveKey)
+			await ArFSPrivateDriveTransactionData.from(driveName, fakeEntityId, await getFakeDriveKey())
 		)
 	};
+}
+
+export function getPublicFolderEstimationPrototype(folderName: string): ArFSPublicFolderMetaDataPrototype {
+	return new ArFSPublicFolderMetaDataPrototype(
+		new ArFSPublicFolderTransactionData(folderName),
+		fakeEntityId,
+		fakeEntityId
+	);
 }
 
 export function getPublicCreateDriveEstimationPrototypes({
 	driveName
 }: CreatePublicDriveParams): EstimateCreateDriveParams {
 	return {
-		rootFolderMetaDataPrototype: new ArFSPublicFolderMetaDataPrototype(
-			new ArFSPublicFolderTransactionData(driveName),
-			fakeEntityId,
-			fakeEntityId
-		),
+		rootFolderMetaDataPrototype: getPublicFolderEstimationPrototype(driveName),
 		driveMetaDataPrototype: new ArFSPublicDriveMetaDataPrototype(
 			new ArFSPublicDriveTransactionData(driveName, fakeEntityId),
 			fakeEntityId
@@ -71,8 +91,7 @@ export function getPublicUploadFileEstimationPrototype(
 }
 
 export async function getPrivateUploadFileEstimationPrototype(
-	wrappedFile: ArFSEntityToUpload,
-	driveKey: DriveKey
+	wrappedFile: ArFSEntityToUpload
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -84,7 +103,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 			fakeTxID,
 			dataContentType,
 			fakeEntityId,
-			driveKey
+			await getFakeDriveKey()
 		),
 		fakeEntityId,
 		fakeEntityId,

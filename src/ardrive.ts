@@ -619,7 +619,7 @@ export class ArDrive extends ArDriveAnonymous {
 			async (wrappedFile) =>
 				this.uploadPlanner.estimateUploadFile({
 					fileDataSize: encryptedDataSize(wrappedFile.size),
-					fileMetaDataPrototype: await getPrivateUploadFileEstimationPrototype(wrappedFile, driveKey),
+					fileMetaDataPrototype: await getPrivateUploadFileEstimationPrototype(wrappedFile),
 					contentTypeTag: privateOctetContentTypeTag
 				}),
 			(rewardSettings, driveId, wrappedFile, communityTipSettings) =>
@@ -1387,7 +1387,7 @@ export class ArDrive extends ArDriveAnonymous {
 			const fileDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileSize);
 
 			const stubFileMetaData = driveKey
-				? await getPrivateUploadFileEstimationPrototype(file, driveKey)
+				? await getPrivateUploadFileEstimationPrototype(file)
 				: getPublicUploadFileEstimationPrototype(file);
 			const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
 				stubFileMetaData.objectData.sizeOf()
