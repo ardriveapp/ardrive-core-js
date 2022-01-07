@@ -33,6 +33,14 @@ export class LowestIndexBundlePacker extends BundlePacker {
 	packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex {
 		const { byteCountAsDataItem, numberOfDataItems } = bundlePackParams;
 
+		if (+byteCountAsDataItem > this.maxBundleSize) {
+			throw new Error('Data item is too large to be packed into a bundle!');
+		}
+
+		if (numberOfDataItems > this.maxDataItemLimit) {
+			throw new Error('Data item count is too high to be packed into a bundle!');
+		}
+
 		for (let index = 0; index < this.bundles.length; index++) {
 			const bundle = this.bundles[index];
 			// Pack into lowest index bundle that has enough remaining size and data items
@@ -63,8 +71,8 @@ class BundleToPack {
 
 	constructor(
 		initialBundlePackParams: BundlePackParams,
-		private readonly maxBundleSize = MAX_BUNDLE_SIZE,
-		private readonly maxDataItemLimit = MAX_DATA_ITEM_LIMIT
+		private readonly maxBundleSize: number,
+		private readonly maxDataItemLimit: number
 	) {
 		this.addToBundle(initialBundlePackParams);
 	}
