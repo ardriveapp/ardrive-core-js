@@ -9,10 +9,11 @@ import {
 	FileID,
 	FileConflictPrompts,
 	FileNameConflictResolution,
-	FolderConflictPrompts
+	FolderConflictPrompts,
+	DriveKey
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
-import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSEntityToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
@@ -48,6 +49,8 @@ export interface ArFSResult {
 	created: ArFSEntityData[];
 	tips: TipData[];
 	fees: ArFSFees;
+	/** Gather and return any errors from bulk upload to inform the user */
+	errors?: string[];
 }
 
 export interface ArFSManifestResult extends ArFSResult {
@@ -115,23 +118,26 @@ export interface UploadParams {
 	conflictResolution?: FileNameConflictResolution;
 }
 
-export interface BundlePublicUploadOrder extends VerifiedPublicUploadOrder {
-	/** The index of the bundle where the dataItem for this entity will be bundled  */
-	bundleIndex: number;
-}
-export interface VerifiedPublicUploadOrder extends PublicUploadOrder {
-	destName: string;
-	driveId: DriveID;
-}
-export interface PublicUploadOrder {
-	wrappedEntity: ArFSFileToUpload | ArFSFolderToUpload;
+/** An upload order upon entering the ArDrive class */
+export interface ArDriveUploadOrder<T = ArFSEntityToUpload | ArFSFolderToUpload> {
+	wrappedEntity: T;
 	destFolderId: FolderID;
 	destName?: string;
+	driveKey?: DriveKey;
 }
-export type PrivateUploadOrder = PublicUploadOrder & WithDriveKey;
 
-export interface UploadAllPublicEntitiesParams {
-	entitiesToUpload: PublicUploadOrder[];
+/**
+ * ArDrive class uses the destName to resolve conflicts and determines the destDriveId
+ *
+ * Destination name is omitted here because that information is assigned to the ArFSEntityToUpload
+ */
+export interface UploadOrder<T = ArFSEntityToUpload | ArFSFolderToUpload>
+	extends Omit<ArDriveUploadOrder<T>, 'destName'> {
+	destDriveId: DriveID;
+}
+
+export interface UploadAllEntitiesParams {
+	entitiesToUpload: ArDriveUploadOrder[];
 	conflictResolution?: FileNameConflictResolution;
 	prompts?: FolderConflictPrompts;
 }
