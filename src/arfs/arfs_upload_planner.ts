@@ -29,13 +29,7 @@ import {
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { isFolder } from './arfs_file_wrapper';
 import { v4 } from 'uuid';
-import {
-	getPrivateFolderEstimationPrototype,
-	getPrivateUploadFileEstimationPrototype,
-	getPublicFolderEstimationPrototype,
-	getPublicUploadFileEstimationPrototype
-} from '../pricing/estimation_prototypes';
-import { encryptedDataSize } from '../utils/common';
+import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 
 /** A utility class for calculating the cost of an ArFS write action */
@@ -65,13 +59,7 @@ export class ArFSUploadPlanner {
 
 	private async packFile(packFileParams: PackFileParams): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = packFileParams;
-
-		// We use the presence of a driveKey to determine to estimate as private or public
-		const fileMetaDataPrototype = driveKey
-			? await getPrivateUploadFileEstimationPrototype(wrappedFile)
-			: getPublicUploadFileEstimationPrototype(wrappedFile);
-
-		const fileByteCount = driveKey ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
+		const { fileByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, driveKey);
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
 			fileByteCount,
@@ -132,21 +120,13 @@ export class ArFSUploadPlanner {
 	/** Flattens a recursive folder and packs them into bundles */
 	private async packFolder(packFolderParams: PackFolderParams): Promise<void> {
 		const { wrappedEntity: wrappedFolder, driveKey } = packFolderParams;
+		const { folderByteCount } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, driveKey);
 
 		// We won't create a new folder one already exists
 		if (!wrappedFolder.existingId) {
-			const folderPrototype = driveKey
-				? await getPrivateFolderEstimationPrototype(wrappedFolder.destinationBaseName)
-				: getPublicFolderEstimationPrototype(wrappedFolder.destinationBaseName);
-
-			const dataItemSize = this.byteCountAsDataItem(
-				folderPrototype.objectData.sizeOf(),
-				this.arFSTagSettings.baseArFSTagsIncluding({ tags: folderPrototype.gqlTags })
-			);
-
 			this.bundlePacker.packIntoBundle({
 				uploadOrder: packFolderParams,
-				byteCountAsDataItem: dataItemSize,
+				byteCountAsDataItem: folderByteCount,
 				numberOfDataItems: 1
 			});
 		}
@@ -197,13 +177,29 @@ export class ArFSUploadPlanner {
 
 		const bundlePlans: BundlePlan[] = [];
 		for (const { uploadOrders, totalDataItems, totalSize } of this.bundlePacker.bundles) {
-			if (totalDataItems === 1) {
-				// Do not send up a bundle with a single data item
-				// Unpack this bundle into v2 Tx Array
+			const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
 
-				// TODO: Determine reward settings for this edge case at this layer
-				// Probably extract prototype logic into shared functions
-				this.v2TxArray.push({ uploadOrder: uploadOrders[0], rewardSettings: {} });
+			if (totalDataItems === 1) {
+				// Do not send up a bundle with a single folder data item
+
+				const { wrappedEntity, driveKey } = uploadOrders[0];
+				if (!isFolder(wrappedEntity)) {
+					throw new Error('Error: A file cannot be bundled alone without its metadata!');
+				}
+
+				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
+					wrappedEntity.destinationBaseName,
+					driveKey
+				);
+				const metaDataReward = await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData);
+
+				// Unpack this bundle into v2 Tx Array
+				this.v2TxArray.push({
+					uploadOrder: uploadOrders[0],
+					rewardSettings: {
+						metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
+					}
+				});
 			}
 
 			const bundledByteCount = this.bundledByteCountOfTotalSizeAndItems(new ByteCount(totalSize), totalDataItems);
@@ -213,7 +209,6 @@ export class ArFSUploadPlanner {
 			let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
 			// We do not add community tip if there are no files present within the bundle
-			const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
 			if (hasFileData) {
 				const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
 				const communityTipTarget = await this.communityOracle.selectTokenHolder();

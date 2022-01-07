@@ -1,4 +1,9 @@
-import { ArFSPrivateFileMetaDataPrototype, ArFSPublicFileMetaDataPrototype } from '../arfs/arfs_prototypes';
+import {
+	ArFSFileMetaDataPrototype,
+	ArFSFolderMetaDataPrototype,
+	ArFSPrivateFileMetaDataPrototype,
+	ArFSPublicFileMetaDataPrototype
+} from '../arfs/arfs_prototypes';
 import {
 	ArFSEntityToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
@@ -11,10 +16,12 @@ import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
+	ByteCount,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
 	deriveDriveKey,
 	DriveKey,
+	encryptedDataSize,
 	JWKWallet,
 	readJWKFile
 } from '../exports';
@@ -109,4 +116,32 @@ export async function getPrivateUploadFileEstimationPrototype(
 		fakeEntityId,
 		fakeEntityId
 	);
+}
+
+export async function getFileEstimationInfo(
+	wrappedFile: ArFSEntityToUpload,
+	driveKey?: DriveKey
+): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileByteCount: ByteCount }> {
+	// We use the presence of a driveKey to determine to estimate as private or public
+	const fileMetaDataPrototype = driveKey
+		? await getPrivateUploadFileEstimationPrototype(wrappedFile)
+		: getPublicUploadFileEstimationPrototype(wrappedFile);
+
+	const fileByteCount = driveKey ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
+
+	return { fileMetaDataPrototype, fileByteCount };
+}
+
+export async function getFolderEstimationInfo(
+	destinationBaseName: string,
+	driveKey?: DriveKey
+): Promise<{ folderMetaDataPrototype: ArFSFolderMetaDataPrototype; folderByteCount: ByteCount }> {
+	// We use the presence of a driveKey to determine to estimate as private or public
+	const folderMetaDataPrototype = driveKey
+		? await getPrivateFolderEstimationPrototype(destinationBaseName)
+		: getPublicFolderEstimationPrototype(destinationBaseName);
+
+	const folderByteCount = folderMetaDataPrototype.objectData.sizeOf();
+
+	return { folderMetaDataPrototype, folderByteCount };
 }
