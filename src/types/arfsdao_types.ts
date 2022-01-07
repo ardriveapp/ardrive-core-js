@@ -15,7 +15,8 @@ import {
 	ArFSEntityToUpload,
 	WithDriveKey,
 	ArFSFileDataPrototype,
-	ArFSFileMetaDataPrototype
+	ArFSFileMetaDataPrototype,
+	FileKey
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -59,6 +60,7 @@ export interface ArFSPrepareDriveResult<T> extends ArFSPrepareResult<T> {
 
 export interface ArFSPrepareFileResult<T> extends ArFSPrepareResult<T> {
 	fileId: FileID;
+	fileKey?: FileKey;
 }
 
 export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {

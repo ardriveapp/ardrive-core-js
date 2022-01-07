@@ -633,7 +633,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const metaDataPrototype = await metadataTxDataFactoryFn(fileId, TxID(dataArFSObject.id));
 		const metaDataArFSObject = await prepareMetaDataArFSObject(metaDataPrototype);
 
-		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
+		// Always preserve file key here for private files
+		let fileKey: FileKey | undefined = undefined;
+		if (metaDataPrototype instanceof ArFSPrivateFileMetaDataPrototype) {
+			fileKey = metaDataPrototype.objectData.fileKey;
+		}
+
+		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId, fileKey };
 	}
 
 	// Temporarily public for bulk folder use case, which will be deprecated in PE-460
