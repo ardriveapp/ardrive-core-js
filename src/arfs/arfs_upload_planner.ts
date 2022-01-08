@@ -2,7 +2,17 @@ import { serializeTags } from 'arbundles/src/parser';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, CommunityTipSettings, EID, FeeMultiple, GQLTagInterface, UploadOrder, W, Winston } from '../types';
+import {
+	ByteCount,
+	CommunityTipSettings,
+	EID,
+	FeeMultiple,
+	GQLTagInterface,
+	RewardSettings,
+	UploadOrder,
+	W,
+	Winston
+} from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
 	BundlePlan,
@@ -54,8 +64,17 @@ export class ArFSUploadPlanner {
 		this.communityOracle = communityOracle;
 	}
 
+	/** Constructs reward settings with the feeMultiple from the upload planner */
+	private rewardSettingsForWinston(reward: Winston): RewardSettings {
+		return { reward, feeMultiple: this.feeMultiple };
+	}
+	/** Returns a reward boosted by the feeMultiple from the upload planner */
+	private boostedReward(reward: Winston): Winston {
+		return this.feeMultiple.boostedWinstonReward(reward);
+	}
+
 	private bundlePacker: BundlePacker = new LowestIndexBundlePacker();
-	private v2TxArray: V2TxPlan[] = [];
+	private v2TxsToUpload: V2TxPlan[] = [];
 
 	private async packFile(packFileParams: PackFileParams): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = packFileParams;
@@ -100,15 +119,13 @@ export class ArFSUploadPlanner {
 				const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
 				rewardSettings = {
 					...rewardSettings,
-					metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
+					metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
 				};
 			}
-
-			// TODO: Add community tip settings here, data must have tip
-			// This file data is too large and must be sent as a v2 tx
-			this.v2TxArray.push({ uploadOrder: packFileParams, rewardSettings, metaDataBundleIndex });
+			// Add to the v2TxsToUpload
+			this.v2TxsToUpload.push({ uploadOrder: packFileParams, rewardSettings, metaDataBundleIndex });
 		} else {
-			// Otherwise we will always keep metadata tx and data tx in the same bundle
+			// Otherwise we will always pack the metadata tx and data tx in the same bundle
 			this.bundlePacker.packIntoBundle({
 				byteCountAsDataItem: totalByteCountOfFileDataItems,
 				numberOfDataItems: 2,
@@ -130,8 +147,8 @@ export class ArFSUploadPlanner {
 				numberOfDataItems: 1
 			});
 		}
-
-		// Generate and preserve folder ID early to keep parent folder id information stable
+		// For new folders, we will generate and preserve the folder ID
+		// early to prevent parent folder id information from being lost
 		wrappedFolder.existingId ??= EID(v4());
 
 		const partialPackParams = {
@@ -161,8 +178,6 @@ export class ArFSUploadPlanner {
 	): Promise<{ uploadPlan: UploadPlan; totalWinstonPrice: Winston }> {
 		const isBulkUpload = uploadOrders.length > 1;
 
-		// TODO: Check `shouldBundle` and provide v2 transaction flow
-
 		for (const uploadOrder of uploadOrders) {
 			const { wrappedEntity } = uploadOrder;
 
@@ -174,14 +189,10 @@ export class ArFSUploadPlanner {
 		}
 
 		let totalWinstonPrice = W(0);
-
 		const bundlePlans: BundlePlan[] = [];
 		for (const { uploadOrders, totalDataItems, totalSize } of this.bundlePacker.bundles) {
-			const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
-
 			if (totalDataItems === 1) {
-				// Do not send up a bundle with a single folder data item
-
+				// Edge case: Do not send up a bundle with a single folder data item
 				const { wrappedEntity, driveKey } = uploadOrders[0];
 				if (!isFolder(wrappedEntity)) {
 					throw new Error('Error: A file cannot be bundled alone without its metadata!');
@@ -189,27 +200,29 @@ export class ArFSUploadPlanner {
 
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
 					wrappedEntity.destinationBaseName,
-					driveKey
+					driveKey !== undefined
 				);
 				const metaDataReward = await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData);
 
-				// Unpack this bundle into v2 Tx Array
-				this.v2TxArray.push({
+				// Unpack this bundle into the v2TxsToUpload
+				this.v2TxsToUpload.push({
 					uploadOrder: uploadOrders[0],
 					rewardSettings: {
-						metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
+						metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
 					}
 				});
+				continue;
 			}
 
-			const bundledByteCount = this.bundledByteCountOfTotalSizeAndItems(new ByteCount(totalSize), totalDataItems);
+			const bundledByteCount = this.bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
 			const winstonPriceOfBundle = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundledByteCount);
 
-			totalWinstonPrice = totalWinstonPrice.plus(this.feeMultiple.boostedWinstonReward(winstonPriceOfBundle));
+			totalWinstonPrice = totalWinstonPrice.plus(this.boostedReward(winstonPriceOfBundle));
 			let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
-			// We do not add community tip if there are no files present within the bundle
+			const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
 			if (hasFileData) {
+				// For now, we only add a community tip if there are files present within the bundle
 				const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
 				const communityTipTarget = await this.communityOracle.selectTokenHolder();
 
@@ -219,22 +232,22 @@ export class ArFSUploadPlanner {
 
 			bundlePlans.push({
 				uploadOrders: uploadOrders,
-				bundleRewardSettings: { reward: winstonPriceOfBundle, feeMultiple: this.feeMultiple },
+				bundleRewardSettings: this.rewardSettingsForWinston(winstonPriceOfBundle),
 				communityTipSettings,
 				metaDataDataItems: []
 			});
 		}
 
 		const v2TxPlans: V2TxPlan[] = [];
-		for (const v2Tx of this.v2TxArray) {
+		for (const v2Tx of this.v2TxsToUpload) {
 			let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
-			if (v2Tx.rewardSettings.fileDataRewardSettings?.reward) {
-				const winstonPriceOfDataTx = v2Tx.rewardSettings.fileDataRewardSettings.reward;
+			if (v2Tx.rewardSettings.dataTxRewardSettings?.reward) {
+				const winstonPriceOfDataTx = v2Tx.rewardSettings.dataTxRewardSettings.reward;
 				const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
 
 				totalWinstonPrice = totalWinstonPrice
-					.plus(this.feeMultiple.boostedWinstonReward(winstonPriceOfDataTx))
+					.plus(this.boostedReward(winstonPriceOfDataTx))
 					.plus(communityWinstonTip);
 
 				const communityTipTarget = await this.communityOracle.selectTokenHolder();
@@ -244,9 +257,7 @@ export class ArFSUploadPlanner {
 			if (v2Tx.rewardSettings.metaDataRewardSettings?.reward) {
 				const winstonPriceOfMetaDataTx = v2Tx.rewardSettings.metaDataRewardSettings.reward;
 
-				totalWinstonPrice = totalWinstonPrice.plus(
-					this.feeMultiple.boostedWinstonReward(winstonPriceOfMetaDataTx)
-				);
+				totalWinstonPrice = totalWinstonPrice.plus(this.boostedReward(winstonPriceOfMetaDataTx));
 			}
 
 			v2TxPlans.push({
@@ -292,15 +303,14 @@ export class ArFSUploadPlanner {
 		const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
 
 		const rewardSettings: UploadFileV2TxRewardSettings = {
-			dataTxRewardSettings: { reward: fileDataReward, feeMultiple: this.feeMultiple },
-			metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
+			dataTxRewardSettings: this.rewardSettingsForWinston(fileDataReward),
+			metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
 		};
 
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataReward);
 
-		const totalWinstonPrice = this.feeMultiple
-			.boostedWinstonReward(fileDataReward)
-			.plus(this.feeMultiple.boostedWinstonReward(metaDataReward))
+		const totalWinstonPrice = this.boostedReward(fileDataReward)
+			.plus(this.boostedReward(metaDataReward))
 			.plus(communityWinstonTip);
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
@@ -318,14 +328,14 @@ export class ArFSUploadPlanner {
 		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundleSize);
 
 		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: { reward: bundleReward, feeMultiple: this.feeMultiple }
+			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
 		};
 
 		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
 			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
 		);
 
-		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward).plus(communityWinstonTip);
+		const totalWinstonPrice = this.boostedReward(bundleReward).plus(communityWinstonTip);
 
 		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}
@@ -347,13 +357,11 @@ export class ArFSUploadPlanner {
 		const driveReward = await this.costOfV2ObjectTx(driveMetaDataPrototype.objectData);
 		const rootFolderReward = await this.costOfV2ObjectTx(rootFolderMetaDataPrototype.objectData);
 
-		const totalWinstonPrice = this.feeMultiple
-			.boostedWinstonReward(driveReward)
-			.plus(this.feeMultiple.boostedWinstonReward(rootFolderReward));
+		const totalWinstonPrice = this.boostedReward(driveReward).plus(this.boostedReward(rootFolderReward));
 
 		const rewardSettings: CreateDriveV2TxRewardSettings = {
-			driveRewardSettings: { reward: driveReward, feeMultiple: this.feeMultiple },
-			rootFolderRewardSettings: { reward: rootFolderReward, feeMultiple: this.feeMultiple }
+			driveRewardSettings: this.rewardSettingsForWinston(driveReward),
+			rootFolderRewardSettings: this.rewardSettingsForWinston(rootFolderReward)
 		};
 
 		return { totalWinstonPrice, rewardSettings };
@@ -364,10 +372,10 @@ export class ArFSUploadPlanner {
 		arFSPrototypes: EstimateCreateDriveParams
 	): Promise<EstimateCreateDriveResult> {
 		const bundleReward = await this.winstonCostOfBundledPrototypes(Object.values(arFSPrototypes));
-		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward);
+		const totalWinstonPrice = this.boostedReward(bundleReward);
 
 		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: { reward: bundleReward, feeMultiple: this.feeMultiple }
+			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
 		};
 
 		return { totalWinstonPrice, rewardSettings };
@@ -411,10 +419,7 @@ export class ArFSUploadPlanner {
 	}
 
 	/** Calculate the bundled size from an array of data item byte counts  */
-	private bundledByteCountOfTotalSizeAndItems(
-		totalDataItemByteCount: ByteCount,
-		numberOfDataItems: number
-	): ByteCount {
+	private bundledByteCountOfBundleToPack(totalDataItemByteCount: ByteCount, numberOfDataItems: number): ByteCount {
 		// 32 byte array for representing the number of data items in the bundle
 		const byteArraySize = 32;
 
@@ -432,7 +437,7 @@ export class ArFSUploadPlanner {
 			totalDataItemsSize += +dataItemByteCount;
 		}
 
-		return this.bundledByteCountOfTotalSizeAndItems(new ByteCount(totalDataItemsSize), dataItemByteCounts.length);
+		return this.bundledByteCountOfBundleToPack(new ByteCount(totalDataItemsSize), dataItemByteCounts.length);
 	}
 
 	/** Calculate the cost of uploading an array of ArFS Prototypes together as a bundle */
