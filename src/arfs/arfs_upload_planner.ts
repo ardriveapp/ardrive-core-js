@@ -83,23 +83,22 @@ export class ArFSUploadPlanner {
 			fileMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
 		);
-
 		const totalByteCountOfFileDataItems = new ByteCount(+fileDataItemByteCount + +metaDataByteCountAsDataItem);
 
 		let rewardSettings;
-		if (+totalByteCountOfFileDataItems > MAX_BUNDLE_SIZE) {
+		if (!this.shouldBundle || +totalByteCountOfFileDataItems > MAX_BUNDLE_SIZE) {
+			// If the file data is too large it must be sent as a v2 tx
 			rewardSettings = {
-				fileDataRewardSettings: {
-					reward: await this.priceEstimator.getBaseWinstonPriceForByteCount(fileByteCount),
-					feeMultiple: this.feeMultiple
-				}
+				dataTxRewardSettings: this.rewardSettingsForWinston(
+					await this.priceEstimator.getBaseWinstonPriceForByteCount(fileByteCount)
+				)
 			};
 
-			// We must preserve this bundle index because the metadata cannot be
-			// constructed until ArFSDAO has generated a TxID for the File Data
+			// We will preserve this bundle index because the metadata cannot be separated
+			// from the file data until ArFSDAO has generated a TxID from signing
 			let metaDataBundleIndex;
-			if (isBulkUpload) {
-				// This metadata can be packed with another bundle since other upload orders exist
+			if (isBulkUpload && this.shouldBundle) {
+				// This metadata can be packed with another bundle since other upload orders do exist
 				metaDataBundleIndex = this.bundlePacker.packIntoBundle({
 					byteCountAsDataItem: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
@@ -135,13 +134,24 @@ export class ArFSUploadPlanner {
 			isPrivate
 		);
 
-		// We won't create a new folder one already exists
 		if (!wrappedFolder.existingId) {
-			this.bundlePacker.packIntoBundle({
-				uploadOrder: packFolderParams,
-				byteCountAsDataItem: folderByteCount,
-				numberOfDataItems: 1
-			});
+			// We won't create a new folder if one already exists
+			if (this.shouldBundle) {
+				this.bundlePacker.packIntoBundle({
+					uploadOrder: packFolderParams,
+					byteCountAsDataItem: folderByteCount,
+					numberOfDataItems: 1
+				});
+			} else {
+				this.v2TxsToUpload.push({
+					uploadOrder: packFolderParams,
+					rewardSettings: {
+						metaDataRewardSettings: this.rewardSettingsForWinston(
+							await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData)
+						)
+					}
+				});
+			}
 		}
 		// For new folders, we will generate and preserve the folder ID
 		// early to prevent parent folder id information from being lost
