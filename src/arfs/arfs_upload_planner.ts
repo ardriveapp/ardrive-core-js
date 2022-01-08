@@ -78,7 +78,8 @@ export class ArFSUploadPlanner {
 
 	private async packFile(packFileParams: PackFileParams): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = packFileParams;
-		const { fileByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, driveKey);
+		const isPrivate = driveKey !== undefined;
+		const { fileByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
 			fileByteCount,
@@ -137,7 +138,12 @@ export class ArFSUploadPlanner {
 	/** Flattens a recursive folder and packs them into bundles */
 	private async packFolder(packFolderParams: PackFolderParams): Promise<void> {
 		const { wrappedEntity: wrappedFolder, driveKey } = packFolderParams;
-		const { folderByteCount } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, driveKey);
+		const isPrivate = driveKey !== undefined;
+
+		const { folderByteCount, folderMetaDataPrototype } = await getFolderEstimationInfo(
+			wrappedFolder.destinationBaseName,
+			isPrivate
+		);
 
 		// We won't create a new folder one already exists
 		if (!wrappedFolder.existingId) {
