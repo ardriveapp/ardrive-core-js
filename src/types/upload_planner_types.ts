@@ -35,22 +35,11 @@ export interface EstimateUploadFileParams {
 export interface EstimateResult<T> {
 	totalWinstonPrice: Winston;
 	rewardSettings: T;
-	// TODO: Add Bundle Plan { numOfBundles: number , ... }
 }
 
 export interface EstimateUploadResult<T> extends EstimateResult<T> {
 	communityWinstonTip: Winston;
 }
-
-export interface EstimateBulkResult {
-	bundleRewardSettings: BundleRewardSettings[];
-	totalWinstonPrice: Winston;
-	communityWinstonTip: Winston;
-}
-
-export type EstimateBulkBundleResult = EstimateUploadResult<BundleRewardSettings[]>;
-export type EstimateBulkV2TxResult = EstimateUploadResult<never>;
-
 export interface BundleRewardSettings {
 	bundleRewardSettings: RewardSettings;
 }
@@ -92,10 +81,7 @@ export interface BundlePlan {
 
 export interface V2TxPlan {
 	uploadOrder: UploadOrder;
-	rewardSettings: {
-		fileDataRewardSettings?: RewardSettings;
-		metaDataRewardSettings?: RewardSettings;
-	};
+	rewardSettings: Partial<UploadFileV2TxRewardSettings>;
 	communityTipSettings?: CommunityTipSettings;
 	metaDataBundleIndex?: BundleIndex;
 }
@@ -106,7 +92,6 @@ export interface PackEntityParams {
 export interface PackFileParams extends UploadOrder, PackEntityParams {
 	wrappedEntity: ArFSEntityToUpload;
 }
-
 export interface PackFolderParams extends UploadOrder, PackEntityParams {
 	wrappedEntity: ArFSFolderToUpload;
 }
