@@ -1,5 +1,13 @@
 import { GQLTagInterface, TipType } from '../types';
-import { CURRENT_ARFS_VERSION, DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
+import {
+	CURRENT_ARFS_VERSION,
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	fakePrivateCipherIVTag,
+	privateCipherTag,
+	privateOctetContentTypeTag,
+	publicJsonContentTypeTag
+} from '../utils/constants';
 
 // Tag Limits to be in compliance with ANS-104:
 // https://github.com/joshbenaron/arweave-standards/blob/ans104/ans/ANS-104.md#21-verifying-a-dataitem
@@ -70,7 +78,15 @@ export class ArFSTagSettings {
 		return this.assembleTags({ tags: [...this.baseBundleTags, ...tags], excludedTagNames });
 	}
 
-	private assembleTags({ tags, excludedTagNames }: TagAssembleParams): GQLTagInterface[] {
+	getFileDataTags(isPrivate: boolean): GQLTagInterface[] {
+		const tags = isPrivate
+			? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
+			: [publicJsonContentTypeTag];
+
+		return this.assembleTags({ tags: [...this.baseAppTags, ...tags] });
+	}
+
+	private assembleTags({ tags, excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
 		tags = this.filterExcludedTagNames({ tags, excludedTagNames });
 		this.assertTagLimits(tags);
 

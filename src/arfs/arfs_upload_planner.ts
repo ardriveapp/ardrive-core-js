@@ -29,13 +29,7 @@ import {
 	V2TxPlan
 } from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
-import {
-	fakePrivateCipherIVTag,
-	MAX_BUNDLE_SIZE,
-	privateCipherTag,
-	privateOctetContentTypeTag,
-	publicJsonContentTypeTag
-} from '../utils/constants';
+import { MAX_BUNDLE_SIZE } from '../utils/constants';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { isFolder } from './arfs_file_wrapper';
 import { v4 } from 'uuid';
@@ -83,11 +77,7 @@ export class ArFSUploadPlanner {
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
 			fileByteCount,
-			this.arFSTagSettings.baseAppTagsIncluding({
-				tags: driveKey
-					? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
-					: [publicJsonContentTypeTag]
-			})
+			this.arFSTagSettings.getFileDataTags(isPrivate)
 		);
 		const metaDataByteCountAsDataItem = this.byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),

@@ -181,7 +181,7 @@ export class PrivateDriveKeyData {
 // 	parentFolderId: FolderID;
 // 	wrappedFile: ArFSEntityToUpload;
 // 	driveId: DriveID;
-// 	fileDataRewardSettings: RewardSettings;
+// 	dataTxRewardSettings: RewardSettings;
 // 	metadataRewardSettings: RewardSettings;
 // 	destFileName?: string;
 // 	existingFileId?: FileID;
@@ -988,13 +988,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		for (const { rewardSettings, uploadOrder, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
 			// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
 
-			const { fileDataRewardSettings, metaDataRewardSettings } = rewardSettings;
+			const { dataTxRewardSettings, metaDataRewardSettings } = rewardSettings;
 			const { wrappedEntity, driveKey } = uploadOrder;
 
-			if (fileDataRewardSettings) {
+			if (dataTxRewardSettings) {
 				if (isFolder(wrappedEntity)) {
 					throw new Error(
-						// TODO: This never happens, solve type issues another way...
+						// TODO: This error never happens, solve type issues another way...
 						'Something has gone wrong with the upload plan, folders cannot have file data reward settings...'
 					);
 				}
@@ -1006,21 +1006,21 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					// Send file and metadata as v2 txs
 					v2FileResult = await this.uploadFileAndMetaDataAsV2(
 						prepFileParams,
-						fileDataRewardSettings,
+						dataTxRewardSettings,
 						metaDataRewardSettings,
 						communityTipSettings
 					);
 				} else {
 					if (!metaDataBundleIndex) {
 						throw new Error(
-							// TODO: This never happens, solve type issues another way...
+							// TODO: This error never happens, solve type issues another way...
 							'Something has gone wrong with the upload plan, file metadata has no reward settings or bundle index...'
 						);
 					}
 					// Send file as v2, but prepare the metadata as data item
 					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
 						prepFileParams,
-						fileDataRewardSettings,
+						dataTxRewardSettings,
 						communityTipSettings
 					);
 					v2FileResult = fileResult;
@@ -1031,7 +1031,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				results.fileResults.push(v2FileResult);
 			} else if (metaDataRewardSettings) {
 				if (!isFolder(wrappedEntity)) {
-					// TODO: This never happens, solve type issues another way...
+					// TODO: This error never happens, solve type issues another way...
 					throw new Error('Something has gone wrong, files must have file data reward settings...');
 				}
 
