@@ -70,6 +70,14 @@ export class ArFSUploadPlanner {
 	private bundlePacker: BundlePacker = new LowestIndexBundlePacker();
 	private v2TxsToUpload: V2TxPlan[] = [];
 
+	/**
+	 * Plans a file as a bundle to upload or v2 transaction to upload
+	 *
+	 * @remarks Uses the presence of a driveKey to determine privacy
+	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
+	 * @remarks Files over the max bundle size limit will not be bundled, but their
+	 * 	meta data will be bundled if there will be multiple entities uploaded
+	 */
 	private async packFile(packFileParams: PackFileParams): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = packFileParams;
 		const isPrivate = driveKey !== undefined;
@@ -124,7 +132,13 @@ export class ArFSUploadPlanner {
 		}
 	}
 
-	/** Flattens a recursive folder and packs them into bundles */
+	/**
+	 * Flattens a recursive folder and packs all entities within the
+	 * folder them into bundles to upload or v2 transactions to upload
+	 *
+	 * @remarks Uses the presence of a driveKey to determine privacy
+	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
+	 */
 	private async packFolder(packFolderParams: PackFolderParams): Promise<void> {
 		const { wrappedEntity: wrappedFolder, driveKey } = packFolderParams;
 		const isPrivate = driveKey !== undefined;
@@ -178,8 +192,10 @@ export class ArFSUploadPlanner {
 		}
 	}
 
-	/** Estimate the cost of a upload all entities */
-	public async estimateUploadEntities(
+	/**
+	 *  Plans an upload using the `uploadAllEntities` ArDrive method
+	 *  into bundles or v2 transactions and estimates the total winston cost
+	 */
 		uploadOrders: UploadOrder[]
 	): Promise<{ uploadPlan: UploadPlan; totalWinstonPrice: Winston }> {
 		const isBulkUpload = uploadOrders.length > 1;
