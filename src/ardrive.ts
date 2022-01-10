@@ -597,7 +597,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Plan upload and assert the balance of the wallet
-		const { uploadPlan, totalWinstonPrice } = await this.uploadPlanner.estimateUploadEntities(uploadOrders);
+		const { uploadPlan, totalWinstonPrice } = await this.uploadPlanner.planUploadAllEntities(uploadOrders);
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		// Send uploadPlan to ArFSDAO to consume

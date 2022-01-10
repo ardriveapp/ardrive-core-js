@@ -22,8 +22,8 @@ import {
 	EstimateCreateDriveResult,
 	EstimateUploadFileParams,
 	EstimateUploadFileResult,
-	PackFileParams,
-	PackFolderParams,
+	PlanFileParams,
+	PlanFolderParams,
 	UploadFileV2TxRewardSettings,
 	UploadPlan,
 	V2TxPlan
@@ -78,8 +78,8 @@ export class ArFSUploadPlanner {
 	 * @remarks Files over the max bundle size limit will not be bundled, but their
 	 * 	meta data will be bundled if there will be multiple entities uploaded
 	 */
-	private async packFile(packFileParams: PackFileParams): Promise<void> {
-		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = packFileParams;
+	private async planFile(planFileParams: PlanFileParams): Promise<void> {
+		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = planFileParams;
 		const isPrivate = driveKey !== undefined;
 		const { fileByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
@@ -121,13 +121,13 @@ export class ArFSUploadPlanner {
 				};
 			}
 			// Add to the v2TxsToUpload
-			this.v2TxsToUpload.push({ uploadOrder: packFileParams, rewardSettings, metaDataBundleIndex });
+			this.v2TxsToUpload.push({ uploadOrder: planFileParams, rewardSettings, metaDataBundleIndex });
 		} else {
 			// Otherwise we will always pack the metadata tx and data tx in the same bundle
 			this.bundlePacker.packIntoBundle({
 				byteCountAsDataItem: totalByteCountOfFileDataItems,
 				numberOfDataItems: 2,
-				uploadOrder: packFileParams
+				uploadOrder: planFileParams
 			});
 		}
 	}
@@ -139,8 +139,8 @@ export class ArFSUploadPlanner {
 	 * @remarks Uses the presence of a driveKey to determine privacy
 	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
 	 */
-	private async packFolder(packFolderParams: PackFolderParams): Promise<void> {
-		const { wrappedEntity: wrappedFolder, driveKey } = packFolderParams;
+	private async planFolder(planFolderParams: PlanFolderParams): Promise<void> {
+		const { wrappedEntity: wrappedFolder, driveKey } = planFolderParams;
 		const isPrivate = driveKey !== undefined;
 
 		const { folderByteCount, folderMetaDataPrototype } = await getFolderEstimationInfo(
@@ -152,13 +152,13 @@ export class ArFSUploadPlanner {
 			// We won't create a new folder if one already exists
 			if (this.shouldBundle) {
 				this.bundlePacker.packIntoBundle({
-					uploadOrder: packFolderParams,
+					uploadOrder: planFolderParams,
 					byteCountAsDataItem: folderByteCount,
 					numberOfDataItems: 1
 				});
 			} else {
 				this.v2TxsToUpload.push({
-					uploadOrder: packFolderParams,
+					uploadOrder: planFolderParams,
 					rewardSettings: {
 						metaDataRewardSettings: this.rewardSettingsForWinston(
 							await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData)
@@ -171,22 +171,22 @@ export class ArFSUploadPlanner {
 		// early to prevent parent folder id information from being lost
 		wrappedFolder.existingId ??= EID(v4());
 
-		const partialPackParams = {
-			...packFolderParams,
+		const partialPlanParams = {
+			...planFolderParams,
 			destFolderId: wrappedFolder.existingId
 		};
 
 		for (const file of wrappedFolder.files) {
-			await this.packFile({
-				...partialPackParams,
+			await this.planFile({
+				...partialPlanParams,
 				wrappedEntity: file
 			});
 		}
 
 		// Recurse into each folder, flattening them into bundles
 		for (const folder of wrappedFolder.folders) {
-			await this.packFolder({
-				...partialPackParams,
+			await this.planFolder({
+				...partialPlanParams,
 				wrappedEntity: folder
 			});
 		}
@@ -196,6 +196,7 @@ export class ArFSUploadPlanner {
 	 *  Plans an upload using the `uploadAllEntities` ArDrive method
 	 *  into bundles or v2 transactions and estimates the total winston cost
 	 */
+	public async planUploadAllEntities(
 		uploadOrders: UploadOrder[]
 	): Promise<{ uploadPlan: UploadPlan; totalWinstonPrice: Winston }> {
 		const isBulkUpload = uploadOrders.length > 1;
@@ -204,9 +205,9 @@ export class ArFSUploadPlanner {
 			const { wrappedEntity } = uploadOrder;
 
 			if (isFolder(wrappedEntity)) {
-				await this.packFolder({ ...uploadOrder, wrappedEntity, isBulkUpload });
+				await this.planFolder({ ...uploadOrder, wrappedEntity, isBulkUpload });
 			} else {
-				await this.packFile({ ...uploadOrder, wrappedEntity, isBulkUpload });
+				await this.planFile({ ...uploadOrder, wrappedEntity, isBulkUpload });
 			}
 		}
 

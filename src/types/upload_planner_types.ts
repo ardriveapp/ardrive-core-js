@@ -86,12 +86,12 @@ export interface V2TxPlan {
 	metaDataBundleIndex?: BundleIndex;
 }
 
-export interface PackEntityParams {
+export interface PlanEntityParams {
 	isBulkUpload: boolean;
 }
-export interface PackFileParams extends UploadOrder, PackEntityParams {
+export interface PlanFileParams extends UploadOrder, PlanEntityParams {
 	wrappedEntity: ArFSEntityToUpload;
 }
-export interface PackFolderParams extends UploadOrder, PackEntityParams {
+export interface PlanFolderParams extends UploadOrder, PlanEntityParams {
 	wrappedEntity: ArFSFolderToUpload;
 }
