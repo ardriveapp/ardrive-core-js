@@ -3,6 +3,9 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import {
 	fakeArweave,
+	stubArweaveAddress,
+	stubEntityID,
+	stubEntityIDAlt,
 	stubPrivateDriveMetaDataTx,
 	stubPrivateFileMetaDataTx,
 	stubPrivateFolderMetaDataTx,
@@ -23,6 +26,7 @@ import {
 import { MAX_BUNDLE_SIZE, privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
+import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from './arfs_file_wrapper';
 
 describe('The ArFSUploadPlanner class', () => {
 	const priceEstimator = new ARDataPriceNetworkEstimator();
@@ -32,13 +36,7 @@ describe('The ArFSUploadPlanner class', () => {
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		priceEstimator,
 		arFSTagSettings: arFSTagSettings,
-		communityOracle
-	});
-
-	const v2TxUploadPlanner = new ArFSUploadPlanner({
-		shouldBundle: false,
-		priceEstimator,
-		arFSTagSettings: arFSTagSettings,
+		feeMultiple: new FeeMultiple(1),
 		communityOracle
 	});
 
@@ -57,12 +55,239 @@ describe('The ArFSUploadPlanner class', () => {
 		communityOracle
 	});
 
+	/** An upload planner set to only send v2 transactions */
+	const v2TxUploadPlanner = new ArFSUploadPlanner({
+		shouldBundle: false,
+		priceEstimator,
+		arFSTagSettings: arFSTagSettings,
+		feeMultiple: new FeeMultiple(1),
+		communityOracle
+	});
+
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
 		stub(priceEstimator, 'getBaseWinstonPriceForByteCount').callsFake((input) => Promise.resolve(W(+input)));
-
 		// Stub community tip to always be 123456 Winston
 		stub(communityOracle, 'getCommunityWinstonTip').resolves(W(123456));
+		// Stub community tip to always be 123456 Winston
+		stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+	});
+
+	it('cannot be constructed with a max data item limit of less than 2', () => {
+		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 1 })).to.throw(
+			Error,
+			'Maximum data item limit must be an integer value of 2 or more!'
+		);
+	});
+	it('cannot be constructed with a non-integer decimal value as the max data item limit', () => {
+		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 5.5 })).to.throw(
+			Error,
+			'Maximum data item limit must be an integer value of 2 or more!'
+		);
+	});
+
+	describe('planUploadAllEntities method', () => {
+		const stubPlanUploadStats = {
+			destDriveId: stubEntityID,
+			destFolderId: stubEntityID
+		};
+
+		const newStubPlanFileUploadStats = () => {
+			return { ...stubPlanUploadStats, wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload };
+		};
+		const newStubPlanFolderUploadStats = () => {
+			return {
+				...stubPlanUploadStats,
+				wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
+			};
+		};
+
+		it('returns the expected uploadPlan for a single wrappedFile', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				newStubPlanFileUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(1);
+			expect(v2TxPlans.length).to.equal(0);
+
+			const { uploadOrders, totalByteCount } = bundlePlans[0];
+
+			expect(uploadOrders.length).to.equal(1);
+			expect(+totalByteCount).to.equal(5953);
+		});
+
+		it('returns the expected uploadPlan for a single wrappedFolder', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				newStubPlanFolderUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(1);
+			expect(v2TxPlans.length).to.equal(0);
+
+			const { uploadOrders, totalByteCount } = bundlePlans[0];
+
+			expect(uploadOrders.length).to.equal(8);
+			expect(+totalByteCount).to.equal(11287);
+		});
+
+		it('returns the expected uploadPlan for a folder with an existing folder id', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
+			const wrappedFolderWithExistingId = wrapFileOrFolder(
+				'./tests/stub_files/bulk_root_folder'
+			) as ArFSFolderToUpload;
+			wrappedFolderWithExistingId.existingId = stubEntityIDAlt;
+
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				{ ...newStubPlanFolderUploadStats(), wrappedEntity: wrappedFolderWithExistingId }
+			]);
+
+			expect(bundlePlans.length).to.equal(1);
+			expect(v2TxPlans.length).to.equal(0);
+
+			const { uploadOrders, totalByteCount } = bundlePlans[0];
+
+			expect(uploadOrders.length).to.equal(7);
+			expect(+totalByteCount).to.equal(11196);
+
+			// Expect first upload order to have our existing stub folder id
+			expect(`${uploadOrders[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
+		});
+
+		it('returns the expected uploadPlan for a two wrappedFiles', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				newStubPlanFileUploadStats(),
+				newStubPlanFileUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(1);
+			expect(v2TxPlans.length).to.equal(0);
+
+			const { uploadOrders, totalByteCount } = bundlePlans[0];
+
+			expect(uploadOrders.length).to.equal(2);
+			expect(+totalByteCount).to.equal(11874);
+		});
+
+		it('returns the expected uploadPlan for a single file that is over the size limit', async () => {
+			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
+				arFSTagSettings,
+				maxBundleLimit: new ByteCount(3_000)
+			});
+			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
+				newStubPlanFileUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(0);
+			expect(v2TxPlans.length).to.equal(1);
+
+			const { fileDataByteCount, metaDataByteCount, metaDataBundleIndex } = v2TxPlans[0];
+
+			expect(+fileDataByteCount!).to.equal(3204);
+			expect(+metaDataByteCount!).to.equal(166);
+			expect(metaDataBundleIndex).to.be.undefined;
+		});
+
+		it('returns the expected uploadPlan for a two files that are over the size limit', async () => {
+			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
+				arFSTagSettings,
+				maxBundleLimit: new ByteCount(3_000)
+			});
+			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
+				newStubPlanFileUploadStats(),
+				newStubPlanFileUploadStats()
+			]);
+
+			// Expect one bundle for the 2 metadata data items
+			expect(bundlePlans.length).to.equal(1);
+			const { uploadOrders, totalByteCount: bundleByteCount } = bundlePlans[0];
+			expect(+bundleByteCount).to.equal(3108);
+			expect(uploadOrders.length).to.equal(0);
+
+			// Expect two v2 transactions for the oversized files
+			expect(v2TxPlans.length).to.equal(2);
+			for (const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } of v2TxPlans) {
+				expect(+fileDataByteCount!).to.equal(3204);
+
+				// V2 tx plan will have a metadata bundle index for
+				expect(metaDataBundleIndex).to.equal(0);
+				expect(metaDataByteCount).to.be.undefined;
+			}
+		});
+
+		it('returns the expected uploadPlan for a two wrappedFiles when shouldBundle is set to false', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings, shouldBundle: false });
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				newStubPlanFileUploadStats(),
+				newStubPlanFileUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(0);
+
+			expect(v2TxPlans.length).to.equal(2);
+			for (const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } of v2TxPlans) {
+				expect(+fileDataByteCount!).to.equal(3204);
+				expect(+metaDataByteCount!).to.equal(166);
+				expect(metaDataBundleIndex).to.be.undefined;
+			}
+		});
+
+		const bulkFolderV2Expectations = [
+			{ expectedMetaDataSize: 27 },
+			{ expectedFileSize: 12, expectedMetaDataSize: 158 },
+			{ expectedMetaDataSize: 24 },
+			{ expectedFileSize: 12, expectedMetaDataSize: 160 },
+			{ expectedMetaDataSize: 23 },
+			{ expectedFileSize: 14, expectedMetaDataSize: 159 },
+			{ expectedMetaDataSize: 28 },
+			{ expectedFileSize: 14, expectedMetaDataSize: 164 }
+		];
+
+		it('returns the expected uploadPlan for a wrappedFolder when shouldBundle is set to false', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings, shouldBundle: false });
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				newStubPlanFolderUploadStats()
+			]);
+
+			expect(bundlePlans.length).to.equal(0);
+
+			expect(v2TxPlans.length).to.equal(8);
+			for (let index = 0; index < v2TxPlans.length; index++) {
+				const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } = v2TxPlans[index];
+				const { expectedFileSize, expectedMetaDataSize } = bulkFolderV2Expectations[index];
+
+				if (expectedFileSize) {
+					expect(+fileDataByteCount!).to.equal(expectedFileSize);
+				}
+				expect(+metaDataByteCount!).to.equal(expectedMetaDataSize);
+				expect(metaDataBundleIndex).to.be.undefined;
+			}
+		});
+
+		it('returns the expected uploadPlan for single wrappedFolder', async () => {
+			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
+			const emptyWrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+
+			// Empty the contents of the folder to upload
+			emptyWrappedFolder.files = [];
+			emptyWrappedFolder.folders = [];
+
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
+				{ ...newStubPlanFolderUploadStats(), wrappedEntity: emptyWrappedFolder }
+			]);
+
+			// Expect no bundles for a single folder meta data upload
+			expect(bundlePlans.length).to.equal(0);
+			expect(v2TxPlans.length).to.equal(1);
+
+			const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } = v2TxPlans[0];
+
+			expect(fileDataByteCount).to.be.undefined;
+			expect(+metaDataByteCount!).to.equal(27);
+			expect(metaDataBundleIndex).to.be.undefined;
+		});
 	});
 
 	describe('estimateCreateDrive function', () => {
@@ -201,7 +426,7 @@ describe('The ArFSUploadPlanner class', () => {
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction if the total size of the bundle would exceed the max bundle size limit', async () => {
 				const hugeUploadFileParams = {
 					...publicUploadFileParams,
-					fileDataSize: new ByteCount(MAX_BUNDLE_SIZE + 1)
+					fileDataSize: new ByteCount(+MAX_BUNDLE_SIZE + 1)
 				};
 
 				// We will expect a v2 transaction if the upload will be larger than the max bundle size
@@ -211,7 +436,7 @@ describe('The ArFSUploadPlanner class', () => {
 				const v2RewardSettings = rewardSettings as UploadFileV2TxRewardSettings;
 
 				// Expect file data transaction of max bundle size + 1
-				expect(+v2RewardSettings.dataTxRewardSettings.reward!).to.equal(MAX_BUNDLE_SIZE + 1);
+				expect(+v2RewardSettings.dataTxRewardSettings.reward!).to.equal(+MAX_BUNDLE_SIZE + 1);
 				expect(+v2RewardSettings.dataTxRewardSettings.feeMultiple!).to.equal(1);
 
 				// Expected meta data transaction size is 163 bytes
@@ -220,7 +445,7 @@ describe('The ArFSUploadPlanner class', () => {
 				expect(+communityWinstonTip).to.equal(123_456);
 
 				// Expect total price to be: MAX_BUNDLE_SIZE + 1 + (meta data price) + (community tip)
-				expect(+totalWinstonPrice).to.equal(MAX_BUNDLE_SIZE + 1 + 163 + 123456);
+				expect(+totalWinstonPrice).to.equal(+MAX_BUNDLE_SIZE + 1 + 163 + 123456);
 			});
 
 			it('returns correct rewardSetting, totalWinstonPrice, and communityWinstonTip for a v2 transaction', async () => {
