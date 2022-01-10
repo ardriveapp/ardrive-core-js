@@ -133,12 +133,12 @@ import {
 	PartialPrepareDriveParams
 } from '../types/arfsdao_types';
 import {
+	CalculatedUploadPlan,
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
 	isBundleRewardSetting,
 	UploadFileRewardSettings,
-	UploadFileV2TxRewardSettings,
-	UploadPlan
+	UploadFileV2TxRewardSettings
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -982,7 +982,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 	}
 
-	async uploadAllEntities({ bundlePlans, v2TxPlans }: UploadPlan): Promise<ArFSUploadEntitiesResult> {
+	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 
 		for (const { rewardSettings, uploadOrder, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
@@ -1026,7 +1026,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					v2FileResult = fileResult;
 
 					// Add data item to its intended bundle plan
-					bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
+					bundlePlans[metaDataBundleIndex].metaDataDataItems === undefined
+						? (bundlePlans[metaDataBundleIndex].metaDataDataItems = [metaDataDataItem])
+						: bundlePlans[metaDataBundleIndex].metaDataDataItems?.push(metaDataDataItem);
 				}
 				results.fileResults.push(v2FileResult);
 			} else if (metaDataRewardSettings) {
@@ -1052,7 +1054,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		for (const { uploadOrders, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
-			const dataItems: DataItem[] = [];
+			let dataItems: DataItem[] = [];
 
 			for (const uploadOrder of uploadOrders) {
 				const { wrappedEntity, driveKey } = uploadOrder;
@@ -1091,7 +1093,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 
 				// Add any metaData data items from over-sized files sent as v2
-				dataItems.push(...metaDataDataItems);
+				if (metaDataDataItems !== undefined) {
+					dataItems.push(...metaDataDataItems);
+				}
 			}
 
 			const bundle = await this.prepareArFSObjectBundle({
@@ -1099,6 +1103,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				rewardSettings: bundleRewardSettings,
 				communityTipSettings
 			});
+
+			// Drop data items from memory
+			dataItems = [];
 
 			// This bundle is now complete, send it off before starting a new one
 			await this.sendTransactionsAsChunks([bundle]);
@@ -1147,6 +1154,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
 
 		const bundle = await bundleAndSignData(dataItems, signer);
+		dataItems = [];
 
 		// Verify the bundle and dataItems
 		if (!(await bundle.verify())) {

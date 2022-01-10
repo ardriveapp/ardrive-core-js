@@ -9,14 +9,17 @@ import {
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
-import { BundleIndex } from '../utils/bundle_packer';
+import { BundleIndex, BundlePacker } from '../utils/bundle_packer';
 import { ByteCount } from './byte_count';
 import { GQLTagInterface } from './gql_Types';
 
 export interface ArFSUploadPlannerConstructorParams {
-	priceEstimator: ARDataPriceEstimator;
+	priceEstimator?: ARDataPriceEstimator;
 	arFSTagSettings: ArFSTagSettings;
-	communityOracle: CommunityOracle;
+	communityOracle?: CommunityOracle;
+	bundlePacker?: BundlePacker;
+	maxBundleLimit?: ByteCount;
+	maxDataItemLimit?: number;
 	feeMultiple?: FeeMultiple;
 	shouldBundle?: boolean;
 }
@@ -71,19 +74,37 @@ export interface UploadPlan {
 	v2TxPlans: V2TxPlan[];
 }
 
+export interface CalculatedUploadPlan {
+	bundlePlans: CalculatedBundlePlan[];
+	v2TxPlans: CalculatedV2TxPlan[];
+}
+
+/** Bundle plan from ArFSUploadPlanner with totalByteCount determined */
 export interface BundlePlan {
 	uploadOrders: UploadOrder[];
+	totalByteCount: ByteCount;
+}
+
+/** Bundle plan from ArFSCostCalculator with reward/tip settings determined */
+export interface CalculatedBundlePlan extends Omit<BundlePlan, 'totalByteCount'> {
 	bundleRewardSettings: RewardSettings;
 	communityTipSettings?: CommunityTipSettings;
 	/** Meta data for over-sized files will be added to their bundle plan in the ArFSDAO layer  */
-	metaDataDataItems: DataItem[];
+	metaDataDataItems?: DataItem[];
 }
 
+/** V2 tx plan from ArFSUploadPlanner with byteCounts for any file data or metadata transactions determined */
 export interface V2TxPlan {
 	uploadOrder: UploadOrder;
+	fileDataByteCount?: ByteCount;
+	metaDataByteCount?: ByteCount;
+	metaDataBundleIndex?: BundleIndex;
+}
+
+/** V2 tx plan from ArFSCostCalculator with reward/tip settings determined */
+export interface CalculatedV2TxPlan extends Omit<V2TxPlan, 'fileDataByteCount' | 'metaDataByteCount'> {
 	rewardSettings: Partial<UploadFileV2TxRewardSettings>;
 	communityTipSettings?: CommunityTipSettings;
-	metaDataBundleIndex?: BundleIndex;
 }
 
 export interface PlanEntityParams {
