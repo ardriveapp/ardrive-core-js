@@ -3,8 +3,9 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import {
 	fakeArweave,
+	newStubPlanFileUploadStats,
+	newStubPlanFolderUploadStats,
 	stubArweaveAddress,
-	stubEntityID,
 	stubEntityIDAlt,
 	stubPrivateDriveMetaDataTx,
 	stubPrivateFileMetaDataTx,
@@ -26,7 +27,7 @@ import {
 import { MAX_BUNDLE_SIZE, privateOctetContentTypeTag, publicJsonContentTypeTag } from '../utils/constants';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
-import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from './arfs_file_wrapper';
+import { wrapFileOrFolder, ArFSFolderToUpload } from './arfs_file_wrapper';
 
 describe('The ArFSUploadPlanner class', () => {
 	const priceEstimator = new ARDataPriceNetworkEstimator();
@@ -87,21 +88,6 @@ describe('The ArFSUploadPlanner class', () => {
 	});
 
 	describe('planUploadAllEntities method', () => {
-		const stubPlanUploadStats = {
-			destDriveId: stubEntityID,
-			destFolderId: stubEntityID
-		};
-
-		const newStubPlanFileUploadStats = () => {
-			return { ...stubPlanUploadStats, wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload };
-		};
-		const newStubPlanFolderUploadStats = () => {
-			return {
-				...stubPlanUploadStats,
-				wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
-			};
-		};
-
 		it('returns the expected uploadPlan for a single wrappedFile', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([

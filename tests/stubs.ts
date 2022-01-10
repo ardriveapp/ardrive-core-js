@@ -10,6 +10,8 @@ import {
 	ArFSPublicFileOrFolderWithPaths
 } from '../src/arfs/arfs_entities';
 import {
+	ArFSFileToUpload,
+	ArFSFolderToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
 	ArFSPrivateFileDataPrototype,
@@ -30,7 +32,9 @@ import {
 	FolderHierarchy,
 	JWKWallet,
 	readJWKFile,
-	RootFolderID
+	RootFolderID,
+	UploadOrder,
+	wrapFileOrFolder
 } from '../src/exports';
 import {
 	ADDR,
@@ -437,6 +441,21 @@ export const stubCommunityContract = {
 	settings: [['fee', 50]],
 	vault: { [`${stubArweaveAddress()}`]: [{ balance: 500, start: 1, end: 2 }] },
 	balances: { [`${stubArweaveAddress()}`]: 200 }
+};
+
+const stubPlanUploadStats = {
+	destDriveId: stubEntityID,
+	destFolderId: stubEntityID
+};
+
+export const newStubPlanFileUploadStats = (): UploadOrder => {
+	return { ...stubPlanUploadStats, wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload };
+};
+export const newStubPlanFolderUploadStats = (): UploadOrder => {
+	return {
+		...stubPlanUploadStats,
+		wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
+	};
 };
 
 export const stub1025CharString =
