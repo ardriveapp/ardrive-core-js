@@ -1,5 +1,4 @@
 import { ByteCount, UploadOrder } from '../types';
-import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from './constants';
 
 export type BundleIndex = number;
 
@@ -23,17 +22,14 @@ export abstract class BundlePacker {
  * but the fileMetaData will still be sent up with a bundle
  */
 export class LowestIndexBundlePacker extends BundlePacker {
-	constructor(
-		private readonly maxBundleSize = MAX_BUNDLE_SIZE,
-		private readonly maxDataItemLimit = MAX_DATA_ITEM_LIMIT
-	) {
+	constructor(private readonly maxBundleSize: ByteCount, private readonly maxDataItemLimit: number) {
 		super();
 	}
 
 	packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex {
 		const { byteCountAsDataItem, numberOfDataItems } = bundlePackParams;
 
-		if (+byteCountAsDataItem > this.maxBundleSize) {
+		if (+byteCountAsDataItem > +this.maxBundleSize) {
 			throw new Error('Data item is too large to be packed into a bundle!');
 		}
 
@@ -63,7 +59,7 @@ class BundleToPack {
 	public totalDataItems = 0;
 
 	get remainingSize() {
-		return this.maxBundleSize - this.totalSize;
+		return +this.maxBundleSize - this.totalSize;
 	}
 	get remainingDataItems() {
 		return this.maxDataItemLimit - this.totalDataItems;
@@ -71,7 +67,7 @@ class BundleToPack {
 
 	constructor(
 		initialBundlePackParams: BundlePackParams,
-		private readonly maxBundleSize: number,
+		private readonly maxBundleSize: ByteCount,
 		private readonly maxDataItemLimit: number
 	) {
 		this.addToBundle(initialBundlePackParams);

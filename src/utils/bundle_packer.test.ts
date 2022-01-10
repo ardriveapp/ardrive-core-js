@@ -10,7 +10,7 @@ describe('LowestIndexBundlePacker class', () => {
 	beforeEach(() => {
 		// Construct a fresh bundle packer for each with
 		// max bundle size 100 and data item limit of 10
-		bundlePacker = new LowestIndexBundlePacker(100, 10);
+		bundlePacker = new LowestIndexBundlePacker(new ByteCount(100), 10);
 	});
 
 	const partialUploadOrder = { destDriveId: stubEntityID, destFolderId: stubEntityID };
