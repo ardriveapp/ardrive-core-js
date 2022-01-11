@@ -207,7 +207,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Prepare the ArFS folder transaction or dataItem
 		const arFSObjects = [await prepareArFSObject(folderMetadata)];
 
-		return { arFSObjects, folderId };
+		return { arFSObjects, folderId: folderMetadata.folderId };
 	}
 
 	/** Create a single folder as a V2 transaction */
