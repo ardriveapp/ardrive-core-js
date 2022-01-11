@@ -12,7 +12,7 @@ import {
 	PrivateDriveKeyData,
 	ArFSFileOrFolderEntity,
 	ArFSObjectTransactionData,
-	ArFSEntityToUpload,
+	ArFSDataToUpload,
 	WithDriveKey,
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
@@ -31,7 +31,7 @@ export interface ArFSPrepareFolderParams<T> {
 }
 
 export interface PartialPrepareFileParams {
-	wrappedFile: ArFSEntityToUpload;
+	wrappedFile: ArFSDataToUpload;
 	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
 	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
 }
@@ -102,7 +102,7 @@ export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFS
 
 export interface ArFSUploadPublicFileParams {
 	parentFolderId: FolderID;
-	wrappedFile: ArFSEntityToUpload;
+	wrappedFile: ArFSDataToUpload;
 	driveId: DriveID;
 	rewardSettings: UploadFileRewardSettings;
 	communityTipSettings?: CommunityTipSettings;

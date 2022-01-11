@@ -451,14 +451,12 @@ const stubPlanUploadStats = {
 export const newStubPlanFileUploadStats = (): UploadStats => {
 	return {
 		...stubPlanUploadStats,
-		entityType: 'file',
 		wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload
 	};
 };
 export const newStubPlanFolderUploadStats = (): UploadStats => {
 	return {
 		...stubPlanUploadStats,
-		entityType: 'folder',
 		wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
 	};
 };

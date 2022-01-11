@@ -207,7 +207,7 @@ export async function resolveFolderNameConflicts({
 			await resolveFileNameConflicts({
 				wrappedFile: file,
 				conflictResolution,
-				destinationFileName: file.getBaseFileName(),
+				destinationFileName: file.getBaseName(),
 				nameConflictInfo: childConflictInfo,
 				prompts
 			});
@@ -219,7 +219,7 @@ export async function resolveFolderNameConflicts({
 				wrappedFolder: folder,
 				conflictResolution,
 				getConflictInfoFn,
-				destinationFolderName: folder.getBaseFileName(),
+				destinationFolderName: folder.getBaseName(),
 				nameConflictInfo: childConflictInfo,
 				prompts
 			});

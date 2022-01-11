@@ -6,23 +6,22 @@ import {
 	ByteCount,
 	DataContentType,
 	UnixTime,
-	FileID,
-	FolderID,
 	MANIFEST_CONTENT_TYPE,
 	Manifest,
 	ManifestPathMap,
 	TransactionID,
-	V2FileBaseCosts
+	EntityID,
+	EntityType
 } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
-import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
+import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
 
 const pipelinePromise = promisify(pipeline);
 
-type BaseFileName = string;
+type BaseName = string;
 type FilePath = string;
 
 /**
@@ -66,27 +65,35 @@ export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload |
 }
 
 /** Type-guard function to determine if returned class is a File or Folder */
-export function isFolder(fileOrFolder: ArFSEntityToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
+export function isFolder(fileOrFolder: ArFSDataToUpload | ArFSFolderToUpload): fileOrFolder is ArFSFolderToUpload {
 	return fileOrFolder instanceof ArFSFolderToUpload;
 }
-export abstract class ArFSEntityToUpload {
-	abstract gatherFileInfo(): FileInfo;
-	abstract getFileDataBuffer(): Buffer;
-	abstract getBaseFileName(): BaseFileName;
 
-	abstract lastModifiedDate: UnixTime;
-	abstract size: ByteCount;
-	existingId?: FileID;
+export abstract class ArFSBaseEntityToUpload {
+	abstract getBaseName(): BaseName;
+	abstract entityType: EntityType;
+
 	newName?: string;
-	conflictResolution?: FileConflictResolution;
-	metaDataBundleIndex?: number;
+	existingId?: EntityID;
 
 	public get destinationBaseName(): string {
-		return this.newName ?? this.getBaseFileName();
+		return this.newName ?? this.getBaseName();
 	}
 }
 
-export class ArFSManifestToUpload extends ArFSEntityToUpload {
+export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
+	abstract gatherFileInfo(): FileInfo;
+	abstract getFileDataBuffer(): Buffer;
+
+	abstract lastModifiedDate: UnixTime;
+	abstract size: ByteCount;
+	conflictResolution?: FileConflictResolution;
+	metaDataBundleIndex?: number;
+
+	readonly entityType = 'file';
+}
+
+export class ArFSManifestToUpload extends ArFSDataToUpload {
 	manifest: Manifest;
 	lastModifiedDateMS: UnixTime;
 
@@ -169,7 +176,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 		return { dataContentType, lastModifiedDateMS: this.lastModifiedDateMS, fileSize: this.size };
 	}
 
-	public getBaseFileName(): BaseFileName {
+	public getBaseName(): BaseName {
 		return this.newName ?? this.destManifestName;
 	}
 
@@ -189,17 +196,13 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 export type FolderConflictResolution = typeof skipOnConflicts | undefined;
 export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
 
-export class ArFSFileToUpload extends ArFSEntityToUpload {
+export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
 		super();
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
 	}
-
-	bundleIndex?: number;
-	v2TxBaseCost?: V2FileBaseCosts;
-	baseCosts?: BulkFileBaseCosts;
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -217,13 +220,6 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 		return new UnixTime(Math.floor(this.fileStats.mtimeMs));
 	}
 
-	public getBaseCosts(): BulkFileBaseCosts {
-		if (!this.baseCosts) {
-			throw new Error('Base costs on file were never set!');
-		}
-		return this.baseCosts;
-	}
-
 	public getFileDataBuffer(): Buffer {
 		return readFileSync(this.filePath);
 	}
@@ -232,7 +228,7 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 		return extToMime(this.filePath);
 	}
 
-	public getBaseFileName(): BaseFileName {
+	public getBaseName(): BaseName {
 		return basename(this.filePath);
 	}
 
@@ -242,17 +238,17 @@ export class ArFSFileToUpload extends ArFSEntityToUpload {
 	}
 }
 
-export class ArFSFolderToUpload {
+export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	files: ArFSFileToUpload[] = [];
 	folders: ArFSFolderToUpload[] = [];
 
-	baseCosts?: MetaDataBaseCosts;
-	bundleIndex?: number;
-	existingId?: FolderID;
-	newName?: string;
 	conflictResolution: FolderConflictResolution = undefined;
 
+	readonly entityType = 'folder';
+
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+		super();
+
 		const entitiesInFolder = readdirSync(this.filePath);
 
 		for (const entityPath of entitiesInFolder) {
@@ -266,25 +262,14 @@ export class ArFSFolderToUpload {
 			} else {
 				// Child is a file, build a new file
 				const childFile = new ArFSFileToUpload(absoluteEntityPath, entityStats);
-				if (childFile.getBaseFileName() !== '.DS_Store') {
+				if (childFile.getBaseName() !== '.DS_Store') {
 					this.files.push(childFile);
 				}
 			}
 		}
 	}
 
-	public get destinationBaseName(): string {
-		return this.newName ?? this.getBaseFileName();
-	}
-
-	public getBaseCosts(): MetaDataBaseCosts {
-		if (!this.baseCosts) {
-			throw new Error('Base costs on folder were never set!');
-		}
-		return this.baseCosts;
-	}
-
-	public getBaseFileName(): BaseFileName {
+	public getBaseName(): BaseName {
 		return basename(this.filePath);
 	}
 

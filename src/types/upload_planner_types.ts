@@ -1,6 +1,6 @@
 import { DataItem } from 'arbundles';
-import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings, UploadStats } from '.';
-import { ArFSEntityToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
+import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings } from '.';
+import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
 	ArFSDriveMetaDataPrototype,
 	ArFSFileMetaDataPrototype,
@@ -8,6 +8,7 @@ import {
 } from '../arfs/arfs_prototypes';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { CommunityOracle } from '../community/community_oracle';
+import { FileUploadStats, FolderUploadStats, UploadStats } from '../exports';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { BundleIndex, BundlePacker } from '../utils/bundle_packer';
 import { ByteCount } from './byte_count';
@@ -110,9 +111,9 @@ export interface CalculatedV2TxPlan extends Omit<V2TxPlan, 'fileDataByteCount' |
 export interface PlanEntityParams {
 	isBulkUpload: boolean;
 }
-export interface PlanFileParams extends UploadStats, PlanEntityParams {
-	wrappedEntity: ArFSEntityToUpload;
+export interface PlanFileParams extends FileUploadStats, PlanEntityParams {
+	wrappedEntity: ArFSDataToUpload;
 }
-export interface PlanFolderParams extends UploadStats, PlanEntityParams {
+export interface PlanFolderParams extends FolderUploadStats, PlanEntityParams {
 	wrappedEntity: ArFSFolderToUpload;
 }

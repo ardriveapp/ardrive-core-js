@@ -18,7 +18,6 @@ import {
 import { CommunityOracle } from '../community/community_oracle';
 import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
-import { isFolder } from './arfs_file_wrapper';
 import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
@@ -215,7 +214,7 @@ export class ArFSUploadPlanner {
 		for await (const uploadStat of uploadStats) {
 			const { wrappedEntity } = uploadStat;
 
-			if (isFolder(wrappedEntity)) {
+			if (wrappedEntity.entityType === 'folder') {
 				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload });
 			} else {
 				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload });

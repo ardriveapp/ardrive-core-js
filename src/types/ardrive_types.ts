@@ -13,11 +13,10 @@ import {
 	DriveKey
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
-import { ArFSFolderToUpload, ArFSFileToUpload, ArFSEntityToUpload } from '../arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
-import { EntityType } from './type_guards';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -120,7 +119,7 @@ export interface UploadParams {
 }
 
 /** Upload stats required for uploading entities with the ArDrive class */
-export interface ArDriveUploadStats<T = ArFSEntityToUpload | ArFSFolderToUpload> {
+export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
 	wrappedEntity: T;
 	destFolderId: FolderID;
 	destName?: string;
@@ -128,23 +127,13 @@ export interface ArDriveUploadStats<T = ArFSEntityToUpload | ArFSFolderToUpload>
 }
 
 /** Upload stats determined by the ArDrive class */
-export interface UploadStats<T = ArFSEntityToUpload | ArFSFolderToUpload>
+export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload>
 	extends Omit<ArDriveUploadStats<T>, 'destName'> {
 	destDriveId: DriveID;
-	entityType: EntityType;
 }
 
-export interface FileUploadStats extends UploadStats<ArFSEntityToUpload> {
-	entityType: 'file';
-}
-export interface FolderUploadStats extends UploadStats<ArFSFolderToUpload> {
-	entityType: 'folder';
-}
-export interface DriveUploadStats extends UploadStats<ArFSEntityToUpload> {
-	entityType: 'drive';
-}
-
-export type ValidUploadStats = FileUploadStats | FolderUploadStats | FolderUploadStats;
+export type FileUploadStats = UploadStats<ArFSDataToUpload>;
+export type FolderUploadStats = UploadStats<ArFSFolderToUpload>;
 
 export interface UploadAllEntitiesParams {
 	entitiesToUpload: ArDriveUploadStats[];

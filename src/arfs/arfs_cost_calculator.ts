@@ -12,7 +12,6 @@ import {
 	UploadPlan,
 	CalculatedUploadPlan
 } from '../types/upload_planner_types';
-import { isFolder } from './arfs_file_wrapper';
 
 interface ArFSCostCalculatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
@@ -54,7 +53,7 @@ export class ArFSCostCalculator {
 		let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
 		// For now, we only add a community tip if there are files present within the bundle
-		const hasFileData = uploadStats.find((u) => !isFolder(u.wrappedEntity));
+		const hasFileData = uploadStats.find((u) => u.wrappedEntity.entityType === 'file');
 		if (hasFileData) {
 			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
 			const communityTipTarget = await this.communityOracle.selectTokenHolder();

@@ -5,7 +5,7 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSPrivateFileToDownload, ArFSManifestToUpload, isFolder } from './arfs/arfs_file_wrapper';
+import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSDataToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -38,7 +38,7 @@ import {
 	UploadAllEntitiesParams,
 	FolderConflictPrompts,
 	emptyManifestResult,
-	ValidUploadStats
+	UploadStats
 } from './types';
 import {
 	CommunityTipParams,
@@ -402,7 +402,7 @@ export class ArDrive extends ArDriveAnonymous {
 		conflictResolution = upsertOnConflicts,
 		prompts
 	}: UploadAllEntitiesParams): Promise<ArFSResult> {
-		const allUploadStats: ValidUploadStats[] = [];
+		const allUploadStats: UploadStats[] = [];
 		const errors: string[] = [];
 
 		for (const { destFolderId, destName, wrappedEntity, driveKey } of entitiesToUpload) {
@@ -427,7 +427,7 @@ export class ArDrive extends ArDriveAnonymous {
 				prompts
 			};
 
-			if (isFolder(wrappedEntity)) {
+			if (wrappedEntity.entityType === 'folder') {
 				await resolveFolderNameConflicts({
 					wrappedFolder: wrappedEntity,
 					destinationFolderName: wrappedEntity.destinationBaseName,
@@ -440,17 +440,19 @@ export class ArDrive extends ArDriveAnonymous {
 					);
 				} else {
 					// Conflicts have resolved, add this folder to the accumulating uploadStats
-					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, entityType: 'folder', driveKey });
+					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
 				}
 			} else {
+				const wrappedFile = wrappedEntity as ArFSDataToUpload;
+
 				await resolveFileNameConflicts({
-					wrappedFile: wrappedEntity,
+					wrappedFile,
 					destinationFileName: wrappedEntity.destinationBaseName,
 					...resolveConflictParams
 				});
 
-				if (wrappedEntity.conflictResolution) {
-					switch (wrappedEntity.conflictResolution) {
+				if (wrappedFile.conflictResolution) {
+					switch (wrappedFile.conflictResolution) {
 						case errorOnConflict:
 							// File cannot be sent up because it conflicts with an existing folder
 							errors.push(errorMessage.entityNameExists);
@@ -467,7 +469,12 @@ export class ArDrive extends ArDriveAnonymous {
 					}
 				} else {
 					// Conflicts have resolved, add this file to the accumulating uploadStats
-					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, entityType: 'file', driveKey });
+					allUploadStats.push({
+						destFolderId,
+						destDriveId,
+						wrappedEntity: wrappedFile,
+						driveKey
+					});
 				}
 			}
 		}

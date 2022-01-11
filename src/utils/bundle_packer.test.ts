@@ -18,10 +18,9 @@ describe('LowestIndexBundlePacker class', () => {
 	const wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
 	const wrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
 
-	const fileUploadStats: UploadStats = { ...partialUploadStats, entityType: 'file', wrappedEntity: wrappedFile };
+	const fileUploadStats: UploadStats = { ...partialUploadStats, wrappedEntity: wrappedFile };
 	const folderUploadStats: UploadStats = {
 		...partialUploadStats,
-		entityType: 'folder',
 		wrappedEntity: wrappedFolder
 	};
 

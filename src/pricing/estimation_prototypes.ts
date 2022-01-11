@@ -5,7 +5,7 @@ import {
 	ArFSPublicFileMetaDataPrototype
 } from '../arfs/arfs_prototypes';
 import {
-	ArFSEntityToUpload,
+	ArFSDataToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -78,9 +78,7 @@ export function getPublicCreateDriveEstimationPrototypes({
 	};
 }
 
-export function getPublicUploadFileEstimationPrototype(
-	wrappedFile: ArFSEntityToUpload
-): ArFSPublicFileMetaDataPrototype {
+export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUpload): ArFSPublicFileMetaDataPrototype {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
 	return new ArFSPublicFileMetaDataPrototype(
@@ -98,7 +96,7 @@ export function getPublicUploadFileEstimationPrototype(
 }
 
 export async function getPrivateUploadFileEstimationPrototype(
-	wrappedFile: ArFSEntityToUpload
+	wrappedFile: ArFSDataToUpload
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -119,7 +117,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 }
 
 export async function getFileEstimationInfo(
-	wrappedFile: ArFSEntityToUpload,
+	wrappedFile: ArFSDataToUpload,
 	isPrivate: boolean
 ): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
