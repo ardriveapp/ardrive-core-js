@@ -16,7 +16,9 @@ import {
 	stubArweaveAddress,
 	stubPrivateDrive,
 	stubPrivateFile,
-	stubPrivateFolder
+	stubPrivateFolder,
+	newStubPlanFolderUploadStats,
+	newStubPlanFileUploadStats
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileKey, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
@@ -592,6 +594,66 @@ describe('The ArFSDAO class', () => {
 			// 		cachedFile
 			// 	);
 			// });
+		});
+	});
+
+	describe('uploadAllEntities method', () => {
+		it('returns the expected result for an upload plan with a single file as v2 transactions');
+		it('returns the expected result for an upload plan with a bulk folder as v2 transactions');
+
+		it('returns the expected result for an upload plan with a single file as a bundled transaction');
+		it('returns the expected result for an upload plan with a bulk folder as a bundled transaction');
+
+		it('throws an error if a provided v2 tx plan has a dataTxRewardSettings but no file entity to upload', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [],
+					v2TxPlans: [
+						{
+							uploadStats: newStubPlanFolderUploadStats(),
+							rewardSettings: {
+								dataTxRewardSettings: { reward: W(5) },
+								metaDataRewardSettings: { reward: W(1) }
+							}
+						}
+					]
+				}),
+				errorMessage: 'Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!'
+			});
+		});
+
+		it(
+			'returns the expected results for an upload plan that has 2 over-sized planned files with metaDataBundleIndex'
+		);
+
+		it('throws an error if a provided v2 tx plan has a file entity to upload, but no metaDataRewardSettings nor a metaDataBundleIndex', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [],
+					v2TxPlans: [
+						{
+							uploadStats: newStubPlanFileUploadStats(),
+							rewardSettings: { dataTxRewardSettings: { reward: W(5) } }
+						}
+					]
+				}),
+				errorMessage: 'Error: Invalid v2 tx plan, file upload must include a plan for the metadata!'
+			});
+		});
+
+		it('throws an error if a provided v2 tx plan has a file entity that has no dataTxRewardSettings', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [],
+					v2TxPlans: [
+						{
+							uploadStats: newStubPlanFileUploadStats(),
+							rewardSettings: { metaDataRewardSettings: { reward: W(55) } }
+						}
+					]
+				}),
+				errorMessage: 'Error: Invalid v2 tx plan, file uploads must have file data reward settings!'
+			});
 		});
 	});
 });
