@@ -854,6 +854,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				if (wrappedEntity.entityType !== 'file') {
 					throw new Error('Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!');
 				}
+				if (communityTipSettings === undefined) {
+					throw new Error('Error: Invalid v2 tx plan, file uploads must include communityTipSettings!');
+				}
 
 				const prepFileParams = this.getPrepFileParams({ ...uploadStats, wrappedEntity });
 
@@ -867,7 +870,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						communityTipSettings
 					);
 				} else {
-					if (!metaDataBundleIndex) {
+					if (metaDataBundleIndex === undefined) {
 						throw new Error('Error: Invalid v2 tx plan, file upload must include a plan for the metadata!');
 					}
 					// Send file as v2, but prepare the metadata as data item
@@ -912,6 +915,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const { wrappedEntity, driveKey } = uploadStat;
 
 				if (wrappedEntity.entityType === 'folder') {
+					if (uploadStats.length === 1) {
+						throw new Error(
+							'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
+						);
+					}
+
 					// Prepare folder data item and results
 					const { arFSObjects, folderId } = await this.prepareFolder({
 						folderPrototypeFactory: await this.getPrepFolderFactoryParams({
@@ -925,6 +934,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					dataItems.push(folderDataItem);
 					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
 				} else {
+					if (!communityTipSettings) {
+						throw new Error('Error: Invalid bundle plan, file uploads must include communityTipSettings!');
+					}
+
 					// Prepare file data item and results
 					const prepFileParams = this.getPrepFileParams({ ...uploadStat, wrappedEntity });
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
