@@ -92,9 +92,9 @@ describe('The ArFSUploadPlanner class', () => {
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
 
-			const { uploadOrders, totalByteCount } = bundlePlans[0];
+			const { uploadStats, totalByteCount } = bundlePlans[0];
 
-			expect(uploadOrders.length).to.equal(1);
+			expect(uploadStats.length).to.equal(1);
 			expect(+totalByteCount).to.equal(5953);
 		});
 
@@ -107,9 +107,9 @@ describe('The ArFSUploadPlanner class', () => {
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
 
-			const { uploadOrders, totalByteCount } = bundlePlans[0];
+			const { uploadStats, totalByteCount } = bundlePlans[0];
 
-			expect(uploadOrders.length).to.equal(8);
+			expect(uploadStats.length).to.equal(8);
 			expect(+totalByteCount).to.equal(11287);
 		});
 
@@ -127,13 +127,13 @@ describe('The ArFSUploadPlanner class', () => {
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
 
-			const { uploadOrders, totalByteCount } = bundlePlans[0];
+			const { uploadStats, totalByteCount } = bundlePlans[0];
 
-			expect(uploadOrders.length).to.equal(7);
+			expect(uploadStats.length).to.equal(7);
 			expect(+totalByteCount).to.equal(11196);
 
-			// Expect first upload order to have our existing stub folder id
-			expect(`${uploadOrders[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
+			// Expect first upload stat to have our existing stub folder id
+			expect(`${uploadStats[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
 		});
 
 		it('returns the expected uploadPlan for a two wrappedFiles', async () => {
@@ -146,9 +146,9 @@ describe('The ArFSUploadPlanner class', () => {
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
 
-			const { uploadOrders, totalByteCount } = bundlePlans[0];
+			const { uploadStats, totalByteCount } = bundlePlans[0];
 
-			expect(uploadOrders.length).to.equal(2);
+			expect(uploadStats.length).to.equal(2);
 			expect(+totalByteCount).to.equal(11874);
 		});
 
@@ -183,9 +183,9 @@ describe('The ArFSUploadPlanner class', () => {
 
 			// Expect one bundle for the 2 metadata data items
 			expect(bundlePlans.length).to.equal(1);
-			const { uploadOrders, totalByteCount: bundleByteCount } = bundlePlans[0];
+			const { uploadStats, totalByteCount: bundleByteCount } = bundlePlans[0];
 			expect(+bundleByteCount).to.equal(3108);
-			expect(uploadOrders.length).to.equal(0);
+			expect(uploadStats.length).to.equal(0);
 
 			// Expect two v2 transactions for the oversized files
 			expect(v2TxPlans.length).to.equal(2);

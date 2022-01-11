@@ -1,10 +1,10 @@
-import { ByteCount, UploadOrder } from '../types';
+import { ByteCount, UploadStats } from '../types';
 
 export type BundleIndex = number;
 
 interface BundlePackParams {
-	// Upload order can be undefined when a metaData for an over-sized file is packed
-	uploadOrder?: UploadOrder;
+	// Upload stats can be undefined when a metaData for an over-sized file is packed
+	uploadStats?: UploadStats;
 	byteCountAsDataItem: ByteCount;
 	numberOfDataItems: number;
 }
@@ -53,7 +53,7 @@ export class LowestIndexBundlePacker extends BundlePacker {
 }
 
 class BundleToPack {
-	public uploadOrders: UploadOrder[] = [];
+	public uploadStats: UploadStats[] = [];
 
 	public totalSize = 0;
 	public totalDataItems = 0;
@@ -73,13 +73,13 @@ class BundleToPack {
 		this.addToBundle(initialBundlePackParams);
 	}
 
-	addToBundle({ uploadOrder, byteCountAsDataItem, numberOfDataItems }: BundlePackParams) {
+	addToBundle({ uploadStats, byteCountAsDataItem, numberOfDataItems }: BundlePackParams) {
 		this.totalSize += +byteCountAsDataItem;
 		this.totalDataItems += numberOfDataItems;
 
-		// Metadata of over-sized file uploads can be added without an uploadOrder
-		if (uploadOrder) {
-			this.uploadOrders.push(uploadOrder);
+		// Metadata of over-sized file uploads can be added without an uploadStats
+		if (uploadStats) {
+			this.uploadStats.push(uploadStats);
 		}
 	}
 }

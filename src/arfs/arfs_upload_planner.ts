@@ -2,7 +2,7 @@ import { serializeTags } from 'arbundles/src/parser';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, EID, FeeMultiple, GQLTagInterface, RewardSettings, UploadOrder, Winston } from '../types';
+import { ByteCount, EID, FeeMultiple, GQLTagInterface, RewardSettings, UploadStats, Winston } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
 	BundlePlan,
@@ -112,12 +112,12 @@ export class ArFSUploadPlanner {
 
 		if (!this.shouldBundle || +totalByteCountOfFileDataItems > +this.maxBundleLimit) {
 			// If the file data is too large it must be sent as a v2 tx
-			let v2TxToUpload: V2TxPlan = { uploadOrder: planFileParams, fileDataByteCount };
+			let v2TxToUpload: V2TxPlan = { uploadStats: planFileParams, fileDataByteCount };
 
 			// We will preserve this bundle index because the metadata cannot be separated
 			// from the file data until ArFSDAO has generated a TxID from signing
 			if (isBulkUpload && this.shouldBundle) {
-				// This metadata can be packed with another bundle since other upload orders do exist
+				// This metadata can be packed with another bundle since other upload stats do exist
 				const metaDataBundleIndex = this.bundlePacker.packIntoBundle({
 					byteCountAsDataItem: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
@@ -143,7 +143,7 @@ export class ArFSUploadPlanner {
 			this.bundlePacker.packIntoBundle({
 				byteCountAsDataItem: totalByteCountOfFileDataItems,
 				numberOfDataItems: 2,
-				uploadOrder: planFileParams
+				uploadStats: planFileParams
 			});
 		}
 	}
@@ -168,13 +168,13 @@ export class ArFSUploadPlanner {
 			// We won't create a new folder if one already exists
 			if (this.shouldBundle) {
 				this.bundlePacker.packIntoBundle({
-					uploadOrder: planFolderParams,
+					uploadStats: planFolderParams,
 					byteCountAsDataItem: folderByteCount,
 					numberOfDataItems: 1
 				});
 			} else {
 				this.v2TxsToUpload.push({
-					uploadOrder: planFolderParams,
+					uploadStats: planFolderParams,
 					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
 			}
@@ -208,25 +208,25 @@ export class ArFSUploadPlanner {
 	 *  Plans an upload using the `uploadAllEntities` ArDrive method
 	 *  into bundles or v2 transactions and estimates the total winston cost
 	 */
-	public async planUploadAllEntities(uploadOrders: UploadOrder[]): Promise<UploadPlan> {
+	public async planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan> {
 		this.resetPlannedUploads();
-		const isBulkUpload = uploadOrders.length > 1;
+		const isBulkUpload = uploadStats.length > 1;
 
-		for await (const uploadOrder of uploadOrders) {
-			const { wrappedEntity } = uploadOrder;
+		for await (const uploadStat of uploadStats) {
+			const { wrappedEntity } = uploadStat;
 
 			if (isFolder(wrappedEntity)) {
-				await this.planFolder({ ...uploadOrder, wrappedEntity, isBulkUpload });
+				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload });
 			} else {
-				await this.planFile({ ...uploadOrder, wrappedEntity, isBulkUpload });
+				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload });
 			}
 		}
 
 		const bundlePlans: BundlePlan[] = [];
-		for await (const { uploadOrders, totalDataItems, totalSize } of this.bundlePacker.bundles) {
+		for await (const { uploadStats, totalDataItems, totalSize } of this.bundlePacker.bundles) {
 			if (totalDataItems === 1) {
 				// Edge case: Do not send up a bundle with a single folder data item
-				const { wrappedEntity, driveKey } = uploadOrders[0];
+				const { wrappedEntity, driveKey } = uploadStats[0];
 
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
 					wrappedEntity.destinationBaseName,
@@ -235,7 +235,7 @@ export class ArFSUploadPlanner {
 
 				// Unpack this bundle into the v2TxsToUpload
 				this.v2TxsToUpload.push({
-					uploadOrder: uploadOrders[0],
+					uploadStats: uploadStats[0],
 					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
 				continue;
@@ -244,7 +244,7 @@ export class ArFSUploadPlanner {
 			const bundledByteCount = this.bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
 
 			bundlePlans.push({
-				uploadOrders: uploadOrders,
+				uploadStats: uploadStats,
 				totalByteCount: bundledByteCount
 			});
 		}

@@ -43,7 +43,7 @@ export class ArFSCostCalculator {
 	/** Calculates bundleRewardSettings and communityTipSettings for a planned bundle */
 	private async calculateCostsForBundlePlan({
 		totalByteCount,
-		uploadOrders
+		uploadStats
 	}: BundlePlan): Promise<{ calculatedBundlePlan: CalculatedBundlePlan; totalPriceOfBundle: Winston }> {
 		let totalPriceOfBundle: Winston = W(0);
 
@@ -54,7 +54,7 @@ export class ArFSCostCalculator {
 		let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
 		// For now, we only add a community tip if there are files present within the bundle
-		const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
+		const hasFileData = uploadStats.find((u) => !isFolder(u.wrappedEntity));
 		if (hasFileData) {
 			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
 			const communityTipTarget = await this.communityOracle.selectTokenHolder();
@@ -65,7 +65,7 @@ export class ArFSCostCalculator {
 
 		return {
 			calculatedBundlePlan: {
-				uploadOrders,
+				uploadStats,
 				bundleRewardSettings,
 				communityTipSettings
 			},
@@ -77,7 +77,7 @@ export class ArFSCostCalculator {
 	private async calculateCostsForV2TxPlan({
 		fileDataByteCount,
 		metaDataByteCount,
-		uploadOrder
+		uploadStats
 	}: V2TxPlan): Promise<{ calculatedV2TxPlan: CalculatedV2TxPlan; totalPriceOfV2Tx: Winston }> {
 		let totalPriceOfV2Tx: Winston = W(0);
 		let rewardSettings: Partial<UploadFileV2TxRewardSettings> = {};
@@ -113,7 +113,7 @@ export class ArFSCostCalculator {
 
 		return {
 			calculatedV2TxPlan: {
-				uploadOrder,
+				uploadStats,
 				rewardSettings,
 				communityTipSettings
 			},

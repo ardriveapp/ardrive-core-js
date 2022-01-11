@@ -17,6 +17,7 @@ import { ArFSFolderToUpload, ArFSFileToUpload, ArFSEntityToUpload } from '../arf
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
+import { EntityType } from './type_guards';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -118,26 +119,35 @@ export interface UploadParams {
 	conflictResolution?: FileNameConflictResolution;
 }
 
-/** An upload order upon entering the ArDrive class */
-export interface ArDriveUploadOrder<T = ArFSEntityToUpload | ArFSFolderToUpload> {
+/** Upload stats required for uploading entities with the ArDrive class */
+export interface ArDriveUploadStats<T = ArFSEntityToUpload | ArFSFolderToUpload> {
 	wrappedEntity: T;
 	destFolderId: FolderID;
 	destName?: string;
 	driveKey?: DriveKey;
 }
 
-/**
- * ArDrive class uses the destName to resolve conflicts and determines the destDriveId
- *
- * Destination name is omitted here because that information is assigned to the ArFSEntityToUpload
- */
-export interface UploadOrder<T = ArFSEntityToUpload | ArFSFolderToUpload>
-	extends Omit<ArDriveUploadOrder<T>, 'destName'> {
+/** Upload stats determined by the ArDrive class */
+export interface UploadStats<T = ArFSEntityToUpload | ArFSFolderToUpload>
+	extends Omit<ArDriveUploadStats<T>, 'destName'> {
 	destDriveId: DriveID;
+	entityType: EntityType;
 }
 
+export interface FileUploadStats extends UploadStats<ArFSEntityToUpload> {
+	entityType: 'file';
+}
+export interface FolderUploadStats extends UploadStats<ArFSFolderToUpload> {
+	entityType: 'folder';
+}
+export interface DriveUploadStats extends UploadStats<ArFSEntityToUpload> {
+	entityType: 'drive';
+}
+
+export type ValidUploadStats = FileUploadStats | FolderUploadStats | FolderUploadStats;
+
 export interface UploadAllEntitiesParams {
-	entitiesToUpload: ArDriveUploadOrder[];
+	entitiesToUpload: ArDriveUploadStats[];
 	conflictResolution?: FileNameConflictResolution;
 	prompts?: FolderConflictPrompts;
 }

@@ -33,7 +33,7 @@ import {
 	JWKWallet,
 	readJWKFile,
 	RootFolderID,
-	UploadOrder,
+	UploadStats,
 	wrapFileOrFolder
 } from '../src/exports';
 import {
@@ -448,12 +448,17 @@ const stubPlanUploadStats = {
 	destFolderId: stubEntityID
 };
 
-export const newStubPlanFileUploadStats = (): UploadOrder => {
-	return { ...stubPlanUploadStats, wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload };
-};
-export const newStubPlanFolderUploadStats = (): UploadOrder => {
+export const newStubPlanFileUploadStats = (): UploadStats => {
 	return {
 		...stubPlanUploadStats,
+		entityType: 'file',
+		wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload
+	};
+};
+export const newStubPlanFolderUploadStats = (): UploadStats => {
+	return {
+		...stubPlanUploadStats,
+		entityType: 'folder',
 		wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
 	};
 };

@@ -37,7 +37,8 @@ import {
 	upsertOnConflicts,
 	UploadAllEntitiesParams,
 	FolderConflictPrompts,
-	emptyManifestResult
+	emptyManifestResult,
+	ValidUploadStats
 } from './types';
 import {
 	CommunityTipParams,
@@ -57,8 +58,7 @@ import {
 	GetPrivateFolderParams,
 	GetPrivateFileParams,
 	ListPrivateFolderParams,
-	MetaDataBaseCosts,
-	UploadOrder
+	MetaDataBaseCosts
 } from './types';
 import { urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
@@ -402,7 +402,7 @@ export class ArDrive extends ArDriveAnonymous {
 		conflictResolution = upsertOnConflicts,
 		prompts
 	}: UploadAllEntitiesParams): Promise<ArFSResult> {
-		const uploadOrders: UploadOrder[] = [];
+		const allUploadStats: ValidUploadStats[] = [];
 		const errors: string[] = [];
 
 		for (const { destFolderId, destName, wrappedEntity, driveKey } of entitiesToUpload) {
@@ -439,8 +439,8 @@ export class ArDrive extends ArDriveAnonymous {
 						`Error: Folder "${wrappedEntity.destinationBaseName}" cannot be uploaded, it conflicts with an existing file name!`
 					);
 				} else {
-					// Conflicts have resolved, add this folder to the uploadOrders
-					uploadOrders.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
+					// Conflicts have resolved, add this folder to the accumulating uploadStats
+					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, entityType: 'folder', driveKey });
 				}
 			} else {
 				await resolveFileNameConflicts({
@@ -466,14 +466,14 @@ export class ArDrive extends ArDriveAnonymous {
 							break;
 					}
 				} else {
-					// Conflicts have resolved, add this file to the uploadOrders
-					uploadOrders.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
+					// Conflicts have resolved, add this file to the accumulating uploadStats
+					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, entityType: 'file', driveKey });
 				}
 			}
 		}
 
 		// Plan the upload
-		const uploadPlan = await this.uploadPlanner.planUploadAllEntities(uploadOrders);
+		const uploadPlan = await this.uploadPlanner.planUploadAllEntities(allUploadStats);
 
 		// Calculate rewardSettings and communityTipSettings for each upload plan
 		const { calculatedUploadPlan, totalWinstonPrice } = await this.costCalculator.calculateCostsForUploadPlan(

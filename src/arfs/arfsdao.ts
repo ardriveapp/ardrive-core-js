@@ -86,7 +86,7 @@ import {
 	TransactionID,
 	CipherIV,
 	GQLTransactionsResultInterface,
-	UploadOrder
+	UploadStats
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -597,11 +597,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					bundlePlans: [
 						{
 							bundleRewardSettings: rewardSettings.bundleRewardSettings,
-							uploadOrders: [
+							uploadStats: [
 								{
 									wrappedEntity,
 									destDriveId,
-									destFolderId
+									destFolderId,
+									entityType: 'file'
 								}
 							],
 							communityTipSettings
@@ -615,7 +616,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadOrder: { destDriveId, destFolderId, wrappedEntity },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity, entityType: 'file' },
 						rewardSettings,
 						communityTipSettings
 					}
@@ -642,12 +643,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					bundlePlans: [
 						{
 							bundleRewardSettings: rewardSettings.bundleRewardSettings,
-							uploadOrders: [
+							uploadStats: [
 								{
 									wrappedEntity,
 									destDriveId,
 									destFolderId,
-									driveKey
+									driveKey,
+									entityType: 'file'
 								}
 							],
 							communityTipSettings
@@ -661,7 +663,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadOrder: { destDriveId, destFolderId, wrappedEntity, driveKey },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey, entityType: 'file' },
 						rewardSettings,
 						communityTipSettings
 					}
@@ -757,7 +759,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFile,
 		driveKey
-	}: UploadOrder<ArFSEntityToUpload>): Omit<
+	}: UploadStats<ArFSEntityToUpload>): Omit<
 		ArFSPrepareFileParams<Transaction | DataItem>,
 		'prepareArFSObject' | 'prepareMetaDataArFSObject'
 	> {
@@ -821,7 +823,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFolder,
 		driveKey
-	}: UploadOrder<ArFSFolderToUpload>): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
+	}: UploadStats<ArFSFolderToUpload>): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
 		if (driveKey) {
 			// Return factory for private folder prototype
 			const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
@@ -847,11 +849,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 
-		for (const { rewardSettings, uploadOrder, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
+		for (const { rewardSettings, uploadStats, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
 			// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
 
 			const { dataTxRewardSettings, metaDataRewardSettings } = rewardSettings;
-			const { wrappedEntity, driveKey } = uploadOrder;
+			const { wrappedEntity, driveKey } = uploadStats;
 
 			if (dataTxRewardSettings) {
 				if (isFolder(wrappedEntity)) {
@@ -861,7 +863,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					);
 				}
 
-				const prepFileParams = this.getPrepFileParams({ ...uploadOrder, wrappedEntity });
+				const prepFileParams = this.getPrepFileParams({ ...uploadStats, wrappedEntity });
 
 				let v2FileResult: FileResult;
 				if (metaDataRewardSettings) {
@@ -901,7 +903,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				// Send this folder metadata up as a v2 tx
 				const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
-					await this.getPrepFolderFactoryParams({ ...uploadOrder, wrappedEntity }),
+					await this.getPrepFolderFactoryParams({ ...uploadStats, wrappedEntity }),
 					metaDataRewardSettings
 				);
 
@@ -914,18 +916,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		}
 
-		for (const { uploadOrders, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
+		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
 			let dataItems: DataItem[] = [];
 
-			for (const uploadOrder of uploadOrders) {
-				const { wrappedEntity, driveKey } = uploadOrder;
+			for (const uploadStat of uploadStats) {
+				const { wrappedEntity, driveKey } = uploadStat;
 
 				if (isFolder(wrappedEntity)) {
 					// Prepare folder data item and results
 					const { arFSObjects, folderId } = await this.prepareFolder({
 						folderPrototypeFactory: await this.getPrepFolderFactoryParams({
-							...uploadOrder,
+							...uploadStat,
 							wrappedEntity
 						}),
 						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
@@ -936,7 +938,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
 				} else {
 					// Prepare file data item and results
-					const prepFileParams = this.getPrepFileParams({ ...uploadOrder, wrappedEntity });
+					const prepFileParams = this.getPrepFileParams({ ...uploadStat, wrappedEntity });
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
 						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData }),
