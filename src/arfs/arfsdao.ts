@@ -943,11 +943,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						fileKey
 					});
 				}
+			}
 
-				// Add any metaData data items from over-sized files sent as v2
-				if (metaDataDataItems !== undefined) {
-					dataItems.push(...metaDataDataItems);
-				}
+			// Add any metaData data items from over-sized files sent as v2
+			if (metaDataDataItems !== undefined) {
+				dataItems.push(...metaDataDataItems);
 			}
 
 			const bundle = await this.prepareArFSObjectBundle({
