@@ -121,14 +121,14 @@ export async function getPrivateUploadFileEstimationPrototype(
 export async function getFileEstimationInfo(
 	wrappedFile: ArFSEntityToUpload,
 	isPrivate: boolean
-): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileByteCount: ByteCount }> {
+): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
 		? await getPrivateUploadFileEstimationPrototype(wrappedFile)
 		: getPublicUploadFileEstimationPrototype(wrappedFile);
 
-	const fileByteCount = isPrivate ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
+	const fileDataByteCount = isPrivate ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
 
-	return { fileMetaDataPrototype, fileByteCount };
+	return { fileMetaDataPrototype, fileDataByteCount };
 }
 
 export async function getFolderEstimationInfo(

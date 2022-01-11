@@ -2,17 +2,7 @@ import { serializeTags } from 'arbundles/src/parser';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
 import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import {
-	ByteCount,
-	CommunityTipSettings,
-	EID,
-	FeeMultiple,
-	GQLTagInterface,
-	RewardSettings,
-	UploadOrder,
-	W,
-	Winston
-} from '../types';
+import { ByteCount, EID, FeeMultiple, GQLTagInterface, RewardSettings, UploadOrder, Winston } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
 	BundlePlan,
@@ -29,45 +19,65 @@ import {
 	V2TxPlan
 } from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
-import { MAX_BUNDLE_SIZE } from '../utils/constants';
+import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { isFolder } from './arfs_file_wrapper';
 import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 
-/** A utility class for calculating the cost of an ArFS write action */
+/** Utility class for planning an upload into an UploadPlan */
 export class ArFSUploadPlanner {
-	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly shouldBundle: boolean;
-	private readonly feeMultiple: FeeMultiple;
 	private readonly arFSTagSettings: ArFSTagSettings;
-	private readonly communityOracle: CommunityOracle;
+	private readonly bundlePacker: BundlePacker;
+
+	protected readonly maxDataItemLimit: number;
+	protected readonly maxBundleLimit: ByteCount;
+
+	// These class settings have been moved to the ArFSCostCalculator class
+	/** @deprecated */
+	protected readonly feeMultiple?: FeeMultiple;
+	/** @deprecated */
+	protected readonly priceEstimator?: ARDataPriceEstimator;
+	/** @deprecated */
+	protected readonly communityOracle?: CommunityOracle;
 
 	constructor({
 		shouldBundle = true,
 		priceEstimator,
 		feeMultiple = new FeeMultiple(1),
 		arFSTagSettings,
-		communityOracle
+		communityOracle,
+		maxBundleLimit = MAX_BUNDLE_SIZE,
+		maxDataItemLimit = MAX_DATA_ITEM_LIMIT,
+		bundlePacker = new LowestIndexBundlePacker(maxBundleLimit, maxDataItemLimit)
 	}: ArFSUploadPlannerConstructorParams) {
-		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
-		this.feeMultiple = feeMultiple;
 		this.arFSTagSettings = arFSTagSettings;
+		this.maxBundleLimit = maxBundleLimit;
+		this.bundlePacker = bundlePacker;
+
+		if (!Number.isFinite(maxDataItemLimit) || !Number.isInteger(maxDataItemLimit) || maxDataItemLimit < 2) {
+			throw new Error('Maximum data item limit must be an integer value of 2 or more!');
+		}
+		this.maxDataItemLimit = maxDataItemLimit;
+
+		// TODO: Fully decouple and deprecate these
+		this.feeMultiple = feeMultiple;
+		this.priceEstimator = priceEstimator;
 		this.communityOracle = communityOracle;
 	}
 
-	/** Constructs reward settings with the feeMultiple from the upload planner */
+	/** Constructs reward settings with the feeMultiple from the cost calculator */
 	private rewardSettingsForWinston(reward: Winston): RewardSettings {
 		return { reward, feeMultiple: this.feeMultiple };
 	}
-	/** Returns a reward boosted by the feeMultiple from the upload planner */
+	/** Returns a reward boosted by the feeMultiple from the cost calculator */
 	private boostedReward(reward: Winston): Winston {
-		return this.feeMultiple.boostedWinstonReward(reward);
+		return this.feeMultiple!.boostedWinstonReward(reward);
 	}
 
-	private bundlePacker: BundlePacker = new LowestIndexBundlePacker();
 	private v2TxsToUpload: V2TxPlan[] = [];
 
 	/**
@@ -81,10 +91,10 @@ export class ArFSUploadPlanner {
 	private async planFile(planFileParams: PlanFileParams): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = planFileParams;
 		const isPrivate = driveKey !== undefined;
-		const { fileByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
+		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
-			fileByteCount,
+			fileDataByteCount,
 			this.arFSTagSettings.getFileDataTags(isPrivate)
 		);
 		const metaDataByteCountAsDataItem = this.byteCountAsDataItem(
@@ -93,35 +103,34 @@ export class ArFSUploadPlanner {
 		);
 		const totalByteCountOfFileDataItems = new ByteCount(+fileDataItemByteCount + +metaDataByteCountAsDataItem);
 
-		let rewardSettings;
-		if (!this.shouldBundle || +totalByteCountOfFileDataItems > MAX_BUNDLE_SIZE) {
+		if (!this.shouldBundle || +totalByteCountOfFileDataItems > +this.maxBundleLimit) {
 			// If the file data is too large it must be sent as a v2 tx
-			rewardSettings = {
-				dataTxRewardSettings: this.rewardSettingsForWinston(
-					await this.priceEstimator.getBaseWinstonPriceForByteCount(fileByteCount)
-				)
-			};
+			let v2TxToUpload: V2TxPlan = { uploadOrder: planFileParams, fileDataByteCount };
 
 			// We will preserve this bundle index because the metadata cannot be separated
 			// from the file data until ArFSDAO has generated a TxID from signing
-			let metaDataBundleIndex;
 			if (isBulkUpload && this.shouldBundle) {
 				// This metadata can be packed with another bundle since other upload orders do exist
-				metaDataBundleIndex = this.bundlePacker.packIntoBundle({
+				const metaDataBundleIndex = this.bundlePacker.packIntoBundle({
 					byteCountAsDataItem: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
+
+				v2TxToUpload = {
+					...v2TxToUpload,
+					metaDataBundleIndex
+				};
 			} else {
 				// Otherwise we must send the metadata as a v2 tx because there will be nothing to bundle it with
-				// So we also determine and add the reward settings for a v2 meta data transaction here
-				const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
-				rewardSettings = {
-					...rewardSettings,
-					metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
+				const metaDataByteCount = fileMetaDataPrototype.objectData.sizeOf();
+
+				v2TxToUpload = {
+					...v2TxToUpload,
+					metaDataByteCount
 				};
 			}
 			// Add to the v2TxsToUpload
-			this.v2TxsToUpload.push({ uploadOrder: planFileParams, rewardSettings, metaDataBundleIndex });
+			this.v2TxsToUpload.push(v2TxToUpload);
 		} else {
 			// Otherwise we will always pack the metadata tx and data tx in the same bundle
 			this.bundlePacker.packIntoBundle({
@@ -159,11 +168,7 @@ export class ArFSUploadPlanner {
 			} else {
 				this.v2TxsToUpload.push({
 					uploadOrder: planFolderParams,
-					rewardSettings: {
-						metaDataRewardSettings: this.rewardSettingsForWinston(
-							await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData)
-						)
-					}
+					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
 			}
 		}
@@ -176,7 +181,7 @@ export class ArFSUploadPlanner {
 			destFolderId: wrappedFolder.existingId
 		};
 
-		for (const file of wrappedFolder.files) {
+		for await (const file of wrappedFolder.files) {
 			await this.planFile({
 				...partialPlanParams,
 				wrappedEntity: file
@@ -184,7 +189,7 @@ export class ArFSUploadPlanner {
 		}
 
 		// Recurse into each folder, flattening them into bundles
-		for (const folder of wrappedFolder.folders) {
+		for await (const folder of wrappedFolder.folders) {
 			await this.planFolder({
 				...partialPlanParams,
 				wrappedEntity: folder
@@ -196,12 +201,10 @@ export class ArFSUploadPlanner {
 	 *  Plans an upload using the `uploadAllEntities` ArDrive method
 	 *  into bundles or v2 transactions and estimates the total winston cost
 	 */
-	public async planUploadAllEntities(
-		uploadOrders: UploadOrder[]
-	): Promise<{ uploadPlan: UploadPlan; totalWinstonPrice: Winston }> {
+	public async planUploadAllEntities(uploadOrders: UploadOrder[]): Promise<UploadPlan> {
 		const isBulkUpload = uploadOrders.length > 1;
 
-		for (const uploadOrder of uploadOrders) {
+		for await (const uploadOrder of uploadOrders) {
 			const { wrappedEntity } = uploadOrder;
 
 			if (isFolder(wrappedEntity)) {
@@ -211,9 +214,8 @@ export class ArFSUploadPlanner {
 			}
 		}
 
-		let totalWinstonPrice = W(0);
 		const bundlePlans: BundlePlan[] = [];
-		for (const { uploadOrders, totalDataItems, totalSize } of this.bundlePacker.bundles) {
+		for await (const { uploadOrders, totalDataItems, totalSize } of this.bundlePacker.bundles) {
 			if (totalDataItems === 1) {
 				// Edge case: Do not send up a bundle with a single folder data item
 				const { wrappedEntity, driveKey } = uploadOrders[0];
@@ -225,71 +227,24 @@ export class ArFSUploadPlanner {
 					wrappedEntity.destinationBaseName,
 					driveKey !== undefined
 				);
-				const metaDataReward = await this.costOfV2ObjectTx(folderMetaDataPrototype.objectData);
 
 				// Unpack this bundle into the v2TxsToUpload
 				this.v2TxsToUpload.push({
 					uploadOrder: uploadOrders[0],
-					rewardSettings: {
-						metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
-					}
+					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
 				continue;
 			}
 
 			const bundledByteCount = this.bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
-			const winstonPriceOfBundle = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundledByteCount);
-
-			totalWinstonPrice = totalWinstonPrice.plus(this.boostedReward(winstonPriceOfBundle));
-			let communityTipSettings: CommunityTipSettings | undefined = undefined;
-
-			const hasFileData = uploadOrders.find((u) => !isFolder(u.wrappedEntity));
-			if (hasFileData) {
-				// For now, we only add a community tip if there are files present within the bundle
-				const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
-				const communityTipTarget = await this.communityOracle.selectTokenHolder();
-
-				totalWinstonPrice = totalWinstonPrice.plus(communityWinstonTip);
-				communityTipSettings = { communityTipTarget, communityWinstonTip };
-			}
 
 			bundlePlans.push({
 				uploadOrders: uploadOrders,
-				bundleRewardSettings: this.rewardSettingsForWinston(winstonPriceOfBundle),
-				communityTipSettings,
-				metaDataDataItems: []
+				totalByteCount: bundledByteCount
 			});
 		}
 
-		const v2TxPlans: V2TxPlan[] = [];
-		for (const v2Tx of this.v2TxsToUpload) {
-			let communityTipSettings: CommunityTipSettings | undefined = undefined;
-
-			if (v2Tx.rewardSettings.dataTxRewardSettings?.reward) {
-				const winstonPriceOfDataTx = v2Tx.rewardSettings.dataTxRewardSettings.reward;
-				const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
-
-				totalWinstonPrice = totalWinstonPrice
-					.plus(this.boostedReward(winstonPriceOfDataTx))
-					.plus(communityWinstonTip);
-
-				const communityTipTarget = await this.communityOracle.selectTokenHolder();
-				communityTipSettings = { communityTipTarget, communityWinstonTip };
-			}
-
-			if (v2Tx.rewardSettings.metaDataRewardSettings?.reward) {
-				const winstonPriceOfMetaDataTx = v2Tx.rewardSettings.metaDataRewardSettings.reward;
-
-				totalWinstonPrice = totalWinstonPrice.plus(this.boostedReward(winstonPriceOfMetaDataTx));
-			}
-
-			v2TxPlans.push({
-				...v2Tx,
-				communityTipSettings
-			});
-		}
-
-		return { uploadPlan: { v2TxPlans, bundlePlans }, totalWinstonPrice };
+		return { v2TxPlans: this.v2TxsToUpload, bundlePlans };
 	}
 
 	/** Estimate the cost of uploading a single file*/
@@ -309,7 +264,7 @@ export class ArFSUploadPlanner {
 			const totalByteCount = new ByteCount(+metaDataItemByteCount + +fileDataItemByteCount);
 
 			// Do not bundle if total byte count of data and meta data would exceed max bundle size limit
-			if (+totalByteCount <= MAX_BUNDLE_SIZE) {
+			if (+totalByteCount <= +this.maxBundleLimit) {
 				return this.costOfUploadBundledFile({ metaDataItemByteCount, fileDataItemByteCount });
 			}
 		}
@@ -322,7 +277,7 @@ export class ArFSUploadPlanner {
 		fileDataSize,
 		fileMetaDataPrototype
 	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const fileDataReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataSize);
+		const fileDataReward = await this.priceEstimator!.getBaseWinstonPriceForByteCount(fileDataSize);
 		const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
 
 		const rewardSettings: UploadFileV2TxRewardSettings = {
@@ -330,7 +285,7 @@ export class ArFSUploadPlanner {
 			metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
 		};
 
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataReward);
+		const communityWinstonTip = await this.communityOracle!.getCommunityWinstonTip(fileDataReward);
 
 		const totalWinstonPrice = this.boostedReward(fileDataReward)
 			.plus(this.boostedReward(metaDataReward))
@@ -348,14 +303,14 @@ export class ArFSUploadPlanner {
 		metaDataItemByteCount: ByteCount;
 	}): Promise<EstimateUploadFileResult> {
 		const bundleSize = this.bundledByteCountOfDataItems([fileDataItemByteCount, metaDataItemByteCount]);
-		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundleSize);
+		const bundleReward = await this.priceEstimator!.getBaseWinstonPriceForByteCount(bundleSize);
 
 		const rewardSettings: BundleRewardSettings = {
 			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
 		};
 
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
-			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
+		const communityWinstonTip = await this.communityOracle!.getCommunityWinstonTip(
+			await this.priceEstimator!.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
 		);
 
 		const totalWinstonPrice = this.boostedReward(bundleReward).plus(communityWinstonTip);
@@ -407,7 +362,7 @@ export class ArFSUploadPlanner {
 	/** Calculate the cost uploading transaction data as a v2 transaction */
 	private async costOfV2ObjectTx(objectTransactionData: ArFSObjectTransactionData): Promise<Winston> {
 		const metaDataSize = objectTransactionData.sizeOf();
-		return this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataSize);
+		return this.priceEstimator!.getBaseWinstonPriceForByteCount(metaDataSize);
 	}
 
 	/** Calculate the size of an ArFS Prototype as a DataItem */
@@ -472,6 +427,6 @@ export class ArFSUploadPlanner {
 			)
 		);
 		const bundledSize = this.bundledByteCountOfDataItems(dataItemSizes);
-		return this.priceEstimator.getBaseWinstonPriceForByteCount(bundledSize);
+		return this.priceEstimator!.getBaseWinstonPriceForByteCount(bundledSize);
 	}
 }

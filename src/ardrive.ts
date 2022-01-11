@@ -114,6 +114,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { ArFSCostCalculator } from './arfs/arfs_cost_calculator';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -134,6 +135,11 @@ export class ArDrive extends ArDriveAnonymous {
 			arFSTagSettings: arFSTagSettings,
 			feeMultiple,
 			communityOracle
+		}),
+		private readonly costCalculator: ArFSCostCalculator = new ArFSCostCalculator({
+			communityOracle,
+			feeMultiple,
+			priceEstimator
 		})
 	) {
 		super(arFsDao);
@@ -596,12 +602,19 @@ export class ArDrive extends ArDriveAnonymous {
 			}
 		}
 
-		// Plan upload and assert the balance of the wallet
-		const { uploadPlan, totalWinstonPrice } = await this.uploadPlanner.planUploadAllEntities(uploadOrders);
+		// Plan the upload
+		const uploadPlan = await this.uploadPlanner.planUploadAllEntities(uploadOrders);
+
+		// Calculate rewardSettings and communityTipSettings for each upload plan
+		const { calculatedUploadPlan, totalWinstonPrice } = await this.costCalculator.calculateCostsForUploadPlan(
+			uploadPlan
+		);
+
+		// Assert balance for total winston price of upload
 		await this.assertWalletBalance(totalWinstonPrice);
 
-		// Send uploadPlan to ArFSDAO to consume
-		const results = await this.arFsDao.uploadAllEntities(uploadPlan);
+		// Send calculated uploadPlan to ArFSDAO to consume
+		const results = await this.arFsDao.uploadAllEntities(calculatedUploadPlan);
 
 		const arFSResult: ArFSResult = {
 			created: [],
