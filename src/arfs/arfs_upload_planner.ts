@@ -227,9 +227,6 @@ export class ArFSUploadPlanner {
 			if (totalDataItems === 1) {
 				// Edge case: Do not send up a bundle with a single folder data item
 				const { wrappedEntity, driveKey } = uploadOrders[0];
-				if (!isFolder(wrappedEntity)) {
-					throw new Error('Error: A file cannot be bundled alone without its metadata!');
-				}
 
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
 					wrappedEntity.destinationBaseName,
