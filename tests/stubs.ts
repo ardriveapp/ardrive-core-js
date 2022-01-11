@@ -28,12 +28,14 @@ import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
+	CommunityTipSettings,
 	deriveDriveKey,
 	FolderHierarchy,
 	JWKWallet,
 	readJWKFile,
 	RootFolderID,
 	UploadStats,
+	W,
 	wrapFileOrFolder
 } from '../src/exports';
 import {
@@ -86,6 +88,11 @@ export const stubEntityIDRoot = EID('00000000-0000-0000-0000-000000000002');
 export const stubEntityIDParent = EID('00000000-0000-0000-0000-000000000003');
 export const stubEntityIDChild = EID('00000000-0000-0000-0000-000000000004');
 export const stubEntityIDGrandchild = EID('00000000-0000-0000-0000-000000000005');
+
+export const stubCommunityTipSettings: CommunityTipSettings = {
+	communityTipTarget: stubArweaveAddress(),
+	communityWinstonTip: W(1)
+};
 
 export const stubPublicFileMetaDataTx = new ArFSPublicFileMetaDataPrototype(
 	new ArFSPublicFileMetadataTransactionData(

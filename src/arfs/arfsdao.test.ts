@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import Arweave from 'arweave';
 import {
 	getStubDriveKey,
@@ -18,10 +19,11 @@ import {
 	stubPrivateFile,
 	stubPrivateFolder,
 	newStubPlanFolderUploadStats,
-	newStubPlanFileUploadStats
+	newStubPlanFileUploadStats,
+	stubCommunityTipSettings
 } from '../../tests/stubs';
-import { DriveKey, FeeMultiple, FileKey, W } from '../types';
-import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
+import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
+import { readJWKFile, urlEncodeHashKey, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
 	ArFSDAO,
@@ -29,23 +31,16 @@ import {
 	ArFSPrivateFileCacheKey,
 	ArFSPrivateFolderCacheKey
 } from './arfsdao';
-// import { ArFSPublicFileMetaDataPrototype } from './arfs_prototypes';
-// import { ArFSPublicFileMetadataTransactionData } from './arfs_tx_data_types';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
 import { defaultArFSAnonymousCache } from './arfsdao_anonymous';
 import { stub } from 'sinon';
-//import { deriveDriveKey, JWKWallet } from '../exports';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
-
-// const wallet = readJWKFile('./test_wallet.json');
-// const getStubDriveKey = async (): Promise<DriveKey> => {
-// 	return deriveDriveKey('stubPassword', `${stubEntityID}`, JSON.stringify((wallet as JWKWallet).getPrivateKey()));
-// };
+import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -598,11 +593,355 @@ describe('The ArFSDAO class', () => {
 	});
 
 	describe('uploadAllEntities method', () => {
-		it('returns the expected result for an upload plan with a single file as v2 transactions');
-		it('returns the expected result for an upload plan with a bulk folder as v2 transactions');
+		it('returns the expected result for an upload plan with a single file as v2 transactions', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: newStubPlanFileUploadStats(),
+						rewardSettings: {
+							dataTxRewardSettings: { reward: W(20) },
+							metaDataRewardSettings: { reward: W(5) }
+						},
+						communityTipSettings: stubCommunityTipSettings
+					}
+				]
+			});
 
-		it('returns the expected result for an upload plan with a single file as a bundled transaction');
-		it('returns the expected result for an upload plan with a bulk folder as a bundled transaction');
+			expect(fileResults.length).to.equal(1);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(0);
+
+			assertFileResult(fileResults[0], 20, 5);
+		});
+
+		it('returns the expected result for an upload plan with a private file as v2 transactions', async () => {
+			// Use an expected id so we can expect an exact file key
+			const fileWithExistingId = newStubPlanFileUploadStats();
+			fileWithExistingId.wrappedEntity.existingId = stubEntityID;
+
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: { ...fileWithExistingId, driveKey: await getStubDriveKey() },
+						rewardSettings: {
+							dataTxRewardSettings: { reward: W(12) },
+							metaDataRewardSettings: { reward: W(4) }
+						},
+						communityTipSettings: stubCommunityTipSettings
+					}
+				]
+			});
+
+			expect(fileResults.length).to.equal(1);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(0);
+
+			assertFileResult(fileResults[0], 12, 4, true, stubEntityID);
+		});
+
+		it('returns the expected result for an upload plan with a private folder as v2 transactions', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: { ...newStubPlanFolderUploadStats(), driveKey: await getStubDriveKey() },
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(2) }
+						}
+					}
+				]
+			});
+
+			expect(fileResults.length).to.equal(0);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(1);
+
+			assertFolderResult(folderResults[0], 2, true);
+		});
+
+		it('returns the expected result for an upload plan with a public folder that has an expected folder id sent as a v2 transaction', async () => {
+			const folderWithExpectedId = newStubPlanFolderUploadStats();
+			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
+
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: folderWithExpectedId,
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(8) }
+						}
+					}
+				]
+			});
+
+			expect(fileResults.length).to.equal(0);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(1);
+
+			assertFolderResult(folderResults[0], 8, false, stubEntityID);
+		});
+
+		it('returns the expected result for an upload plan with a private folder that has an expected folder id sent as a v2 transaction', async () => {
+			const folderWithExpectedId = newStubPlanFolderUploadStats();
+			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
+
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: { ...folderWithExpectedId, driveKey: await getStubDriveKey() },
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(13) }
+						}
+					}
+				]
+			});
+
+			expect(fileResults.length).to.equal(0);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(1);
+
+			assertFolderResult(folderResults[0], 13, true, stubEntityID);
+		});
+
+		it('returns the expected result for an upload plan with a folder and a file as v2 transactions', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadStats: newStubPlanFolderUploadStats(),
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(5) }
+						}
+					},
+					{
+						uploadStats: newStubPlanFileUploadStats(),
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(10) },
+							dataTxRewardSettings: { reward: W(50) }
+						},
+						communityTipSettings: stubCommunityTipSettings
+					}
+				]
+			});
+
+			expect(fileResults.length).to.equal(1);
+			expect(bundleResults.length).to.equal(0);
+			expect(folderResults.length).to.equal(1);
+
+			assertFileResult(fileResults[0], 50, 10);
+			assertFolderResult(folderResults[0], 5);
+		});
+
+		it('returns the expected result for an upload plan with a single file as a bundled transaction', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(20) },
+						uploadStats: [newStubPlanFileUploadStats()],
+						communityTipSettings: stubCommunityTipSettings
+					}
+				],
+				v2TxPlans: []
+			});
+
+			expect(fileResults.length).to.equal(1);
+			expect(bundleResults.length).to.equal(1);
+			expect(folderResults.length).to.equal(0);
+
+			assertBundleResult(bundleResults[0], 20, true);
+			assertFileResult(fileResults[0]);
+		});
+
+		it('returns the expected result for an upload plan with a two folders as a bundled transaction', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(10) },
+						uploadStats: [newStubPlanFolderUploadStats(), newStubPlanFolderUploadStats()]
+					}
+				],
+				v2TxPlans: []
+			});
+
+			expect(fileResults.length).to.equal(0);
+			expect(bundleResults.length).to.equal(1);
+			expect(folderResults.length).to.equal(2);
+
+			assertBundleResult(bundleResults[0], 10, false);
+
+			for (const res of folderResults) {
+				assertFolderResult(res);
+			}
+		});
+
+		it('returns the expected result for an upload plan with a folder and a file as a bundled transaction', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(100) },
+						uploadStats: [newStubPlanFolderUploadStats(), newStubPlanFileUploadStats()],
+						communityTipSettings: stubCommunityTipSettings
+					}
+				],
+				v2TxPlans: []
+			});
+
+			expect(bundleResults.length).to.equal(1);
+			expect(fileResults.length).to.equal(1);
+			expect(folderResults.length).to.equal(1);
+
+			assertBundleResult(bundleResults[0], 100, true);
+			assertFileResult(fileResults[0]);
+			assertFolderResult(folderResults[0]);
+		});
+
+		it('returns the expected result for an upload plan with many files and folders sent as multiple bundled transactions', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(500) },
+						uploadStats: [
+							// 1 Folders and 2 Files
+							newStubPlanFolderUploadStats(),
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats()
+						],
+						communityTipSettings: stubCommunityTipSettings
+					},
+					{
+						bundleRewardSettings: { reward: W(2000) },
+						uploadStats: [
+							// 4 Files
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats()
+						],
+						communityTipSettings: stubCommunityTipSettings
+					},
+					{
+						bundleRewardSettings: { reward: W(200) },
+						uploadStats: [
+							// 3 Folders
+							newStubPlanFolderUploadStats(),
+							newStubPlanFolderUploadStats(),
+							newStubPlanFolderUploadStats()
+						]
+					}
+				],
+				v2TxPlans: []
+			});
+
+			expect(bundleResults.length).to.equal(3);
+			expect(fileResults.length).to.equal(6);
+			expect(folderResults.length).to.equal(4);
+
+			assertBundleResult(bundleResults[0], 500, true);
+			assertBundleResult(bundleResults[1], 2000, true);
+			assertBundleResult(bundleResults[2], 200, false);
+
+			for (const res of fileResults) {
+				assertFileResult(res);
+			}
+			for (const res of folderResults) {
+				assertFolderResult(res);
+			}
+		});
+
+		it('returns the expected result for an upload plan with many files and folders split into both a bundled transaction and v2 transactions', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(1337) },
+						uploadStats: [
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats(),
+							newStubPlanFileUploadStats(),
+							newStubPlanFolderUploadStats()
+						],
+						communityTipSettings: stubCommunityTipSettings
+					}
+				],
+				v2TxPlans: [
+					{
+						uploadStats: newStubPlanFileUploadStats(),
+						rewardSettings: {
+							dataTxRewardSettings: { reward: W(20) },
+							metaDataRewardSettings: { reward: W(5) }
+						},
+						communityTipSettings: stubCommunityTipSettings
+					},
+					{
+						uploadStats: newStubPlanFolderUploadStats(),
+						rewardSettings: {
+							metaDataRewardSettings: { reward: W(2) }
+						}
+					}
+				]
+			});
+
+			expect(bundleResults.length).to.equal(1);
+			expect(fileResults.length).to.equal(4);
+			expect(folderResults.length).to.equal(2);
+
+			assertBundleResult(bundleResults[0], 1337, true);
+
+			// Expect first file to be the v2 tx
+			assertFileResult(fileResults[0], 20, 5);
+
+			// Others files are from bundle results with no rewards of their own
+			assertFileResult(fileResults[1]);
+			assertFileResult(fileResults[2]);
+			assertFileResult(fileResults[3]);
+
+			// Expect first folder to be the v2 tx with a reward
+			assertFolderResult(folderResults[0], 2);
+
+			// Expect other folder from bundle results with no reward
+			assertFolderResult(folderResults[1]);
+		});
+
+		it('returns the expected results for an upload plan that has 2 over-sized planned files with metaDataBundleIndex', async () => {
+			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
+				bundlePlans: [
+					{
+						bundleRewardSettings: { reward: W(420) },
+						uploadStats: []
+					}
+				],
+				v2TxPlans: [
+					{
+						uploadStats: newStubPlanFileUploadStats(),
+						rewardSettings: {
+							dataTxRewardSettings: { reward: W(59) }
+						},
+						communityTipSettings: stubCommunityTipSettings,
+						metaDataBundleIndex: 0
+					},
+					{
+						uploadStats: newStubPlanFileUploadStats(),
+						rewardSettings: {
+							dataTxRewardSettings: { reward: W(42) }
+						},
+						communityTipSettings: stubCommunityTipSettings,
+						metaDataBundleIndex: 0
+					}
+				]
+			});
+
+			expect(bundleResults.length).to.equal(1);
+			expect(fileResults.length).to.equal(2);
+			expect(folderResults.length).to.equal(0);
+
+			assertBundleResult(bundleResults[0], 420, false);
+
+			assertFileResult(fileResults[0], 59);
+			assertFileResult(fileResults[1], 42);
+		});
 
 		it('throws an error if a provided v2 tx plan has a dataTxRewardSettings but no file entity to upload', async () => {
 			await expectAsyncErrorThrow({
@@ -614,17 +953,14 @@ describe('The ArFSDAO class', () => {
 							rewardSettings: {
 								dataTxRewardSettings: { reward: W(5) },
 								metaDataRewardSettings: { reward: W(1) }
-							}
+							},
+							communityTipSettings: stubCommunityTipSettings
 						}
 					]
 				}),
 				errorMessage: 'Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!'
 			});
 		});
-
-		it(
-			'returns the expected results for an upload plan that has 2 over-sized planned files with metaDataBundleIndex'
-		);
 
 		it('throws an error if a provided v2 tx plan has a file entity to upload, but no metaDataRewardSettings nor a metaDataBundleIndex', async () => {
 			await expectAsyncErrorThrow({
@@ -633,7 +969,8 @@ describe('The ArFSDAO class', () => {
 					v2TxPlans: [
 						{
 							uploadStats: newStubPlanFileUploadStats(),
-							rewardSettings: { dataTxRewardSettings: { reward: W(5) } }
+							rewardSettings: { dataTxRewardSettings: { reward: W(5) } },
+							communityTipSettings: stubCommunityTipSettings
 						}
 					]
 				}),
@@ -648,12 +985,151 @@ describe('The ArFSDAO class', () => {
 					v2TxPlans: [
 						{
 							uploadStats: newStubPlanFileUploadStats(),
-							rewardSettings: { metaDataRewardSettings: { reward: W(55) } }
+							rewardSettings: { metaDataRewardSettings: { reward: W(55) } },
+							communityTipSettings: stubCommunityTipSettings
 						}
 					]
 				}),
 				errorMessage: 'Error: Invalid v2 tx plan, file uploads must have file data reward settings!'
 			});
 		});
+
+		it('throws an error if a provided v2 tx plan has a file entity that has no communityTipSettings', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [],
+					v2TxPlans: [
+						{
+							uploadStats: newStubPlanFileUploadStats(),
+							rewardSettings: {
+								metaDataRewardSettings: { reward: W(55) },
+								dataTxRewardSettings: { reward: W(55) }
+							}
+						}
+					]
+				}),
+				errorMessage: 'Error: Invalid v2 tx plan, file uploads must include communityTipSettings!'
+			});
+		});
+
+		it('throws an error if a provided bundle plan has a file entity but no communityTipSettings', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [
+						{
+							bundleRewardSettings: { reward: W(20) },
+							uploadStats: [newStubPlanFileUploadStats()]
+						}
+					],
+					v2TxPlans: []
+				}),
+				errorMessage: 'Error: Invalid bundle plan, file uploads must include communityTipSettings!'
+			});
+		});
+
+		it('throws an error if a provided bundle plan has only a single folder entity', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [
+						{
+							bundleRewardSettings: { reward: W(20) },
+							uploadStats: [newStubPlanFolderUploadStats()]
+						}
+					],
+					v2TxPlans: []
+				}),
+				errorMessage: 'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
+			});
+		});
 	});
 });
+
+const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
+const txIdRegex = /^(\w|-){43}$/;
+
+function assertFileResult(
+	{
+		fileDataTxId,
+		fileId,
+		metaDataTxId,
+		communityTipSettings,
+		fileDataReward,
+		fileMetaDataReward,
+		fileKey
+	}: FileResult,
+	fileReward?: number,
+	metaDataReward?: number,
+	expectFileKey = false,
+	expectedFileId?: FileID
+): void {
+	expect(fileDataTxId).to.match(txIdRegex);
+	expect(metaDataTxId).to.match(txIdRegex);
+	expect(fileId).to.match(entityIdRegex);
+
+	if (expectedFileId) {
+		expect(`${fileId}`).to.equal(`${expectedFileId}`);
+	}
+
+	if (fileReward) {
+		expect(+fileDataReward!).to.equal(fileReward);
+		expect(communityTipSettings).to.deep.equal(stubCommunityTipSettings);
+	} else {
+		expect(fileDataReward).to.be.undefined;
+		expect(communityTipSettings).to.be.undefined;
+	}
+
+	if (metaDataReward) {
+		expect(+fileMetaDataReward!).to.equal(metaDataReward);
+	} else {
+		expect(fileMetaDataReward).to.be.undefined;
+	}
+
+	if (expectFileKey) {
+		// Expected file key of stubDriveKey + stubEntityId
+		expect(urlEncodeHashKey(fileKey!)).to.equal('UYCAFLlG4DuYgfOIh+qtEReZdQxWiznwekDa2ulSRd4');
+	} else {
+		expect(fileKey).to.be.undefined;
+	}
+}
+
+function assertFolderResult(
+	{ folderMetaDataReward, folderId, folderTxId, driveKey }: FolderResult,
+	folderReward?: number,
+	expectDriveKey = false,
+	expectedFolderId?: FolderID
+): void {
+	expect(folderTxId).to.match(txIdRegex);
+	expect(folderId).to.match(entityIdRegex);
+
+	if (expectedFolderId) {
+		expect(`${folderId}`).to.equal(`${expectedFolderId}`);
+	}
+
+	if (folderReward) {
+		expect(+folderMetaDataReward!).to.equal(folderReward);
+	} else {
+		expect(folderMetaDataReward).to.be.undefined;
+	}
+
+	if (expectDriveKey) {
+		// Output of stubDriveKey
+		expect(urlEncodeHashKey(driveKey!)).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+	} else {
+		expect(driveKey).to.be.undefined;
+	}
+}
+
+function assertBundleResult(
+	{ bundleReward, bundleTxId, communityTipSettings }: BundleResult,
+	expectedReward: number,
+	expectTip?: boolean
+): void {
+	expect(bundleTxId).to.match(txIdRegex);
+	expect(+bundleReward!).to.equal(expectedReward);
+
+	if (expectTip) {
+		expect(communityTipSettings).to.deep.equal(stubCommunityTipSettings);
+	} else {
+		expect(communityTipSettings).to.be.undefined;
+	}
+}
