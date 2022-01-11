@@ -1,4 +1,3 @@
-import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
 import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, CommunityTipSettings } from '../types';
 
 export interface ArFSBundleWriteResult {
@@ -92,23 +91,10 @@ export type ArFSCreatePrivateFolderResult = ArFSCreateFolderResult & WithDriveKe
 export type ArFSUploadPublicFileResult = ArFSUploadFileResult;
 export type ArFSUploadPrivateFileResult = ArFSUploadFileResult & WithFileKey;
 
-export function isPrivateResult(
-	result: ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult
-): result is ArFSUploadPrivateFileResult {
-	return Object.keys(result as ArFSUploadPrivateFileResult).includes('fileKey');
-}
-
 export type ArFSMovePublicFolderResult = ArFSMoveEntityResult;
 export type ArFSMovePrivateFolderResult = ArFSMoveEntityResult & WithDriveKey;
 
 export type ArFSMovePublicFileResult = ArFSMoveFileResult;
 export type ArFSMovePrivateFileResult = ArFSMoveFileResult & WithFileKey;
 
-// Result factory function types
 export type ArFSMoveEntityResultFactory<R extends ArFSMoveEntityResult> = (result: ArFSMoveEntityResult) => R;
-export type ArFSCreateDriveResultFactory<R extends ArFSCreateDriveResult> = (result: ArFSCreateDriveResult) => R;
-export type ArFSCreateFolderResultFactory<R extends ArFSCreateFolderResult> = (result: ArFSCreateFolderResult) => R;
-export type ArFSUploadFileResultFactory<R extends ArFSUploadFileResult, D extends ArFSFileMetadataTransactionData> = (
-	result: ArFSUploadFileResult,
-	txData: D
-) => R;

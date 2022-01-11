@@ -10,11 +10,8 @@ import {
 	CreateDriveV2TxRewardSettings,
 	EstimateCreateDriveParams,
 	EstimateCreateDriveResult,
-	EstimateUploadFileParams,
-	EstimateUploadFileResult,
 	PlanFileParams,
 	PlanFolderParams,
-	UploadFileV2TxRewardSettings,
 	UploadPlan,
 	V2TxPlan
 } from '../types/upload_planner_types';
@@ -245,77 +242,6 @@ export class ArFSUploadPlanner {
 		}
 
 		return { v2TxPlans: this.v2TxsToUpload, bundlePlans };
-	}
-
-	/** Estimate the cost of uploading a single file*/
-	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const { contentTypeTag, fileDataSize, fileMetaDataPrototype } = estUploadFileParams;
-
-		if (this.shouldBundle) {
-			const metaDataItemByteCount = this.byteCountAsDataItem(
-				fileMetaDataPrototype.objectData.sizeOf(),
-				this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
-			);
-			const fileDataItemByteCount = this.byteCountAsDataItem(
-				fileDataSize,
-				this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
-			);
-
-			const totalByteCount = new ByteCount(+metaDataItemByteCount + +fileDataItemByteCount);
-
-			// Do not bundle if total byte count of data and meta data would exceed max bundle size limit
-			if (+totalByteCount <= +this.maxBundleLimit) {
-				return this.costOfUploadBundledFile({ metaDataItemByteCount, fileDataItemByteCount });
-			}
-		}
-
-		return this.costOfUploadFileV2Tx(estUploadFileParams);
-	}
-
-	/** Calculate the cost of uploading a file data tx and its metadata tx as v2 transactions */
-	private async costOfUploadFileV2Tx({
-		fileDataSize,
-		fileMetaDataPrototype
-	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const fileDataReward = await this.priceEstimator!.getBaseWinstonPriceForByteCount(fileDataSize);
-		const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
-
-		const rewardSettings: UploadFileV2TxRewardSettings = {
-			dataTxRewardSettings: this.rewardSettingsForWinston(fileDataReward),
-			metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward)
-		};
-
-		const communityWinstonTip = await this.communityOracle!.getCommunityWinstonTip(fileDataReward);
-
-		const totalWinstonPrice = this.boostedReward(fileDataReward)
-			.plus(this.boostedReward(metaDataReward))
-			.plus(communityWinstonTip);
-
-		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
-	}
-
-	/** Calculate the cost of uploading a file data tx and its metadata tx together as a bundle */
-	private async costOfUploadBundledFile({
-		fileDataItemByteCount,
-		metaDataItemByteCount
-	}: {
-		fileDataItemByteCount: ByteCount;
-		metaDataItemByteCount: ByteCount;
-	}): Promise<EstimateUploadFileResult> {
-		const bundleSize = this.bundledByteCountOfDataItems([fileDataItemByteCount, metaDataItemByteCount]);
-		const bundleReward = await this.priceEstimator!.getBaseWinstonPriceForByteCount(bundleSize);
-
-		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
-		};
-
-		const communityWinstonTip = await this.communityOracle!.getCommunityWinstonTip(
-			await this.priceEstimator!.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
-		);
-
-		const totalWinstonPrice = this.boostedReward(bundleReward).plus(communityWinstonTip);
-
-		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
 	}
 
 	/** Estimate the cost of a create drive */

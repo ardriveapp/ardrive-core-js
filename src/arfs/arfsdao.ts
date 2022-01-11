@@ -27,14 +27,10 @@ import {
 	ArFSMovePrivateFileResult,
 	ArFSMovePublicFolderResult,
 	ArFSMovePrivateFolderResult,
-	ArFSUploadFileResult,
-	ArFSUploadPrivateFileResult,
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
 	ArFSCreatePublicBundledDriveResult,
-	ArFSUploadBundledFileResult,
-	ArFSUploadFileV2TxResult,
 	ArFSUploadEntitiesResult,
 	FileResult
 } from './arfs_entity_result_factory';
@@ -129,16 +125,13 @@ import {
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
 	CommunityTipSettings,
-	PartialPrepareFileParams,
 	PartialPrepareDriveParams
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
-	isBundleRewardSetting,
-	UploadFileRewardSettings,
-	UploadFileV2TxRewardSettings
+	isBundleRewardSetting
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -651,164 +644,94 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId, fileKey };
 	}
 
-	private async uploadFileV2Tx(
-		prepFileParams: PartialPrepareFileParams,
-		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings,
-		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
-		const { arFSObjects, fileId } = await this.prepareFile({
-			...prepFileParams,
-			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
-					objectMetaData,
-					rewardSettings: dataTxRewardSettings,
-					communityTipSettings
-				}),
-			prepareMetaDataArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
-					objectMetaData,
-					rewardSettings: metaDataRewardSettings
-				})
-		});
-
-		const [dataTx, metaDataTx] = arFSObjects;
-		return {
-			transactions: arFSObjects,
-			result: {
-				dataTxId: TxID(dataTx.id),
-				dataTxReward: W(dataTx.reward),
-				fileId,
-				metaDataTxId: TxID(metaDataTx.id),
-				metaDataTxReward: W(metaDataTx.reward)
-			}
-		};
-	}
-
-	private async uploadBundledFile(
-		prepFileParams: PartialPrepareFileParams,
-		rewardSettings: RewardSettings,
-		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
-		const { arFSObjects, fileId } = await this.prepareFile({
-			...prepFileParams,
-			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSDataItem({
-					objectMetaData
-				}),
-			prepareMetaDataArFSObject: (objectMetaData) =>
-				this.prepareArFSDataItem({
-					objectMetaData
-				})
-		});
-
-		// Pack data items into a bundle
-		const bundledTx = await this.prepareArFSObjectBundle({
-			dataItems: arFSObjects,
-			rewardSettings,
-			communityTipSettings
-		});
-
-		const [dataTxDataItem, metaDataDataItem] = arFSObjects;
-		return {
-			transactions: [bundledTx],
-			result: {
-				dataTxId: TxID(dataTxDataItem.id),
-				fileId,
-				bundleTxId: TxID(bundledTx.id),
-				bundleTxReward: W(bundledTx.reward),
-				metaDataTxId: TxID(metaDataDataItem.id)
-			}
-		};
-	}
-
-	async uploadFile(
-		prepFileParams: PartialPrepareFileParams,
-		rewardSettings: UploadFileRewardSettings,
-		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
-		const { transactions, result } = isBundleRewardSetting(rewardSettings)
-			? await this.uploadBundledFile(prepFileParams, rewardSettings.bundleRewardSettings, communityTipSettings)
-			: await this.uploadFileV2Tx(prepFileParams, rewardSettings, communityTipSettings);
-
-		// Upload all v2 transactions or direct to network bundles
-		await this.sendTransactionsAsChunks(transactions);
-		return result;
-	}
-
+	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
 	async uploadPublicFile({
-		parentFolderId,
-		wrappedFile,
-		driveId,
+		parentFolderId: destFolderId,
+		wrappedFile: wrappedEntity,
+		driveId: destDriveId,
 		rewardSettings,
 		communityTipSettings
-	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+	}: ArFSUploadPublicFileParams): Promise<ArFSUploadEntitiesResult> {
+		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
+			if (isBundleRewardSetting(rewardSettings)) {
+				rewardSettings.bundleRewardSettings;
+				return {
+					bundlePlans: [
+						{
+							bundleRewardSettings: rewardSettings.bundleRewardSettings,
+							uploadOrders: [
+								{
+									wrappedEntity,
+									destDriveId,
+									destFolderId
+								}
+							],
+							communityTipSettings
+						}
+					],
+					v2TxPlans: []
+				};
+			}
 
-		const prepFileParams: PartialPrepareFileParams = {
-			wrappedFile,
-			dataPrototypeFactoryFn: (fileData) =>
-				Promise.resolve(
-					new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
-				),
-			metadataTxDataFactoryFn: (fileId, dataTxId) =>
-				Promise.resolve(
-					new ArFSPublicFileMetaDataPrototype(
-						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.destinationBaseName,
-							fileSize,
-							lastModifiedDateMS,
-							dataTxId,
-							dataContentType
-						),
-						driveId,
-						fileId,
-						parentFolderId
-					)
-				)
-		};
+			return {
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadOrder: { destDriveId, destFolderId, wrappedEntity },
+						rewardSettings,
+						communityTipSettings
+					}
+				]
+			};
+		})();
 
-		return this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
+		return this.uploadAllEntities(uploadPlan);
 	}
 
+	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
 	async uploadPrivateFile({
-		parentFolderId,
-		wrappedFile,
-		driveId,
+		parentFolderId: destFolderId,
+		wrappedFile: wrappedEntity,
+		driveId: destDriveId,
 		driveKey,
 		rewardSettings,
 		communityTipSettings
-	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadPrivateFileResult> {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-		let fileKey: FileKey;
-
-		const prepFileParams: PartialPrepareFileParams = {
-			wrappedFile,
-			dataPrototypeFactoryFn: async (fileData, fileId) =>
-				new ArFSPrivateFileDataPrototype(
-					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
-				),
-			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
-				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-					wrappedFile.destinationBaseName,
-					fileSize,
-					lastModifiedDateMS,
-					dataTxId,
-					dataContentType,
-					fileId,
-					driveKey
-				);
-
-				// Preserve file key on private metadata for return
-				fileKey = metaDataTxData.fileKey;
-
-				return new ArFSPrivateFileMetaDataPrototype(metaDataTxData, driveId, fileId, parentFolderId);
+	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadEntitiesResult> {
+		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
+			if (isBundleRewardSetting(rewardSettings)) {
+				rewardSettings.bundleRewardSettings;
+				return {
+					bundlePlans: [
+						{
+							bundleRewardSettings: rewardSettings.bundleRewardSettings,
+							uploadOrders: [
+								{
+									wrappedEntity,
+									destDriveId,
+									destFolderId,
+									driveKey
+								}
+							],
+							communityTipSettings
+						}
+					],
+					v2TxPlans: []
+				};
 			}
-		};
 
-		const uploadFileResult = await this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
+			return {
+				bundlePlans: [],
+				v2TxPlans: [
+					{
+						uploadOrder: { destDriveId, destFolderId, wrappedEntity, driveKey },
+						rewardSettings,
+						communityTipSettings
+					}
+				]
+			};
+		})();
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		return { ...uploadFileResult, fileKey: fileKey! };
+		return this.uploadAllEntities(uploadPlan);
 	}
 
 	private async uploadFileAndMetaDataAsV2(
@@ -842,7 +765,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			fileId,
 			metaDataTxId: TxID(metaDataTx.id),
 			fileMetaDataReward: W(metaDataTx.reward),
-			fileKey
+			fileKey,
+			communityTipSettings
 		};
 	}
 
