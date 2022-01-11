@@ -78,6 +78,16 @@ export class ArFSUploadPlanner {
 	private v2TxsToUpload: V2TxPlan[] = [];
 
 	/**
+	 * Empties the bundlesToUpload from the bundlePacker and v2TxsToUpload
+	 *
+	 * @remarks To be used internally before every plan
+	 */
+	private resetPlannedUploads(): void {
+		this.v2TxsToUpload = [];
+		this.bundlePacker.bundles = [];
+	}
+
+	/**
 	 * Plans a file as a bundle to upload or v2 transaction to upload
 	 *
 	 * @remarks Uses the presence of a driveKey to determine privacy
@@ -199,6 +209,7 @@ export class ArFSUploadPlanner {
 	 *  into bundles or v2 transactions and estimates the total winston cost
 	 */
 	public async planUploadAllEntities(uploadOrders: UploadOrder[]): Promise<UploadPlan> {
+		this.resetPlannedUploads();
 		const isBulkUpload = uploadOrders.length > 1;
 
 		for await (const uploadOrder of uploadOrders) {
