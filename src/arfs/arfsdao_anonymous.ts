@@ -30,6 +30,7 @@ import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
+import { alphabeticalOrder } from '../utils/sort_functions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -409,11 +410,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			customFolderName
 		);
 
-		for (const folder of [publicFolder, ...childrenFolderEntities]) {
+		const foldersWithPath = [publicFolder, ...childrenFolderEntities]
+			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.sort((a, b) => alphabeticalOrder(a.path, b.path));
+
+		for (const folder of foldersWithPath) {
 			// assert the existence of the folder in disk
-			const relativeFolderPath = folderWrapper.getRelativePathOf(
-				new ArFSPublicFileOrFolderWithPaths(folder, hierarchy).path
-			);
+			const relativeFolderPath = folderWrapper.getRelativePathOf(folder.path);
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 

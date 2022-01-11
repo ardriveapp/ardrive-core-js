@@ -143,6 +143,8 @@ import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
+import { alphabeticalOrder } from '../utils/sort_functions';
+import { ArFSPublicFileOrFolderWithPaths } from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1414,12 +1416,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			return Object.assign(accumulator, { [`${ivResult.txId}`]: ivResult });
 		}, {});
 
+		const foldersWithPath = [privateFolder, ...childFolders]
+			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.sort((a, b) => alphabeticalOrder(a.path, b.path));
+
 		// Iteratively download all child files in the hierarchy
-		for (const folder of [privateFolder, ...childFolders]) {
+		for (const folder of foldersWithPath) {
 			// assert the existence of the folder on disk
-			const relativeFolderPath = folderWrapper.getRelativePathOf(
-				new ArFSPrivateFileOrFolderWithPaths(folder, hierarchy).path
-			);
+			const relativeFolderPath = folderWrapper.getRelativePathOf(folder.path);
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
