@@ -553,13 +553,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async prepareFile<T extends DataItem | Transaction>({
+	async prepareFile<T extends DataItem | Transaction, U extends DataItem | Transaction>({
 		wrappedFile,
 		dataPrototypeFactoryFn,
 		metadataTxDataFactoryFn,
 		prepareArFSObject,
 		prepareMetaDataArFSObject
-	}: ArFSPrepareFileParams<T>): Promise<ArFSPrepareFileResult<T>> {
+	}: ArFSPrepareFileParams<T, U>): Promise<ArFSPrepareFileResult<T, U>> {
 		// Use existing file ID (create a revision) or generate new file ID
 		const fileId = wrappedFile.existingId ?? EID(uuidv4());
 
@@ -673,7 +673,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadFileAndMetaDataAsV2(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction, Transaction>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		>,
 		dataTxRewardSettings: RewardSettings,
 		metaDataRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
@@ -709,7 +712,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadOnlyFileAsV2(
-		prepFileParams: Omit<ArFSPrepareFileParams<Transaction>, 'prepareArFSObject' | 'prepareMetaDataArFSObject'>,
+		prepFileParams: Omit<
+			ArFSPrepareFileParams<Transaction, DataItem>,
+			'prepareArFSObject' | 'prepareMetaDataArFSObject'
+		>,
 		dataTxRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
 	): Promise<{ fileResult: FileResult; metaDataDataItem: DataItem }> {
@@ -722,18 +728,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					communityTipSettings
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
-				// TODO: Solve another way, Battling some type issues here...
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
 				this.prepareArFSDataItem({
 					objectMetaData
 				})
 		});
 
-		// TODO: Same as above, we should be able to adjust prepareFile's type information
-		// to make this type-safe. But I haven't solved that yet
-		const dataTx = arFSObjects[0] as Transaction;
-		const metaDataDataItem = arFSObjects[1] as DataItem;
+		const [dataTx, metaDataDataItem] = arFSObjects;
 
 		// Send only file data as v2 transaction
 		await this.sendTransactionsAsChunks([dataTx]);
@@ -757,10 +757,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFile,
 		driveKey
-	}: FileUploadStats): Omit<
-		ArFSPrepareFileParams<Transaction | DataItem>,
-		'prepareArFSObject' | 'prepareMetaDataArFSObject'
-	> {
+	}: FileUploadStats): Omit<ArFSPrepareFileParams, 'prepareArFSObject' | 'prepareMetaDataArFSObject'> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
 		if (driveKey) {
