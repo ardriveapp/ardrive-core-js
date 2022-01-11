@@ -744,7 +744,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				fileDataReward: W(dataTx.reward),
 				fileId,
 				metaDataTxId: TxID(metaDataDataItem.id),
-				fileKey
+				fileKey,
+				communityTipSettings
 			},
 			// Return the meta data data item
 			metaDataDataItem
