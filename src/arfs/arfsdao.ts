@@ -86,7 +86,8 @@ import {
 	TransactionID,
 	CipherIV,
 	GQLTransactionsResultInterface,
-	UploadStats
+	FileUploadStats,
+	FolderUploadStats
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -137,7 +138,6 @@ import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
-import { ArFSEntityToUpload, ArFSFolderToUpload, isFolder } from './arfs_file_wrapper';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -601,8 +601,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 								{
 									wrappedEntity,
 									destDriveId,
-									destFolderId,
-									entityType: 'file'
+									destFolderId
 								}
 							],
 							communityTipSettings
@@ -616,7 +615,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, entityType: 'file' },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity },
 						rewardSettings,
 						communityTipSettings
 					}
@@ -648,8 +647,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									wrappedEntity,
 									destDriveId,
 									destFolderId,
-									driveKey,
-									entityType: 'file'
+									driveKey
 								}
 							],
 							communityTipSettings
@@ -663,7 +661,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey, entityType: 'file' },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey },
 						rewardSettings,
 						communityTipSettings
 					}
@@ -759,7 +757,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFile,
 		driveKey
-	}: UploadStats<ArFSEntityToUpload>): Omit<
+	}: FileUploadStats): Omit<
 		ArFSPrepareFileParams<Transaction | DataItem>,
 		'prepareArFSObject' | 'prepareMetaDataArFSObject'
 	> {
@@ -823,7 +821,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFolder,
 		driveKey
-	}: UploadStats<ArFSFolderToUpload>): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
+	}: FolderUploadStats): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
 		if (driveKey) {
 			// Return factory for private folder prototype
 			const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
@@ -856,18 +854,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { wrappedEntity, driveKey } = uploadStats;
 
 			if (dataTxRewardSettings) {
-				if (isFolder(wrappedEntity)) {
-					throw new Error(
-						// TODO: This error never happens, solve type issues another way...
-						'Something has gone wrong with the upload plan, folders cannot have file data reward settings...'
-					);
+				if (wrappedEntity.entityType !== 'file') {
+					throw new Error('Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!');
 				}
 
 				const prepFileParams = this.getPrepFileParams({ ...uploadStats, wrappedEntity });
 
 				let v2FileResult: FileResult;
 				if (metaDataRewardSettings) {
-					// Send file and metadata as v2 txs
+					// File has reward settings for metadata, send both file and metadata as v2 txs
 					v2FileResult = await this.uploadFileAndMetaDataAsV2(
 						prepFileParams,
 						dataTxRewardSettings,
@@ -876,10 +871,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					);
 				} else {
 					if (!metaDataBundleIndex) {
-						throw new Error(
-							// TODO: This error never happens, solve type issues another way...
-							'Something has gone wrong with the upload plan, file metadata has no reward settings or bundle index...'
-						);
+						throw new Error('Error: Invalid v2 tx plan, file upload must include a plan for the metadata!');
 					}
 					// Send file as v2, but prepare the metadata as data item
 					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
@@ -896,9 +888,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 				results.fileResults.push(v2FileResult);
 			} else if (metaDataRewardSettings) {
-				if (!isFolder(wrappedEntity)) {
-					// TODO: This error never happens, solve type issues another way...
-					throw new Error('Something has gone wrong, files must have file data reward settings...');
+				if (wrappedEntity.entityType === 'file') {
+					throw new Error('Error: Invalid v2 tx plan, file uploads must have file data reward settings!');
 				}
 
 				// Send this folder metadata up as a v2 tx
@@ -923,7 +914,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			for (const uploadStat of uploadStats) {
 				const { wrappedEntity, driveKey } = uploadStat;
 
-				if (isFolder(wrappedEntity)) {
+				if (wrappedEntity.entityType === 'folder') {
 					// Prepare folder data item and results
 					const { arFSObjects, folderId } = await this.prepareFolder({
 						folderPrototypeFactory: await this.getPrepFolderFactoryParams({
