@@ -901,7 +901,7 @@ describe('ArDrive class - integrated', () => {
 						wrappedFile,
 						driveKey: stubDriveKey
 					});
-					assertUploadFileExpectations(result, W(6052), W(182), W(1), 'private', undefined, true);
+					assertUploadFileExpectations(result, W(6097), W(182), W(1), 'private', undefined, true);
 				});
 
 				it('returns the correct ArFSResult', async () => {
@@ -1062,6 +1062,7 @@ describe('ArDrive class - integrated', () => {
 	describe('uploadPublicManifest', async () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
