@@ -150,68 +150,6 @@ export class PrivateDriveKeyData {
 	}
 }
 
-// export interface PrepareObjectTransactionParams {
-// 	objectMetaData: ArFSObjectMetadataPrototype;
-// 	rewardSettings?: RewardSettings;
-// 	excludedTagNames?: string[];
-// 	otherTags?: GQLTagInterface[];
-// }
-
-// export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
-// 	originalMetaData: O;
-// 	newParentFolderId: FolderID;
-// 	metaDataBaseReward: RewardSettings;
-// 	transactionData: T;
-// }
-
-// export type GetDriveFunction = () => Promise<ArFSPublicDrive | ArFSPrivateDrive>;
-// export type CreateFolderFunction = (driveId: DriveID) => Promise<ArFSCreateFolderResult>;
-// export type GenerateDriveIdFn = () => DriveID;
-
-// export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
-
-// export interface ArFSUploadPublicFileParams {
-// 	parentFolderId: FolderID;
-// 	wrappedFile: ArFSEntityToUpload;
-// 	driveId: DriveID;
-// 	dataTxRewardSettings: RewardSettings;
-// 	metadataRewardSettings: RewardSettings;
-// 	destFileName?: string;
-// 	existingFileId?: FileID;
-// }
-
-// export interface ArFSUploadPrivateFileParams extends ArFSUploadPublicFileParams {
-// 	driveKey: DriveKey;
-// }
-
-// export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
-
-// export interface CreateFolderSettings {
-// 	driveId: DriveID;
-// 	rewardSettings: RewardSettings;
-// 	parentFolderId?: FolderID;
-// 	syncParentFolderId?: boolean;
-// 	owner: ArweaveAddress;
-// }
-
-// export interface CreatePublicFolderSettings extends CreateFolderSettings {
-// 	folderData: ArFSPublicFolderTransactionData;
-// }
-
-// export interface CreatePrivateFolderSettings extends CreateFolderSettings {
-// 	folderData: ArFSPrivateFolderTransactionData;
-// 	driveKey: DriveKey;
-// }
-
-// interface getPublicChildrenFolderIdsParams {
-// 	folderId: FolderID;
-// 	driveId: DriveID;
-// 	owner: ArweaveAddress;
-// }
-// interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsParams {
-// 	driveKey: DriveKey;
-// }
-
 export interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
 	driveKey: DriveKey;
 }
