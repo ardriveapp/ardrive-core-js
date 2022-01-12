@@ -192,7 +192,28 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 */
 	public async planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan> {
 		this.resetPlannedUploads();
-		const isBulkUpload = uploadStats.length > 1;
+
+		if (uploadStats.length === 0) {
+			return { bundlePlans: [], v2TxPlans: [] };
+		}
+
+		const isBulkUpload = (() => {
+			if (uploadStats.length > 1) {
+				return true;
+			}
+
+			const { wrappedEntity } = uploadStats[0];
+			if (wrappedEntity.entityType === 'folder') {
+				if (wrappedEntity.files.length > 0) {
+					return true;
+				}
+				if (wrappedEntity.folders.length > 0) {
+					return true;
+				}
+			}
+
+			return false;
+		})();
 
 		for await (const uploadStat of uploadStats) {
 			const { wrappedEntity } = uploadStat;
