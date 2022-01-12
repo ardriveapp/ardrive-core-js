@@ -88,7 +88,8 @@ export class ArFSCostCalculator implements CostCalculator {
 	private async calculateCostsForV2TxPlan({
 		fileDataByteCount,
 		metaDataByteCount,
-		uploadStats
+		uploadStats,
+		metaDataBundleIndex
 	}: V2TxPlan): Promise<{ calculatedV2TxPlan: CalculatedV2TxPlan; totalPriceOfV2Tx: Winston }> {
 		let totalPriceOfV2Tx: Winston = W(0);
 		let rewardSettings: Partial<UploadFileV2TxRewardSettings> = {};
@@ -126,7 +127,8 @@ export class ArFSCostCalculator implements CostCalculator {
 			calculatedV2TxPlan: {
 				uploadStats,
 				rewardSettings,
-				communityTipSettings
+				communityTipSettings,
+				metaDataBundleIndex
 			},
 			totalPriceOfV2Tx
 		};
