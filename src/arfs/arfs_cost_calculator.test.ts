@@ -27,6 +27,7 @@ describe('ArFSCostCalculator class', () => {
 		feeMultiple: new FeeMultiple(10)
 	});
 	const stubUploadStatsWithFile = stubFileUploadStats();
+
 	describe('calculateCostsForUploadPlan method', () => {
 		it('returns the expected calculated upload plan for an upload plan with a bundlePlan that has no file upload stats', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({

@@ -805,7 +805,7 @@ describe('The ArFSDAO class', () => {
 					{
 						bundleRewardSettings: { reward: W(500) },
 						uploadStats: [
-							// 1 Folders and 2 Files
+							// 1 Folder and 2 Files
 							stubFolderUploadStats(),
 							stubFileUploadStats(),
 							stubFileUploadStats()

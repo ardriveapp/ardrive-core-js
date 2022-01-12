@@ -127,6 +127,17 @@ describe('ArDrive class - integrated', () => {
 	const matchingLastModifiedDate = new UnixTime(420);
 	const differentLastModifiedDate = new UnixTime(1337);
 
+	const stubNameConflictInfo = {
+		files: [
+			{
+				fileName: 'CONFLICTING_FILE_NAME',
+				fileId: existingFileId,
+				lastModifiedDate: matchingLastModifiedDate
+			}
+		],
+		folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+	};
+
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
 		stub(arweaveOracle, 'getWinstonPriceForByteCount').callsFake((input) => Promise.resolve(W(+input)));
@@ -557,16 +568,7 @@ describe('ArDrive class - integrated', () => {
 					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 
-					stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
-						files: [
-							{
-								fileName: 'CONFLICTING_FILE_NAME',
-								fileId: existingFileId,
-								lastModifiedDate: matchingLastModifiedDate
-							}
-						],
-						folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-					});
+					stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
 				});
 
 				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
@@ -742,16 +744,7 @@ describe('ArDrive class - integrated', () => {
 					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 
-					stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves({
-						files: [
-							{
-								fileName: 'CONFLICTING_FILE_NAME',
-								fileId: existingFileId,
-								lastModifiedDate: matchingLastModifiedDate
-							}
-						],
-						folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-					});
+					stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves(stubNameConflictInfo);
 				});
 
 				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
@@ -1082,16 +1075,7 @@ describe('ArDrive class - integrated', () => {
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
-			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
-				files: [
-					{
-						fileName: 'CONFLICTING_FILE_NAME',
-						fileId: existingFileId,
-						lastModifiedDate: matchingLastModifiedDate
-					}
-				],
-				folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-			});
+			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
 		});
 
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to replace', async () => {
@@ -1189,17 +1173,6 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 	});
-
-	const stubNameConflictInfo = {
-		files: [
-			{
-				fileName: 'CONFLICTING_FILE_NAME',
-				fileId: existingFileId,
-				lastModifiedDate: matchingLastModifiedDate
-			}
-		],
-		folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-	};
 
 	const stubbedFolderAskPrompts: FolderConflictPrompts = {
 		fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
