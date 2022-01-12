@@ -71,17 +71,6 @@ export interface MetaDataBaseCosts {
 	metaDataBaseReward: Winston;
 }
 
-export interface BulkFileBaseCosts extends MetaDataBaseCosts {
-	fileDataBaseReward: Winston;
-}
-
-export interface V2FileBaseCosts {
-	fileDataBaseReward: Winston;
-}
-export interface FileUploadBaseCosts extends BulkFileBaseCosts {
-	communityWinstonTip: Winston;
-}
-
 export interface RecursivePublicBulkUploadParams {
 	parentFolderId: FolderID;
 	wrappedFolder: ArFSFolderToUpload;
