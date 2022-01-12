@@ -126,7 +126,8 @@ import {
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
 	CommunityTipSettings,
-	PartialPrepareDriveParams
+	PartialPrepareDriveParams,
+	PartialPrepareFileParams
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
@@ -673,10 +674,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadFileAndMetaDataAsV2(
-		prepFileParams: Omit<
-			ArFSPrepareFileParams<Transaction, Transaction>,
-			'prepareArFSObject' | 'prepareMetaDataArFSObject'
-		>,
+		prepFileParams: PartialPrepareFileParams,
 		dataTxRewardSettings: RewardSettings,
 		metaDataRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
@@ -712,10 +710,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async uploadOnlyFileAsV2(
-		prepFileParams: Omit<
-			ArFSPrepareFileParams<Transaction, DataItem>,
-			'prepareArFSObject' | 'prepareMetaDataArFSObject'
-		>,
+		prepFileParams: PartialPrepareFileParams,
 		dataTxRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
 	): Promise<{ fileResult: FileResult; metaDataDataItem: DataItem }> {
@@ -758,7 +753,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		destFolderId,
 		wrappedEntity: wrappedFile,
 		driveKey
-	}: FileUploadStats): Omit<ArFSPrepareFileParams, 'prepareArFSObject' | 'prepareMetaDataArFSObject'> {
+	}: FileUploadStats): PartialPrepareFileParams {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
 		if (driveKey) {
