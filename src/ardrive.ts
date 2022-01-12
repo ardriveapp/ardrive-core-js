@@ -69,7 +69,7 @@ import { assertFolderExists } from './utils/assert_folder';
 import { join as joinPath } from 'path';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './utils/upload_conflict_resolution';
 import { ArFSCreateBundledDriveResult, ArFSCreateDriveResult, isBundleResult } from './arfs/arfs_entity_result_factory';
-import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
+import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
 import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/upload_planner_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
@@ -77,7 +77,7 @@ import {
 } from './pricing/estimation_prototypes';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { ArFSCostCalculator } from './arfs/arfs_cost_calculator';
+import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -93,13 +93,13 @@ export class ArDrive extends ArDriveAnonymous {
 		private readonly feeMultiple: FeeMultiple = new FeeMultiple(1.0),
 		private readonly dryRun: boolean = false,
 		private readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-		private readonly uploadPlanner: ArFSUploadPlanner = new ArFSUploadPlanner({
+		private readonly uploadPlanner: UploadPlanner = new ArFSUploadPlanner({
 			priceEstimator,
 			arFSTagSettings: arFSTagSettings,
 			feeMultiple,
 			communityOracle
 		}),
-		private readonly costCalculator: ArFSCostCalculator = new ArFSCostCalculator({
+		private readonly costCalculator: CostCalculator = new ArFSCostCalculator({
 			communityOracle,
 			feeMultiple,
 			priceEstimator

@@ -18,8 +18,13 @@ import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 
+export interface UploadPlanner {
+	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
+	planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan;
+}
+
 /** Utility class for planning an upload into an UploadPlan */
-export class ArFSUploadPlanner {
+export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePacker;

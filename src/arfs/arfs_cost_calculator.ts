@@ -16,6 +16,14 @@ import {
 	CreateDriveBundlePlan
 } from '../types/upload_planner_types';
 
+export interface CostCalculator {
+	calculateCostsForUploadPlan({
+		bundlePlans,
+		v2TxPlans
+	}: UploadPlan): Promise<{ calculatedUploadPlan: CalculatedUploadPlan; totalWinstonPrice: Winston }>;
+	calculateCostForCreateDrive(createDrivePlan: CreateDrivePlan): Promise<CalculatedCreateDrivePlan>;
+}
+
 interface ArFSCostCalculatorConstructorParams {
 	priceEstimator: ARDataPriceEstimator;
 	communityOracle: CommunityOracle;
@@ -23,7 +31,7 @@ interface ArFSCostCalculatorConstructorParams {
 }
 
 /** A utility class for calculating the cost of an ArFS write action */
-export class ArFSCostCalculator {
+export class ArFSCostCalculator implements CostCalculator {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly communityOracle: CommunityOracle;
 	private readonly feeMultiple: FeeMultiple;
