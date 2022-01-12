@@ -288,7 +288,7 @@ describe('The resolveFolderNameConflicts function', () => {
 
 		expect(wrappedFolder.newName).to.be.undefined;
 		expect(wrappedFolder.existingId).to.be.undefined;
-		expect(wrappedFolder.conflictResolution).to.equal(skipOnConflicts);
+		expect(wrappedFolder.conflictResolution).to.equal(errorOnConflict);
 	});
 
 	it('resolves wrappedFolder.conflictResolution to undefined and re-uses existing Folder ID when there is a folder to folder name conflict in the destination folder', async () => {

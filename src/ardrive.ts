@@ -33,7 +33,6 @@ import {
 	UploadPublicManifestParams,
 	DownloadPrivateFileParameters,
 	errorOnConflict,
-	skipOnConflicts,
 	upsertOnConflicts,
 	UploadAllEntitiesParams,
 	FolderConflictPrompts,
@@ -433,8 +432,10 @@ export class ArDrive extends ArDriveAnonymous {
 					...resolveConflictParams
 				});
 
-				if (wrappedEntity.conflictResolution === skipOnConflicts) {
-					throw new Error(errorMessage.entityNameExists);
+				if (wrappedEntity.conflictResolution) {
+					if (wrappedEntity.conflictResolution === errorOnConflict) {
+						throw new Error(errorMessage.entityNameExists);
+					}
 				} else {
 					// Conflicts have resolved, add this folder to the accumulating uploadStats
 					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
@@ -449,21 +450,13 @@ export class ArDrive extends ArDriveAnonymous {
 				});
 
 				if (wrappedFile.conflictResolution) {
-					switch (wrappedFile.conflictResolution) {
-						case errorOnConflict:
-							// File cannot be sent up because it conflicts with an existing folder
-							throw new Error(errorMessage.entityNameExists);
-
-						case upsertOnConflicts:
-							// File will not be sent up because it matches the file on chain
-							throw new Error(errorMessage.fileIsTheSame);
-
-						case skipOnConflicts:
-							// User has chosen to `--skip`, so we will skip without returning an error
-							break;
+					if (wrappedFile.conflictResolution === errorOnConflict) {
+						// File cannot be sent up because it conflicts with an existing folder
+						throw new Error(errorMessage.entityNameExists);
 					}
+					// Otherwise we will skip this file without error
 				} else {
-					// Conflicts have resolved, add this file to the accumulating uploadStats
+					// If all conflicts have been resolved, add this file to the accumulating uploadStats
 					allUploadStats.push({
 						destFolderId,
 						destDriveId,

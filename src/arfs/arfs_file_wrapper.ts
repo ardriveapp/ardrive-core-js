@@ -193,8 +193,8 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 	}
 }
 
-export type FolderConflictResolution = typeof skipOnConflicts | undefined;
-export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts | typeof errorOnConflict;
+export type FolderConflictResolution = typeof skipOnConflicts | typeof errorOnConflict | undefined;
+export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts;
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {

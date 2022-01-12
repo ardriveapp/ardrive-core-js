@@ -129,8 +129,7 @@ export async function resolveFolderNameConflicts({
 	if (conflictResolution !== askOnConflicts) {
 		if (existingNameAtDestConflict.existingFileConflict) {
 			// Folders cannot overwrite files
-			// Skip this folder and all its contents
-			wrappedFolder.conflictResolution = skipOnConflicts;
+			wrappedFolder.conflictResolution = errorOnConflict;
 			return;
 		}
 		// Re-use this folder, upload its contents within the existing folder
