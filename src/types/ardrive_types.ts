@@ -49,8 +49,6 @@ export interface ArFSResult {
 	created: ArFSEntityData[];
 	tips: TipData[];
 	fees: ArFSFees;
-	/** Gather and return any errors from bulk upload to inform the user */
-	errors?: string[];
 }
 
 export interface ArFSManifestResult extends ArFSResult {

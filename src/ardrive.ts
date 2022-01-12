@@ -403,7 +403,6 @@ export class ArDrive extends ArDriveAnonymous {
 		prompts
 	}: UploadAllEntitiesParams): Promise<ArFSResult> {
 		const allUploadStats: UploadStats[] = [];
-		const errors: string[] = [];
 
 		for (const { destFolderId, destName, wrappedEntity, driveKey } of entitiesToUpload) {
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
@@ -435,9 +434,7 @@ export class ArDrive extends ArDriveAnonymous {
 				});
 
 				if (wrappedEntity.conflictResolution === skipOnConflicts) {
-					errors.push(
-						`Error: Folder "${wrappedEntity.destinationBaseName}" cannot be uploaded, it conflicts with an existing file name!`
-					);
+					throw new Error(errorMessage.entityNameExists);
 				} else {
 					// Conflicts have resolved, add this folder to the accumulating uploadStats
 					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
@@ -455,13 +452,11 @@ export class ArDrive extends ArDriveAnonymous {
 					switch (wrappedFile.conflictResolution) {
 						case errorOnConflict:
 							// File cannot be sent up because it conflicts with an existing folder
-							errors.push(errorMessage.entityNameExists);
-							break;
+							throw new Error(errorMessage.entityNameExists);
 
 						case upsertOnConflicts:
 							// File will not be sent up because it matches the file on chain
-							errors.push(errorMessage.fileIsTheSame);
-							break;
+							throw new Error(errorMessage.fileIsTheSame);
 
 						case skipOnConflicts:
 							// User has chosen to `--skip`, so we will skip without returning an error
@@ -496,9 +491,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const arFSResult: ArFSResult = {
 			created: [],
 			tips: [],
-			fees: {},
-			// We only add the errors field if there are conflict errors during bulk upload
-			errors: errors.length > 0 ? errors : undefined
+			fees: {}
 		};
 
 		// Add folder results
@@ -574,21 +567,13 @@ export class ArDrive extends ArDriveAnonymous {
 		destinationFileName,
 		prompts
 	}: UploadPublicFileParams): Promise<ArFSResult> {
-		const result = await this.uploadAllEntities({
+		return this.uploadAllEntities({
 			entitiesToUpload: [
 				{ destFolderId: parentFolderId, wrappedEntity: wrappedFile, destName: destinationFileName }
 			],
 			conflictResolution,
 			prompts: prompts as FolderConflictPrompts
 		});
-
-		// Throw errors for API stability
-		if (result.errors && result.errors.length > 0) {
-			throw new Error(result.errors[0]);
-		}
-		delete result.errors;
-
-		return result;
 	}
 
 	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
@@ -600,21 +585,13 @@ export class ArDrive extends ArDriveAnonymous {
 		conflictResolution,
 		driveKey
 	}: UploadPrivateFileParams): Promise<ArFSResult> {
-		const result = await this.uploadAllEntities({
+		return this.uploadAllEntities({
 			entitiesToUpload: [
 				{ destFolderId: parentFolderId, wrappedEntity: wrappedFile, destName: destinationFileName, driveKey }
 			],
 			conflictResolution,
 			prompts: prompts as FolderConflictPrompts
 		});
-
-		// Throw errors for API stability
-		if (result.errors && result.errors.length > 0) {
-			throw new Error(result.errors[0]);
-		}
-		delete result.errors;
-
-		return result;
 	}
 
 	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
@@ -684,12 +661,6 @@ export class ArDrive extends ArDriveAnonymous {
 			conflictResolution,
 			prompts: prompts as FolderConflictPrompts
 		});
-
-		// Throw errors for API stability
-		if (uploadManifestResults.errors && uploadManifestResults.errors.length > 0) {
-			throw new Error(uploadManifestResults.errors[0]);
-		}
-		delete uploadManifestResults.errors;
 
 		const manifestTxId = uploadManifestResults.created[0]?.dataTxId;
 
