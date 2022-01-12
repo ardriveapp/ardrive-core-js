@@ -20,7 +20,10 @@ import {
 	DrivePrivacy,
 	FileID,
 	ArFSManifestResult,
-	FileConflictPrompts
+	FileConflictPrompts,
+	FolderConflictPrompts,
+	ArFSEntityData,
+	FolderID
 } from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
@@ -40,7 +43,10 @@ import {
 	stubPublicEntitiesWithPaths,
 	stubSpecialCharEntitiesWithPaths,
 	stubEntitiesWithNoFilesWithPaths,
-	fakeArweave
+	fakeArweave,
+	stubFileUploadStats,
+	stubEmptyFolderStats,
+	stubFolderUploadStats
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -615,18 +621,21 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3204), W(171), W(1), 'public', existingFileId);
 				});
 
-				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: stubEntityID,
-							wrappedFile,
-							destinationFileName: 'CONFLICTING_FILE_NAME',
-							conflictResolution: 'upsert'
-						}),
-						errorMessage: 'The file to upload matches an existing file entity!'
+					const result = await arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile,
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'upsert'
+					});
+
+					expect(result).to.deep.equal({
+						created: [],
+						tips: [],
+						fees: {}
 					});
 				});
 
@@ -801,19 +810,22 @@ describe('ArDrive class - integrated', () => {
 					assertUploadFileExpectations(result, W(3220), W(187), W(1), 'private', existingFileId);
 				});
 
-				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				it('returns empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 					stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile,
-							driveKey: await getStubDriveKey(),
-							destinationFileName: 'CONFLICTING_FILE_NAME',
-							conflictResolution: 'upsert'
-						}),
-						errorMessage: 'The file to upload matches an existing file entity!'
+					const result = await arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile,
+						driveKey: await getStubDriveKey(),
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'upsert'
+					});
+
+					expect(result).to.deep.equal({
+						created: [],
+						tips: [],
+						fees: {}
 					});
 				});
 
@@ -1173,6 +1185,147 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 	});
+
+	const stubNameConflictInfo = {
+		files: [
+			{
+				fileName: 'CONFLICTING_FILE_NAME',
+				fileId: existingFileId,
+				lastModifiedDate: matchingLastModifiedDate
+			}
+		],
+		folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+	};
+
+	const stubbedFolderAskPrompts: FolderConflictPrompts = {
+		fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+		fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+		folderToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+		folderToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
+	};
+
+	describe('uploadAllEntities ArDrive method', () => {
+		beforeEach(() => {
+			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
+			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
+			stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves(stubNameConflictInfo);
+		});
+
+		it('returns the expected v2 ArFSResult with a single public file', async () => {
+			const result = await arDrive.uploadAllEntities({ entitiesToUpload: [stubFileUploadStats()] });
+
+			assertUploadFileExpectations(result, W(3204), W(166), W(1), 'public');
+		});
+
+		it('returns the expected v2 ArFSResult with a single private file', async () => {
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [{ ...stubFileUploadStats(), driveKey: await getStubDriveKey() }]
+			});
+
+			assertUploadFileExpectations(result, W(3220), W(182), W(1), 'private');
+		});
+
+		it('returns the expected bundled ArFSResult with a single public file', async () => {
+			const result = await bundledArDrive.uploadAllEntities({ entitiesToUpload: [stubFileUploadStats()] });
+
+			assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
+		});
+
+		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
+			stub(stubbedFolderAskPrompts, 'folderToFileNameConflict').resolves({ resolution: 'skip' });
+
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						...stubFolderUploadStats(),
+						destName: 'CONFLICTING_FOLDER_NAME',
+						driveKey: await getStubDriveKey()
+					}
+				],
+				conflictResolution: 'ask',
+				prompts: stubbedFolderAskPrompts
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {}
+			});
+		});
+
+		it('returns the expected ArFSResult for two empty folders', async () => {
+			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [stubEmptyFolderStats(), stubEmptyFolderStats()],
+				conflictResolution: 'ask',
+				prompts: stubbedFolderAskPrompts
+			});
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(3);
+			expect(tips.length).to.equal(0);
+			expect(feeKeys.length).to.equal(1);
+
+			assertFolderCreatedResult(created[0]);
+			assertFolderCreatedResult(created[1]);
+
+			assertBundleCreatedResult(created[2]);
+
+			expect(feeKeys[0]).to.equal(`${created[2].bundleTxId!}`);
+			expect(+fees[`${created[2].bundleTxId}`]).to.equal(214);
+		});
+
+		it('throws an error if a folder name conflicts with a file name', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [{ ...stubFolderUploadStats(), destName: 'CONFLICTING_FILE_NAME' }]
+				}),
+				errorMessage: 'Entity name already exists in destination folder!'
+			});
+		});
+
+		it('throws an error if a file name conflicts with a folder name', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [{ ...stubFileUploadStats(), destName: 'CONFLICTING_FOLDER_NAME' }]
+				}),
+				errorMessage: 'Entity name already exists in destination folder!'
+			});
+		});
+
+		it('throws an error if a folder name conflicts with a file name', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [{ ...stubFolderUploadStats(), destName: 'CONFLICTING_FILE_NAME' }]
+				}),
+				errorMessage: 'Entity name already exists in destination folder!'
+			});
+		});
+
+		it('returns the expected bundled ArFSResult with a single private file', async () => {
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ ...stubFileUploadStats(), driveKey: await getStubDriveKey() }]
+			});
+
+			assertUploadFileExpectations(result, W(6097), W(182), W(1), 'private', undefined, true);
+		});
+
+		it('returns the expected v2 ArFSResult with a single public folder', async () => {
+			const result = await arDrive.uploadAllEntities({ entitiesToUpload: [stubEmptyFolderStats()] });
+
+			assertCreateFolderExpectations(result, W(27));
+		});
+
+		it('returns the expected v2 ArFSResult with a single private folder', async () => {
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [{ ...stubEmptyFolderStats(), driveKey: await getStubDriveKey() }]
+			});
+
+			assertCreateFolderExpectations(result, W(43), urlEncodeHashKey(await getStubDriveKey()));
+		});
+	});
 });
 
 function assertCreateDriveExpectations(
@@ -1471,4 +1624,40 @@ function assertUploadManifestExpectations(
 			}
 		});
 	}
+}
+
+function assertFolderCreatedResult(
+	{ type, bundleTxId, dataTxId, entityId, key, metadataTxId }: ArFSEntityData,
+	expectDriveKey = false,
+	expectedFolderId?: FolderID
+) {
+	expect(type).to.equal('folder');
+
+	expect(bundleTxId).to.be.undefined;
+	expect(dataTxId).to.be.undefined;
+	expect(metadataTxId).to.match(txIdRegex);
+
+	if (expectedFolderId) {
+		expect(`${entityId}`).to.equal(`${expectedFolderId}`);
+	} else {
+		expect(entityId).to.match(entityIdRegex);
+	}
+
+	if (expectDriveKey) {
+		// Output of stubDriveKey
+		expect(key).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+	} else {
+		expect(key).to.be.undefined;
+	}
+}
+
+function assertBundleCreatedResult({ type, bundleTxId, dataTxId, entityId, key, metadataTxId }: ArFSEntityData) {
+	expect(type).to.equal('bundle');
+
+	expect(bundleTxId).to.match(txIdRegex);
+	expect(dataTxId).to.be.undefined;
+	expect(metadataTxId).to.be.undefined;
+
+	expect(entityId).to.be.undefined;
+	expect(key).to.be.undefined;
 }
