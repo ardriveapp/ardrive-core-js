@@ -916,7 +916,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const { wrappedEntity, driveKey } = uploadStat;
 
 				if (wrappedEntity.entityType === 'folder') {
-					if (uploadStats.length === 1) {
+					if (uploadStats.length === 1 && !metaDataDataItems) {
 						throw new Error(
 							'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
 						);
