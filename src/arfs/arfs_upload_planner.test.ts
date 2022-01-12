@@ -234,7 +234,6 @@ describe('The ArFSUploadPlanner class', () => {
 
 			it('returns correct byte count for a bundle', async () => {
 				const uploadPlan = bundledUploadPlanner.planCreateDrive(publicCreateDriveParams);
-				console.log('uploadPlan', uploadPlan);
 				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this create drive Bundle is 2832

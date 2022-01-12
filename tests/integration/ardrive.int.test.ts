@@ -23,7 +23,10 @@ import {
 	FileConflictPrompts,
 	FolderConflictPrompts,
 	ArFSEntityData,
-	FolderID
+	FolderID,
+	ByteCount,
+	TipData,
+	TransactionID
 } from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
@@ -53,6 +56,7 @@ import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
+import { MAX_BUNDLE_SIZE } from '../../src/utils/constants';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -1234,6 +1238,43 @@ describe('ArDrive class - integrated', () => {
 			assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
 		});
 
+		it('returns the expected bundled ArFSResult with two over-sized files', async () => {
+			const overSizedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			stub(overSizedFile, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
+			const overSizedFileStats = { ...stubFileUploadStats(), wrappedEntity: overSizedFile };
+
+			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [overSizedFileStats, overSizedFileStats]
+			});
+
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(3);
+			expect(tips.length).to.equal(2);
+			expect(feeKeys.length).to.equal(3);
+
+			assertFileCreatedResult(created[0]);
+			assertFileCreatedResult(created[1]);
+
+			assertBundleCreatedResult(created[2]);
+
+			const file1DataTxId = created[0].dataTxId!;
+			const file2DataTxId = created[1].dataTxId!;
+			const bundleTxId = created[2].bundleTxId!;
+
+			assertTipSetting(tips[0], file1DataTxId);
+			assertTipSetting(tips[1], file2DataTxId);
+
+			expect(feeKeys[0]).to.equal(`${file1DataTxId}`);
+			expect(+fees[`${file1DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
+
+			expect(feeKeys[1]).to.equal(`${file2DataTxId}`);
+			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
+
+			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
+			expect(+fees[`${bundleTxId}`]).to.equal(3124);
+		});
+
 		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
 			stub(stubbedFolderAskPrompts, 'folderToFileNameConflict').resolves({ resolution: 'skip' });
 
@@ -1626,6 +1667,30 @@ function assertUploadManifestExpectations(
 	}
 }
 
+function assertFileCreatedResult(
+	{ type, bundleTxId, dataTxId, entityId, key, metadataTxId }: ArFSEntityData,
+	expectFileKey = false,
+	expectedFileId?: FileID
+) {
+	expect(type).to.equal('file');
+
+	expect(bundleTxId).to.be.undefined;
+	expect(metadataTxId).to.match(txIdRegex);
+	expect(dataTxId).to.match(txIdRegex);
+
+	if (expectedFileId) {
+		expect(`${entityId}`).to.equal(`${expectedFileId}`);
+	} else {
+		expect(entityId).to.match(entityIdRegex);
+	}
+
+	if (expectFileKey) {
+		expect(key).to.exist;
+	} else {
+		expect(key).to.be.undefined;
+	}
+}
+
 function assertFolderCreatedResult(
 	{ type, bundleTxId, dataTxId, entityId, key, metadataTxId }: ArFSEntityData,
 	expectDriveKey = false,
@@ -1660,4 +1725,10 @@ function assertBundleCreatedResult({ type, bundleTxId, dataTxId, entityId, key, 
 
 	expect(entityId).to.be.undefined;
 	expect(key).to.be.undefined;
+}
+
+function assertTipSetting({ recipient, txId, winston }: TipData, expectedTxId: TransactionID, expectedReward = 1) {
+	expect(`${recipient}`).to.equal('abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH');
+	expect(`${txId}`).to.equal(`${expectedTxId}`);
+	expect(+winston).to.equal(expectedReward);
 }
