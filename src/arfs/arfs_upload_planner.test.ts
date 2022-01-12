@@ -1,11 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
-import { stub } from 'sinon';
 import {
-	fakeArweave,
 	stubFileUploadStats,
 	stubFolderUploadStats,
-	stubArweaveAddress,
 	stubEntityIDAlt,
 	stubPrivateDriveMetaDataTx,
 	stubPrivateFolderMetaDataTx,
@@ -13,60 +10,23 @@ import {
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
-import { ArDriveCommunityOracle } from '../community/ardrive_community_oracle';
-import { ByteCount, FeeMultiple, W } from '../types';
-import {
-	BundleRewardSettings,
-	CreateDriveV2TxRewardSettings,
-	EstimateCreateDriveParams
-} from '../types/upload_planner_types';
+import { ByteCount } from '../types';
+import { CreateDriveBundlePlan, CreateDriveV2Plan, EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
-import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
 import { wrapFileOrFolder, ArFSFolderToUpload } from './arfs_file_wrapper';
 
 describe('The ArFSUploadPlanner class', () => {
-	const priceEstimator = new ARDataPriceNetworkEstimator();
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
-	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
 
+	/** An upload planner set to bundle transactions if possible */
 	const bundledUploadPlanner = new ArFSUploadPlanner({
-		priceEstimator,
-		arFSTagSettings: arFSTagSettings,
-		feeMultiple: new FeeMultiple(1),
-		communityOracle
-	});
-
-	const boostedUploadPlanner = new ArFSUploadPlanner({
-		priceEstimator,
-		arFSTagSettings: arFSTagSettings,
-		feeMultiple: new FeeMultiple(10),
-		communityOracle
-	});
-
-	const boostedV2TxUploadPlanner = new ArFSUploadPlanner({
-		shouldBundle: false,
-		priceEstimator,
-		arFSTagSettings: arFSTagSettings,
-		feeMultiple: new FeeMultiple(10),
-		communityOracle
+		arFSTagSettings: arFSTagSettings
 	});
 
 	/** An upload planner set to only send v2 transactions */
 	const v2TxUploadPlanner = new ArFSUploadPlanner({
 		shouldBundle: false,
-		priceEstimator,
-		arFSTagSettings: arFSTagSettings,
-		feeMultiple: new FeeMultiple(1),
-		communityOracle
-	});
-
-	beforeEach(() => {
-		// Set pricing algo up as x = y (bytes = Winston)
-		stub(priceEstimator, 'getBaseWinstonPriceForByteCount').callsFake((input) => Promise.resolve(W(+input)));
-		// Stub community tip to always be 123456 Winston
-		stub(communityOracle, 'getCommunityWinstonTip').resolves(W(123456));
-		// Stub community tip to always be 123456 Winston
-		stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+		arFSTagSettings: arFSTagSettings
 	});
 
 	it('cannot be constructed with a max data item limit of less than 2', () => {
@@ -265,55 +225,31 @@ describe('The ArFSUploadPlanner class', () => {
 		});
 	});
 
-	describe('estimateCreateDrive function', () => {
+	describe('planCreateDrive function', () => {
 		describe('used on a public drive', () => {
 			const publicCreateDriveParams: EstimateCreateDriveParams = {
 				rootFolderMetaDataPrototype: stubPublicFolderMetaDataTx,
 				driveMetaDataPrototype: stubPublicDriveMetaDataTx
 			};
 
-			it('returns correct rewardSettings and totalWinstonPrice for a bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await bundledUploadPlanner.estimateCreateDrive(
-					publicCreateDriveParams
-				);
-				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
+			it('returns correct byte count for a bundle', async () => {
+				const uploadPlan = bundledUploadPlanner.planCreateDrive(publicCreateDriveParams);
+				console.log('uploadPlan', uploadPlan);
+				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this create drive Bundle is 2832
-				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(2832);
-				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
-
-				expect(+totalWinstonPrice).to.equal(2832);
+				expect(+totalBundledByteCount).to.equal(2832);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
-				const { rewardSettings, totalWinstonPrice } = await v2TxUploadPlanner.estimateCreateDrive(
-					publicCreateDriveParams
-				);
-				const v2RewardSettings = rewardSettings as CreateDriveV2TxRewardSettings;
+				const uploadPlan = v2TxUploadPlanner.planCreateDrive(publicCreateDriveParams);
+				const { driveByteCount, rootFolderByteCount } = uploadPlan as CreateDriveV2Plan;
 
 				// Expected byte count of drive metadata tx is 91 bytes
-				expect(+v2RewardSettings.driveRewardSettings.reward!).to.equal(91);
-				expect(+v2RewardSettings.driveRewardSettings.feeMultiple!).to.equal(1);
+				expect(+driveByteCount).to.equal(91);
 
 				// Expected byte count of root folder metadata tx is 38 bytes
-				expect(+v2RewardSettings.rootFolderRewardSettings.reward!).to.equal(38);
-				expect(+v2RewardSettings.rootFolderRewardSettings.feeMultiple!).to.equal(1);
-
-				expect(+totalWinstonPrice).to.equal(129);
-			});
-
-			it('returns correct rewardSetting and totalWinstonPrice for a fee boosted bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await boostedUploadPlanner.estimateCreateDrive(
-					publicCreateDriveParams
-				);
-				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
-
-				// Expected ByteCount for this create drive Bundle is 2832
-				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(2832);
-				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(10);
-
-				// Expect the total to be boosted x10
-				expect(+totalWinstonPrice).to.equal(28320);
+				expect(+rootFolderByteCount).to.equal(38);
 			});
 		});
 
@@ -326,51 +262,22 @@ describe('The ArFSUploadPlanner class', () => {
 			};
 
 			it('returns correct rewardSetting and totalWinstonPrice for a bundle', async () => {
-				const { rewardSettings, totalWinstonPrice } = await bundledUploadPlanner.estimateCreateDrive(
-					await privateCreateDriveParams()
-				);
-				const bundleRewardSettings = rewardSettings as BundleRewardSettings;
+				const uploadPlan = bundledUploadPlanner.planCreateDrive(await privateCreateDriveParams());
+				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this private drive Bundle is 2998
-				expect(+bundleRewardSettings.bundleRewardSettings.reward!).to.equal(2998);
-				expect(+bundleRewardSettings.bundleRewardSettings.feeMultiple!).to.equal(1);
-
-				expect(+totalWinstonPrice).to.equal(2998);
+				expect(+totalBundledByteCount).to.equal(2998);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
-				const { rewardSettings, totalWinstonPrice } = await v2TxUploadPlanner.estimateCreateDrive(
-					await privateCreateDriveParams()
-				);
-				const v2RewardSettings = rewardSettings as CreateDriveV2TxRewardSettings;
+				const uploadPlan = v2TxUploadPlanner.planCreateDrive(await privateCreateDriveParams());
+				const { driveByteCount, rootFolderByteCount } = uploadPlan as CreateDriveV2Plan;
 
 				// Expected byte count of private drive metadata tx is 108 bytes
-				expect(+v2RewardSettings.driveRewardSettings.reward!).to.equal(108);
-				expect(+v2RewardSettings.driveRewardSettings.feeMultiple!).to.equal(1);
+				expect(+driveByteCount).to.equal(108);
 
 				// Expected byte count of private root folder metadata tx is 55 bytes
-				expect(+v2RewardSettings.rootFolderRewardSettings.reward!).to.equal(55);
-				expect(+v2RewardSettings.rootFolderRewardSettings.feeMultiple!).to.equal(1);
-
-				expect(+totalWinstonPrice).to.equal(163);
-			});
-
-			it('returns correct rewardSetting and totalWinstonPrice for a fee boosted v2 transaction', async () => {
-				const { rewardSettings, totalWinstonPrice } = await boostedV2TxUploadPlanner.estimateCreateDrive(
-					await privateCreateDriveParams()
-				);
-				const v2RewardSettings = rewardSettings as CreateDriveV2TxRewardSettings;
-
-				// Expected byte count of private drive metadata tx is 108 bytes
-				expect(+v2RewardSettings.driveRewardSettings.reward!).to.equal(108);
-				expect(+v2RewardSettings.driveRewardSettings.feeMultiple!).to.equal(10);
-
-				// Expected byte count of private root folder metadata tx is 55 bytes
-				expect(+v2RewardSettings.rootFolderRewardSettings.reward!).to.equal(55);
-				expect(+v2RewardSettings.rootFolderRewardSettings.feeMultiple!).to.equal(10);
-
-				// Expect total price to be boosted x10
-				expect(+totalWinstonPrice).to.equal(1630);
+				expect(+rootFolderByteCount).to.equal(55);
 			});
 		});
 	});

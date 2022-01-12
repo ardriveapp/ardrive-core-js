@@ -36,14 +36,19 @@ export interface EstimateUploadFileParams {
 	contentTypeTag: GQLTagInterface;
 }
 
-export interface EstimateResult<T> {
-	totalWinstonPrice: Winston;
-	rewardSettings: T;
+export interface CreateDriveV2Plan {
+	rootFolderByteCount: ByteCount;
+	driveByteCount: ByteCount;
+}
+export interface CreateDriveBundlePlan {
+	totalBundledByteCount: ByteCount;
+}
+export type CreateDrivePlan = CreateDriveV2Plan | CreateDriveBundlePlan;
+
+export function isBundlePlan(plan: CreateDrivePlan): plan is CreateDriveBundlePlan {
+	return Object.keys(plan).includes('totalBundledByteCount');
 }
 
-export interface EstimateUploadResult<T> extends EstimateResult<T> {
-	communityWinstonTip: Winston;
-}
 export interface BundleRewardSettings {
 	bundleRewardSettings: RewardSettings;
 }
@@ -60,15 +65,16 @@ export interface CreateDriveV2TxRewardSettings {
 }
 export type CreateDriveRewardSettings = CreateDriveV2TxRewardSettings | BundleRewardSettings;
 
+export interface CalculatedCreateDrivePlan {
+	totalWinstonPrice: Winston;
+	rewardSettings: CreateDriveRewardSettings;
+}
+
 export interface UploadFileV2TxRewardSettings {
 	dataTxRewardSettings: RewardSettings;
 	metaDataRewardSettings: RewardSettings;
 }
 export type UploadFileRewardSettings = UploadFileV2TxRewardSettings | BundleRewardSettings;
-
-export type EstimateCreateDriveResult = EstimateResult<CreateDriveRewardSettings>;
-
-export type EstimateUploadFileResult = EstimateUploadResult<UploadFileRewardSettings>;
 
 export interface UploadPlan {
 	bundlePlans: BundlePlan[];

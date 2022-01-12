@@ -1,5 +1,3 @@
-/** A utility class for calculating the cost of an ArFS write action */
-
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { FeeMultiple, Winston, RewardSettings, W, CommunityTipSettings } from '../types';
@@ -10,7 +8,12 @@ import {
 	V2TxPlan,
 	UploadFileV2TxRewardSettings,
 	UploadPlan,
-	CalculatedUploadPlan
+	CalculatedUploadPlan,
+	CreateDrivePlan,
+	CalculatedCreateDrivePlan,
+	isBundlePlan,
+	CreateDriveV2Plan,
+	CreateDriveBundlePlan
 } from '../types/upload_planner_types';
 
 interface ArFSCostCalculatorConstructorParams {
@@ -19,6 +22,7 @@ interface ArFSCostCalculatorConstructorParams {
 	feeMultiple: FeeMultiple;
 }
 
+/** A utility class for calculating the cost of an ArFS write action */
 export class ArFSCostCalculator {
 	private readonly priceEstimator: ARDataPriceEstimator;
 	private readonly communityOracle: CommunityOracle;
@@ -146,5 +150,43 @@ export class ArFSCostCalculator {
 			calculatedUploadPlan: { bundlePlans: calculatedBundlePlans, v2TxPlans: calculatedV2TxPlans },
 			totalWinstonPrice
 		};
+	}
+
+	private async calculateV2CreateDriveCost({
+		driveByteCount,
+		rootFolderByteCount
+	}: CreateDriveV2Plan): Promise<CalculatedCreateDrivePlan> {
+		const driveReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(driveByteCount);
+		const rootFolderReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(rootFolderByteCount);
+
+		const totalWinstonPrice = this.boostedReward(driveReward).plus(this.boostedReward(rootFolderReward));
+
+		const rewardSettings = {
+			driveRewardSettings: this.rewardSettingsForWinston(driveReward),
+			rootFolderRewardSettings: this.rewardSettingsForWinston(rootFolderReward)
+		};
+
+		return { rewardSettings, totalWinstonPrice };
+	}
+
+	private async calculateBundledCreateDriveCost({
+		totalBundledByteCount
+	}: CreateDriveBundlePlan): Promise<CalculatedCreateDrivePlan> {
+		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(totalBundledByteCount);
+		const totalWinstonPrice = this.boostedReward(bundleReward);
+
+		const rewardSettings = {
+			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
+		};
+
+		return { rewardSettings, totalWinstonPrice };
+	}
+
+	public async calculateCostForCreateDrive(createDrivePlan: CreateDrivePlan): Promise<CalculatedCreateDrivePlan> {
+		if (isBundlePlan(createDrivePlan)) {
+			return this.calculateBundledCreateDriveCost(createDrivePlan);
+		}
+
+		return this.calculateV2CreateDriveCost(createDrivePlan);
 	}
 }

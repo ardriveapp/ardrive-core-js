@@ -768,7 +768,9 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const { rewardSettings, totalWinstonPrice } = await this.uploadPlanner.estimateCreateDrive(arFSPrototypes);
+		const uploadPlan = this.uploadPlanner.planCreateDrive(arFSPrototypes);
+		const { rewardSettings, totalWinstonPrice } = await this.costCalculator.calculateCostForCreateDrive(uploadPlan);
+
 		await this.assertWalletBalance(totalWinstonPrice);
 
 		const createDriveResult = await arFSCreateDrive(rewardSettings);

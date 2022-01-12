@@ -1,15 +1,11 @@
 import { serializeTags } from 'arbundles/src/parser';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
-import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
-import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, EID, FeeMultiple, GQLTagInterface, RewardSettings, UploadStats, Winston } from '../types';
+import { ByteCount, EID, FeeMultiple, GQLTagInterface, UploadStats } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
 	BundlePlan,
-	BundleRewardSettings,
-	CreateDriveV2TxRewardSettings,
 	EstimateCreateDriveParams,
-	EstimateCreateDriveResult,
+	CreateDrivePlan,
 	PlanFileParams,
 	PlanFolderParams,
 	UploadPlan,
@@ -31,20 +27,16 @@ export class ArFSUploadPlanner {
 	protected readonly maxDataItemLimit: number;
 	protected readonly maxBundleLimit: ByteCount;
 
-	// These class settings have been moved to the ArFSCostCalculator class
-	/** @deprecated */
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
 	protected readonly feeMultiple?: FeeMultiple;
-	/** @deprecated */
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
 	protected readonly priceEstimator?: ARDataPriceEstimator;
-	/** @deprecated */
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
 	protected readonly communityOracle?: CommunityOracle;
 
 	constructor({
 		shouldBundle = true,
-		priceEstimator,
-		feeMultiple = new FeeMultiple(1),
 		arFSTagSettings,
-		communityOracle,
 		maxBundleLimit = MAX_BUNDLE_SIZE,
 		maxDataItemLimit = MAX_DATA_ITEM_LIMIT,
 		bundlePacker = new LowestIndexBundlePacker(maxBundleLimit, maxDataItemLimit)
@@ -58,20 +50,6 @@ export class ArFSUploadPlanner {
 			throw new Error('Maximum data item limit must be an integer value of 2 or more!');
 		}
 		this.maxDataItemLimit = maxDataItemLimit;
-
-		// TODO: Fully decouple and deprecate these
-		this.feeMultiple = feeMultiple;
-		this.priceEstimator = priceEstimator;
-		this.communityOracle = communityOracle;
-	}
-
-	/** Constructs reward settings with the feeMultiple from the cost calculator */
-	private rewardSettingsForWinston(reward: Winston): RewardSettings {
-		return { reward, feeMultiple: this.feeMultiple };
-	}
-	/** Returns a reward boosted by the feeMultiple from the cost calculator */
-	private boostedReward(reward: Winston): Winston {
-		return this.feeMultiple!.boostedWinstonReward(reward);
 	}
 
 	private v2TxsToUpload: V2TxPlan[] = [];
@@ -79,7 +57,7 @@ export class ArFSUploadPlanner {
 	/**
 	 * Empties the bundlesToUpload from the bundlePacker and v2TxsToUpload
 	 *
-	 * @remarks To be used internally before every plan
+	 * @remarks To be used internally before every bulk upload plan
 	 */
 	private resetPlannedUploads(): void {
 		this.v2TxsToUpload = [];
@@ -251,54 +229,45 @@ export class ArFSUploadPlanner {
 		return { v2TxPlans: this.v2TxsToUpload, bundlePlans };
 	}
 
-	/** Estimate the cost of a create drive */
-	public async estimateCreateDrive(arFSPrototypes: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
+	private planBundledCreateDrive({
+		driveMetaDataPrototype,
+		rootFolderMetaDataPrototype
+	}: EstimateCreateDriveParams): CreateDrivePlan {
+		const driveDataItemByteCount = this.byteCountAsDataItem(
+			driveMetaDataPrototype.objectData.sizeOf(),
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: driveMetaDataPrototype.gqlTags })
+		);
+		const rootFolderDataItemByteCount = this.byteCountAsDataItem(
+			rootFolderMetaDataPrototype.objectData.sizeOf(),
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: rootFolderMetaDataPrototype.gqlTags })
+		);
+		const totalDataItemByteCount = new ByteCount(+driveDataItemByteCount + +rootFolderDataItemByteCount);
+
+		const totalBundledByteCount = this.bundledByteCountOfBundleToPack(totalDataItemByteCount, 2);
+
+		return { totalBundledByteCount };
+	}
+
+	private planV2CreateDrive({
+		driveMetaDataPrototype,
+		rootFolderMetaDataPrototype
+	}: EstimateCreateDriveParams): CreateDrivePlan {
+		const driveByteCount = driveMetaDataPrototype.objectData.sizeOf();
+		const rootFolderByteCount = rootFolderMetaDataPrototype.objectData.sizeOf();
+
+		return { driveByteCount, rootFolderByteCount };
+	}
+
+	/** Plan the strategy and determine byteCounts of a create drive */
+	public planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan {
 		if (this.shouldBundle) {
-			return this.costOfCreateBundledDrive(arFSPrototypes);
+			return this.planBundledCreateDrive(arFSPrototypes);
 		}
 
-		return this.costOfCreateDriveV2Tx(arFSPrototypes);
+		return this.planV2CreateDrive(arFSPrototypes);
 	}
 
-	/** Calculate the cost of creating a drive and root folder as v2 transactions */
-	private async costOfCreateDriveV2Tx({
-		rootFolderMetaDataPrototype,
-		driveMetaDataPrototype
-	}: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
-		const driveReward = await this.costOfV2ObjectTx(driveMetaDataPrototype.objectData);
-		const rootFolderReward = await this.costOfV2ObjectTx(rootFolderMetaDataPrototype.objectData);
-
-		const totalWinstonPrice = this.boostedReward(driveReward).plus(this.boostedReward(rootFolderReward));
-
-		const rewardSettings: CreateDriveV2TxRewardSettings = {
-			driveRewardSettings: this.rewardSettingsForWinston(driveReward),
-			rootFolderRewardSettings: this.rewardSettingsForWinston(rootFolderReward)
-		};
-
-		return { totalWinstonPrice, rewardSettings };
-	}
-
-	/** Calculate the cost of creating a drive and root folder together as a bundle */
-	private async costOfCreateBundledDrive(
-		arFSPrototypes: EstimateCreateDriveParams
-	): Promise<EstimateCreateDriveResult> {
-		const bundleReward = await this.winstonCostOfBundledPrototypes(Object.values(arFSPrototypes));
-		const totalWinstonPrice = this.boostedReward(bundleReward);
-
-		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: this.rewardSettingsForWinston(bundleReward)
-		};
-
-		return { totalWinstonPrice, rewardSettings };
-	}
-
-	/** Calculate the cost uploading transaction data as a v2 transaction */
-	private async costOfV2ObjectTx(objectTransactionData: ArFSObjectTransactionData): Promise<Winston> {
-		const metaDataSize = objectTransactionData.sizeOf();
-		return this.priceEstimator!.getBaseWinstonPriceForByteCount(metaDataSize);
-	}
-
-	/** Calculate the size of an ArFS Prototype as a DataItem */
+	/** Calculate the total size  of provided ByteCount and GQL Tags as a DataItem */
 	private byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
 		// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
 
@@ -329,7 +298,7 @@ export class ArFSUploadPlanner {
 		return new ByteCount(totalByteLength);
 	}
 
-	/** Calculate the bundled size from an array of data item byte counts  */
+	/** Calculate the bundled size from the total dataItem byteCount and the number of dataItems */
 	private bundledByteCountOfBundleToPack(totalDataItemByteCount: ByteCount, numberOfDataItems: number): ByteCount {
 		// 32 byte array for representing the number of data items in the bundle
 		const byteArraySize = 32;
@@ -338,28 +307,5 @@ export class ArFSUploadPlanner {
 		const headersSize = numberOfDataItems * 64;
 
 		return new ByteCount(byteArraySize + +totalDataItemByteCount + headersSize);
-	}
-
-	/** Calculate the bundled size from an array of data item byte counts  */
-	private bundledByteCountOfDataItems(dataItemByteCounts: ByteCount[]): ByteCount {
-		// Get total byte length of combined binaries
-		let totalDataItemsSize = 0;
-		for (const dataItemByteCount of dataItemByteCounts) {
-			totalDataItemsSize += +dataItemByteCount;
-		}
-
-		return this.bundledByteCountOfBundleToPack(new ByteCount(totalDataItemsSize), dataItemByteCounts.length);
-	}
-
-	/** Calculate the cost of uploading an array of ArFS Prototypes together as a bundle */
-	private async winstonCostOfBundledPrototypes(arFSPrototypes: ArFSObjectMetadataPrototype[]): Promise<Winston> {
-		const dataItemSizes = arFSPrototypes.map((p) =>
-			this.byteCountAsDataItem(
-				p.objectData.sizeOf(),
-				this.arFSTagSettings.baseArFSTagsIncluding({ tags: p.gqlTags })
-			)
-		);
-		const bundledSize = this.bundledByteCountOfDataItems(dataItemSizes);
-		return this.priceEstimator!.getBaseWinstonPriceForByteCount(bundledSize);
 	}
 }
