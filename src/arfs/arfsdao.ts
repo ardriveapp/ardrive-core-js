@@ -593,7 +593,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadEntitiesResult> {
 		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
 			if (isBundleRewardSetting(rewardSettings)) {
-				rewardSettings.bundleRewardSettings;
 				return {
 					bundlePlans: [
 						{
