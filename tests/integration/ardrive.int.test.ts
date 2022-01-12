@@ -1275,6 +1275,48 @@ describe('ArDrive class - integrated', () => {
 			expect(+fees[`${bundleTxId}`]).to.equal(3124);
 		});
 
+		it('returns the expected bundled ArFSResult with a folder that has two over-sized files', async () => {
+			const overSizedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			stub(overSizedFile, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
+
+			const folderWithOverSizedFiles = stubEmptyFolderStats();
+			folderWithOverSizedFiles.wrappedEntity.files = [overSizedFile, overSizedFile];
+
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [folderWithOverSizedFiles]
+			});
+
+			const { created, fees, tips } = result;
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(4);
+			expect(tips.length).to.equal(2);
+			expect(feeKeys.length).to.equal(3);
+
+			assertFolderCreatedResult(created[0]);
+
+			assertFileCreatedResult(created[1]);
+			assertFileCreatedResult(created[2]);
+
+			assertBundleCreatedResult(created[3]);
+
+			const file1DataTxId = created[1].dataTxId!;
+			const file2DataTxId = created[2].dataTxId!;
+			const bundleTxId = created[3].bundleTxId!;
+
+			assertTipSetting(tips[0], file1DataTxId);
+			assertTipSetting(tips[1], file2DataTxId);
+
+			expect(feeKeys[0]).to.equal(`${file1DataTxId}`);
+			expect(+fees[`${file1DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
+
+			expect(feeKeys[1]).to.equal(`${file2DataTxId}`);
+			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
+
+			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
+			expect(+fees[`${bundleTxId}`]).to.equal(3215);
+		});
+
 		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
 			stub(stubbedFolderAskPrompts, 'folderToFileNameConflict').resolves({ resolution: 'skip' });
 
