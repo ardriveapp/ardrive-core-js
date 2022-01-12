@@ -18,8 +18,8 @@ import {
 	stubPrivateDrive,
 	stubPrivateFile,
 	stubPrivateFolder,
-	newStubPlanFolderUploadStats,
-	newStubPlanFileUploadStats,
+	stubFolderUploadStats,
+	stubFileUploadStats,
 	stubCommunityTipSettings
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
@@ -598,7 +598,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: newStubPlanFileUploadStats(),
+						uploadStats: stubFileUploadStats(),
 						rewardSettings: {
 							dataTxRewardSettings: { reward: W(20) },
 							metaDataRewardSettings: { reward: W(5) }
@@ -617,7 +617,7 @@ describe('The ArFSDAO class', () => {
 
 		it('returns the expected result for an upload plan with a private file as v2 transactions', async () => {
 			// Use an expected id so we can expect an exact file key
-			const fileWithExistingId = newStubPlanFileUploadStats();
+			const fileWithExistingId = stubFileUploadStats();
 			fileWithExistingId.wrappedEntity.existingId = stubEntityID;
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
@@ -646,7 +646,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: { ...newStubPlanFolderUploadStats(), driveKey: await getStubDriveKey() },
+						uploadStats: { ...stubFolderUploadStats(), driveKey: await getStubDriveKey() },
 						rewardSettings: {
 							metaDataRewardSettings: { reward: W(2) }
 						}
@@ -662,7 +662,7 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a public folder that has an expected folder id sent as a v2 transaction', async () => {
-			const folderWithExpectedId = newStubPlanFolderUploadStats();
+			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
@@ -685,7 +685,7 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a private folder that has an expected folder id sent as a v2 transaction', async () => {
-			const folderWithExpectedId = newStubPlanFolderUploadStats();
+			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
@@ -712,13 +712,13 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: newStubPlanFolderUploadStats(),
+						uploadStats: stubFolderUploadStats(),
 						rewardSettings: {
 							metaDataRewardSettings: { reward: W(5) }
 						}
 					},
 					{
-						uploadStats: newStubPlanFileUploadStats(),
+						uploadStats: stubFileUploadStats(),
 						rewardSettings: {
 							metaDataRewardSettings: { reward: W(10) },
 							dataTxRewardSettings: { reward: W(50) }
@@ -741,7 +741,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(20) },
-						uploadStats: [newStubPlanFileUploadStats()],
+						uploadStats: [stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
@@ -761,7 +761,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(10) },
-						uploadStats: [newStubPlanFolderUploadStats(), newStubPlanFolderUploadStats()]
+						uploadStats: [stubFolderUploadStats(), stubFolderUploadStats()]
 					}
 				],
 				v2TxPlans: []
@@ -783,7 +783,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(100) },
-						uploadStats: [newStubPlanFolderUploadStats(), newStubPlanFileUploadStats()],
+						uploadStats: [stubFolderUploadStats(), stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
@@ -806,9 +806,9 @@ describe('The ArFSDAO class', () => {
 						bundleRewardSettings: { reward: W(500) },
 						uploadStats: [
 							// 1 Folders and 2 Files
-							newStubPlanFolderUploadStats(),
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats()
+							stubFolderUploadStats(),
+							stubFileUploadStats(),
+							stubFileUploadStats()
 						],
 						communityTipSettings: stubCommunityTipSettings
 					},
@@ -816,10 +816,10 @@ describe('The ArFSDAO class', () => {
 						bundleRewardSettings: { reward: W(2000) },
 						uploadStats: [
 							// 4 Files
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats()
+							stubFileUploadStats(),
+							stubFileUploadStats(),
+							stubFileUploadStats(),
+							stubFileUploadStats()
 						],
 						communityTipSettings: stubCommunityTipSettings
 					},
@@ -827,9 +827,9 @@ describe('The ArFSDAO class', () => {
 						bundleRewardSettings: { reward: W(200) },
 						uploadStats: [
 							// 3 Folders
-							newStubPlanFolderUploadStats(),
-							newStubPlanFolderUploadStats(),
-							newStubPlanFolderUploadStats()
+							stubFolderUploadStats(),
+							stubFolderUploadStats(),
+							stubFolderUploadStats()
 						]
 					}
 				],
@@ -858,17 +858,17 @@ describe('The ArFSDAO class', () => {
 					{
 						bundleRewardSettings: { reward: W(1337) },
 						uploadStats: [
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats(),
-							newStubPlanFileUploadStats(),
-							newStubPlanFolderUploadStats()
+							stubFileUploadStats(),
+							stubFileUploadStats(),
+							stubFileUploadStats(),
+							stubFolderUploadStats()
 						],
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
 				v2TxPlans: [
 					{
-						uploadStats: newStubPlanFileUploadStats(),
+						uploadStats: stubFileUploadStats(),
 						rewardSettings: {
 							dataTxRewardSettings: { reward: W(20) },
 							metaDataRewardSettings: { reward: W(5) }
@@ -876,7 +876,7 @@ describe('The ArFSDAO class', () => {
 						communityTipSettings: stubCommunityTipSettings
 					},
 					{
-						uploadStats: newStubPlanFolderUploadStats(),
+						uploadStats: stubFolderUploadStats(),
 						rewardSettings: {
 							metaDataRewardSettings: { reward: W(2) }
 						}
@@ -915,7 +915,7 @@ describe('The ArFSDAO class', () => {
 				],
 				v2TxPlans: [
 					{
-						uploadStats: newStubPlanFileUploadStats(),
+						uploadStats: stubFileUploadStats(),
 						rewardSettings: {
 							dataTxRewardSettings: { reward: W(59) }
 						},
@@ -923,7 +923,7 @@ describe('The ArFSDAO class', () => {
 						metaDataBundleIndex: 0
 					},
 					{
-						uploadStats: newStubPlanFileUploadStats(),
+						uploadStats: stubFileUploadStats(),
 						rewardSettings: {
 							dataTxRewardSettings: { reward: W(42) }
 						},
@@ -949,7 +949,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [],
 					v2TxPlans: [
 						{
-							uploadStats: newStubPlanFolderUploadStats(),
+							uploadStats: stubFolderUploadStats(),
 							rewardSettings: {
 								dataTxRewardSettings: { reward: W(5) },
 								metaDataRewardSettings: { reward: W(1) }
@@ -968,7 +968,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [],
 					v2TxPlans: [
 						{
-							uploadStats: newStubPlanFileUploadStats(),
+							uploadStats: stubFileUploadStats(),
 							rewardSettings: { dataTxRewardSettings: { reward: W(5) } },
 							communityTipSettings: stubCommunityTipSettings
 						}
@@ -984,7 +984,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [],
 					v2TxPlans: [
 						{
-							uploadStats: newStubPlanFileUploadStats(),
+							uploadStats: stubFileUploadStats(),
 							rewardSettings: { metaDataRewardSettings: { reward: W(55) } },
 							communityTipSettings: stubCommunityTipSettings
 						}
@@ -1000,7 +1000,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [],
 					v2TxPlans: [
 						{
-							uploadStats: newStubPlanFileUploadStats(),
+							uploadStats: stubFileUploadStats(),
 							rewardSettings: {
 								metaDataRewardSettings: { reward: W(55) },
 								dataTxRewardSettings: { reward: W(55) }
@@ -1018,7 +1018,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
-							uploadStats: [newStubPlanFileUploadStats()]
+							uploadStats: [stubFileUploadStats()]
 						}
 					],
 					v2TxPlans: []
@@ -1033,7 +1033,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
-							uploadStats: [newStubPlanFolderUploadStats()]
+							uploadStats: [stubFolderUploadStats()]
 						}
 					],
 					v2TxPlans: []

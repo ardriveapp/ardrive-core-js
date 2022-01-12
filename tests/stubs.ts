@@ -455,17 +455,27 @@ const stubPlanUploadStats = {
 	destFolderId: stubEntityID
 };
 
-export const newStubPlanFileUploadStats = (): UploadStats => {
+export const stubFileUploadStats = (): UploadStats<ArFSFileToUpload> => {
 	return {
 		...stubPlanUploadStats,
 		wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload
 	};
 };
-export const newStubPlanFolderUploadStats = (): UploadStats => {
+export const stubFolderUploadStats = (): UploadStats<ArFSFolderToUpload> => {
 	return {
 		...stubPlanUploadStats,
 		wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
 	};
+};
+
+export const stubEmptyFolderStats = (): UploadStats<ArFSFolderToUpload> => {
+	const stats = stubFolderUploadStats();
+
+	// Empty the files and folders
+	stats.wrappedEntity.files = [];
+	stats.wrappedEntity.folders = [];
+
+	return stats;
 };
 
 export const stub1025CharString =

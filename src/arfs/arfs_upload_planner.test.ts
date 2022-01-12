@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import {
 	fakeArweave,
-	newStubPlanFileUploadStats,
-	newStubPlanFolderUploadStats,
+	stubFileUploadStats,
+	stubFolderUploadStats,
 	stubArweaveAddress,
 	stubEntityIDAlt,
 	stubPrivateDriveMetaDataTx,
@@ -85,9 +85,7 @@ describe('The ArFSUploadPlanner class', () => {
 	describe('planUploadAllEntities method', () => {
 		it('returns the expected uploadPlan for a single wrappedFile', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
-			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				newStubPlanFileUploadStats()
-			]);
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFileUploadStats()]);
 
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
@@ -100,9 +98,7 @@ describe('The ArFSUploadPlanner class', () => {
 
 		it('returns the expected uploadPlan for a single wrappedFolder', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
-			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				newStubPlanFolderUploadStats()
-			]);
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFolderUploadStats()]);
 
 			expect(bundlePlans.length).to.equal(1);
 			expect(v2TxPlans.length).to.equal(0);
@@ -121,7 +117,7 @@ describe('The ArFSUploadPlanner class', () => {
 			wrappedFolderWithExistingId.existingId = stubEntityIDAlt;
 
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				{ ...newStubPlanFolderUploadStats(), wrappedEntity: wrappedFolderWithExistingId }
+				{ ...stubFolderUploadStats(), wrappedEntity: wrappedFolderWithExistingId }
 			]);
 
 			expect(bundlePlans.length).to.equal(1);
@@ -139,8 +135,8 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a two wrappedFiles', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				newStubPlanFileUploadStats(),
-				newStubPlanFileUploadStats()
+				stubFileUploadStats(),
+				stubFileUploadStats()
 			]);
 
 			expect(bundlePlans.length).to.equal(1);
@@ -158,7 +154,7 @@ describe('The ArFSUploadPlanner class', () => {
 				maxBundleLimit: new ByteCount(3_000)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
-				newStubPlanFileUploadStats()
+				stubFileUploadStats()
 			]);
 
 			expect(bundlePlans.length).to.equal(0);
@@ -177,8 +173,8 @@ describe('The ArFSUploadPlanner class', () => {
 				maxBundleLimit: new ByteCount(3_000)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
-				newStubPlanFileUploadStats(),
-				newStubPlanFileUploadStats()
+				stubFileUploadStats(),
+				stubFileUploadStats()
 			]);
 
 			// Expect one bundle for the 2 metadata data items
@@ -201,8 +197,8 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a two wrappedFiles when shouldBundle is set to false', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings, shouldBundle: false });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				newStubPlanFileUploadStats(),
-				newStubPlanFileUploadStats()
+				stubFileUploadStats(),
+				stubFileUploadStats()
 			]);
 
 			expect(bundlePlans.length).to.equal(0);
@@ -228,9 +224,7 @@ describe('The ArFSUploadPlanner class', () => {
 
 		it('returns the expected uploadPlan for a wrappedFolder when shouldBundle is set to false', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings, shouldBundle: false });
-			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				newStubPlanFolderUploadStats()
-			]);
+			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFolderUploadStats()]);
 
 			expect(bundlePlans.length).to.equal(0);
 
@@ -256,7 +250,7 @@ describe('The ArFSUploadPlanner class', () => {
 			emptyWrappedFolder.folders = [];
 
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
-				{ ...newStubPlanFolderUploadStats(), wrappedEntity: emptyWrappedFolder }
+				{ ...stubFolderUploadStats(), wrappedEntity: emptyWrappedFolder }
 			]);
 
 			// Expect no bundles for a single folder meta data upload

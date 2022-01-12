@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import { fakeArweave, newStubPlanFileUploadStats, stubArweaveAddress } from '../../tests/stubs';
+import { fakeArweave, stubFileUploadStats, stubArweaveAddress } from '../../tests/stubs';
 import { ArDriveCommunityOracle } from '../exports';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
 import { ByteCount, FeeMultiple, W } from '../types';
@@ -25,7 +25,7 @@ describe('ArFSCostCalculator class', () => {
 		communityOracle,
 		feeMultiple: new FeeMultiple(10)
 	});
-	const stubUploadStatsWithFile = newStubPlanFileUploadStats();
+	const stubUploadStatsWithFile = stubFileUploadStats();
 
 	it('returns the expected calculated upload plan for an upload plan with a bundlePlan that has no file upload stats', async () => {
 		const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
