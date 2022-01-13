@@ -806,7 +806,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	/** Assembles folder metadata prototype factory to be used in prepareFile */
+	/** Assembles folder metadata prototype factory to be used in prepareFolder */
 	private async getPrepFolderFactoryParams({
 		destDriveId,
 		destFolderId,
