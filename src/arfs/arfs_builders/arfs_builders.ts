@@ -131,7 +131,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		const reqURL = `${this.arweave.api.config.protocol}://${this.arweave.api.config.host}/${txId}`;
 		const axiosInstance = axios.create();
 		axiosRetry(axiosInstance, {
-			retries: 3,
+			retries: 5,
 			retryDelay: (retryNumber) => {
 				console.error(`Error! Retying request to ${reqURL}`);
 				return exponentialDelay(retryNumber);
