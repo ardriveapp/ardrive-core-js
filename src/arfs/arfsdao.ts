@@ -234,6 +234,8 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
 	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
 	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+	/** Cache the entities within folder for repeated name conflict checks */
+	entitiesInFolderCache: ArFSEntityCache<FolderID, ArFSFileOrFolderEntity[]>;
 }
 
 export class ArFSDAO extends ArFSDAOAnonymous {
@@ -251,7 +253,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			...defaultArFSAnonymousCache,
 			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
 			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
-			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10)
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
+			entitiesInFolderCache: new ArFSEntityCache<FolderID, ArFSFileOrFolderEntity[]>(10)
 		}
 	) {
 		super(arweave, undefined, undefined, caches);
@@ -1029,46 +1032,57 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		latestRevisionsOnly = true,
 		filterOnOwner = true
 	): Promise<ArFSFileOrFolderEntity[]> {
-		let cursor = '';
-		let hasNextPage = true;
-		const allEntities: ArFSFileOrFolderEntity[] = [];
-
-		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
-		const owner = await this.wallet.getAddress();
-
-		while (hasNextPage) {
-			const gqlQuery = buildQuery({
-				tags: [
-					{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
-					{ name: 'Entity-Type', value: ['file', 'folder'] }
-				],
-				cursor,
-				owner: filterOnOwner ? owner : undefined
-			});
-
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
-			const { edges } = transactions;
-			hasNextPage = transactions.pageInfo.hasNextPage;
-
-			const folders: Promise<ArFSFileOrFolderEntity>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const { tags } = node;
-
-				// Check entityType to determine which builder to use
-				const entityType = tags.find((t) => t.name === 'Entity-Type')?.value;
-				if (!entityType || (entityType !== 'file' && entityType !== 'folder')) {
-					throw new Error('Entity-Type tag is missing or invalid!');
-				}
-
-				return builder(node, entityType).build(node);
-			});
-
-			allEntities.push(...(await Promise.all(folders)));
+		const cacheKey = parentFolderId;
+		const cachedEntities = this.caches.entitiesInFolderCache.get(cacheKey);
+		if (cachedEntities) {
+			return cachedEntities;
 		}
-		return latestRevisionsOnly ? allEntities.filter(latestRevisionFilter) : allEntities;
+
+		return this.caches.entitiesInFolderCache.put(
+			cacheKey,
+			(async () => {
+				let cursor = '';
+				let hasNextPage = true;
+				const allEntities: ArFSFileOrFolderEntity[] = [];
+
+				// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
+				const owner = await this.wallet.getAddress();
+
+				while (hasNextPage) {
+					const gqlQuery = buildQuery({
+						tags: [
+							{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+							{ name: 'Entity-Type', value: ['file', 'folder'] }
+						],
+						cursor,
+						owner: filterOnOwner ? owner : undefined
+					});
+
+					const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+					const { data } = response.data;
+					const { transactions } = data;
+					const { edges } = transactions;
+					hasNextPage = transactions.pageInfo.hasNextPage;
+
+					const folders: Promise<ArFSFileOrFolderEntity>[] = edges.map(async (edge: GQLEdgeInterface) => {
+						const { node } = edge;
+						cursor = edge.cursor;
+						const { tags } = node;
+
+						// Check entityType to determine which builder to use
+						const entityType = tags.find((t) => t.name === 'Entity-Type')?.value;
+						if (!entityType || (entityType !== 'file' && entityType !== 'folder')) {
+							throw new Error('Entity-Type tag is missing or invalid!');
+						}
+
+						return builder(node, entityType).build(node);
+					});
+
+					allEntities.push(...(await Promise.all(folders)));
+				}
+				return latestRevisionsOnly ? allEntities.filter(latestRevisionFilter) : allEntities;
+			})()
+		);
 	}
 
 	async getPrivateEntitiesInFolder(

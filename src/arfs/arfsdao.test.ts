@@ -39,6 +39,7 @@ import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers'
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
+import { ArFSFileOrFolderEntity, FolderID } from '../exports';
 
 // const wallet = readJWKFile('./test_wallet.json');
 // const getStubDriveKey = async (): Promise<DriveKey> => {
@@ -60,6 +61,7 @@ describe('The ArFSDAO class', () => {
 	const privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
 	const privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
 	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
+	const entitiesInFolderCache = new ArFSEntityCache<FolderID, ArFSFileOrFolderEntity[]>(10);
 
 	let stubDriveKey: DriveKey;
 
@@ -84,7 +86,8 @@ describe('The ArFSDAO class', () => {
 			...defaultArFSAnonymousCache,
 			privateDriveCache,
 			privateFolderCache,
-			privateFileCache
+			privateFileCache,
+			entitiesInFolderCache
 		};
 		arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagSettings, caches);
 		stubDriveKey = await getStubDriveKey();
