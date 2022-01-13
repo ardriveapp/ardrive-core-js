@@ -213,3 +213,13 @@ export interface DownloadPublicFolderParameters {
 }
 
 export type DownloadPrivateFolderParameters = DownloadPublicFolderParameters & WithDriveKey;
+
+export interface DownloadPublicDriveParameters {
+	driveId: DriveID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner?: ArweaveAddress;
+}
+
+export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
