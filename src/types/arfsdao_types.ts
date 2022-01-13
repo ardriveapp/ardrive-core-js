@@ -13,7 +13,9 @@ import {
 	ArFSFileOrFolderEntity,
 	ArFSObjectTransactionData,
 	ArFSEntityToUpload,
-	WithDriveKey
+	WithDriveKey,
+	DriveKey,
+	FolderHierarchy
 } from '../exports';
 import { CreateDriveRewardSettings } from './cost_estimator_types';
 
@@ -124,3 +126,26 @@ export interface ArFSGetPublicChildFolderIdsParams {
 	owner: ArweaveAddress;
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
+
+export interface ArFSDownloadPublicFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+}
+
+export interface ArFSDownloadPrivateFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+	driveKey: DriveKey;
+}
+
+export interface SeparatedFolderHierarchy<FileType, FolderType> {
+	hierarchy: FolderHierarchy;
+	childFiles: FileType[];
+	childFolders: FolderType[];
+}
