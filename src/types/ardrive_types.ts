@@ -207,14 +207,12 @@ export interface DownloadPublicFileArguments {
 export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;
 
 export interface RenamePublicFileParams {
-	publicFile: ArFSPublicFile;
+	file: ArFSPublicFile;
 	newName: string;
 	owner: ArweaveAddress;
 	metaDataRewardSettings: RewardSettings;
 }
 
-export type RenamePrivateFileParams = RenamePublicFileParams &
-	WithDriveKey & {
-		publicFile: never;
-		privateFile: ArFSPrivateFile;
-	};
+export type RenamePrivateFileParams = RenamePublicFileParams & {
+	file: ArFSPrivateFile;
+} & WithDriveKey;
