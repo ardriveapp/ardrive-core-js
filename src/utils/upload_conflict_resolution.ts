@@ -25,8 +25,9 @@ export async function resolveFileNameConflicts({
 		return;
 	}
 
-	const hasSameLastModifiedDate =
-		existingNameAtDestConflict.existingFileConflict?.lastModifiedDate === wrappedFile.lastModifiedDate;
+	const hasSameLastModifiedDate = existingNameAtDestConflict.existingFileConflict?.lastModifiedDate
+		? wrappedFile.lastModifiedDate.equals(existingNameAtDestConflict.existingFileConflict?.lastModifiedDate)
+		: false;
 
 	if (conflictResolution !== askOnConflicts) {
 		if (existingNameAtDestConflict.existingFolderConflict) {

@@ -212,11 +212,31 @@ export interface Manifest {
 	paths: ManifestPathMap;
 }
 
-export interface DownloadPublicFileArguments {
+export interface DownloadPublicFileParameters {
 	fileId: FileID;
 	destFolderPath: string;
 	defaultFileName?: string;
 	// progressCB?: (pctTotal: number, pctFile: number, curFileName: string, curFilePath: string) => void
 }
 
-export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;
+export type DownloadPrivateFileParameters = DownloadPublicFileParameters & WithDriveKey;
+
+export interface DownloadPublicFolderParameters {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner?: ArweaveAddress;
+}
+
+export type DownloadPrivateFolderParameters = DownloadPublicFolderParameters & WithDriveKey;
+
+export interface DownloadPublicDriveParameters {
+	driveId: DriveID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner?: ArweaveAddress;
+}
+
+export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
