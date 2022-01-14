@@ -15,7 +15,9 @@ import {
 	ArFSEntityToUpload,
 	WithDriveKey,
 	ArFSFileDataPrototype,
-	ArFSFileMetaDataPrototype
+	ArFSFileMetaDataPrototype,
+	DriveKey,
+	FolderHierarchy
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -150,3 +152,25 @@ export type CommunityTipSettings = {
 	communityTipTarget: ArweaveAddress;
 	communityWinstonTip: Winston;
 };
+export interface ArFSDownloadPublicFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+}
+
+export interface ArFSDownloadPrivateFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+	driveKey: DriveKey;
+}
+
+export interface SeparatedFolderHierarchy<FileType, FolderType> {
+	hierarchy: FolderHierarchy;
+	childFiles: FileType[];
+	childFolders: FolderType[];
+}

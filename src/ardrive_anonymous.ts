@@ -6,7 +6,14 @@ import {
 	ArFSPublicFileOrFolderWithPaths
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DriveID, ArweaveAddress, DownloadPublicFileArguments } from './types';
+import {
+	DriveID,
+	ArweaveAddress,
+	DownloadPublicFileParameters,
+	DownloadPublicFolderParameters,
+	DownloadPublicDriveParameters,
+	ArFSDownloadPublicFolderParams
+} from './types';
 import {
 	GetPublicDriveParams,
 	GetPublicFolderParams,
@@ -81,7 +88,7 @@ export class ArDriveAnonymous extends ArDriveType {
 		return children;
 	}
 
-	async downloadPublicFile({ fileId, destFolderPath, defaultFileName }: DownloadPublicFileArguments): Promise<void> {
+	async downloadPublicFile({ fileId, destFolderPath, defaultFileName }: DownloadPublicFileParameters): Promise<void> {
 		assertFolderExists(destFolderPath);
 		const publicFile = await this.getPublicFile({ fileId });
 		const outputFileName = defaultFileName ?? publicFile.name;
@@ -89,5 +96,42 @@ export class ArDriveAnonymous extends ArDriveType {
 		const data = await this.arFsDao.getPublicDataStream(publicFile.dataTxId);
 		const fileToDownload = new ArFSPublicFileToDownload(publicFile, data, fullPath);
 		await fileToDownload.write();
+	}
+
+	async downloadPublicFolder({
+		folderId,
+		destFolderPath,
+		customFolderName,
+		maxDepth,
+		owner
+	}: DownloadPublicFolderParameters): Promise<void> {
+		if (!owner) {
+			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
+		}
+
+		return this.arFsDao.downloadPublicFolder({ folderId, destFolderPath, maxDepth, owner, customFolderName });
+	}
+
+	async downloadPublicDrive({
+		driveId,
+		destFolderPath,
+		customFolderName,
+		maxDepth,
+		owner
+	}: DownloadPublicDriveParameters): Promise<void> {
+		if (!owner) {
+			owner = await this.arFsDao.getOwnerForDriveId(driveId);
+		}
+
+		const drive = await this.arFsDao.getPublicDrive(driveId, owner);
+		const downloadFolderArgs: ArFSDownloadPublicFolderParams = {
+			folderId: drive.rootFolderId,
+			destFolderPath,
+			customFolderName,
+			maxDepth,
+			owner
+		};
+
+		return this.arFsDao.downloadPublicFolder(downloadFolderArgs);
 	}
 }

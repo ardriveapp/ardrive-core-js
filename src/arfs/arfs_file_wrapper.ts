@@ -1,5 +1,5 @@
-import { createWriteStream, readdirSync, readFileSync, Stats, statSync } from 'fs';
-import { basename, join as joinPath } from 'path';
+import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
+import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
@@ -14,10 +14,9 @@ import {
 	TransactionID
 } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
-import { ArFSPrivateFile, ArFSPublicFile } from './arfs_entities';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from './arfs_entities';
+import { ArFSPrivateFile, ArFSPublicFile, ArFSPublicFileOrFolderWithPaths, ArFSWithPath } from './arfs_entities';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -337,5 +336,31 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 		const writeStream = createWriteStream(this.localFilePath); // TODO: wrap 'fs' in a browser-safe class
 		const writePromise = pipelinePromise(this.dataStream, this.decryptingStream, writeStream);
 		return writePromise.finally(this.setLastModifiedDate);
+	}
+}
+
+export class ArFSFolderToDownload<P extends ArFSWithPath> {
+	constructor(readonly folderWithPaths: P, protected readonly customBaseName?: string) {}
+
+	getRelativePathOf(childPath: string): string {
+		const treeRootPath = this.folderWithPaths.path;
+		const treeRootParentPath = dirname(treeRootPath);
+		if (this.customBaseName) {
+			return joinPath(this.customBaseName, relativePath(treeRootPath, childPath));
+		} else {
+			return relativePath(treeRootParentPath, childPath);
+		}
+	}
+
+	ensureFolderExistence(folderPath: string, recursive = false): void {
+		try {
+			const stat = statSync(folderPath);
+			if (!stat.isDirectory()) {
+				// FIXME: this error will be caught by the try..catch
+				throw new Error(`Path is not a directory: "${folderPath}"`);
+			}
+		} catch {
+			mkdirSync(folderPath, { recursive });
+		}
 	}
 }

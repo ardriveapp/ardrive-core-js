@@ -3,6 +3,7 @@ import Arweave from 'arweave';
 import {
 	ArFSAllPublicFoldersOfDriveParams,
 	ArFSListPublicFolderParams,
+	ArFSDownloadPublicFolderParams,
 	EntityID,
 	GQLEdgeInterface,
 	TransactionID
@@ -26,7 +27,10 @@ import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/cons
 import axios, { AxiosRequestConfig } from 'axios';
 import { gatewayURL } from '../utils/constants';
 import { Readable } from 'stream';
+import { join as joinPath } from 'path';
+import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
+import { alphabeticalOrder } from '../utils/sort_functions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -373,5 +377,68 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		};
 		const response = await axios(requestConfig);
 		return response.data;
+	}
+
+	async downloadPublicFolder({
+		folderId,
+		destFolderPath,
+		customFolderName,
+		maxDepth,
+		owner
+	}: ArFSDownloadPublicFolderParams): Promise<void> {
+		const publicFolder = await this.getPublicFolder(folderId, owner);
+		// Fetch all of the folder entities within the drive
+		const driveIdOfFolder = publicFolder.driveId;
+		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPublicDrive({
+			driveId: driveIdOfFolder,
+			owner,
+			latestRevisionsOnly: true
+		});
+
+		// Feed entities to FolderHierarchy
+		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
+		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(publicFolder.entityId, maxDepth - 1);
+		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(publicFolder.entityId, maxDepth);
+		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
+			subFolderIDs.some((subFolderID) => subFolderID.equals(folder.entityId))
+		);
+
+		// Fetch all file entities within all Folders of the drive
+		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
+		const folderWrapper = new ArFSFolderToDownload(
+			new ArFSPublicFileOrFolderWithPaths(publicFolder, hierarchy),
+			customFolderName
+		);
+
+		const foldersWithPath = [publicFolder, ...childrenFolderEntities]
+			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.sort((a, b) => alphabeticalOrder(a.path, b.path));
+
+		for (const folder of foldersWithPath) {
+			// assert the existence of the folder in disk
+			const relativeFolderPath = folderWrapper.getRelativePathOf(folder.path);
+			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
+			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
+
+			// download child files into the folder
+			const childrenFiles = childrenFileEntities.filter(
+				(file) => `${file.parentFolderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */
+			);
+			for (const file of childrenFiles) {
+				const relativeFilePath = folderWrapper.getRelativePathOf(
+					new ArFSPublicFileOrFolderWithPaths(file, hierarchy).path
+				);
+				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
+
+				/*
+				 * FIXME: Downloading all files at once consumes a lot of resources.
+				 * TODO: Implement a download manager for downloading in paralel
+				 * Doing it sequentially for now
+				 */
+				const dataStream = await this.getPublicDataStream(file.dataTxId);
+				const fileWrapper = new ArFSPublicFileToDownload(file, dataStream, absoluteLocalFilePath);
+				await fileWrapper.write();
+			}
+		}
 	}
 }
