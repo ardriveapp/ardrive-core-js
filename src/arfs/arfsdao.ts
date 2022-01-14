@@ -93,7 +93,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	ArFSResult
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -1396,5 +1397,90 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		throw new Error(
 			`The retrieved auth tag does not have the length of ${authTagLength} bytes, but instead: ${data.length}`
 		);
+	}
+
+	async renamePublicFile(
+		publicFile: ArFSPublicFile,
+		newName: string,
+		metadataRewardSettings: RewardSettings
+	): Promise<ArFSResult> {
+		// TODO: make custom ArFSResult type
+
+		// Prepare meta data transaction
+		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
+			newName,
+			publicFile.size,
+			publicFile.lastModifiedDate,
+			publicFile.dataTxId,
+			publicFile.dataContentType
+		);
+		const fileMetadata = new ArFSPublicFileMetaDataPrototype(
+			metadataTxData,
+			publicFile.driveId,
+			publicFile.fileId,
+			publicFile.parentFolderId
+		);
+		const metaDataTx = await this.prepareArFSObjectTransaction({
+			objectMetaData: fileMetadata,
+			rewardSettings: metadataRewardSettings
+		});
+
+		// Upload meta data
+		if (!this.dryRun) {
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
+			while (!metaDataUploader.isComplete) {
+				await metaDataUploader.uploadChunk();
+			}
+		}
+
+		return {
+			created: [{ type: 'file', metadataTxId: publicFile.txId, entityId: publicFile.entityId }],
+			tips: [],
+			fees: {}
+		};
+	}
+
+	async renamePrivateFile(
+		privateFile: ArFSPrivateFile,
+		newName: string,
+		metadataRewardSettings: RewardSettings,
+		driveKey: DriveKey
+	): Promise<ArFSResult> {
+		// TODO: make custom ArFSResult type
+
+		// Prepare meta data transaction
+		const metadataTxData = await ArFSPrivateFileMetadataTransactionData.from(
+			newName,
+			privateFile.size,
+			privateFile.lastModifiedDate,
+			privateFile.dataTxId,
+			privateFile.dataContentType,
+			privateFile.entityId,
+			driveKey
+		);
+		const fileMetadata = new ArFSPrivateFileMetaDataPrototype(
+			metadataTxData,
+			privateFile.driveId,
+			privateFile.fileId,
+			privateFile.parentFolderId
+		);
+		const metaDataTx = await this.prepareArFSObjectTransaction({
+			objectMetaData: fileMetadata,
+			rewardSettings: metadataRewardSettings
+		});
+
+		// Upload meta data
+		if (!this.dryRun) {
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
+			while (!metaDataUploader.isComplete) {
+				await metaDataUploader.uploadChunk();
+			}
+		}
+
+		return {
+			created: [{ type: 'file', metadataTxId: privateFile.txId, entityId: privateFile.entityId }],
+			tips: [],
+			fees: {}
+		};
 	}
 }
