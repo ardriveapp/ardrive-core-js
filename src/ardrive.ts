@@ -3,8 +3,7 @@ import {
 	ArFSPrivateDrive,
 	ArFSPrivateFolder,
 	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths,
-	ArFSPublicFile
+	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
 import {
 	ArFSFolderToUpload,
@@ -47,7 +46,8 @@ import {
 	skipOnConflicts,
 	upsertOnConflicts,
 	emptyManifestResult,
-	RewardSettings
+	RenamePublicFileParams,
+	RenamePrivateFileParams
 } from './types';
 import {
 	CommunityTipParams,
@@ -1539,12 +1539,12 @@ export class ArDrive extends ArDriveAnonymous {
 		await fileToDownload.write();
 	}
 
-	async renamePublicFile(
-		publicFile: ArFSPublicFile,
-		newName: string,
-		// owner: ArweaveAddress,
-		metaDataRewardSettings: RewardSettings
-	): Promise<ArFSResult> {
+	async renamePublicFile({
+		publicFile,
+		newName,
+		// owner,
+		metaDataRewardSettings
+	}: RenamePublicFileParams): Promise<ArFSResult> {
 		if (publicFile.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1553,13 +1553,13 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.renamePublicFile(publicFile, newName, metaDataRewardSettings);
 	}
 
-	async renamePrivateFile(
-		privateFile: ArFSPrivateFile,
-		newName: string,
-		// owner: ArweaveAddress,
-		metaDataRewardSettings: RewardSettings,
-		driveKey: DriveKey
-	): Promise<ArFSResult> {
+	async renamePrivateFile({
+		privateFile,
+		newName,
+		// owner,
+		metaDataRewardSettings,
+		driveKey
+	}: RenamePrivateFileParams): Promise<ArFSResult> {
 		if (privateFile.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
