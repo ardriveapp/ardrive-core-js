@@ -149,7 +149,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId, owner);
 		if (entityNamesInParentFolder.includes(originalFileMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -207,7 +207,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(newParentFolderId, driveKey);
+		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
+			newParentFolderId,
+			owner,
+			driveKey
+		);
 		if (entityNamesInParentFolder.includes(originalFileMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -272,7 +276,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId, owner);
 		if (entityNamesInParentFolder.includes(originalFolderMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -343,7 +347,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(newParentFolderId, driveKey);
+		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
+			newParentFolderId,
+			owner,
+			driveKey
+		);
 		if (entityNamesInParentFolder.includes(originalFolderMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -415,16 +423,16 @@ export class ArDrive extends ArDriveAnonymous {
 			// Assign destination name and derive names already within provided destination folder
 			wrappedEntity.newName = destName;
 			const nameConflictInfo = driveKey
-				? await this.arFsDao.getPrivateNameConflictInfoInFolder(destFolderId, driveKey)
-				: await this.arFsDao.getPublicNameConflictInfoInFolder(destFolderId);
+				? await this.arFsDao.getPrivateNameConflictInfoInFolder(destFolderId, owner, driveKey)
+				: await this.arFsDao.getPublicNameConflictInfoInFolder(destFolderId, owner);
 
 			const resolveConflictParams = {
 				nameConflictInfo,
 				conflictResolution,
 				getConflictInfoFn: (folderId: FolderID) =>
 					driveKey
-						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, driveKey)
-						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId),
+						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, owner, driveKey)
+						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner),
 				prompts
 			};
 
@@ -678,7 +686,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(parentFolderId);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(parentFolderId, owner);
 		if (entityNamesInParentFolder.includes(folderName)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -726,7 +734,11 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(parentFolderId, driveKey);
+		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
+			parentFolderId,
+			owner,
+			driveKey
+		);
 		if (entityNamesInParentFolder.includes(folderName)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);

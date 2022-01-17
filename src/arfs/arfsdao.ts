@@ -1272,6 +1272,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getEntitiesInFolder(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
@@ -1282,9 +1283,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		let cursor = '';
 		let hasNextPage = true;
 		const allEntities: ArFSFileOrFolderEntity[] = [];
-
-		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
-		const owner = await this.wallet.getAddress();
 
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
@@ -1323,11 +1321,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateEntitiesInFolder(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		driveKey: DriveKey,
 		latestRevisionsOnly = true
 	): Promise<ArFSFileOrFolderEntity[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
+			owner,
 			(node, entityType) =>
 				entityType === 'folder'
 					? ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey)
@@ -1338,10 +1338,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		latestRevisionsOnly = true
 	): Promise<ArFSFileOrFolderEntity[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
+			owner,
 			(node, entityType) =>
 				entityType === 'folder'
 					? ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave)
@@ -1358,13 +1360,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return hierarchy.folderIdSubtreeFromFolderId(folderId, Number.MAX_SAFE_INTEGER);
 	}
 
-	async getPrivateEntityNamesInFolder(folderId: FolderID, driveKey: DriveKey): Promise<string[]> {
-		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+	async getPrivateEntityNamesInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveKey: DriveKey
+	): Promise<string[]> {
+		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicEntityNamesInFolder(folderId: FolderID): Promise<string[]> {
-		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+	async getPublicEntityNamesInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<string[]> {
+		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
