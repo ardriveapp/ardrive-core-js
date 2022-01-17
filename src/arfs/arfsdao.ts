@@ -178,6 +178,7 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
 	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
 	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+	privateConflictCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
 export class ArFSDAO extends ArFSDAOAnonymous {
@@ -195,7 +196,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			...defaultArFSAnonymousCache,
 			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
 			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
-			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10)
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
+			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
 		}
 	) {
 		super(arweave, undefined, undefined, caches);
@@ -1374,20 +1376,46 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicNameConflictInfoInFolder(folderId: FolderID): Promise<NameConflictInfo> {
-		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
-		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
-		};
+	async getPublicNameConflictInfoInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<NameConflictInfo> {
+		const cacheKey = { folderId, owner };
+		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
+		if (cachedConflictInfo) {
+			return cachedConflictInfo;
+		}
+
+		return this.caches.publicConflictCache.put(
+			cacheKey,
+			(async () => {
+				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+				return {
+					files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
+					folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+				};
+			})()
+		);
 	}
 
-	async getPrivateNameConflictInfoInFolder(folderId: FolderID, driveKey: DriveKey): Promise<NameConflictInfo> {
-		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
-		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
-		};
+	async getPrivateNameConflictInfoInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveKey: DriveKey
+	): Promise<NameConflictInfo> {
+		const cacheKey = { folderId, owner, driveKey };
+		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
+		if (cachedConflictInfo) {
+			return cachedConflictInfo;
+		}
+
+		return this.caches.publicConflictCache.put(
+			cacheKey,
+			(async () => {
+				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+				return {
+					files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
+					folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+				};
+			})()
+		);
 	}
 
 	async getPrivateChildrenFolderIds({

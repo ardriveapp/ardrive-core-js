@@ -41,6 +41,7 @@ import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
+import { NameConflictInfo } from '../utils/mapper_functions';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -56,22 +57,10 @@ describe('The ArFSDAO class', () => {
 	let caches: ArFSCache;
 	const privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
 	const privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
+	const privateConflictCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10);
 	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
 
 	let stubDriveKey: DriveKey;
-
-	// const stubFileMetaDataTrx = new ArFSPublicFileMetaDataPrototype(
-	// 	new ArFSPublicFileMetadataTransactionData(
-	// 		'Test Metadata',
-	// 		new ByteCount(10),
-	// 		new UnixTime(123456789),
-	// 		stubTransactionID,
-	// 		'text/plain'
-	// 	),
-	// 	stubEntityID,
-	// 	stubEntityID,
-	// 	stubEntityID
-	// );
 
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArFSDAO-Test', appVersion: '1.0' });
 
@@ -81,7 +70,8 @@ describe('The ArFSDAO class', () => {
 			...defaultArFSAnonymousCache,
 			privateDriveCache,
 			privateFolderCache,
-			privateFileCache
+			privateFileCache,
+			privateConflictCache
 		};
 		arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagSettings, caches);
 		stubDriveKey = await getStubDriveKey();
