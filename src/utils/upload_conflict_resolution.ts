@@ -1,3 +1,4 @@
+import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
 	askOnConflicts,
 	errorOnConflict,
@@ -6,10 +7,55 @@ import {
 	ResolveFileNameConflictsParams,
 	ResolveFolderNameConflictsParams,
 	skipOnConflicts,
+	UploadStats,
 	upsertOnConflicts,
 	useExistingFolder
 } from '../types';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
+
+/** Throws an error if the entitiesToUpload contain conflicting file names being sent to the same destination folder */
+export function assertLocalNameConflicts(entitiesToUpload: UploadStats[]): void {
+	const namesWithinUpload: { [destFolderId: string /* FolderID */]: string[] } = {};
+
+	for (const { destFolderId, wrappedEntity, destName } of entitiesToUpload) {
+		const destinationName = destName ?? wrappedEntity.destinationBaseName;
+
+		const existingName = namesWithinUpload[`${destFolderId}`]?.find((n) => n === destinationName);
+		if (existingName) {
+			throw new Error('Upload cannot contain multiple destination names to the same destination folder!');
+		}
+
+		if (wrappedEntity.entityType === 'folder') {
+			assertConflictsWithinFolder(wrappedEntity);
+		}
+
+		// Add local upload info to check for name conflicts within the upload itself
+		namesWithinUpload[`${destFolderId}`] = namesWithinUpload[`${destFolderId}`]
+			? [...namesWithinUpload[`${destFolderId}`], destinationName]
+			: [destinationName];
+	}
+}
+
+/** Recursive function to assert any name conflicts between entities within each folder */
+function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload) {
+	const namesWithinFolder: string[] = [];
+	for (const folder of wrappedFolder.folders) {
+		if (namesWithinFolder.includes(folder.destinationBaseName)) {
+			throw new Error('Folders cannot contain identical destination names!');
+		}
+		namesWithinFolder.push(folder.destinationBaseName);
+
+		// Recurse into each folder to check for  local conflicts
+		assertConflictsWithinFolder(folder);
+	}
+
+	for (const file of wrappedFolder.files) {
+		if (namesWithinFolder.includes(file.destinationBaseName)) {
+			throw new Error('Folders cannot contain identical destination names!');
+		}
+		namesWithinFolder.push(file.destinationBaseName);
+	}
+}
 
 export async function resolveFileNameConflicts({
 	wrappedFile,
