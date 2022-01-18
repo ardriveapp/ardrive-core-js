@@ -1470,6 +1470,24 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
+	async estimateAndAssertCostOfFileRename(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
+		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
+
+		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, metaDataBaseReward);
+
+		if (!walletHasBalance) {
+			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
+
+			throw new Error(
+				`Wallet balance of ${walletBalance} Winston is not enough (${metaDataBaseReward}) for file rename!`
+			);
+		}
+
+		return {
+			metaDataBaseReward
+		};
+	}
+
 	public async getDriveIdForFileId(fileId: FileID): Promise<DriveID> {
 		return this.arFsDao.getDriveIdForFileId(fileId);
 	}
@@ -1561,19 +1579,30 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	async renamePublicFile({
-		file,
-		newName,
-		owner,
-		metaDataRewardSettings
-	}: RenamePublicFileParams): Promise<ArFSResult> {
+	async renamePublicFile({ fileId, newName, owner }: RenamePublicFileParams): Promise<ArFSResult> {
 		await this.assertOwnerAddress(owner);
+		const file = await this.getPublicFile({ fileId, owner });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
 		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
 
-		const result = await this.arFsDao.renamePublicFile(file, newName, metaDataRewardSettings);
+		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
+			newName,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType
+		);
+		await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const result = await this.arFsDao.renamePublicFile({
+			fileId: file.fileId,
+			newName,
+			metadataRewardSettings,
+			owner
+		});
 
 		return {
 			created: [
@@ -1588,20 +1617,31 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	async renamePrivateFile({
-		file,
-		newName,
-		owner,
-		driveKey,
-		metaDataRewardSettings
-	}: RenamePrivateFileParams): Promise<ArFSResult> {
+	async renamePrivateFile({ fileId, newName, owner, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
 		await this.assertOwnerAddress(owner);
+		const file = await this.getPrivateFile({ fileId, owner, driveKey });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
 		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
-
-		const result = await this.arFsDao.renamePrivateFile(file, newName, metaDataRewardSettings, driveKey);
+		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
+			newName,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType,
+			file.fileId,
+			driveKey
+		);
+		await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const result = await this.arFsDao.renamePrivateFile({
+			fileId: file.fileId,
+			newName,
+			metadataRewardSettings,
+			owner,
+			driveKey
+		});
 
 		return {
 			created: [

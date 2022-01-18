@@ -130,7 +130,9 @@ import {
 	ArFSListPrivateFolderParams,
 	ArFSTxResult,
 	ArFSPrepareDataItemsParams,
-	ArFSPrepareObjectBundleParams
+	ArFSPrepareObjectBundleParams,
+	ArFSRenamePublicFileParams,
+	ArFSRenamePrivateFileParams
 } from '../types/arfsdao_types';
 import {
 	CreateDriveRewardSettings,
@@ -1400,12 +1402,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async renamePublicFile(
-		publicFile: ArFSPublicFile,
-		newName: string,
-		metadataRewardSettings: RewardSettings
-	): Promise<ArFSRenamePublicFileResult> {
-		// TODO: make custom ArFSResult type
+	async renamePublicFile({
+		fileId,
+		newName,
+		metadataRewardSettings,
+		owner
+	}: ArFSRenamePublicFileParams): Promise<ArFSRenamePublicFileResult> {
+		const publicFile = await this.getPublicFile(fileId, owner);
 
 		// Prepare meta data transaction
 		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
@@ -1442,26 +1445,27 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	async renamePrivateFile(
-		privateFile: ArFSPrivateFile,
-		newName: string,
-		metadataRewardSettings: RewardSettings,
-		driveKey: DriveKey
-	): Promise<ArFSRenamePrivateFileResult> {
-		// TODO: make custom ArFSResult type
+	async renamePrivateFile({
+		fileId,
+		newName,
+		metadataRewardSettings,
+		owner,
+		driveKey
+	}: ArFSRenamePrivateFileParams): Promise<ArFSRenamePrivateFileResult> {
+		const privateFile = await this.getPrivateFile(fileId, driveKey, owner);
 
 		// Prepare meta data transaction
-		const metadataTxData = await ArFSPrivateFileMetadataTransactionData.from(
+		const fileMetadataTxData = await ArFSPrivateFileMetadataTransactionData.from(
 			newName,
 			privateFile.size,
 			privateFile.lastModifiedDate,
 			privateFile.dataTxId,
 			privateFile.dataContentType,
-			privateFile.entityId,
+			privateFile.fileId,
 			driveKey
 		);
 		const fileMetadata = new ArFSPrivateFileMetaDataPrototype(
-			metadataTxData,
+			fileMetadataTxData,
 			privateFile.driveId,
 			privateFile.fileId,
 			privateFile.parentFolderId
