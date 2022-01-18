@@ -13,11 +13,14 @@ import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_fu
 
 export async function resolveFileNameConflicts({
 	wrappedFile,
+	destFolderId,
 	conflictResolution,
-	destinationFileName: destFileName,
-	nameConflictInfo,
+	getConflictInfoFn,
 	prompts
 }: ResolveFileNameConflictsParams): Promise<void> {
+	const destFileName = wrappedFile.destinationBaseName;
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
+
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFileName, nameConflictInfo);
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
@@ -114,12 +117,14 @@ export async function resolveFileNameConflicts({
 
 export async function resolveFolderNameConflicts({
 	wrappedFolder,
-	nameConflictInfo,
-	destinationFolderName: destFolderName,
 	prompts,
 	conflictResolution,
+	destFolderId,
 	getConflictInfoFn
 }: ResolveFolderNameConflictsParams): Promise<void> {
+	const destFolderName = wrappedFolder.destinationBaseName;
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
+
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFolderName, nameConflictInfo);
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
@@ -200,16 +205,16 @@ export async function resolveFolderNameConflicts({
 
 	if (wrappedFolder.existingId) {
 		// Re-using existing folder id, check for name conflicts inside the folder
-		const childConflictInfo = await getConflictInfoFn(wrappedFolder.existingId);
+		const destinationFolderId = wrappedFolder.existingId;
 
 		for await (const file of wrappedFolder.files) {
 			// Check each file upload within the folder for name conflicts
 			await resolveFileNameConflicts({
 				wrappedFile: file,
 				conflictResolution,
-				destinationFileName: file.getBaseName(),
-				nameConflictInfo: childConflictInfo,
-				prompts
+				destFolderId: destinationFolderId,
+				prompts,
+				getConflictInfoFn
 			});
 		}
 
@@ -219,8 +224,7 @@ export async function resolveFolderNameConflicts({
 				wrappedFolder: folder,
 				conflictResolution,
 				getConflictInfoFn,
-				destinationFolderName: folder.getBaseName(),
-				nameConflictInfo: childConflictInfo,
+				destFolderId: destinationFolderId,
 				prompts
 			});
 		}
