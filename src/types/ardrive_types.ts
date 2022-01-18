@@ -114,8 +114,7 @@ export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
 }
 
 /** Upload stats as determined by the ArDrive class */
-export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload>
-	extends Omit<ArDriveUploadStats<T>, 'destName'> {
+export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends ArDriveUploadStats<T> {
 	destDriveId: DriveID;
 	owner: ArweaveAddress;
 }

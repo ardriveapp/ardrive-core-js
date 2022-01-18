@@ -15,10 +15,15 @@ export async function resolveFileNameConflicts({
 	wrappedFile,
 	conflictResolution,
 	destinationFileName: destFileName,
-	nameConflictInfo,
-	prompts
+	prompts,
+	getConflictInfoFn,
+	destFolderId
 }: ResolveFileNameConflictsParams): Promise<void> {
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFileName, nameConflictInfo);
+
+	// Assign and preserve destination name
+	wrappedFile.destName = destFileName;
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
 		// There are no conflicts, continue file upload
@@ -102,7 +107,7 @@ export async function resolveFileNameConflicts({
 			}
 
 			// Use specified new file name
-			wrappedFile.newName = userInput.newFileName;
+			wrappedFile.destName = userInput.newFileName;
 			return;
 
 		case replaceOnConflicts:
@@ -114,13 +119,17 @@ export async function resolveFileNameConflicts({
 
 export async function resolveFolderNameConflicts({
 	wrappedFolder,
-	nameConflictInfo,
 	destinationFolderName: destFolderName,
 	prompts,
 	conflictResolution,
-	getConflictInfoFn
+	getConflictInfoFn,
+	destFolderId
 }: ResolveFolderNameConflictsParams): Promise<void> {
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFolderName, nameConflictInfo);
+
+	// Assign and preserve destination name
+	wrappedFolder.destName = destFolderName;
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
 		// There are no conflicts, continue folder upload
@@ -191,7 +200,7 @@ export async function resolveFolderNameConflicts({
 				}
 
 				// Use new folder name and upload all contents within new folder
-				wrappedFolder.newName = userInput.newFolderName;
+				wrappedFolder.destName = userInput.newFolderName;
 
 				// Conflict resolved by rename -- return early, do NOT recurse into this folder
 				return;
@@ -200,7 +209,7 @@ export async function resolveFolderNameConflicts({
 
 	if (wrappedFolder.existingId) {
 		// Re-using existing folder id, check for name conflicts inside the folder
-		const childConflictInfo = await getConflictInfoFn(wrappedFolder.existingId);
+		const destinationFolderId = wrappedFolder.existingId;
 
 		for await (const file of wrappedFolder.files) {
 			// Check each file upload within the folder for name conflicts
@@ -208,8 +217,9 @@ export async function resolveFolderNameConflicts({
 				wrappedFile: file,
 				conflictResolution,
 				destinationFileName: file.getBaseName(),
-				nameConflictInfo: childConflictInfo,
-				prompts
+				prompts,
+				destFolderId: destinationFolderId,
+				getConflictInfoFn
 			});
 		}
 
@@ -220,7 +230,7 @@ export async function resolveFolderNameConflicts({
 				conflictResolution,
 				getConflictInfoFn,
 				destinationFolderName: folder.getBaseName(),
-				nameConflictInfo: childConflictInfo,
+				destFolderId: destinationFolderId,
 				prompts
 			});
 		}

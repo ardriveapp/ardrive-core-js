@@ -72,11 +72,11 @@ export abstract class ArFSBaseEntityToUpload {
 	abstract getBaseName(): BaseName;
 	abstract entityType: EntityType;
 
-	newName?: string;
+	destName?: string;
 	existingId?: EntityID;
 
 	public get destinationBaseName(): string {
-		return this.newName ?? this.getBaseName();
+		return this.destName ?? this.getBaseName();
 	}
 }
 
@@ -176,7 +176,7 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 	}
 
 	public getBaseName(): BaseName {
-		return this.newName ?? this.destManifestName;
+		return this.destName ?? this.destManifestName;
 	}
 
 	public getFileDataBuffer(): Buffer {
