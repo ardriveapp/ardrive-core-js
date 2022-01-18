@@ -73,9 +73,14 @@ export abstract class ArFSEntityToUpload {
 	abstract getBaseFileName(): BaseFileName;
 
 	abstract lastModifiedDate: UnixTime;
+	abstract size: ByteCount;
 	existingId?: FileID;
 	newFileName?: string;
 	conflictResolution?: FileConflictResolution;
+
+	public get destinationBaseName(): string {
+		return this.newFileName ?? this.getBaseFileName();
+	}
 }
 
 export class ArFSManifestToUpload extends ArFSEntityToUpload {
