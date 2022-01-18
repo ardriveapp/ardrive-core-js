@@ -1539,38 +1539,22 @@ export class ArDrive extends ArDriveAnonymous {
 		await fileToDownload.write();
 	}
 
-	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID, owner: ArweaveAddress): Promise<void> {
-		const allSiblings = await this.listPublicFolder({
-			folderId,
-			maxDepth: 0,
-			includeRoot: false,
-			owner
-		});
+	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID): Promise<void> {
+		const allSiblingNames = await this.arFsDao.getPublicEntityNamesInFolder(folderId);
 
-		const collidesWithExistingSiblingName = allSiblings.reduce((accumulator, sibling) => {
-			return accumulator && sibling.name === name;
+		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
+			return accumulator && siblingName === name;
 		}, false);
 		if (collidesWithExistingSiblingName) {
 			throw new Error(`There already is an entity named that way`);
 		}
 	}
 
-	async assertUniqueNameWithinPrivateFolder(
-		name: string,
-		folderId: FolderID,
-		owner: ArweaveAddress,
-		driveKey: DriveKey
-	): Promise<void> {
-		const allSiblings = await this.listPrivateFolder({
-			folderId,
-			maxDepth: 0,
-			includeRoot: false,
-			owner,
-			driveKey
-		});
+	async assertUniqueNameWithinPrivateFolder(name: string, folderId: FolderID, driveKey: DriveKey): Promise<void> {
+		const allSiblingNames = await this.arFsDao.getPrivateEntityNamesInFolder(folderId, driveKey);
 
-		const collidesWithExistingSiblingName = allSiblings.reduce((accumulator, sibling) => {
-			return accumulator && sibling.name === name;
+		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
+			return accumulator && siblingName === name;
 		}, false);
 		if (collidesWithExistingSiblingName) {
 			throw new Error(`There already is an entity named that way`);
@@ -1578,19 +1562,21 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	async renamePublicFile({ file, newName, owner }: RenamePublicFileParams): Promise<ArFSResult> {
+		await this.assertOwnerAddress(owner);
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId, owner);
+		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
 
 		return this.arFsDao.renamePublicFile(file, newName, { feeMultiple: this.feeMultiple });
 	}
 
 	async renamePrivateFile({ file, newName, owner, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
+		await this.assertOwnerAddress(owner);
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, owner, driveKey);
+		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
 
 		return this.arFsDao.renamePrivateFile(file, newName, { feeMultiple: this.feeMultiple }, driveKey);
 	}
