@@ -1550,7 +1550,19 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		// this.assertUniqueNameWithinFolder(newName, publicFile.parentFolderId, owner);
 
-		return this.arFsDao.renamePublicFile(publicFile, newName, metaDataRewardSettings);
+		const result = await this.arFsDao.renamePublicFile(publicFile, newName, metaDataRewardSettings);
+
+		return {
+			created: [
+				{
+					type: result.type,
+					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
 	}
 
 	async renamePrivateFile({
@@ -1565,6 +1577,19 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		// this.assertUniqueNameWithinFolder(newName, publicFile.parentFolderId, owner);
 
-		return this.arFsDao.renamePrivateFile(privateFile, newName, metaDataRewardSettings, driveKey);
+		const result = await this.arFsDao.renamePrivateFile(privateFile, newName, metaDataRewardSettings, driveKey);
+
+		return {
+			created: [
+				{
+					type: result.type,
+					entityId: result.entityId,
+					key: urlEncodeHashKey(result.fileKey),
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
 	}
 }
