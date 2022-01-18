@@ -113,10 +113,11 @@ export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
 	driveKey?: DriveKey;
 }
 
-/** Upload stats determined by the ArDrive class */
+/** Upload stats as determined by the ArDrive class */
 export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload>
 	extends Omit<ArDriveUploadStats<T>, 'destName'> {
 	destDriveId: DriveID;
+	owner: ArweaveAddress;
 }
 
 export type FileUploadStats = UploadStats<ArFSDataToUpload>;
@@ -126,6 +127,11 @@ export interface UploadAllEntitiesParams {
 	entitiesToUpload: ArDriveUploadStats[];
 	conflictResolution?: FileNameConflictResolution;
 	prompts?: FolderConflictPrompts;
+}
+
+export interface ResolveBulkConflictsParams extends UploadAllEntitiesParams {
+	entitiesToUpload: UploadStats[];
+	conflictResolution: FileNameConflictResolution;
 }
 
 export interface BulkPublicUploadParams extends UploadParams {

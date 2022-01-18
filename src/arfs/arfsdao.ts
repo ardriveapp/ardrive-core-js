@@ -600,6 +600,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings,
 		communityTipSettings
 	}: ArFSUploadPublicFileParams): Promise<ArFSUploadEntitiesResult> {
+		const owner = await this.getDriveOwnerForFolderId(destDriveId);
+
 		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
 			if (isBundleRewardSetting(rewardSettings)) {
 				return {
@@ -610,7 +612,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 								{
 									wrappedEntity,
 									destDriveId,
-									destFolderId
+									destFolderId,
+									owner
 								}
 							],
 							communityTipSettings
@@ -624,7 +627,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
 						rewardSettings,
 						communityTipSettings
 					}
@@ -644,6 +647,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings,
 		communityTipSettings
 	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadEntitiesResult> {
+		const owner = await this.getDriveOwnerForFolderId(destDriveId);
+
 		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
 			if (isBundleRewardSetting(rewardSettings)) {
 				return {
@@ -655,7 +660,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									wrappedEntity,
 									destDriveId,
 									destFolderId,
-									driveKey
+									driveKey,
+									owner
 								}
 							],
 							communityTipSettings
@@ -669,7 +675,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				bundlePlans: [],
 				v2TxPlans: [
 					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey },
+						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey, owner },
 						rewardSettings,
 						communityTipSettings
 					}

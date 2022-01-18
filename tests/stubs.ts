@@ -452,7 +452,8 @@ export const stubCommunityContract = {
 
 const stubPlanUploadStats = {
 	destDriveId: stubEntityID,
-	destFolderId: stubEntityID
+	destFolderId: stubEntityID,
+	owner: stubArweaveAddress()
 };
 
 export const stubFileUploadStats = (): UploadStats<ArFSFileToUpload> => {

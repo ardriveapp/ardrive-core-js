@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { stubEntityID } from '../../tests/stubs';
+import { stubArweaveAddress, stubEntityID } from '../../tests/stubs';
 import { ArFSFileToUpload, ArFSFolderToUpload, wrapFileOrFolder } from '../arfs/arfs_file_wrapper';
 import { ByteCount, UploadStats } from '../types';
 import { BundlePacker, LowestIndexBundlePacker } from './bundle_packer';
@@ -13,7 +13,7 @@ describe('LowestIndexBundlePacker class', () => {
 		bundlePacker = new LowestIndexBundlePacker(new ByteCount(100), 10);
 	});
 
-	const partialUploadStats = { destDriveId: stubEntityID, destFolderId: stubEntityID };
+	const partialUploadStats = { destDriveId: stubEntityID, destFolderId: stubEntityID, owner: stubArweaveAddress() };
 
 	const wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
 	const wrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
