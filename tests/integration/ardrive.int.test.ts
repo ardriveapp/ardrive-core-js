@@ -1253,15 +1253,30 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('throws an error if two files with the same destination name are sent to the same destination folder', async () => {
-			const overSizedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
-			stub(overSizedFile, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
-
-			const folderWithOverSizedFiles = stubEmptyFolderStats();
-			folderWithOverSizedFiles.wrappedEntity.files = [overSizedFile, overSizedFile];
+			const wrappedFolder = stubEmptyFolderStats();
+			wrappedFolder.wrappedEntity.files = [
+				stubFileUploadStats().wrappedEntity,
+				stubFileUploadStats().wrappedEntity
+			];
 
 			await expectAsyncErrorThrow({
 				promiseToError: bundledArDrive.uploadAllEntities({
-					entitiesToUpload: [folderWithOverSizedFiles]
+					entitiesToUpload: [wrappedFolder]
+				}),
+				errorMessage: 'Folders cannot contain identical destination names!'
+			});
+		});
+
+		it('throws an error if two folders with the same destination name are sent to the same destination folder', async () => {
+			const wrappedFolder = stubEmptyFolderStats();
+			wrappedFolder.wrappedEntity.folders = [
+				stubEmptyFolderStats().wrappedEntity,
+				stubEmptyFolderStats().wrappedEntity
+			];
+
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [wrappedFolder]
 				}),
 				errorMessage: 'Folders cannot contain identical destination names!'
 			});

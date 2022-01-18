@@ -415,9 +415,10 @@ export class ArDrive extends ArDriveAnonymous {
 	 */
 	private async resolveBulkNameConflicts({
 		entitiesToUpload,
-		conflictResolution = upsertOnConflicts,
+		conflictResolution,
 		prompts
 	}: ResolveBulkConflictsParams): Promise<UploadStats[]> {
+		// First, assert any name conflicts within the upload itself
 		assertLocalNameConflicts(entitiesToUpload);
 
 		/** Accumulate resolved entities to pass back to the bulk upload method  */
