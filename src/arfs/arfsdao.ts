@@ -1436,7 +1436,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return {
 			created: [{ type: 'file', metadataTxId: new TransactionID(metaDataTx.id), entityId: publicFile.entityId }],
 			tips: [],
-			fees: {}
+			fees: { [metaDataTx.id]: W(metaDataTx.reward) }
 		};
 	}
 
@@ -1480,7 +1480,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return {
 			created: [{ type: 'file', metadataTxId: new TransactionID(metaDataTx.id), entityId: privateFile.entityId }],
 			tips: [],
-			fees: {}
+			fees: { [metaDataTx.id]: W(metaDataTx.reward) }
 		};
 	}
 }
