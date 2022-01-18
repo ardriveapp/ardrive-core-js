@@ -5,7 +5,7 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFileOrFolderWithPaths
 } from './arfs/arfs_entities';
-import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSDataToUpload } from './arfs/arfs_file_wrapper';
+import { ArFSPrivateFileToDownload, ArFSManifestToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -40,7 +40,9 @@ import {
 	FolderConflictPrompts,
 	emptyManifestResult,
 	UploadStats,
-	ArFSDownloadPrivateFolderParams
+	ArFSDownloadPrivateFolderParams,
+	ResolveBulkConflictsParams,
+	skipOnConflicts
 } from './types';
 import {
 	CommunityTipParams,
@@ -403,6 +405,77 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	/**
+	 * Utility method to resolve any name conflicts for a bulk upload
+	 *
+	 * @returns An array of upload stats that have had their name conflicts resolved
+	 */
+	private async resolveBulkNameConflicts({
+		entitiesToUpload,
+		conflictResolution = upsertOnConflicts,
+		prompts
+	}: ResolveBulkConflictsParams): Promise<UploadStats[]> {
+		/** Preserve names within each folder to check for conflicts between the entitiesToUpload themselves  */
+		const namesWithinUpload: { [destFolderId: string /* FolderID*/]: string[] } = {};
+
+		/** Accumulate resolved entities to pass back to the bulk upload method  */
+		const resolvedEntitiesToUpload: UploadStats[] = [];
+
+		for (const entity of entitiesToUpload) {
+			const { destFolderId, wrappedEntity, driveKey, owner } = entity;
+
+			const resolveConflictParams = {
+				conflictResolution,
+				getConflictInfoFn: (folderId: FolderID) =>
+					driveKey
+						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, owner, driveKey)
+						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner),
+				prompts,
+				destFolderId
+			};
+
+			const existingName = namesWithinUpload[`${destFolderId}`]?.find(
+				(n) => n === wrappedEntity.destinationBaseName
+			);
+			if (existingName) {
+				throw new Error('Upload cannot contain multiple destination names to the same destination folder!');
+			}
+
+			if (wrappedEntity.entityType === 'folder') {
+				await resolveFolderNameConflicts({
+					wrappedFolder: wrappedEntity,
+					...resolveConflictParams
+				});
+			} else {
+				await resolveFileNameConflicts({
+					wrappedFile: wrappedEntity,
+					...resolveConflictParams
+				});
+			}
+
+			switch (wrappedEntity.conflictResolution) {
+				case errorOnConflict:
+					throw new Error(errorMessage.entityNameExists);
+
+				case skipOnConflicts:
+					// Skip this folder without error, continue with other bulk upload paths
+					break;
+
+				case undefined:
+					// Conflicts are resolved, add this entity to the accumulating entitiesToUpload
+					resolvedEntitiesToUpload.push({ ...entity, wrappedEntity });
+
+					// Add local upload info to check for name conflicts within the upload itself
+					namesWithinUpload[`${destFolderId}`] = namesWithinUpload[`${destFolderId}`]
+						? [...namesWithinUpload[`${destFolderId}`], wrappedEntity.destinationBaseName]
+						: [wrappedEntity.destinationBaseName];
+					break;
+			}
+		}
+
+		return resolvedEntitiesToUpload;
+	}
+
+	/**
 	 * Upload any number of entities, each to their own destination folder and with their own potential driveKeys
 	 *
 	 * @remarks The presence of a drive key on the entitiesToUpload determines the privacy of each upload
@@ -412,74 +485,29 @@ export class ArDrive extends ArDriveAnonymous {
 		conflictResolution = upsertOnConflicts,
 		prompts
 	}: UploadAllEntitiesParams): Promise<ArFSResult> {
-		const allUploadStats: UploadStats[] = [];
+		const preparedEntities: UploadStats[] = [];
 
 		for (const { destFolderId, destName, wrappedEntity, driveKey } of entitiesToUpload) {
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
+
 			// Assert drive privacy and owner of the drive
 			const owner = await this.arFsDao.getOwnerAndAssertDrive(destDriveId, driveKey);
 			await this.assertOwnerAddress(owner);
 
-			// Assign destination name and derive names already within provided destination folder
+			// Assign destination name
 			wrappedEntity.newName = destName;
-			const nameConflictInfo = driveKey
-				? await this.arFsDao.getPrivateNameConflictInfoInFolder(destFolderId, owner, driveKey)
-				: await this.arFsDao.getPublicNameConflictInfoInFolder(destFolderId, owner);
 
-			const resolveConflictParams = {
-				nameConflictInfo,
-				conflictResolution,
-				getConflictInfoFn: (folderId: FolderID) =>
-					driveKey
-						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, owner, driveKey)
-						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner),
-				prompts
-			};
-
-			if (wrappedEntity.entityType === 'folder') {
-				await resolveFolderNameConflicts({
-					wrappedFolder: wrappedEntity,
-					destinationFolderName: wrappedEntity.destinationBaseName,
-					...resolveConflictParams
-				});
-
-				if (wrappedEntity.conflictResolution) {
-					if (wrappedEntity.conflictResolution === errorOnConflict) {
-						throw new Error(errorMessage.entityNameExists);
-					}
-				} else {
-					// Conflicts have resolved, add this folder to the accumulating uploadStats
-					allUploadStats.push({ destFolderId, destDriveId, wrappedEntity, driveKey });
-				}
-			} else {
-				const wrappedFile = wrappedEntity as ArFSDataToUpload;
-
-				await resolveFileNameConflicts({
-					wrappedFile,
-					destinationFileName: wrappedEntity.destinationBaseName,
-					...resolveConflictParams
-				});
-
-				if (wrappedFile.conflictResolution) {
-					if (wrappedFile.conflictResolution === errorOnConflict) {
-						// File cannot be sent up because it conflicts with an existing folder
-						throw new Error(errorMessage.entityNameExists);
-					}
-					// Otherwise we will skip this file without error
-				} else {
-					// If all conflicts have been resolved, add this file to the accumulating uploadStats
-					allUploadStats.push({
-						destFolderId,
-						destDriveId,
-						wrappedEntity: wrappedFile,
-						driveKey
-					});
-				}
-			}
+			preparedEntities.push({ destDriveId, destFolderId, owner, wrappedEntity, driveKey });
 		}
 
+		const resolvedEntities = await this.resolveBulkNameConflicts({
+			entitiesToUpload: preparedEntities,
+			conflictResolution,
+			prompts
+		});
+
 		// Plan the upload
-		const uploadPlan = await this.uploadPlanner.planUploadAllEntities(allUploadStats);
+		const uploadPlan = await this.uploadPlanner.planUploadAllEntities(resolvedEntities);
 
 		// Calculate rewardSettings and communityTipSettings for each upload plan
 		const { calculatedUploadPlan, totalWinstonPrice } = await this.costCalculator.calculateCostsForUploadPlan(
