@@ -33,7 +33,9 @@ import {
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
-	ArFSCreatePublicBundledDriveResult
+	ArFSCreatePublicBundledDriveResult,
+	ArFSRenamePrivateFileResult,
+	ArFSRenamePublicFileResult
 } from './arfs_entity_result_factory';
 import { ArFSEntityToUpload } from './arfs_file_wrapper';
 import {
@@ -93,8 +95,7 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface,
-	ArFSResult
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -1403,7 +1404,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		publicFile: ArFSPublicFile,
 		newName: string,
 		metadataRewardSettings: RewardSettings
-	): Promise<ArFSResult> {
+	): Promise<ArFSRenamePublicFileResult> {
 		// TODO: make custom ArFSResult type
 
 		// Prepare meta data transaction
@@ -1434,9 +1435,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		return {
-			created: [{ type: 'file', metadataTxId: new TransactionID(metaDataTx.id), entityId: publicFile.entityId }],
-			tips: [],
-			fees: { [metaDataTx.id]: W(metaDataTx.reward) }
+			type: 'file',
+			entityId: publicFile.fileId,
+			metaDataTxId: new TransactionID(metaDataTx.id),
+			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
 
@@ -1445,7 +1447,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		newName: string,
 		metadataRewardSettings: RewardSettings,
 		driveKey: DriveKey
-	): Promise<ArFSResult> {
+	): Promise<ArFSRenamePrivateFileResult> {
 		// TODO: make custom ArFSResult type
 
 		// Prepare meta data transaction
@@ -1477,10 +1479,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		}
 
+		// FIXME: remove this duplicated call
+		const fileKey: FileKey = await deriveFileKey(`${privateFile.fileId}`, driveKey);
+
 		return {
-			created: [{ type: 'file', metadataTxId: new TransactionID(metaDataTx.id), entityId: privateFile.entityId }],
-			tips: [],
-			fees: { [metaDataTx.id]: W(metaDataTx.reward) }
+			type: 'file',
+			entityId: privateFile.fileId,
+			fileKey,
+			metaDataTxId: new TransactionID(metaDataTx.id),
+			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
 }
