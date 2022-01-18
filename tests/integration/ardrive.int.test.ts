@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { ArDrive } from '../../src/ardrive';
 import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders';
-import { wrapFileOrFolder, ArFSFileToUpload } from '../../src/arfs/arfs_file_wrapper';
+import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
 import { deriveDriveKey } from '../../src/utils/crypto';
@@ -1348,6 +1348,67 @@ describe('ArDrive class - integrated', () => {
 				tips: [],
 				fees: {}
 			});
+		});
+
+		// Legacy bulk method test for to confirm backwards compatibility and coverage
+		it('returns the expected ArFSResult when using the deprecated public bulk folder method', async () => {
+			const wrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+
+			const { created, fees, tips } = await bundledArDrive.createPublicFolderAndUploadChildren({
+				parentFolderId: stubEntityID,
+				wrappedFolder
+			});
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(9);
+			expect(tips.length).to.equal(1);
+			expect(feeKeys.length).to.equal(1);
+
+			assertFolderCreatedResult(created[0]);
+			assertFolderCreatedResult(created[1]);
+			assertFolderCreatedResult(created[2]);
+			assertFolderCreatedResult(created[3]);
+
+			assertFileCreatedResult(created[4]);
+			assertFileCreatedResult(created[5]);
+			assertFileCreatedResult(created[6]);
+			assertFileCreatedResult(created[7]);
+
+			assertBundleCreatedResult(created[8]);
+
+			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11311);
+		});
+
+		// Legacy bulk method test for to confirm backwards compatibility and coverage
+		it('returns the expected ArFSResult when using the deprecated private bulk folder method', async () => {
+			const wrappedFolder = wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+
+			const { created, fees, tips } = await bundledArDrive.createPrivateFolderAndUploadChildren({
+				parentFolderId: stubEntityID,
+				wrappedFolder,
+				driveKey: await getStubDriveKey()
+			});
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(9);
+			expect(tips.length).to.equal(1);
+			expect(feeKeys.length).to.equal(1);
+
+			assertFolderCreatedResult(created[0], true);
+			assertFolderCreatedResult(created[1], true);
+			assertFolderCreatedResult(created[2], true);
+			assertFolderCreatedResult(created[3], true);
+
+			assertFileCreatedResult(created[4], true);
+			assertFileCreatedResult(created[5], true);
+			assertFileCreatedResult(created[6], true);
+			assertFileCreatedResult(created[7], true);
+
+			assertBundleCreatedResult(created[8]);
+
+			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11927);
 		});
 
 		it('returns the expected ArFSResult for two empty folders', async () => {
