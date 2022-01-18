@@ -133,7 +133,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		axiosRetry(axiosInstance, {
 			retries: 5,
 			retryDelay: (retryNumber) => {
-				console.error(`Error! Retying request to ${reqURL}`);
+				console.error(`Error! Retrying request to ${reqURL}`);
 				return exponentialDelay(retryNumber);
 			}
 		});
