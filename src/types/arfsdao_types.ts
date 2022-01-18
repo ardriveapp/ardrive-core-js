@@ -124,3 +124,11 @@ export interface ArFSGetPublicChildFolderIdsParams {
 	owner: ArweaveAddress;
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
+
+export interface ArFSRenamePublicFileParams {
+	fileId: FileID;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+	owner: ArweaveAddress;
+}
+export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams & WithDriveKey;
