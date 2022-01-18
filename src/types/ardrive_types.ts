@@ -16,8 +16,6 @@ import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper'
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
-import { RewardSettings } from './types';
-import { ArFSPrivateFile, ArFSPublicFile } from '../exports';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -207,14 +205,9 @@ export interface DownloadPublicFileArguments {
 export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDriveKey;
 
 export interface RenamePublicFileParams {
-	publicFile: ArFSPublicFile;
+	fileId: FileID;
 	newName: string;
 	owner: ArweaveAddress;
-	metaDataRewardSettings: RewardSettings;
 }
 
-export type RenamePrivateFileParams = RenamePublicFileParams &
-	WithDriveKey & {
-		publicFile: never;
-		privateFile: ArFSPrivateFile;
-	};
+export type RenamePrivateFileParams = RenamePublicFileParams & WithDriveKey;

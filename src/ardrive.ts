@@ -1539,18 +1539,20 @@ export class ArDrive extends ArDriveAnonymous {
 		await fileToDownload.write();
 	}
 
-	async renamePublicFile({
-		publicFile,
-		newName,
-		// owner,
-		metaDataRewardSettings
-	}: RenamePublicFileParams): Promise<ArFSResult> {
-		if (publicFile.name === newName) {
+	async renamePublicFile({ fileId, newName, owner }: RenamePublicFileParams): Promise<ArFSResult> {
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPublicFile({ fileId, owner });
+		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		// this.assertUniqueNameWithinFolder(newName, publicFile.parentFolderId, owner);
-
-		const result = await this.arFsDao.renamePublicFile(publicFile, newName, metaDataRewardSettings);
+		// await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const result = await this.arFsDao.renamePublicFile({
+			fileId: file.fileId,
+			newName,
+			metadataRewardSettings,
+			owner
+		});
 
 		return {
 			created: [
@@ -1565,19 +1567,21 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	async renamePrivateFile({
-		privateFile,
-		newName,
-		// owner,
-		metaDataRewardSettings,
-		driveKey
-	}: RenamePrivateFileParams): Promise<ArFSResult> {
-		if (privateFile.name === newName) {
+	async renamePrivateFile({ fileId, newName, owner, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPrivateFile({ fileId, owner, driveKey });
+		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		// this.assertUniqueNameWithinFolder(newName, publicFile.parentFolderId, owner);
-
-		const result = await this.arFsDao.renamePrivateFile(privateFile, newName, metaDataRewardSettings, driveKey);
+		// await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const result = await this.arFsDao.renamePrivateFile({
+			fileId: file.fileId,
+			newName,
+			metadataRewardSettings,
+			owner,
+			driveKey
+		});
 
 		return {
 			created: [
