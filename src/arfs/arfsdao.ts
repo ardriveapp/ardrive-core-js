@@ -35,15 +35,13 @@ import {
 	FileResult
 } from './arfs_entity_result_factory';
 import { ArFSFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
-import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
+import { getPrepFileParams, getPrepFolderFactoryParams, MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
-	ArFSPublicFileDataPrototype,
-	ArFSPrivateFileDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
 	ArFSPublicDriveMetaDataPrototype
@@ -54,8 +52,6 @@ import {
 	ArFSPrivateDriveTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
-	ArFSPublicFileDataTransactionData,
-	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
@@ -86,9 +82,7 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface,
-	FileUploadStats,
-	FolderUploadStats
+	GQLTransactionsResultInterface
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -760,96 +754,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	/** Assembles data and metadata prototype factories to be used in prepareFile */
-	private getPrepFileParams({
-		destDriveId,
-		destFolderId,
-		wrappedEntity: wrappedFile,
-		driveKey
-	}: FileUploadStats): PartialPrepareFileParams {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-		if (driveKey) {
-			return {
-				// Return factories for private prototypes
-				wrappedFile,
-				dataPrototypeFactoryFn: async (fileData, fileId) =>
-					new ArFSPrivateFileDataPrototype(
-						await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
-					),
-				metadataTxDataFactoryFn: async (fileId, dataTxId) => {
-					return new ArFSPrivateFileMetaDataPrototype(
-						await ArFSPrivateFileMetadataTransactionData.from(
-							wrappedFile.destinationBaseName,
-							fileSize,
-							lastModifiedDateMS,
-							dataTxId,
-							dataContentType,
-							fileId,
-							driveKey
-						),
-						destDriveId,
-						fileId,
-						destFolderId
-					);
-				}
-			};
-		}
-
-		return {
-			// Return factories for public prototypes
-			wrappedFile,
-			dataPrototypeFactoryFn: (fileData) =>
-				Promise.resolve(
-					new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
-				),
-			metadataTxDataFactoryFn: (fileId, dataTxId) =>
-				Promise.resolve(
-					new ArFSPublicFileMetaDataPrototype(
-						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.destinationBaseName,
-							fileSize,
-							lastModifiedDateMS,
-							dataTxId,
-							dataContentType
-						),
-						destDriveId,
-						fileId,
-						destFolderId
-					)
-				)
-		};
-	}
-
-	/** Assembles folder metadata prototype factory to be used in prepareFolder */
-	private async getPrepFolderFactoryParams({
-		destDriveId,
-		destFolderId,
-		wrappedEntity: wrappedFolder,
-		driveKey
-	}: FolderUploadStats): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
-		if (driveKey) {
-			// Return factory for private folder prototype
-			const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
-			return (folderId) =>
-				new ArFSPrivateFolderMetaDataPrototype(
-					destDriveId,
-					wrappedFolder.existingId ?? folderId,
-					folderData,
-					destFolderId
-				);
-		}
-
-		return (folderId) =>
-			// Return factory for public folder prototype
-			new ArFSPublicFolderMetaDataPrototype(
-				new ArFSPublicFolderTransactionData(wrappedFolder.destinationBaseName),
-				destDriveId,
-				wrappedFolder.existingId ?? folderId,
-				destFolderId
-			);
-	}
-
 	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 
@@ -867,7 +771,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					throw new Error('Error: Invalid v2 tx plan, file uploads must include communityTipSettings!');
 				}
 
-				const prepFileParams = this.getPrepFileParams({ ...uploadStats, wrappedEntity });
+				const prepFileParams = getPrepFileParams({ ...uploadStats, wrappedEntity });
 
 				let v2FileResult: FileResult;
 				if (metaDataRewardSettings) {
@@ -903,7 +807,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				// Send this folder metadata up as a v2 tx
 				const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
-					await this.getPrepFolderFactoryParams({ ...uploadStats, wrappedEntity }),
+					await getPrepFolderFactoryParams({ ...uploadStats, wrappedEntity }),
 					metaDataRewardSettings
 				);
 
@@ -932,7 +836,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					// Prepare folder data item and results
 					const { arFSObjects, folderId } = await this.prepareFolder({
-						folderPrototypeFactory: await this.getPrepFolderFactoryParams({
+						folderPrototypeFactory: await getPrepFolderFactoryParams({
 							...uploadStat,
 							wrappedEntity
 						}),
@@ -948,7 +852,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					}
 
 					// Prepare file data item and results
-					const prepFileParams = this.getPrepFileParams({ ...uploadStat, wrappedEntity });
+					const prepFileParams = getPrepFileParams({ ...uploadStat, wrappedEntity });
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
 						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData }),
@@ -978,7 +882,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				communityTipSettings
 			});
 
-			// Drop data items from memory
+			// Drop data items from memory immediately after the bundle has been assembled
 			dataItems = [];
 
 			// This bundle is now complete, send it off before starting a new one
@@ -991,7 +895,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			});
 		}
 
-		// We did it 😎
 		return results;
 	}
 
