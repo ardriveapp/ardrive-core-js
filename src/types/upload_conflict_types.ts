@@ -80,16 +80,18 @@ export type FileConflictResolutionFn = (params: {
 
 export interface ResolveNameConflictsParams {
 	conflictResolution: FileNameConflictResolution;
-	getConflictInfoFn: (parentFolderId: FolderID) => Promise<NameConflictInfo>;
-	destFolderId: FolderID;
+	nameConflictInfo: NameConflictInfo;
 }
 
 export interface ResolveFileNameConflictsParams extends ResolveNameConflictsParams {
+	destinationFileName: string;
 	wrappedFile: ArFSDataToUpload;
 	prompts?: FileConflictPrompts;
 }
 
 export interface ResolveFolderNameConflictsParams extends ResolveNameConflictsParams {
+	destinationFolderName: string;
 	wrappedFolder: ArFSFolderToUpload;
+	getConflictInfoFn: (parentFolderId: FolderID) => Promise<NameConflictInfo>;
 	prompts?: FolderConflictPrompts;
 }
