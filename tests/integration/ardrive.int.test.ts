@@ -1206,13 +1206,22 @@ describe('ArDrive class - integrated', () => {
 			assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
 		});
 
+		it('throws an error if two files with the same destination name are sent to the same destination folder', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [stubFileUploadStats(), stubFileUploadStats()]
+				}),
+				errorMessage: 'Upload cannot contain multiple destination names to the same destination folder!'
+			});
+		});
+
 		it('returns the expected bundled ArFSResult with two over-sized files', async () => {
 			const overSizedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
 			stub(overSizedFile, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
 			const overSizedFileStats = { ...stubFileUploadStats(), wrappedEntity: overSizedFile };
 
 			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
-				entitiesToUpload: [overSizedFileStats, overSizedFileStats]
+				entitiesToUpload: [{ ...overSizedFileStats, destName: 'Unique-Name' }, overSizedFileStats]
 			});
 
 			const feeKeys = Object.keys(fees);
@@ -1240,15 +1249,34 @@ describe('ArDrive class - integrated', () => {
 			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
 
 			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(3124);
+			expect(+fees[`${bundleTxId}`]).to.equal(3114);
 		});
 
-		it('returns the expected bundled ArFSResult with a folder that has two over-sized files', async () => {
+		it('throws an error if two files with the same destination name are sent to the same destination folder', async () => {
 			const overSizedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
 			stub(overSizedFile, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
 
 			const folderWithOverSizedFiles = stubEmptyFolderStats();
 			folderWithOverSizedFiles.wrappedEntity.files = [overSizedFile, overSizedFile];
+
+			await expectAsyncErrorThrow({
+				promiseToError: bundledArDrive.uploadAllEntities({
+					entitiesToUpload: [folderWithOverSizedFiles]
+				}),
+				errorMessage: 'Folders cannot contain identical destination names!'
+			});
+		});
+
+		it('returns the expected bundled ArFSResult with a folder that has two over-sized files', async () => {
+			const overSizedFileOne = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			stub(overSizedFileOne, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
+
+			const overSizedFileTwo = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			stub(overSizedFileTwo, 'destinationBaseName').get(() => 'Unique-Name');
+			stub(overSizedFileTwo, 'size').get(() => new ByteCount(+MAX_BUNDLE_SIZE + 1));
+
+			const folderWithOverSizedFiles = stubEmptyFolderStats();
+			folderWithOverSizedFiles.wrappedEntity.files = [overSizedFileOne, overSizedFileTwo];
 
 			const result = await bundledArDrive.uploadAllEntities({
 				entitiesToUpload: [folderWithOverSizedFiles]
@@ -1282,7 +1310,7 @@ describe('ArDrive class - integrated', () => {
 			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
 
 			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(3215);
+			expect(+fees[`${bundleTxId}`]).to.equal(3210);
 		});
 
 		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
@@ -1309,7 +1337,7 @@ describe('ArDrive class - integrated', () => {
 
 		it('returns the expected ArFSResult for two empty folders', async () => {
 			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
-				entitiesToUpload: [stubEmptyFolderStats(), stubEmptyFolderStats()],
+				entitiesToUpload: [{ ...stubEmptyFolderStats(), destName: 'Unique-Name' }, stubEmptyFolderStats()],
 				conflictResolution: 'ask',
 				prompts: stubbedFolderAskPrompts
 			});
@@ -1325,7 +1353,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[2]);
 
 			expect(feeKeys[0]).to.equal(`${created[2].bundleTxId!}`);
-			expect(+fees[`${created[2].bundleTxId}`]).to.equal(214);
+			expect(+fees[`${created[2].bundleTxId}`]).to.equal(209);
 		});
 
 		it('throws an error if a folder name conflicts with a file name', async () => {
