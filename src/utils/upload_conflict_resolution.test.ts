@@ -14,9 +14,6 @@ import {
 import { NameConflictInfo } from './mapper_functions';
 import { resolveFileNameConflicts, resolveFolderNameConflicts } from './upload_conflict_resolution';
 
-const matchingLastModifiedDate = new UnixTime(123456789);
-const differentLastModifiedDate = new UnixTime(987654321);
-
 const stubbedFileAskPrompts: FileConflictPrompts = {
 	fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
 	fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
@@ -27,12 +24,12 @@ const stubConflictInfo: NameConflictInfo = {
 		{
 			fileName: 'CONFLICTING_FILE_NAME',
 			fileId: stubEntityID,
-			lastModifiedDate: matchingLastModifiedDate
+			lastModifiedDate: new UnixTime(123456789)
 		},
 		{
 			fileName: 'ANOTHER_CONFLICTING_NAME',
 			fileId: stubEntityIDAltTwo,
-			lastModifiedDate: differentLastModifiedDate
+			lastModifiedDate: new UnixTime(987654321)
 		}
 	],
 	folders: [
@@ -65,7 +62,7 @@ describe('The resolveFileNameConflicts function', () => {
 	});
 
 	it('resolves wrappedFile.conflictResolution to undefined and uses the existing File ID when there is a file to file name conflict in the destination folder and the file has a DIFFERENT last modified date  and the resolution is set to upsert', async () => {
-		stub(wrappedFile, 'lastModifiedDate').get(() => differentLastModifiedDate);
+		stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(987654321));
 
 		await resolveFileNameConflicts({
 			wrappedFile,
@@ -80,7 +77,7 @@ describe('The resolveFileNameConflicts function', () => {
 	});
 
 	it('resolves wrappedFile.conflictResolution to upsert when there is a file to file name conflict in the destination folder and the file has a MATCHING last modified date and the resolution is set to upsert', async () => {
-		stub(wrappedFile, 'lastModifiedDate').get(() => matchingLastModifiedDate);
+		stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(123456789));
 
 		await resolveFileNameConflicts({
 			wrappedFile,
