@@ -1,5 +1,5 @@
 import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston } from '../types';
+import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, EntityType } from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -46,6 +46,13 @@ export interface ArFSMoveFileResult extends ArFSMoveEntityResult {
 	dataTxId: TransactionID;
 }
 
+export type ArFSRenameEntityResult = ArFSWriteResult;
+
+export interface ArFSRenameFileResult extends ArFSRenameEntityResult {
+	type: EntityType;
+	entityId: FileID;
+}
+
 export type WithDriveKey = { driveKey: DriveKey };
 type WithFileKey = { fileKey: FileKey };
 
@@ -66,6 +73,9 @@ export type ArFSMovePrivateFolderResult = ArFSMoveEntityResult & WithDriveKey;
 
 export type ArFSMovePublicFileResult = ArFSMoveFileResult;
 export type ArFSMovePrivateFileResult = ArFSMoveFileResult & WithFileKey;
+
+export type ArFSRenamePublicFileResult = ArFSRenameFileResult;
+export type ArFSRenamePrivateFileResult = ArFSRenameFileResult & WithFileKey;
 
 // Result factory function types
 export type ArFSMoveEntityResultFactory<R extends ArFSMoveEntityResult> = (result: ArFSMoveEntityResult) => R;
