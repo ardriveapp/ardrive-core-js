@@ -68,7 +68,8 @@ export function getPrepFileParams({
 	destDriveId,
 	destFolderId,
 	wrappedEntity: wrappedFile,
-	driveKey
+	driveKey,
+	customContentType
 }: FileUploadStats): PartialPrepareFileParams {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -87,7 +88,7 @@ export function getPrepFileParams({
 						fileSize,
 						lastModifiedDateMS,
 						dataTxId,
-						dataContentType,
+						customContentType ?? dataContentType,
 						fileId,
 						driveKey
 					),
@@ -104,7 +105,10 @@ export function getPrepFileParams({
 		wrappedFile,
 		dataPrototypeFactoryFn: (fileData) =>
 			Promise.resolve(
-				new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
+				new ArFSPublicFileDataPrototype(
+					new ArFSPublicFileDataTransactionData(fileData),
+					customContentType ?? dataContentType
+				)
 			),
 		metadataTxDataFactoryFn: (fileId, dataTxId) =>
 			Promise.resolve(
@@ -114,7 +118,7 @@ export function getPrepFileParams({
 						fileSize,
 						lastModifiedDateMS,
 						dataTxId,
-						dataContentType
+						customContentType ?? dataContentType
 					),
 					destDriveId,
 					fileId,
