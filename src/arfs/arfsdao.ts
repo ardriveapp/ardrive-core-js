@@ -1483,8 +1483,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		}
 
-		// FIXME: remove this duplicated call
-		const fileKey: FileKey = await deriveFileKey(`${privateFile.fileId}`, driveKey);
+		const fileKey = fileMetadataTxData.fileKey;
 
 		return {
 			type: 'file',
