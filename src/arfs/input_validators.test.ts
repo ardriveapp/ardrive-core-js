@@ -7,7 +7,9 @@ describe('input validators', () => {
 			'.bashrc',
 			'===============================================================================================================================================================================================================================================================',
 			'abcdefghijklmnopqrstuvwxyz',
-			'ñññññññññññññññññ.png'
+			'ñññññññññññññññññ.png',
+			'valid name with     spaces.txt',
+			'valid.name.with.....dots.txt'
 		];
 		const tooLongName =
 			'+===============================================================================================================================================================================================================================================================';
@@ -21,6 +23,16 @@ describe('input validators', () => {
 			'<<<<<<<<<<.png',
 			'>>>>>>>>>>.png',
 			'||||||||||.png'
+		];
+		const namesWithLeadingSpaces = [
+			'  thisIsAFileNameWithTwoLeadingSpaces.doc',
+			' thisFilenameHasOneSingleSpace.doc'
+		];
+		const namesWithTrailingSpacesOrDots = [
+			'soWeHaveAFileNameThatEndsWithADot.',
+			'thenAFileNameWithMultipleDots...',
+			'aFileNameWithATrailingSpace ',
+			'anotherFileNameWithSpaces   '
 		];
 
 		it('returns true when fed with an ArFS compliant name', () => {
@@ -45,6 +57,22 @@ describe('input validators', () => {
 					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
 				);
 			});
+		});
+
+		it('throws when the name contains leading spaces', () => {
+			namesWithLeadingSpaces.forEach((invalidName) =>
+				expect(() => assertValidName(invalidName)).to.throw(
+					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
+				)
+			);
+		});
+
+		it('throws when the name contains trailing dots or spaces', () => {
+			namesWithTrailingSpacesOrDots.forEach((invalidName) =>
+				expect(() => assertValidName(invalidName)).to.throw(
+					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
+				)
+			);
 		});
 	});
 });
