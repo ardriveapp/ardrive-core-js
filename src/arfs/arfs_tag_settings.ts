@@ -1,12 +1,11 @@
-import { GQLTagInterface, TipType } from '../types';
+import { DataContentType, GQLTagInterface, TipType } from '../types';
 import {
 	CURRENT_ARFS_VERSION,
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
 	fakePrivateCipherIVTag,
 	privateCipherTag,
-	privateOctetContentTypeTag,
-	publicJsonContentTypeTag
+	privateOctetContentTypeTag
 } from '../utils/constants';
 
 // Tag Limits to be in compliance with ANS-104:
@@ -78,10 +77,10 @@ export class ArFSTagSettings {
 		return this.assembleTags({ tags: [...this.baseBundleTags, ...tags], excludedTagNames });
 	}
 
-	getFileDataTags(isPrivate: boolean): GQLTagInterface[] {
+	getFileDataTags(isPrivate: boolean, dataContentType: DataContentType): GQLTagInterface[] {
 		const tags = isPrivate
 			? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
-			: [publicJsonContentTypeTag];
+			: [{ name: 'Content-Type', value: dataContentType }];
 
 		return this.assembleTags({ tags: [...this.baseAppTags, ...tags] });
 	}

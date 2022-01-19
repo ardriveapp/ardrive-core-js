@@ -84,6 +84,7 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 	abstract gatherFileInfo(): FileInfo;
 	abstract getFileDataBuffer(): Buffer;
 
+	abstract contentType: DataContentType;
 	abstract lastModifiedDate: UnixTime;
 	abstract size: ByteCount;
 	conflictResolution?: FileConflictResolution;
@@ -170,9 +171,11 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 	}
 
 	public gatherFileInfo(): FileInfo {
-		const dataContentType = MANIFEST_CONTENT_TYPE;
+		return { dataContentType: this.contentType, lastModifiedDateMS: this.lastModifiedDateMS, fileSize: this.size };
+	}
 
-		return { dataContentType, lastModifiedDateMS: this.lastModifiedDateMS, fileSize: this.size };
+	public get contentType(): DataContentType {
+		return MANIFEST_CONTENT_TYPE;
 	}
 
 	public getBaseName(): BaseName {

@@ -84,7 +84,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
 			fileDataByteCount,
-			this.arFSTagSettings.getFileDataTags(isPrivate)
+			this.arFSTagSettings.getFileDataTags(isPrivate, wrappedFile.contentType)
 		);
 		const metaDataByteCountAsDataItem = this.byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),

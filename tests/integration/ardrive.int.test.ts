@@ -1144,7 +1144,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(3108), W(183), W(1), undefined, undefined, true);
+			assertUploadManifestExpectations(result, W(3127), W(183), W(1), undefined, undefined, true);
 		});
 
 		it('returns the correct ArFSManifestResult when using special characters', async () => {
@@ -1377,7 +1377,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
-			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11311);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11287);
 		});
 
 		// Legacy bulk method test for to confirm backwards compatibility and coverage
