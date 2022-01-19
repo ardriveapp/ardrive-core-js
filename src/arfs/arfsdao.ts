@@ -1273,10 +1273,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					const reqURL = `${this.arweave.api.config.protocol}://${this.arweave.api.config.host}/${edgeOfFirstDrive.node.id}`;
 					const axiosInstance = axios.create();
+					const maxRetries = 5;
 					axiosRetry(axiosInstance, {
-						retries: 5,
+						retries: maxRetries,
 						retryDelay: (retryNumber) => {
-							console.error(`Error! Retying request to ${reqURL}`);
+							console.error(`Retry attempt ${retryNumber}/${maxRetries} of request to ${reqURL}`);
 							return exponentialDelay(retryNumber);
 						}
 					});

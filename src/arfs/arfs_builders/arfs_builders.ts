@@ -130,10 +130,11 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	async getDataForTxID(txId: TransactionID): Promise<Buffer> {
 		const reqURL = `${this.arweave.api.config.protocol}://${this.arweave.api.config.host}/${txId}`;
 		const axiosInstance = axios.create();
+		const maxRetries = 5;
 		axiosRetry(axiosInstance, {
-			retries: 5,
+			retries: maxRetries,
 			retryDelay: (retryNumber) => {
-				console.error(`Error! Retrying request to ${reqURL}`);
+				console.error(`Retry attempt ${retryNumber}/${maxRetries} of request to ${reqURL}`);
 				return exponentialDelay(retryNumber);
 			}
 		});
