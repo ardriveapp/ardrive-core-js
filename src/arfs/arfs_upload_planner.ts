@@ -78,13 +78,17 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 * 	meta data will be bundled if there will be multiple entities uploaded
 	 */
 	private async planFile(planFileParams: PlanFileParams): Promise<void> {
-		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = planFileParams;
+		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey, customContentType } = planFileParams;
 		const isPrivate = driveKey !== undefined;
-		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
+		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(
+			wrappedFile,
+			isPrivate,
+			customContentType
+		);
 
 		const fileDataItemByteCount = this.byteCountAsDataItem(
 			fileDataByteCount,
-			this.arFSTagSettings.getFileDataTags(isPrivate, wrappedFile.contentType)
+			this.arFSTagSettings.getFileDataTags(isPrivate, customContentType ?? wrappedFile.contentType)
 		);
 		const metaDataByteCountAsDataItem = this.byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),

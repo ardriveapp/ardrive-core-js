@@ -78,7 +78,10 @@ export function getPublicCreateDriveEstimationPrototypes({
 	};
 }
 
-export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUpload): ArFSPublicFileMetaDataPrototype {
+export function getPublicUploadFileEstimationPrototype(
+	wrappedFile: ArFSDataToUpload,
+	customContentType?: string
+): ArFSPublicFileMetaDataPrototype {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
 	return new ArFSPublicFileMetaDataPrototype(
@@ -87,7 +90,7 @@ export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUp
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,
-			dataContentType
+			customContentType ?? dataContentType
 		),
 		fakeEntityId,
 		fakeEntityId,
@@ -96,7 +99,8 @@ export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUp
 }
 
 export async function getPrivateUploadFileEstimationPrototype(
-	wrappedFile: ArFSDataToUpload
+	wrappedFile: ArFSDataToUpload,
+	customContentType?: string
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
 	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -106,7 +110,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 			fileSize,
 			lastModifiedDateMS,
 			fakeTxID,
-			dataContentType,
+			customContentType ?? dataContentType,
 			fakeEntityId,
 			await getFakeDriveKey()
 		),
@@ -118,11 +122,12 @@ export async function getPrivateUploadFileEstimationPrototype(
 
 export async function getFileEstimationInfo(
 	wrappedFile: ArFSDataToUpload,
-	isPrivate: boolean
+	isPrivate: boolean,
+	customContentType?: string
 ): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
-		? await getPrivateUploadFileEstimationPrototype(wrappedFile)
-		: getPublicUploadFileEstimationPrototype(wrappedFile);
+		? await getPrivateUploadFileEstimationPrototype(wrappedFile, customContentType)
+		: getPublicUploadFileEstimationPrototype(wrappedFile, customContentType);
 
 	const fileDataByteCount = isPrivate ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
 
