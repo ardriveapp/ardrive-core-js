@@ -174,6 +174,12 @@ describe('ArFSFileToUpload class', () => {
 		expect(+lastModifiedDateMS).to.equal(+expectedLastModifiedDate);
 	});
 
+	it('contentType resolves to octet stream for a file with no extension', () => {
+		const wrappedFile = wrapFileOrFolder('tests/stub_files/file_with_no_extension') as ArFSFileToUpload;
+
+		expect(wrappedFile.contentType).to.equal('application/octet-stream');
+	});
+
 	it('getFileDataBuffer function returns a compatible Buffer we can use to upload', () => {
 		expect(fileToUpload.getFileDataBuffer() instanceof Buffer).to.be.true;
 	});
