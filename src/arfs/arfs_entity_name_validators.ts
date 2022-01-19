@@ -8,7 +8,7 @@ const RESERVED_CHARACTERS = ['\\\\', '/', ':', '*', '?', '"', '<', '>', '|'];
 const VALID_FILE_NAME_REGEXP = new RegExp(`^(?:(?!^\\s)[^${RESERVED_CHARACTERS.join('')}](?![. ]$))+$`);
 const MAX_VALID_NAME_LENGTH = 255;
 
-export function assertValidName(name: string): boolean {
+export function assertValidArFSFileName(name: string): boolean {
 	if (name.length > MAX_VALID_NAME_LENGTH || name.length === 0) {
 		throw new Error(`The file name must contain between 0 and ${MAX_VALID_NAME_LENGTH} characters`);
 	}
