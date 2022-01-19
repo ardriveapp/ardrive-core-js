@@ -43,13 +43,13 @@ describe('entity name validators', () => {
 
 		it('throws when the name is too long', () => {
 			expect(() => assertValidArFSFileName(tooLongName)).to.throw(
-				'The file name must contain between 0 and 255 characters'
+				'The file name must contain between 1 and 255 characters'
 			);
 		});
 
 		it('throws when the name is too short', () => {
 			expect(() => assertValidArFSFileName('')).to.throw(
-				'The file name must contain between 0 and 255 characters'
+				'The file name must contain between 1 and 255 characters'
 			);
 		});
 
