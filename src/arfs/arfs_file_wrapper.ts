@@ -11,7 +11,8 @@ import {
 	ManifestPathMap,
 	TransactionID,
 	EntityID,
-	EntityType
+	EntityType,
+	PRIVATE_CONTENT_TYPE
 } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
@@ -227,7 +228,13 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 	}
 
 	public get contentType(): DataContentType {
-		return extToMime(this.filePath);
+		const mimeType = extToMime(this.filePath);
+
+		if (mimeType === 'unknown') {
+			// If mime type cannot be derived from the file extension, use octet stream content type
+			return PRIVATE_CONTENT_TYPE;
+		}
+		return mimeType;
 	}
 
 	public getBaseName(): BaseName {
