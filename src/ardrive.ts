@@ -94,6 +94,7 @@ import {
 } from './pricing/estimation_prototypes';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { assertValidArFSFileName } from './arfs/arfs_entity_name_validators';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1548,9 +1549,8 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID): Promise<void> {
 		const allSiblingNames = await this.arFsDao.getPublicEntityNamesInFolder(folderId);
-
 		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
-			return accumulator && siblingName === name;
+			return accumulator || siblingName === name;
 		}, false);
 		if (collidesWithExistingSiblingName) {
 			throw new Error(`There already is an entity named that way`);
@@ -1559,9 +1559,8 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async assertUniqueNameWithinPrivateFolder(name: string, folderId: FolderID, driveKey: DriveKey): Promise<void> {
 		const allSiblingNames = await this.arFsDao.getPrivateEntityNamesInFolder(folderId, driveKey);
-
 		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
-			return accumulator && siblingName === name;
+			return accumulator || siblingName === name;
 		}, false);
 		if (collidesWithExistingSiblingName) {
 			throw new Error(`There already is an entity named that way`);
@@ -1574,8 +1573,8 @@ export class ArDrive extends ArDriveAnonymous {
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
+		await assertValidArFSFileName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
-
 		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
 			newName,
 			file.size,
@@ -1583,9 +1582,8 @@ export class ArDrive extends ArDriveAnonymous {
 			file.dataTxId,
 			file.dataContentType
 		);
-		await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
-
-		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePublicFile({
 			fileId: file.fileId,
 			newName,
@@ -1612,6 +1610,7 @@ export class ArDrive extends ArDriveAnonymous {
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
+		await assertValidArFSFileName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
 		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
 			newName,
@@ -1622,8 +1621,8 @@ export class ArDrive extends ArDriveAnonymous {
 			file.fileId,
 			driveKey
 		);
-		await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
-		const metadataRewardSettings = { feeMultiple: this.feeMultiple };
+		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePrivateFile({
 			fileId: file.fileId,
 			newName,
