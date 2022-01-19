@@ -56,23 +56,21 @@ describe('entity name validators', () => {
 		it('throws when the name contains reserved characters', () => {
 			namesWithReservedCharacters.forEach((invalidName) => {
 				expect(() => assertValidArFSFileName(invalidName)).to.throw(
-					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
+					"The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '\"', '<', '>', '|')"
 				);
 			});
 		});
 
 		it('throws when the name contains leading spaces', () => {
 			namesWithLeadingSpaces.forEach((invalidName) =>
-				expect(() => assertValidArFSFileName(invalidName)).to.throw(
-					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
-				)
+				expect(() => assertValidArFSFileName(invalidName)).to.throw('The file name cannot start with spaces')
 			);
 		});
 
 		it('throws when the name contains trailing dots or spaces', () => {
 			namesWithTrailingSpacesOrDots.forEach((invalidName) =>
 				expect(() => assertValidArFSFileName(invalidName)).to.throw(
-					'The file name cannot contain reserved characters, cannot start with space or end with a dot or space'
+					'The file name cannot have trailing dots or spaces'
 				)
 			);
 		});
