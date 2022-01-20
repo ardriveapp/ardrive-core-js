@@ -503,7 +503,7 @@ describe('assertConflictsWithinFolder function', () => {
 		);
 	});
 
-	it('succeeds without error if a folder has a files and a folders with the different destinationBaseNames', () => {
+	it('succeeds without error if a folder has multiple files and multiple folders all with different destinationBaseNames', () => {
 		const folderToUpload = stubEmptyFolderToUpload();
 		folderToUpload.files = [stubFileToUpload('diff name 0'), stubFileToUpload('diff name 1')];
 		folderToUpload.folders = [stubEmptyFolderToUpload('diff name 2'), stubEmptyFolderToUpload('diff name 3')];
@@ -523,7 +523,7 @@ describe('assertLocalNameConflicts function', () => {
 		);
 	});
 
-	it('throws an error if an upload has a multiple files with the same destFolderId and destName', () => {
+	it('throws an error if an upload has multiple files with the same destFolderId and destName', () => {
 		const file1UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID), destName: 'same-name' };
 		const file2UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID), destName: 'same-name' };
 
@@ -533,7 +533,7 @@ describe('assertLocalNameConflicts function', () => {
 		);
 	});
 
-	it('throws an error if an upload has a multiple folders with the same destFolderId and destName', () => {
+	it('throws an error if an upload has multiple folders with the same destFolderId and destName', () => {
 		const folder1UploadStats: UploadStats = { ...stubEmptyFolderStats(stubEntityID), destName: 'same-name' };
 		const folder2UploadStats: UploadStats = { ...stubEmptyFolderStats(stubEntityID), destName: 'same-name' };
 
@@ -543,7 +543,7 @@ describe('assertLocalNameConflicts function', () => {
 		);
 	});
 
-	it('throws an error if an upload has multiple files with the same destFolderId and same destinationBaseName derived from the wrappedEntity', () => {
+	it('throws an error if an upload has multiple files with the same destFolderId and the same destinationBaseName derived from the wrappedEntity', () => {
 		const file1UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID) };
 		const file2UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID) };
 
@@ -553,14 +553,14 @@ describe('assertLocalNameConflicts function', () => {
 		);
 	});
 
-	it('succeeds without error if an upload has a multiple files with the same destName but different destFolderIds', () => {
+	it('succeeds without error if an upload has multiple files with the same destName but different destFolderIds', () => {
 		const file1UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID), destName: 'same-name' };
 		const file2UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityIDAlt), destName: 'same-name' };
 
 		expect(() => assertLocalNameConflicts([file1UploadStats, file2UploadStats])).to.not.throw(Error);
 	});
 
-	it('succeeds without error if an upload has a multiple folders with the same destFolderId but different destNames', () => {
+	it('succeeds without error if an upload has multiple files with the same destFolderId but different destNames', () => {
 		const file1UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID), destName: 'diff name 0' };
 		const file2UploadStats: UploadStats = { ...stubFileUploadStats(stubEntityID), destName: 'diff name 1' };
 
