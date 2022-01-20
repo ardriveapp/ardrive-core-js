@@ -30,9 +30,10 @@ export function assertLocalNameConflicts(entitiesToUpload: UploadStats[]): void 
 		}
 
 		// Add local upload info to check for name conflicts within the upload itself
-		namesWithinUpload[`${destFolderId}`] = namesWithinUpload[`${destFolderId}`]
-			? [...namesWithinUpload[`${destFolderId}`], destinationName]
-			: [destinationName];
+		if (!namesWithinUpload[`${destFolderId}`]) {
+			namesWithinUpload[`${destFolderId}`] = [];
+		}
+		namesWithinUpload[`${destFolderId}`].push(destinationName);
 	}
 }
 
