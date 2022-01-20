@@ -23,21 +23,23 @@ export interface ArFSDriveResult {
 	driveId: DriveID;
 	rootFolderId: FolderID;
 }
-
 export type ArFSCreateBundledDriveResult = ArFSBundleWriteResult & ArFSDriveResult;
-
 export interface ArFSCreateDriveResult extends ArFSWriteResult, ArFSDriveResult {
 	rootFolderTxReward: Winston;
 }
 
+export interface ArFSFileResult {
+	fileId: FileID;
+	dataTxId: TransactionID;
+}
+export interface ArFSUploadFileV2TxResult extends ArFSWriteResult, ArFSFileResult {
+	dataTxReward: Winston;
+}
+export type ArFSUploadBundledFileResult = ArFSBundleWriteResult & ArFSFileResult;
+export type ArFSUploadFileResult = ArFSUploadFileV2TxResult | ArFSUploadBundledFileResult;
+
 export interface ArFSCreateFolderResult extends ArFSWriteResult {
 	folderId: FolderID;
-}
-
-export interface ArFSUploadFileResult extends ArFSWriteResult {
-	dataTxId: TransactionID;
-	dataTxReward: Winston;
-	fileId: FileID;
 }
 
 export type ArFSMoveEntityResult = ArFSWriteResult;
@@ -53,7 +55,7 @@ export interface ArFSRenameFileResult extends ArFSRenameEntityResult {
 }
 
 export type WithDriveKey = { driveKey: DriveKey };
-type WithFileKey = { fileKey: FileKey };
+export type WithFileKey = { fileKey: FileKey };
 
 export type ArFSCreatePublicDriveResult = ArFSCreateDriveResult;
 export type ArFSCreatePrivateDriveResult = ArFSCreateDriveResult & WithDriveKey;
@@ -66,6 +68,12 @@ export type ArFSCreatePrivateFolderResult = ArFSCreateFolderResult & WithDriveKe
 
 export type ArFSUploadPublicFileResult = ArFSUploadFileResult;
 export type ArFSUploadPrivateFileResult = ArFSUploadFileResult & WithFileKey;
+
+export function isPrivateResult(
+	result: ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult
+): result is ArFSUploadPrivateFileResult {
+	return Object.keys(result as ArFSUploadPrivateFileResult).includes('fileKey');
+}
 
 export type ArFSMovePublicFolderResult = ArFSMoveEntityResult;
 export type ArFSMovePrivateFolderResult = ArFSMoveEntityResult & WithDriveKey;
