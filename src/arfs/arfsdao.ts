@@ -1403,26 +1403,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async renamePublicFile({
-		fileId,
+		file,
 		newName,
-		metadataRewardSettings,
-		owner
+		metadataRewardSettings
 	}: ArFSRenamePublicFileParams): Promise<ArFSRenamePublicFileResult> {
-		const publicFile = await this.getPublicFile(fileId, owner);
-
 		// Prepare meta data transaction
 		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
 			newName,
-			publicFile.size,
-			publicFile.lastModifiedDate,
-			publicFile.dataTxId,
-			publicFile.dataContentType
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType
 		);
 		const fileMetadata = new ArFSPublicFileMetaDataPrototype(
 			metadataTxData,
-			publicFile.driveId,
-			publicFile.fileId,
-			publicFile.parentFolderId
+			file.driveId,
+			file.fileId,
+			file.parentFolderId
 		);
 		const metaDataTx = await this.prepareArFSObjectTransaction({
 			objectMetaData: fileMetadata,
@@ -1438,37 +1435,33 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		return {
-			type: 'file',
-			entityId: publicFile.fileId,
+			entityId: file.fileId,
 			metaDataTxId: new TransactionID(metaDataTx.id),
 			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
 
 	async renamePrivateFile({
-		fileId,
+		file,
 		newName,
 		metadataRewardSettings,
-		owner,
 		driveKey
 	}: ArFSRenamePrivateFileParams): Promise<ArFSRenamePrivateFileResult> {
-		const privateFile = await this.getPrivateFile(fileId, driveKey, owner);
-
 		// Prepare meta data transaction
 		const fileMetadataTxData = await ArFSPrivateFileMetadataTransactionData.from(
 			newName,
-			privateFile.size,
-			privateFile.lastModifiedDate,
-			privateFile.dataTxId,
-			privateFile.dataContentType,
-			privateFile.fileId,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType,
+			file.fileId,
 			driveKey
 		);
 		const fileMetadata = new ArFSPrivateFileMetaDataPrototype(
 			fileMetadataTxData,
-			privateFile.driveId,
-			privateFile.fileId,
-			privateFile.parentFolderId
+			file.driveId,
+			file.fileId,
+			file.parentFolderId
 		);
 		const metaDataTx = await this.prepareArFSObjectTransaction({
 			objectMetaData: fileMetadata,
@@ -1483,12 +1476,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 		}
 
-		const fileKey = fileMetadataTxData.fileKey;
-
 		return {
-			type: 'file',
-			entityId: privateFile.fileId,
-			fileKey,
+			entityId: file.fileId,
+			fileKey: fileMetadataTxData.fileKey,
 			metaDataTxId: new TransactionID(metaDataTx.id),
 			metaDataTxReward: W(metaDataTx.reward)
 		};
