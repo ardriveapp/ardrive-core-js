@@ -38,7 +38,7 @@ export function assertLocalNameConflicts(entitiesToUpload: UploadStats[]): void 
 }
 
 /** Recursive function to assert any name conflicts between entities within each folder */
-function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload) {
+export function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload): void {
 	const namesWithinFolder: string[] = [];
 	for (const folder of wrappedFolder.folders) {
 		if (namesWithinFolder.includes(folder.destinationBaseName)) {
