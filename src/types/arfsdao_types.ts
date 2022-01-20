@@ -13,7 +13,9 @@ import {
 	ArFSFileOrFolderEntity,
 	ArFSObjectTransactionData,
 	ArFSEntityToUpload,
-	WithDriveKey
+	WithDriveKey,
+	ArFSPublicFile,
+	ArFSPrivateFile
 } from '../exports';
 import { CreateDriveRewardSettings } from './cost_estimator_types';
 
@@ -126,9 +128,11 @@ export interface ArFSGetPublicChildFolderIdsParams {
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
 
 export interface ArFSRenamePublicFileParams {
-	fileId: FileID;
+	file: ArFSPublicFile;
 	newName: string;
 	metadataRewardSettings: RewardSettings;
-	owner: ArweaveAddress;
 }
-export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams & WithDriveKey;
+export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
+	WithDriveKey & {
+		file: ArFSPrivateFile;
+	};

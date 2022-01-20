@@ -207,7 +207,6 @@ export type DownloadPrivateFileParameters = DownloadPublicFileArguments & WithDr
 export interface RenamePublicFileParams {
 	fileId: FileID;
 	newName: string;
-	owner: ArweaveAddress;
 }
 
 export type RenamePrivateFileParams = RenamePublicFileParams & WithDriveKey;

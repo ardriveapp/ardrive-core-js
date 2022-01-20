@@ -1567,9 +1567,8 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	async renamePublicFile({ fileId, newName, owner }: RenamePublicFileParams): Promise<ArFSResult> {
-		await this.assertOwnerAddress(owner);
-		const file = await this.getPublicFile({ fileId, owner });
+	async renamePublicFile({ fileId, newName }: RenamePublicFileParams): Promise<ArFSResult> {
+		const file = await this.getPublicFile({ fileId });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1585,16 +1584,15 @@ export class ArDrive extends ArDriveAnonymous {
 		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
 		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePublicFile({
-			fileId: file.fileId,
+			file,
 			newName,
-			metadataRewardSettings,
-			owner
+			metadataRewardSettings
 		});
 
 		return {
 			created: [
 				{
-					type: result.type,
+					type: 'file',
 					entityId: result.entityId,
 					metadataTxId: result.metaDataTxId
 				}
@@ -1604,9 +1602,8 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	async renamePrivateFile({ fileId, newName, owner, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
-		await this.assertOwnerAddress(owner);
-		const file = await this.getPrivateFile({ fileId, owner, driveKey });
+	async renamePrivateFile({ fileId, newName, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
+		const file = await this.getPrivateFile({ fileId, driveKey });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1624,17 +1621,16 @@ export class ArDrive extends ArDriveAnonymous {
 		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
 		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePrivateFile({
-			fileId: file.fileId,
+			file,
 			newName,
 			metadataRewardSettings,
-			owner,
 			driveKey
 		});
 
 		return {
 			created: [
 				{
-					type: result.type,
+					type: 'file',
 					entityId: result.entityId,
 					key: urlEncodeHashKey(result.fileKey),
 					metadataTxId: result.metaDataTxId

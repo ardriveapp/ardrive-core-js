@@ -1,5 +1,5 @@
 import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, EntityType } from '../types';
+import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston } from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -49,7 +49,6 @@ export interface ArFSMoveFileResult extends ArFSMoveEntityResult {
 export type ArFSRenameEntityResult = ArFSWriteResult;
 
 export interface ArFSRenameFileResult extends ArFSRenameEntityResult {
-	type: EntityType;
 	entityId: FileID;
 }
 
