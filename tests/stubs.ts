@@ -450,33 +450,56 @@ export const stubCommunityContract = {
 	balances: { [`${stubArweaveAddress()}`]: 200 }
 };
 
-const stubPlanUploadStats = {
-	destDriveId: stubEntityID,
-	destFolderId: stubEntityID,
-	owner: stubArweaveAddress()
-};
-
-export const stubFileUploadStats = (): UploadStats<ArFSFileToUpload> => {
+const stubPlanUploadStats = (destFolderId: FolderID): Omit<UploadStats, 'wrappedEntity'> => {
 	return {
-		...stubPlanUploadStats,
-		wrappedEntity: wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload
-	};
-};
-export const stubFolderUploadStats = (): UploadStats<ArFSFolderToUpload> => {
-	return {
-		...stubPlanUploadStats,
-		wrappedEntity: wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload
+		destDriveId: stubEntityID,
+		destFolderId: destFolderId,
+		owner: stubArweaveAddress()
 	};
 };
 
-export const stubEmptyFolderStats = (): UploadStats<ArFSFolderToUpload> => {
-	const stats = stubFolderUploadStats();
+export const stubFileUploadStats = (destFolderId = stubEntityID): UploadStats<ArFSFileToUpload> => {
+	return {
+		...stubPlanUploadStats(destFolderId),
+		wrappedEntity: stubFileToUpload()
+	};
+};
+export const stubFolderUploadStats = (destFolderId = stubEntityID): UploadStats<ArFSFolderToUpload> => {
+	return {
+		...stubPlanUploadStats(destFolderId),
+		wrappedEntity: stubFolderToUpload()
+	};
+};
+
+export const stubFileToUpload = (destinationName?: string): ArFSFileToUpload => {
+	const file = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+
+	// Assign destination name if provided
+	file.destName = destinationName;
+	return file;
+};
+
+export const stubFolderToUpload = (): ArFSFolderToUpload =>
+	wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+
+export const stubEmptyFolderToUpload = (destinationName?: string): ArFSFolderToUpload => {
+	const folder = stubFolderToUpload();
 
 	// Empty the files and folders
-	stats.wrappedEntity.files = [];
-	stats.wrappedEntity.folders = [];
+	folder.files = [];
+	folder.folders = [];
 
-	return stats;
+	// Assign destination name if provided
+	folder.destName = destinationName;
+
+	return folder;
+};
+
+export const stubEmptyFolderStats = (destFolderId = stubEntityID): UploadStats<ArFSFolderToUpload> => {
+	return {
+		...stubPlanUploadStats(destFolderId),
+		wrappedEntity: stubEmptyFolderToUpload()
+	};
 };
 
 export const stub1025CharString =

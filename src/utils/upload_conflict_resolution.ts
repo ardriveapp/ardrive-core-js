@@ -30,14 +30,15 @@ export function assertLocalNameConflicts(entitiesToUpload: UploadStats[]): void 
 		}
 
 		// Add local upload info to check for name conflicts within the upload itself
-		namesWithinUpload[`${destFolderId}`] = namesWithinUpload[`${destFolderId}`]
-			? [...namesWithinUpload[`${destFolderId}`], destinationName]
-			: [destinationName];
+		if (!namesWithinUpload[`${destFolderId}`]) {
+			namesWithinUpload[`${destFolderId}`] = [];
+		}
+		namesWithinUpload[`${destFolderId}`].push(destinationName);
 	}
 }
 
 /** Recursive function to assert any name conflicts between entities within each folder */
-function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload) {
+export function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload): void {
 	const namesWithinFolder: string[] = [];
 	for (const folder of wrappedFolder.folders) {
 		if (namesWithinFolder.includes(folder.destinationBaseName)) {
