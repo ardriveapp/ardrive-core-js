@@ -15,9 +15,15 @@ import {
 	ArFSEntityToUpload,
 	WithDriveKey,
 	ArFSPublicFile,
-	ArFSPrivateFile
+	ArFSPrivateFile,
+	ArFSFileDataPrototype,
+	ArFSFileMetaDataPrototype,
+	DriveKey,
+	FolderHierarchy
 } from '../exports';
-import { CreateDriveRewardSettings } from './cost_estimator_types';
+import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
+import { TransactionID } from './transaction_id';
+import { Winston } from './winston';
 
 /** Generic closure type that uses prepareArFSObjectTransaction (V2) or prepareArFSDataItem (bundle) */
 export type PrepareArFSObject<T, U extends ArFSObjectMetadataPrototype> = (metaDataPrototype: U) => Promise<T>;
@@ -27,10 +33,24 @@ export interface ArFSPrepareFolderParams<T> {
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype>;
 }
 
-export interface ArFSPrepareDriveParams<T> {
+export interface PartialPrepareFileParams {
+	wrappedFile: ArFSEntityToUpload;
+	dataPrototypeFactoryFn: (fileData: Buffer, fileId: FileID) => Promise<ArFSFileDataPrototype>;
+	metadataTxDataFactoryFn: (fileId: FileID, dataTxId: TransactionID) => Promise<ArFSFileMetaDataPrototype>;
+}
+
+export interface ArFSPrepareFileParams<T extends DataItem | Transaction> extends PartialPrepareFileParams {
+	prepareArFSObject: PrepareArFSObject<T, ArFSFileDataPrototype>;
+	prepareMetaDataArFSObject: PrepareArFSObject<T, ArFSFileMetaDataPrototype>;
+}
+
+export interface PartialPrepareDriveParams {
 	generateDriveIdFn: () => DriveID;
 	drivePrototypeFactory: CreateDriveMetaDataFactory;
 	rootFolderPrototypeFactory: (rootFolderId: FolderID, driveId: DriveID) => ArFSFolderMetaDataPrototype;
+}
+
+export interface ArFSPrepareDriveParams<T> extends PartialPrepareDriveParams {
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype | ArFSDriveMetaDataPrototype>;
 }
 
@@ -45,6 +65,10 @@ export interface ArFSPrepareFolderResult<T> extends ArFSPrepareResult<T> {
 export interface ArFSPrepareDriveResult<T> extends ArFSPrepareResult<T> {
 	rootFolderId: FolderID;
 	driveId: DriveID;
+}
+
+export interface ArFSPrepareFileResult<T> extends ArFSPrepareResult<T> {
+	fileId: FileID;
 }
 
 export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {
@@ -82,10 +106,8 @@ export interface ArFSUploadPublicFileParams {
 	parentFolderId: FolderID;
 	wrappedFile: ArFSEntityToUpload;
 	driveId: DriveID;
-	fileDataRewardSettings: RewardSettings;
-	metadataRewardSettings: RewardSettings;
-	destFileName?: string;
-	existingFileId?: FileID;
+	rewardSettings: UploadFileRewardSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
@@ -100,6 +122,7 @@ export interface ArFSPrepareDataItemsParams extends ArFSPrepareObjectParams {
 
 export interface ArFSPrepareObjectTransactionParams extends ArFSPrepareDataItemsParams {
 	rewardSettings: RewardSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface ArFSPrepareObjectBundleParams extends Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> {
 	dataItems: DataItem[];
@@ -136,3 +159,30 @@ export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
 	WithDriveKey & {
 		file: ArFSPrivateFile;
 	};
+
+export type CommunityTipSettings = {
+	communityTipTarget: ArweaveAddress;
+	communityWinstonTip: Winston;
+};
+export interface ArFSDownloadPublicFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+}
+
+export interface ArFSDownloadPrivateFolderParams {
+	folderId: FolderID;
+	destFolderPath: string;
+	customFolderName?: string;
+	maxDepth: number;
+	owner: ArweaveAddress;
+	driveKey: DriveKey;
+}
+
+export interface SeparatedFolderHierarchy<FileType, FolderType> {
+	hierarchy: FolderHierarchy;
+	childFiles: FileType[];
+	childFolders: FolderType[];
+}

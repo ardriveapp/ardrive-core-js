@@ -29,10 +29,9 @@ describe('ArFSTagSettings class', () => {
 	});
 
 	it('returns the expected default tip tags', () => {
-		expect(arFSTagSettings.getTipTags()).to.deep.equal([
+		expect(arFSTagSettings.getTipTagsWithAppTags()).to.deep.equal([
 			{ name: 'App-Name', value: 'Tag-Builder-Test' },
 			{ name: 'App-Version', value: '1.2' },
-			{ name: 'Type', value: 'fee' },
 			{ name: 'Tip-Type', value: 'data upload' }
 		]);
 	});
@@ -60,6 +59,34 @@ describe('ArFSTagSettings class', () => {
 
 		it('can exclude any specified tags names', () => {
 			expect(arFSTagSettings.baseArFSTagsIncluding({ excludedTagNames: ['App-Version', 'ArFS'] })).to.deep.equal([
+				{ name: 'App-Name', value: 'Tag-Builder-Test' }
+			]);
+		});
+	});
+
+	describe('baseAppTagsIncluding method', () => {
+		it('returns provided tags combined with the base app tags', () => {
+			const assertSpy = spy(arFSTagSettings, 'assertTagLimits');
+
+			expect(
+				arFSTagSettings.baseArFSTagsIncluding({
+					tags: [
+						{ name: 'Custom-Tag-5', value: 'Expected tag' },
+						{ name: 'Custom-Tag-837', value: 'Another expected tag' }
+					]
+				})
+			).to.deep.equal([
+				{ name: 'App-Name', value: 'Tag-Builder-Test' },
+				{ name: 'App-Version', value: '1.2' },
+				{ name: 'ArFS', value: '0.101' },
+				{ name: 'Custom-Tag-5', value: 'Expected tag' },
+				{ name: 'Custom-Tag-837', value: 'Another expected tag' }
+			]);
+			expect(assertSpy.callCount).to.equal(1);
+		});
+
+		it('can exclude any specified tags names', () => {
+			expect(arFSTagSettings.baseAppTagsIncluding({ excludedTagNames: ['App-Version'] })).to.deep.equal([
 				{ name: 'App-Name', value: 'Tag-Builder-Test' }
 			]);
 		});

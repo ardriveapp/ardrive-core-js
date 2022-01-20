@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { expect } from 'chai';
 import { SinonStubbedInstance, stub } from 'sinon';
 import { ArDrive } from './ardrive';
@@ -14,6 +13,7 @@ import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { fakeArweave } from '../tests/stubs';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
@@ -22,12 +22,7 @@ describe('ArDrive class', () => {
 	let communityOracleStub: SinonStubbedInstance<CommunityOracle>;
 	let priceEstimator: ARDataPriceRegressionEstimator;
 	let walletDao: WalletDAO;
-	const fakeArweave = Arweave.init({
-		host: 'localhost',
-		port: 443,
-		protocol: 'https',
-		timeout: 600000
-	});
+
 	const wallet = readJWKFile('./test_wallet.json');
 	const stubPublicFileTransactionData = new ArFSPublicFileMetadataTransactionData(
 		'stubName',
@@ -47,7 +42,11 @@ describe('ArDrive class', () => {
 		walletDao = new WalletDAO(fakeArweave, 'Unit Test', '1.2');
 
 		const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
-		const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings: arFSTagSettings, priceEstimator });
+		const uploadPlanner = new ArFSUploadPlanner({
+			arFSTagSettings: arFSTagSettings,
+			priceEstimator,
+			communityOracle: communityOracleStub
+		});
 
 		arDrive = new ArDrive(
 			wallet,
@@ -62,45 +61,6 @@ describe('ArDrive class', () => {
 			arFSTagSettings,
 			uploadPlanner
 		);
-	});
-
-	describe('estimateAndAssertCostOfFileUpload function', () => {
-		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
-			communityOracleStub.getCommunityWinstonTip.callsFake(() => {
-				return Promise.resolve(W(9876543210));
-			});
-			await expectAsyncErrorThrow({
-				promiseToError: arDrive.estimateAndAssertCostOfFileUpload(
-					new ByteCount(1),
-					stubPublicFileTransactionData,
-					'private'
-				)
-			});
-		});
-
-		it('returns the correct reward and tip data', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(true);
-			});
-			communityOracleStub.getCommunityWinstonTip.callsFake(() => {
-				return Promise.resolve(W(9876543210));
-			});
-
-			const actual = await arDrive.estimateAndAssertCostOfFileUpload(
-				new ByteCount(1234567),
-				stubPublicFileTransactionData,
-				'private'
-			);
-			expect(`${actual.metaDataBaseReward}`).to.equal('147');
-			expect(`${actual.fileDataBaseReward}`).to.equal('1234583');
-			expect(`${actual.communityWinstonTip}`).to.equal('9876543210');
-		});
 	});
 
 	describe('estimateAndAssertCostOfFolderUpload function', () => {
