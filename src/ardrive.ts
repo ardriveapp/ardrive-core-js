@@ -1572,7 +1572,7 @@ export class ArDrive extends ArDriveAnonymous {
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		await assertValidArFSFileName(newName);
+		assertValidArFSFileName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
 		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
 			newName,
@@ -1607,7 +1607,7 @@ export class ArDrive extends ArDriveAnonymous {
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
-		await assertValidArFSFileName(newName);
+		assertValidArFSFileName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
 		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
 			newName,
