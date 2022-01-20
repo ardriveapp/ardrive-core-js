@@ -1,17 +1,22 @@
+import { ArFSPrivateFileMetaDataPrototype, ArFSPublicFileMetaDataPrototype } from '../arfs/arfs_prototypes';
 import {
+	ArFSEntityToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
+	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicDriveMetaDataPrototype,
 	ArFSPublicDriveTransactionData,
+	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
 	CreatePrivateDriveParams,
-	CreatePublicDriveParams
+	CreatePublicDriveParams,
+	DriveKey
 } from '../exports';
-import { EstimateCreateDriveParams } from '../types/cost_estimator_types';
-import { fakeEntityId } from '../utils/constants';
+import { EstimateCreateDriveParams } from '../types/upload_planner_types';
+import { fakeEntityId, fakeTxID } from '../utils/constants';
 
 export async function getPrivateCreateDriveEstimationPrototypes({
 	driveName,
@@ -44,4 +49,45 @@ export function getPublicCreateDriveEstimationPrototypes({
 			fakeEntityId
 		)
 	};
+}
+
+export function getPublicUploadFileEstimationPrototype(
+	wrappedFile: ArFSEntityToUpload
+): ArFSPublicFileMetaDataPrototype {
+	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+	return new ArFSPublicFileMetaDataPrototype(
+		new ArFSPublicFileMetadataTransactionData(
+			wrappedFile.destinationBaseName,
+			fileSize,
+			lastModifiedDateMS,
+			fakeTxID,
+			dataContentType
+		),
+		fakeEntityId,
+		fakeEntityId,
+		fakeEntityId
+	);
+}
+
+export async function getPrivateUploadFileEstimationPrototype(
+	wrappedFile: ArFSEntityToUpload,
+	driveKey: DriveKey
+): Promise<ArFSPrivateFileMetaDataPrototype> {
+	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+	return new ArFSPrivateFileMetaDataPrototype(
+		await ArFSPrivateFileMetadataTransactionData.from(
+			wrappedFile.destinationBaseName,
+			fileSize,
+			lastModifiedDateMS,
+			fakeTxID,
+			dataContentType,
+			fakeEntityId,
+			driveKey
+		),
+		fakeEntityId,
+		fakeEntityId,
+		fakeEntityId
+	);
 }
