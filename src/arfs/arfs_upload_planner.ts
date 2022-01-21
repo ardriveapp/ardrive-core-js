@@ -170,7 +170,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			destFolderId: wrappedFolder.existingId
 		};
 
-		for await (const file of wrappedFolder.files) {
+		for (const file of wrappedFolder.files) {
 			await this.planFile({
 				...partialPlanParams,
 				wrappedEntity: file
@@ -178,7 +178,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		}
 
 		// Recurse into each folder, flattening them into bundles
-		for await (const folder of wrappedFolder.folders) {
+		for (const folder of wrappedFolder.folders) {
 			await this.planFolder({
 				...partialPlanParams,
 				wrappedEntity: folder
@@ -215,7 +215,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			return false;
 		})();
 
-		for await (const uploadStat of uploadStats) {
+		for (const uploadStat of uploadStats) {
 			const { wrappedEntity } = uploadStat;
 
 			if (wrappedEntity.entityType === 'folder') {
@@ -226,7 +226,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		}
 
 		const bundlePlans: BundlePlan[] = [];
-		for await (const { uploadStats, totalDataItems, totalSize } of this.bundlePacker.bundles) {
+		for (const { uploadStats, totalDataItems, totalSize } of this.bundlePacker.bundles) {
 			if (totalDataItems === 1) {
 				// Edge case: Do not send up a bundle with a single folder data item
 				const { wrappedEntity, driveKey } = uploadStats[0];

@@ -258,7 +258,7 @@ export async function resolveFolderNameConflicts({
 		// Re-using existing folder id, check for name conflicts inside the folder
 		const destinationFolderId = wrappedFolder.existingId;
 
-		for await (const file of wrappedFolder.files) {
+		for (const file of wrappedFolder.files) {
 			// Check each file upload within the folder for name conflicts
 			await resolveFileNameConflicts({
 				wrappedFile: file,
@@ -270,7 +270,7 @@ export async function resolveFolderNameConflicts({
 			});
 		}
 
-		for await (const folder of wrappedFolder.folders) {
+		for (const folder of wrappedFolder.folders) {
 			// Recurse into each folder to check for more name conflicts
 			await resolveFolderNameConflicts({
 				wrappedFolder: folder,
