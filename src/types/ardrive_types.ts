@@ -111,7 +111,6 @@ export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
 	destFolderId: FolderID;
 	destName?: string;
 	driveKey?: DriveKey;
-	customContentType?: string;
 }
 
 /** Upload stats as determined by the ArDrive class */

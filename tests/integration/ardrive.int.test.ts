@@ -1494,12 +1494,11 @@ describe('ArDrive class - integrated', () => {
 
 		it('returns the expected v2 ArFSResult with a single public .txt file that has a custom content type', async () => {
 			const wrappedFile = wrapFileOrFolder(
-				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
 			);
 			const result = await arDrive.uploadAllEntities({
-				entitiesToUpload: [
-					{ wrappedEntity: wrappedFile, destFolderId: stubEntityID, customContentType: 'Custom-type-77' }
-				]
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
 			});
 
 			assertUploadFileExpectations(result, W(14), W(163), W(1), 'public');
@@ -1520,14 +1519,14 @@ describe('ArDrive class - integrated', () => {
 
 		it('returns the expected v2 ArFSResult with a single private .txt file that has a custom content type', async () => {
 			const wrappedFile = wrapFileOrFolder(
-				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
 			);
 			const result = await arDrive.uploadAllEntities({
 				entitiesToUpload: [
 					{
 						wrappedEntity: wrappedFile,
 						destFolderId: stubEntityID,
-						customContentType: 'Custom-type-77',
 						driveKey: await getStubDriveKey()
 					}
 				]
@@ -1549,12 +1548,11 @@ describe('ArDrive class - integrated', () => {
 
 		it('returns the expected bundled ArFSResult with a single public .txt file that has a custom content type', async () => {
 			const wrappedFile = wrapFileOrFolder(
-				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
 			);
 			const result = await bundledArDrive.uploadAllEntities({
-				entitiesToUpload: [
-					{ wrappedEntity: wrappedFile, destFolderId: stubEntityID, customContentType: 'Custom-type-77' }
-				]
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
 			});
 
 			assertUploadFileExpectations(result, W(2764), W(163), W(1), 'public', undefined, true);
@@ -1575,14 +1573,14 @@ describe('ArDrive class - integrated', () => {
 
 		it('returns the expected bundled ArFSResult with a single private .txt file that has a custom content type', async () => {
 			const wrappedFile = wrapFileOrFolder(
-				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
 			);
 			const result = await bundledArDrive.uploadAllEntities({
 				entitiesToUpload: [
 					{
 						wrappedEntity: wrappedFile,
 						destFolderId: stubEntityID,
-						customContentType: 'Custom-type-77',
 						driveKey: await getStubDriveKey()
 					}
 				]
