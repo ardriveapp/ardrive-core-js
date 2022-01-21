@@ -94,29 +94,20 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 		if (!this.shouldBundle || +totalByteCountOfFileDataItems > +this.maxBundleLimit) {
 			// If the file data is too large it must be sent as a v2 tx
-			let v2TxToUpload: V2TxPlan = { uploadStats: planFileParams, fileDataByteCount };
+			const v2TxToUpload: V2TxPlan = { uploadStats: planFileParams, fileDataByteCount };
 
-			// We will preserve this bundle index because the metadata cannot be separated
-			// from the file data until ArFSDAO has generated a TxID from signing
 			if (isBulkUpload && this.shouldBundle) {
-				// This metadata can be packed with another bundle since other upload stats do exist
-				const metaDataBundleIndex = this.bundlePacker.packIntoBundle({
+				// This metadata can be packed with another bundle since other entities will be uploaded
+
+				// We will preserve the bundle index in this case because the metadata cannot be separated
+				// from the file data until ArFSDAO has generated a TxID from signing the transaction
+				v2TxToUpload.metaDataBundleIndex = this.bundlePacker.packIntoBundle({
 					byteCountAsDataItem: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
-
-				v2TxToUpload = {
-					...v2TxToUpload,
-					metaDataBundleIndex
-				};
 			} else {
 				// Otherwise we must send the metadata as a v2 tx because there will be nothing to bundle it with
-				const metaDataByteCount = fileMetaDataPrototype.objectData.sizeOf();
-
-				v2TxToUpload = {
-					...v2TxToUpload,
-					metaDataByteCount
-				};
+				v2TxToUpload.metaDataByteCount = fileMetaDataPrototype.objectData.sizeOf();
 			}
 			// Add to the v2TxsToUpload
 			this.v2TxsToUpload.push(v2TxToUpload);
@@ -147,7 +138,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		);
 
 		if (!wrappedFolder.existingId) {
-			// We won't create a new folder if one already exists
+			// We only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
 				this.bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
@@ -161,8 +152,8 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				});
 			}
 		}
-		// For new folders, we will generate and preserve the folder ID
-		// early to prevent parent folder id information from being lost
+		// For new folder creations, we will generate and preserve the folder ID early here to prevent
+		// the parent to child folder relationship from being lost during the flattening of the folder tree
 		wrappedFolder.existingId ??= EID(v4());
 
 		const partialPlanParams = {
@@ -170,6 +161,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			destFolderId: wrappedFolder.existingId
 		};
 
+		// Plan each file within the folder
 		for (const file of wrappedFolder.files) {
 			await this.planFile({
 				...partialPlanParams,
@@ -177,7 +169,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			});
 		}
 
-		// Recurse into each folder, flattening them into bundles
+		// Recurse into each folder, flattening each folder into plans
 		for (const folder of wrappedFolder.folders) {
 			await this.planFolder({
 				...partialPlanParams,
