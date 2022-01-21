@@ -1370,7 +1370,6 @@ export class ArDrive extends ArDriveAnonymous {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		}
-		await this.assertOwnerAddress(owner);
 
 		return this.arFsDao.getPrivateFile(fileId, driveKey, owner);
 	}
@@ -1504,7 +1503,9 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	async renamePublicFile({ fileId, newName }: RenamePublicFileParams): Promise<ArFSResult> {
-		const file = await this.getPublicFile({ fileId });
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPublicFile({ fileId, owner });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1539,7 +1540,9 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	async renamePrivateFile({ fileId, newName, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
-		const file = await this.getPrivateFile({ fileId, driveKey });
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPrivateFile({ fileId, driveKey, owner });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
