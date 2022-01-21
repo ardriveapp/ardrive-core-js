@@ -10,7 +10,6 @@ import {
 	stubPublicFolder
 } from '../../tests/stubs';
 import { ArweaveAddress, DriveID, EntityID } from '../types';
-import { NameConflictInfo } from '../utils/mapper_functions';
 import {
 	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
@@ -35,7 +34,6 @@ describe('ArFSDAOAnonymous class', () => {
 	const driveIdCache = new ArFSEntityCache<EntityID, DriveID>(10);
 	const publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
 	const publicFolderCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10);
-	const publicConflictCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10);
 	const publicFileCache = new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10);
 
 	beforeEach(() => {
@@ -45,8 +43,7 @@ describe('ArFSDAOAnonymous class', () => {
 			driveIdCache,
 			publicDriveCache,
 			publicFolderCache,
-			publicFileCache,
-			publicConflictCache
+			publicFileCache
 		};
 		arfsDaoAnonymous = new ArFSDAOAnonymous(fakeArweave, 'test_app', '0.0', caches);
 	});
