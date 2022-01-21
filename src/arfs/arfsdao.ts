@@ -1489,7 +1489,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return {
 			entityId: file.fileId,
-			metaDataTxId: new TransactionID(metaDataTx.id),
+			metaDataTxId: TxID(metaDataTx.id),
 			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
@@ -1532,7 +1532,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return {
 			entityId: file.fileId,
 			fileKey: fileMetadataTxData.fileKey,
-			metaDataTxId: new TransactionID(metaDataTx.id),
+			metaDataTxId: TxID(metaDataTx.id),
 			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
