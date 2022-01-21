@@ -223,3 +223,10 @@ export interface DownloadPublicDriveParameters {
 }
 
 export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
+
+export interface RenamePublicFileParams {
+	fileId: FileID;
+	newName: string;
+}
+
+export type RenamePrivateFileParams = RenamePublicFileParams & WithDriveKey;
