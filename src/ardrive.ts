@@ -482,14 +482,18 @@ export class ArDrive extends ArDriveAnonymous {
 		const preparedEntities: UploadStats[] = [];
 
 		for (const entity of entitiesToUpload) {
-			const { destFolderId, driveKey } = entity;
+			const { destFolderId, driveKey, customContentType, wrappedEntity } = entity;
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
 
 			// Assert drive privacy and owner of the drive
 			const owner = await this.arFsDao.getOwnerAndAssertDrive(destDriveId, driveKey);
 			await this.assertOwnerAddress(owner);
 
-			preparedEntities.push({ ...entity, destDriveId, owner });
+			if (customContentType && wrappedEntity.entityType === 'file') {
+				// Assign any provided customContentType to the ArFSFileToUpload
+				wrappedEntity.customContentType = customContentType;
+			}
+			preparedEntities.push({ ...entity, destDriveId, owner, wrappedEntity });
 		}
 
 		const resolvedEntities = await this.resolveBulkNameConflicts({

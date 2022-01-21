@@ -88,8 +88,9 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 	abstract contentType: DataContentType;
 	abstract lastModifiedDate: UnixTime;
 	abstract size: ByteCount;
+
 	conflictResolution?: FileConflictResolution;
-	metaDataBundleIndex?: number;
+	customContentType?: DataContentType;
 
 	readonly entityType = 'file';
 }
@@ -176,7 +177,7 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 	}
 
 	public get contentType(): DataContentType {
-		return MANIFEST_CONTENT_TYPE;
+		return this.customContentType ?? MANIFEST_CONTENT_TYPE;
 	}
 
 	public getBaseName(): BaseName {
@@ -228,6 +229,10 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 	}
 
 	public get contentType(): DataContentType {
+		if (this.customContentType) {
+			return this.customContentType;
+		}
+
 		const mimeType = extToMime(this.filePath);
 
 		if (mimeType === 'unknown') {
