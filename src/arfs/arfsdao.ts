@@ -60,6 +60,7 @@ import {
 	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
 	ArFSPublicDriveCacheKey,
+	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
@@ -172,6 +173,7 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
 	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
 	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+	publicConflictCache: ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>;
 	privateConflictCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
@@ -191,6 +193,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
 			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
 			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
+			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
 			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
 		}
 	) {

@@ -424,7 +424,7 @@ export class ArDrive extends ArDriveAnonymous {
 		/** Accumulate resolved entities to pass back to the bulk upload method  */
 		const resolvedEntitiesToUpload: UploadStats[] = [];
 
-		for await (const entity of entitiesToUpload) {
+		for (const entity of entitiesToUpload) {
 			const { destFolderId, wrappedEntity, driveKey, owner, destName } = entity;
 
 			const resolveConflictParams = {
@@ -481,7 +481,7 @@ export class ArDrive extends ArDriveAnonymous {
 	}: UploadAllEntitiesParams): Promise<ArFSResult> {
 		const preparedEntities: UploadStats[] = [];
 
-		for await (const entity of entitiesToUpload) {
+		for (const entity of entitiesToUpload) {
 			const { destFolderId, driveKey } = entity;
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
 

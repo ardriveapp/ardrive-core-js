@@ -31,7 +31,6 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { NameConflictInfo } from '../utils/mapper_functions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -60,7 +59,6 @@ export interface ArFSAnonymousCache {
 	publicDriveCache: ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>;
 	publicFolderCache: ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>;
 	publicFileCache: ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>;
-	publicConflictCache: ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>;
 }
 
 export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
@@ -68,8 +66,7 @@ export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
 	driveIdCache: new ArFSEntityCache<EntityID, DriveID>(10),
 	publicDriveCache: new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10),
 	publicFolderCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10),
-	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10),
-	publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10)
+	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10)
 };
 
 /**

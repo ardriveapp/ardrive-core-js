@@ -142,14 +142,14 @@ export class ArFSCostCalculator implements CostCalculator {
 		const calculatedBundlePlans: CalculatedBundlePlan[] = [];
 		const calculatedV2TxPlans: CalculatedV2TxPlan[] = [];
 
-		for await (const plan of bundlePlans) {
+		for (const plan of bundlePlans) {
 			const { calculatedBundlePlan, totalPriceOfBundle } = await this.calculateCostsForBundlePlan(plan);
 
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfBundle);
 			calculatedBundlePlans.push(calculatedBundlePlan);
 		}
 
-		for await (const plan of v2TxPlans) {
+		for (const plan of v2TxPlans) {
 			const { calculatedV2TxPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2TxPlan(plan);
 
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);

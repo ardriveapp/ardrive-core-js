@@ -33,7 +33,7 @@ import {
 } from './arfsdao';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
-import { defaultArFSAnonymousCache } from './arfsdao_anonymous';
+import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache } from './arfsdao_anonymous';
 import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
@@ -59,6 +59,7 @@ describe('The ArFSDAO class', () => {
 	const privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
 	const privateConflictCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10);
 	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
+	const publicConflictCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10);
 
 	let stubDriveKey: DriveKey;
 
@@ -71,7 +72,8 @@ describe('The ArFSDAO class', () => {
 			privateDriveCache,
 			privateFolderCache,
 			privateFileCache,
-			privateConflictCache
+			privateConflictCache,
+			publicConflictCache
 		};
 		arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagSettings, caches);
 		stubDriveKey = await getStubDriveKey();
