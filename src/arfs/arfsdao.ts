@@ -695,7 +695,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
 					rewardSettings: dataTxRewardSettings,
-					communityTipSettings
+					communityTipSettings,
+					excludedTagNames: ['ArFS']
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
@@ -730,7 +731,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
 					rewardSettings: dataTxRewardSettings,
-					communityTipSettings
+					communityTipSettings,
+					excludedTagNames: ['ArFS']
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSDataItem({
@@ -858,7 +860,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const prepFileParams = getPrepFileParams({ ...uploadStat, wrappedEntity });
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
-						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData }),
+						prepareArFSObject: (objectMetaData) =>
+							this.prepareArFSDataItem({ objectMetaData, excludedTagNames: ['ArFS'] }),
 						prepareMetaDataArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
 					});
 
