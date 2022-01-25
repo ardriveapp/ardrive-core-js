@@ -121,6 +121,7 @@ import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { assertValidArFSFileName, assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
+import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1592,6 +1593,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		await this.assertOwnerAddress(owner);
 		const folder = await this.getPublicFolder({ folderId, owner });
+		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
+			throw new Error(
+				`The root folder cannot be renamed as it shares name with their drive. Try renaming the drive instead`
+			);
+		}
 		if (folder.name === newName) {
 			throw new Error(`To rename a folder, the new name must be different`);
 		}
@@ -1629,6 +1635,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		await this.assertOwnerAddress(owner);
 		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
+			throw new Error(
+				`The root folder cannot be renamed as it shares name with their drive. Try renaming the drive instead`
+			);
+		}
 		if (folder.name === newName) {
 			throw new Error(`To rename a folder, the new name must be different`);
 		}
