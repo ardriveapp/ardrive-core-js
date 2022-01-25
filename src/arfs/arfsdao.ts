@@ -1549,14 +1549,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		metadataRewardSettings
 	}: ArFSRenamePublicFolderParams): Promise<ArFSRenamePublicFolderResult> {
 		// Prepare meta data transaction
-		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
-			newName,
-			folder.size,
-			folder.lastModifiedDate,
-			folder.dataTxId,
-			folder.dataContentType
-		);
-		const folderMetadata = new ArFSPublicFileMetaDataPrototype(
+		const metadataTxData = new ArFSPublicFolderTransactionData(newName);
+		const folderMetadata = new ArFSPublicFolderMetaDataPrototype(
 			metadataTxData,
 			folder.driveId,
 			folder.entityId,
