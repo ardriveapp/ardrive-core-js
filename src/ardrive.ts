@@ -17,9 +17,7 @@ import {
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSFileMetadataTransactionData,
-	ArFSObjectTransactionData,
-	ArFSPublicFolderMetadataTransactionData,
-	ArFSPrivateFolderMetadataTransactionData
+	ArFSObjectTransactionData
 } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
@@ -1603,13 +1601,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
-		const folderMetadataTxDataStub = new ArFSPublicFolderMetadataTransactionData(
-			newName,
-			folder.size,
-			folder.lastModifiedDate,
-			folder.dataTxId,
-			folder.dataContentType
-		);
+		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName);
 		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
 		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePublicFolder({
@@ -1645,15 +1637,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
-		const folderMetadataTxDataStub = await ArFSPrivateFolderMetadataTransactionData.from(
-			newName,
-			folder.size,
-			folder.lastModifiedDate,
-			folder.dataTxId,
-			folder.dataContentType,
-			folder.entityId,
-			driveKey
-		);
+		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(newName, driveKey);
 		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
 		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
 		const result = await this.arFsDao.renamePrivateFolder({
