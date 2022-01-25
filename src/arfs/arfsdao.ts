@@ -62,8 +62,7 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData,
-	ArFSPublicDriveTransactionData,
-	ArFSPrivateFolderMetadataTransactionData
+	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 
