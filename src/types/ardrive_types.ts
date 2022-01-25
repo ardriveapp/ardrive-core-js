@@ -230,3 +230,10 @@ export interface RenamePublicFileParams {
 }
 
 export type RenamePrivateFileParams = RenamePublicFileParams & WithDriveKey;
+
+export interface RenamePublicFolderParams {
+	folderId: FolderID;
+	newName: string;
+}
+
+export type RenamePrivateFolderParams = RenamePublicFolderParams & WithDriveKey;

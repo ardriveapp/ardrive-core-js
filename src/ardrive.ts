@@ -17,7 +17,9 @@ import {
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSFileMetadataTransactionData,
-	ArFSObjectTransactionData
+	ArFSObjectTransactionData,
+	ArFSPublicFolderMetadataTransactionData,
+	ArFSPrivateFolderMetadataTransactionData
 } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
@@ -47,6 +49,8 @@ import {
 	emptyManifestResult,
 	RenamePublicFileParams,
 	RenamePrivateFileParams,
+	RenamePublicFolderParams,
+	RenamePrivateFolderParams,
 	CommunityTipSettings,
 	ArFSDownloadPrivateFolderParams
 } from './types';
@@ -115,7 +119,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { assertValidArFSFileName } from './arfs/arfs_entity_name_validators';
+import { assertValidArFSFileName, assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -1433,6 +1437,10 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.estimateAndAssertCostOfMetaDataTx(metadata);
 	}
 
+	async estimateAndAssertCostOfFolderRename(metadata: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
+		return this.estimateAndAssertCostOfMetaDataTx(metadata);
+	}
+
 	private async estimateAndAssertCostOfMetaDataTx(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
 		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
 
@@ -1572,6 +1580,83 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'file',
 					entityId: result.entityId,
 					key: urlEncodeHashKey(result.fileKey),
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
+	async renamePublicFolder({ folderId, newName }: RenamePublicFolderParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
+		await this.assertOwnerAddress(owner);
+		const folder = await this.getPublicFolder({ folderId, owner });
+		if (folder.name === newName) {
+			throw new Error(`To rename a folder, the new name must be different`);
+		}
+		assertValidArFSFolderName(newName);
+		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
+		const folderMetadataTxDataStub = new ArFSPublicFolderMetadataTransactionData(
+			newName,
+			folder.size,
+			folder.lastModifiedDate,
+			folder.dataTxId,
+			folder.dataContentType
+		);
+		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePublicFolder({
+			folder,
+			newName,
+			metadataRewardSettings
+		});
+
+		return {
+			created: [
+				{
+					type: 'folder',
+					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
+	async renamePrivateFolder({ folderId, newName, driveKey }: RenamePrivateFolderParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
+		await this.assertOwnerAddress(owner);
+		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		if (folder.name === newName) {
+			throw new Error(`To rename a folder, the new name must be different`);
+		}
+		assertValidArFSFolderName(newName);
+		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
+		const folderMetadataTxDataStub = await ArFSPrivateFolderMetadataTransactionData.from(
+			newName,
+			folder.size,
+			folder.lastModifiedDate,
+			folder.dataTxId,
+			folder.dataContentType,
+			folder.entityId,
+			driveKey
+		);
+		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePrivateFolder({
+			folder,
+			newName,
+			metadataRewardSettings,
+			driveKey
+		});
+
+		return {
+			created: [
+				{
+					type: 'folder',
+					entityId: result.entityId,
 					metadataTxId: result.metaDataTxId
 				}
 			],
