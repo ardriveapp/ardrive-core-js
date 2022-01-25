@@ -36,7 +36,9 @@ import {
 	ArFSRenamePrivateFileResult,
 	ArFSRenamePublicFileResult,
 	ArFSUploadBundledFileResult,
-	ArFSUploadFileV2TxResult
+	ArFSUploadFileV2TxResult,
+	ArFSRenamePublicFolderResult,
+	ArFSRenamePrivateFolderResult
 } from './arfs_entity_result_factory';
 import { ArFSFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
 import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
@@ -60,7 +62,8 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPrivateFileDataTransactionData,
-	ArFSPublicDriveTransactionData
+	ArFSPublicDriveTransactionData,
+	ArFSPrivateFolderMetadataTransactionData
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folderHierarchy';
 
@@ -150,7 +153,11 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from '../exports';
+import {
+	ArFSPublicFileOrFolderWithPaths,
+	ArFSRenamePrivateFolderParams,
+	ArFSRenamePublicFolderParams
+} from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1533,6 +1540,80 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			entityId: file.fileId,
 			fileKey: fileMetadataTxData.fileKey,
 			metaDataTxId: TxID(metaDataTx.id),
+			metaDataTxReward: W(metaDataTx.reward)
+		};
+	}
+
+	async renamePublicFolder({
+		folder,
+		newName,
+		metadataRewardSettings
+	}: ArFSRenamePublicFolderParams): Promise<ArFSRenamePublicFolderResult> {
+		// Prepare meta data transaction
+		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
+			newName,
+			folder.size,
+			folder.lastModifiedDate,
+			folder.dataTxId,
+			folder.dataContentType
+		);
+		const folderMetadata = new ArFSPublicFileMetaDataPrototype(
+			metadataTxData,
+			folder.driveId,
+			folder.entityId,
+			folder.parentFolderId
+		);
+		const metaDataTx = await this.prepareArFSObjectTransaction({
+			objectMetaData: folderMetadata,
+			rewardSettings: metadataRewardSettings
+		});
+
+		// Upload meta data
+		if (!this.dryRun) {
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
+			while (!metaDataUploader.isComplete) {
+				await metaDataUploader.uploadChunk();
+			}
+		}
+
+		return {
+			entityId: folder.entityId,
+			metaDataTxId: TxID(metaDataTx.id),
+			metaDataTxReward: W(metaDataTx.reward)
+		};
+	}
+
+	async renamePrivateFolder({
+		folder,
+		newName,
+		metadataRewardSettings,
+		driveKey
+	}: ArFSRenamePrivateFolderParams): Promise<ArFSRenamePrivateFolderResult> {
+		// Prepare meta data transaction
+		const folderMetadataTxData = await ArFSPrivateFolderTransactionData.from(newName, driveKey);
+		const folderMetadata = new ArFSPrivateFolderMetaDataPrototype(
+			folder.driveId,
+			folder.entityId,
+			folderMetadataTxData,
+			folder.parentFolderId
+		);
+		const metaDataTx = await this.prepareArFSObjectTransaction({
+			objectMetaData: folderMetadata,
+			rewardSettings: metadataRewardSettings
+		});
+
+		// Upload meta data
+		if (!this.dryRun) {
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
+			while (!metaDataUploader.isComplete) {
+				await metaDataUploader.uploadChunk();
+			}
+		}
+
+		return {
+			entityId: folder.entityId,
+			metaDataTxId: TxID(metaDataTx.id),
+			driveKey,
 			metaDataTxReward: W(metaDataTx.reward)
 		};
 	}
