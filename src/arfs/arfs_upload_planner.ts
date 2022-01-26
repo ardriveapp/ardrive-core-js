@@ -219,9 +219,12 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const bundlePlans: BundlePlan[] = [];
 		for (const { uploadStats, totalDataItems, totalSize } of this.bundlePacker.bundles) {
 			if (totalDataItems === 1) {
-				// Edge case: Do not send up a bundle with a single folder data item
+				// Edge case: Do not send up a bundle with a data item
 				const { wrappedEntity, driveKey } = uploadStats[0];
 
+				// We know this will be a folder in this case because file meta data will
+				// not be separated from the file data, and over-sized file meta data will not
+				// be packed into a bundle unless it already is determined to be a bulk upload
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
 					wrappedEntity.destinationBaseName,
 					driveKey !== undefined
