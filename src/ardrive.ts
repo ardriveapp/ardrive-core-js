@@ -1593,11 +1593,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const folder = await this.getPublicFolder({ folderId, owner });
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
-				`The root folder cannot be renamed as it shares name with their drive. Try renaming the drive instead`
+				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
 			);
 		}
 		if (folder.name === newName) {
-			throw new Error(`To rename a folder, the new name must be different`);
+			throw new Error(`New folder name '${newName}' must be different from the current folder name!`);
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
@@ -1629,11 +1629,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
-				`The root folder cannot be renamed as it shares name with their drive. Try renaming the drive instead`
+				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
 			);
 		}
 		if (folder.name === newName) {
-			throw new Error(`To rename a folder, the new name must be different`);
+			throw new Error(`New folder name '${newName}' must be different from the current folder name!`);
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
