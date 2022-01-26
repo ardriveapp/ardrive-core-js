@@ -92,17 +92,14 @@ export class ArFSCostCalculator implements CostCalculator {
 		metaDataBundleIndex
 	}: V2TxPlan): Promise<{ calculatedV2TxPlan: CalculatedV2TxPlan; totalPriceOfV2Tx: Winston }> {
 		let totalPriceOfV2Tx: Winston = W(0);
-		let rewardSettings: Partial<UploadFileV2TxRewardSettings> = {};
+		const rewardSettings: Partial<UploadFileV2TxRewardSettings> = {};
 		let communityTipSettings: CommunityTipSettings | undefined = undefined;
 
 		if (fileDataByteCount) {
 			const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
 			totalPriceOfV2Tx = totalPriceOfV2Tx.plus(this.boostedReward(winstonPriceOfDataTx));
 
-			rewardSettings = {
-				...rewardSettings,
-				dataTxRewardSettings: this.rewardSettingsForWinston(winstonPriceOfDataTx)
-			};
+			rewardSettings.dataTxRewardSettings = this.rewardSettingsForWinston(winstonPriceOfDataTx);
 
 			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
 			const communityTipTarget = await this.communityOracle.selectTokenHolder();
@@ -117,10 +114,7 @@ export class ArFSCostCalculator implements CostCalculator {
 			);
 			totalPriceOfV2Tx = totalPriceOfV2Tx.plus(this.boostedReward(winstonPriceOfMetaDataTx));
 
-			rewardSettings = {
-				...rewardSettings,
-				metaDataRewardSettings: this.rewardSettingsForWinston(winstonPriceOfMetaDataTx)
-			};
+			rewardSettings.metaDataRewardSettings = this.rewardSettingsForWinston(winstonPriceOfMetaDataTx);
 		}
 
 		return {
