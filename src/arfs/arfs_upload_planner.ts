@@ -135,7 +135,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
 
 		if (!wrappedFolder.existingId) {
-			// We only create a new folder here if there is no existing folder on chain
+			// We will only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
 				this.bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
@@ -148,10 +148,12 @@ export class ArFSUploadPlanner implements UploadPlanner {
 					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
 			}
+
+			// Folder IDs must be established at this point so generate new ones for any folders
+			// that don't appear to exist on chain yet. This is to prevent the parent to child
+			// folder relationship from being lost during this flattening of the folder tree
+			wrappedFolder.existingId = EID(v4());
 		}
-		// For new folder creations, we will generate and preserve the folder ID early here to prevent
-		// the parent to child folder relationship from being lost during the flattening of the folder tree
-		wrappedFolder.existingId ??= EID(v4());
 
 		const partialPlanParams = {
 			...planFolderParams,
