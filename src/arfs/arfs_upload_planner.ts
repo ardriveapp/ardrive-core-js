@@ -66,7 +66,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 */
 	private resetPlannedUploads(): void {
 		this.v2TxsToUpload = [];
-		this.bundlePacker.bundles = [];
+		this.bundlePacker.resetPlannedBundles();
 	}
 
 	/**
