@@ -19,21 +19,17 @@ import {
 	ByteCount,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
-	deriveDriveKey,
 	DriveKey,
-	encryptedDataSize,
-	JWKWallet,
-	readJWKFile
+	encryptedDataSize
 } from '../exports';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 
 export const getFakeDriveKey = async (): Promise<DriveKey> => {
-	return deriveDriveKey(
-		'stubPassword',
-		`${fakeEntityId}`,
-		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
-	);
+	const fakeDriveKeyString = 'VTAOuxuewZZZZZZZZZZZZHipwJKXzXKxvZaKqFAKE/s';
+	const fakeDriveKey = Buffer.from(fakeDriveKeyString, 'base64');
+
+	return fakeDriveKey;
 };
 
 export async function getPrivateFolderEstimationPrototype(
