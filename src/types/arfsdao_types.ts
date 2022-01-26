@@ -19,7 +19,9 @@ import {
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
 	DriveKey,
-	FolderHierarchy
+	FolderHierarchy,
+	ArFSPublicFolder,
+	ArFSPrivateFolder
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -158,6 +160,16 @@ export interface ArFSRenamePublicFileParams {
 export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
 	WithDriveKey & {
 		file: ArFSPrivateFile;
+	};
+
+export interface ArFSRenamePublicFolderParams {
+	folder: ArFSPublicFolder;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+}
+export type ArFSRenamePrivateFolderParams = ArFSRenamePublicFolderParams &
+	WithDriveKey & {
+		folder: ArFSPrivateFolder;
 	};
 
 export type CommunityTipSettings = {
