@@ -82,11 +82,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const isPrivate = driveKey !== undefined;
 		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
-		const fileDataItemByteCount = this.byteCountAsDataItem(
+		const fileDataItemByteCount = byteCountAsDataItem(
 			fileDataByteCount,
 			this.arFSTagSettings.getFileDataTags(isPrivate, wrappedFile.contentType)
 		);
-		const metaDataByteCountAsDataItem = this.byteCountAsDataItem(
+		const metaDataByteCountAsDataItem = byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
 		);
@@ -238,7 +238,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				continue;
 			}
 
-			const bundledByteCount = this.bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
+			const bundledByteCount = bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
 
 			bundlePlans.push({
 				uploadStats: uploadStats,
@@ -253,17 +253,17 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		driveMetaDataPrototype,
 		rootFolderMetaDataPrototype
 	}: EstimateCreateDriveParams): CreateDrivePlan {
-		const driveDataItemByteCount = this.byteCountAsDataItem(
+		const driveDataItemByteCount = byteCountAsDataItem(
 			driveMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: driveMetaDataPrototype.gqlTags })
 		);
-		const rootFolderDataItemByteCount = this.byteCountAsDataItem(
+		const rootFolderDataItemByteCount = byteCountAsDataItem(
 			rootFolderMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: rootFolderMetaDataPrototype.gqlTags })
 		);
 		const totalDataItemByteCount = new ByteCount(+driveDataItemByteCount + +rootFolderDataItemByteCount);
 
-		const totalBundledByteCount = this.bundledByteCountOfBundleToPack(totalDataItemByteCount, 2);
+		const totalBundledByteCount = bundledByteCountOfBundleToPack(totalDataItemByteCount, 2);
 
 		return { totalBundledByteCount };
 	}
@@ -286,46 +286,40 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 		return this.planV2CreateDrive(arFSPrototypes);
 	}
+}
 
-	/** Calculate the total size  of provided ByteCount and GQL Tags as a DataItem */
-	private byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
-		// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
+/** Calculate the total size  of provided ByteCount and GQL Tags as a DataItem */
+function byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
+	// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
 
-		// We're not using the optional target and anchor fields, they will always be 1 byte
-		const targetLength = 1;
-		const anchorLength = 1;
+	// We're not using the optional target and anchor fields, they will always be 1 byte
+	const targetLength = 1;
+	const anchorLength = 1;
 
-		// Get byte length of tags after being serialized for avro schema
-		const serializedTags = serializeTags(gqlTags);
-		const tagsLength = 16 + serializedTags.byteLength;
+	// Get byte length of tags after being serialized for avro schema
+	const serializedTags = serializeTags(gqlTags);
+	const tagsLength = 16 + serializedTags.byteLength;
 
-		const arweaveSignerLength = 512;
-		const ownerLength = 512;
+	const arweaveSignerLength = 512;
+	const ownerLength = 512;
 
-		const signatureTypeLength = 2;
+	const signatureTypeLength = 2;
 
-		const dataLength = +dataSize;
+	const dataLength = +dataSize;
 
-		const totalByteLength =
-			arweaveSignerLength +
-			ownerLength +
-			signatureTypeLength +
-			targetLength +
-			anchorLength +
-			tagsLength +
-			dataLength;
+	const totalByteLength =
+		arweaveSignerLength + ownerLength + signatureTypeLength + targetLength + anchorLength + tagsLength + dataLength;
 
-		return new ByteCount(totalByteLength);
-	}
+	return new ByteCount(totalByteLength);
+}
 
-	/** Calculate the bundled size from the total dataItem byteCount and the number of dataItems */
-	private bundledByteCountOfBundleToPack(totalDataItemByteCount: ByteCount, numberOfDataItems: number): ByteCount {
-		// 32 byte array for representing the number of data items in the bundle
-		const byteArraySize = 32;
+/** Calculate the bundled size from the total dataItem byteCount and the number of dataItems */
+function bundledByteCountOfBundleToPack(totalDataItemByteCount: ByteCount, numberOfDataItems: number): ByteCount {
+	// 32 byte array for representing the number of data items in the bundle
+	const byteArraySize = 32;
 
-		// Each data item gets a 64 byte header added to the bundle
-		const headersSize = numberOfDataItems * 64;
+	// Each data item gets a 64 byte header added to the bundle
+	const headersSize = numberOfDataItems * 64;
 
-		return new ByteCount(byteArraySize + +totalDataItemByteCount + headersSize);
-	}
+	return new ByteCount(byteArraySize + +totalDataItemByteCount + headersSize);
 }
