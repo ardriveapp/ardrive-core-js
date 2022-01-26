@@ -132,17 +132,14 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const { wrappedEntity: wrappedFolder, driveKey } = planFolderParams;
 		const isPrivate = driveKey !== undefined;
 
-		const { folderByteCount, folderMetaDataPrototype } = await getFolderEstimationInfo(
-			wrappedFolder.destinationBaseName,
-			isPrivate
-		);
+		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
 
 		if (!wrappedFolder.existingId) {
 			// We only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
 				this.bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
-					byteCountAsDataItem: folderByteCount,
+					byteCountAsDataItem: folderMetaDataPrototype.objectData.sizeOf(),
 					numberOfDataItems: 1
 				});
 			} else {

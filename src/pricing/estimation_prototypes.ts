@@ -128,12 +128,10 @@ export async function getFileEstimationInfo(
 export async function getFolderEstimationInfo(
 	destinationBaseName: string,
 	isPrivate: boolean
-): Promise<{ folderMetaDataPrototype: ArFSFolderMetaDataPrototype; folderByteCount: ByteCount }> {
+): Promise<{ folderMetaDataPrototype: ArFSFolderMetaDataPrototype }> {
 	const folderMetaDataPrototype = isPrivate
 		? await getPrivateFolderEstimationPrototype(destinationBaseName)
 		: getPublicFolderEstimationPrototype(destinationBaseName);
 
-	const folderByteCount = folderMetaDataPrototype.objectData.sizeOf();
-
-	return { folderMetaDataPrototype, folderByteCount };
+	return { folderMetaDataPrototype };
 }
