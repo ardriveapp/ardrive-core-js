@@ -127,9 +127,14 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		if (!wrappedFolder.existingId) {
 			// We will only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
+				const folderByteCountAsDataItem = byteCountAsDataItem(
+					folderMetaDataPrototype.objectData.sizeOf(),
+					this.arFSTagSettings.baseArFSTagsIncluding({ tags: folderMetaDataPrototype.gqlTags })
+				);
+
 				bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
-					byteCountAsDataItem: folderMetaDataPrototype.objectData.sizeOf(),
+					byteCountAsDataItem: folderByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
 			} else {

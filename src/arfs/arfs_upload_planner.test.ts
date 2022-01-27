@@ -66,7 +66,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(8);
-			expect(+totalByteCount).to.equal(11263);
+			expect(+totalByteCount).to.equal(16295);
 		});
 
 		it('returns the expected uploadPlan for a folder with an existing folder id', async () => {
@@ -86,7 +86,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(7);
-			expect(+totalByteCount).to.equal(11172);
+			expect(+totalByteCount).to.equal(14946);
 
 			// Expect first upload stat to have our existing stub folder id
 			expect(`${uploadStats[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
