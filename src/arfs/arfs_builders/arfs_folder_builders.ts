@@ -66,7 +66,7 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			this.parentFolderId &&
 			this.entityId
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataString = await Utf8ArrayToStr(txData);
 			const dataJSON = await JSON.parse(dataString);
 
@@ -160,7 +160,7 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 			this.cipher?.length &&
 			this.cipherIV?.length
 		) {
-			const txData = await this.arweave.transactions.getData(`${this.txId}`, { decode: true });
+			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 
 			const decryptedFolderBuffer: Buffer = await fileDecrypt(this.cipherIV, this.driveKey, dataBuffer);
