@@ -1729,7 +1729,7 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'drive',
 					entityId: result.entityId,
-					key: driveKey.toString(),
+					key: urlEncodeHashKey(driveKey),
 					metadataTxId: result.metaDataTxId
 				}
 			],
