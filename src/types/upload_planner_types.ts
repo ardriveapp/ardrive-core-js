@@ -1,6 +1,5 @@
 import { DataItem } from 'arbundles';
 import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings } from '.';
-import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
 	ArFSDriveMetaDataPrototype,
 	ArFSFileMetaDataPrototype,
@@ -14,11 +13,13 @@ import { BundleIndex, BundlePacker } from '../utils/bundle_packer';
 import { ByteCount } from './byte_count';
 import { GQLTagInterface } from './gql_Types';
 
+export type BundlePackerFactory = (maxBundleSize: ByteCount, maxDataItems: number) => BundlePacker;
+
 export interface ArFSUploadPlannerConstructorParams {
 	priceEstimator?: ARDataPriceEstimator;
 	arFSTagSettings: ArFSTagSettings;
 	communityOracle?: CommunityOracle;
-	bundlePacker?: BundlePacker;
+	bundlePacker?: BundlePackerFactory;
 	maxBundleLimit?: ByteCount;
 	maxDataItemLimit?: number;
 	feeMultiple?: FeeMultiple;
@@ -117,9 +118,5 @@ export interface CalculatedV2TxPlan extends Omit<V2TxPlan, 'fileDataByteCount' |
 export interface PlanEntityParams {
 	isBulkUpload: boolean;
 }
-export interface PlanFileParams extends FileUploadStats, PlanEntityParams {
-	wrappedEntity: ArFSDataToUpload;
-}
-export interface PlanFolderParams extends FolderUploadStats, PlanEntityParams {
-	wrappedEntity: ArFSFolderToUpload;
-}
+export type PlanFileParams = FileUploadStats & PlanEntityParams;
+export type PlanFolderParams = FolderUploadStats & PlanEntityParams;

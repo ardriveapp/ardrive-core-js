@@ -10,6 +10,8 @@ interface BundlePackParams {
 }
 
 export abstract class BundlePacker {
+	constructor(protected readonly maxBundleSize: ByteCount, protected readonly maxDataItemLimit: number) {}
+
 	protected plannedBundles: BundleToPack[] = [];
 
 	public abstract get bundles(): BundleToPack[];
@@ -27,10 +29,6 @@ export abstract class BundlePacker {
  * but the fileMetaData will still be sent up with a bundle
  */
 export class LowestIndexBundlePacker extends BundlePacker {
-	constructor(private readonly maxBundleSize: ByteCount, private readonly maxDataItemLimit: number) {
-		super();
-	}
-
 	public get bundles(): BundleToPack[] {
 		return this.plannedBundles;
 	}

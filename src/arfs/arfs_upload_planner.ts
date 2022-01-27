@@ -9,7 +9,8 @@ import {
 	PlanFileParams,
 	PlanFolderParams,
 	UploadPlan,
-	V2TxPlan
+	V2TxPlan,
+	BundlePackerFactory
 } from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
 import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
@@ -27,7 +28,7 @@ export interface UploadPlanner {
 export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
-	private readonly bundlePacker: BundlePacker;
+	private readonly bundlePacker: BundlePackerFactory;
 
 	protected readonly maxDataItemLimit: number;
 	protected readonly maxBundleLimit: ByteCount;
@@ -44,7 +45,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		arFSTagSettings,
 		maxBundleLimit = MAX_BUNDLE_SIZE,
 		maxDataItemLimit = MAX_DATA_ITEM_LIMIT,
-		bundlePacker = new LowestIndexBundlePacker(maxBundleLimit, maxDataItemLimit)
+		bundlePacker = (maxBundleSize, maxDataItems) => new LowestIndexBundlePacker(maxBundleSize, maxDataItems)
 	}: ArFSUploadPlannerConstructorParams) {
 		this.shouldBundle = shouldBundle;
 		this.arFSTagSettings = arFSTagSettings;
@@ -57,18 +58,6 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		this.maxDataItemLimit = maxDataItemLimit;
 	}
 
-	private v2TxsToUpload: V2TxPlan[] = [];
-
-	/**
-	 * Empties the bundlesToUpload from the bundlePacker and v2TxsToUpload
-	 *
-	 * @remarks To be used internally before every bulk upload plan
-	 */
-	private resetPlannedUploads(): void {
-		this.v2TxsToUpload = [];
-		this.bundlePacker.resetPlannedBundles();
-	}
-
 	/**
 	 * Plans a file as a bundle to upload or v2 transaction to upload
 	 *
@@ -77,7 +66,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 * @remarks Files over the max bundle size limit will not be bundled, but their
 	 * 	meta data will be bundled if there will be multiple entities uploaded
 	 */
-	private async planFile(planFileParams: PlanFileParams): Promise<void> {
+	private async planFile(planFileParams: PlanFileParams, bundlePacker: BundlePacker): Promise<V2TxPlan | void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = planFileParams;
 		const isPrivate = driveKey !== undefined;
 		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
@@ -101,7 +90,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 				// We will preserve the bundle index in this case because the metadata cannot be separated
 				// from the file data until ArFSDAO has generated a TxID from signing the transaction
-				v2TxToUpload.metaDataBundleIndex = this.bundlePacker.packIntoBundle({
+				v2TxToUpload.metaDataBundleIndex = bundlePacker.packIntoBundle({
 					byteCountAsDataItem: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
@@ -110,10 +99,10 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				v2TxToUpload.metaDataByteCount = fileMetaDataPrototype.objectData.sizeOf();
 			}
 			// Add to the v2TxsToUpload
-			this.v2TxsToUpload.push(v2TxToUpload);
+			return v2TxToUpload;
 		} else {
 			// Otherwise we will always pack the metadata tx and data tx in the same bundle
-			this.bundlePacker.packIntoBundle({
+			bundlePacker.packIntoBundle({
 				byteCountAsDataItem: totalByteCountOfFileDataItems,
 				numberOfDataItems: 2,
 				uploadStats: planFileParams
@@ -128,22 +117,23 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 * @remarks Uses the presence of a driveKey to determine privacy
 	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
 	 */
-	private async planFolder(planFolderParams: PlanFolderParams): Promise<void> {
+	private async planFolder(planFolderParams: PlanFolderParams, bundlePacker: BundlePacker): Promise<V2TxPlan[]> {
 		const { wrappedEntity: wrappedFolder, driveKey } = planFolderParams;
 		const isPrivate = driveKey !== undefined;
 
 		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
+		const v2TxsToUpload: V2TxPlan[] = [];
 
 		if (!wrappedFolder.existingId) {
 			// We will only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
-				this.bundlePacker.packIntoBundle({
+				bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
 					byteCountAsDataItem: folderMetaDataPrototype.objectData.sizeOf(),
 					numberOfDataItems: 1
 				});
 			} else {
-				this.v2TxsToUpload.push({
+				v2TxsToUpload.push({
 					uploadStats: planFolderParams,
 					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
@@ -162,19 +152,31 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 		// Plan each file within the folder
 		for (const file of wrappedFolder.files) {
-			await this.planFile({
-				...partialPlanParams,
-				wrappedEntity: file
-			});
+			const v2TxFromFile = await this.planFile(
+				{
+					...partialPlanParams,
+					wrappedEntity: file
+				},
+				bundlePacker
+			);
+			if (v2TxFromFile) {
+				v2TxsToUpload.push(v2TxFromFile);
+			}
 		}
 
 		// Recurse into each folder, flattening each folder into plans
 		for (const folder of wrappedFolder.folders) {
-			await this.planFolder({
-				...partialPlanParams,
-				wrappedEntity: folder
-			});
+			const v2TxsFromFolder = await this.planFolder(
+				{
+					...partialPlanParams,
+					wrappedEntity: folder
+				},
+				bundlePacker
+			);
+			v2TxsToUpload.push(...v2TxsFromFolder);
 		}
+
+		return v2TxsToUpload;
 	}
 
 	/**
@@ -182,8 +184,6 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 *  into bundles or v2 transactions and estimates the total winston cost
 	 */
 	public async planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan> {
-		this.resetPlannedUploads();
-
 		if (uploadStats.length === 0) {
 			return { bundlePlans: [], v2TxPlans: [] };
 		}
@@ -206,18 +206,28 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			return false;
 		})();
 
+		const bundlePacker = this.bundlePacker(this.maxBundleLimit, this.maxDataItemLimit);
+		const v2TxsToUpload: V2TxPlan[] = [];
+
 		for (const uploadStat of uploadStats) {
 			const { wrappedEntity } = uploadStat;
 
 			if (wrappedEntity.entityType === 'folder') {
-				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload });
+				const v2TxsFromFolder = await this.planFolder(
+					{ ...uploadStat, wrappedEntity, isBulkUpload },
+					bundlePacker
+				);
+				v2TxsToUpload.push(...v2TxsFromFolder);
 			} else {
-				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload });
+				const v2TxFromFile = await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
+				if (v2TxFromFile) {
+					v2TxsToUpload.push(v2TxFromFile);
+				}
 			}
 		}
 
 		const bundlePlans: BundlePlan[] = [];
-		for (const { uploadStats, totalDataItems, totalSize } of this.bundlePacker.bundles) {
+		for (const { uploadStats, totalDataItems, totalSize } of bundlePacker.bundles) {
 			if (totalDataItems === 1) {
 				// Edge case: Do not send up a bundle with a data item
 				const { wrappedEntity, driveKey } = uploadStats[0];
@@ -231,7 +241,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				);
 
 				// Unpack this bundle into the v2TxsToUpload
-				this.v2TxsToUpload.push({
+				v2TxsToUpload.push({
 					uploadStats: uploadStats[0],
 					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
 				});
@@ -246,7 +256,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			});
 		}
 
-		return { v2TxPlans: this.v2TxsToUpload, bundlePlans };
+		return { v2TxPlans: v2TxsToUpload, bundlePlans };
 	}
 
 	private planBundledCreateDrive({
