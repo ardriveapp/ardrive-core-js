@@ -49,12 +49,12 @@ export class LowestIndexBundlePacker extends BundlePacker {
 		}
 
 		// Otherwise we pack into a new bundle
-		this.bundles.push(new BundleToPack(bundlePackParams, this.maxBundleSize, this.maxDataItemLimit));
+		this.bundles.push(new PlannedBundle(bundlePackParams, this.maxBundleSize, this.maxDataItemLimit));
 		return this.bundles.length - 1;
 	}
 }
 
-class BundleToPack {
+class PlannedBundle {
 	protected uploadStatsInBundle: UploadStats[] = [];
 
 	protected totalSizeOfBundle = 0;
