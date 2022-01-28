@@ -23,18 +23,18 @@ describe('ArFSPublicFolderBuilder', () => {
 	};
 
 	// prettier-ignore
-	const stubPublicFolderGetDataResult = Uint8Array.from([
+	const stubPublicFolderGetDataResult = Buffer.from(Uint8Array.from([
 		123, 34, 110, 97, 109, 101, 34, 58, 34, 98, 117, 105, 108,
 		100, 45, 114, 101, 97, 99, 116, 45, 97, 112, 112, 34, 125
-	]);
+	]));
 
 	it('constructs expected folder from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicFolderGetDataResult);
-
 		const builder = ArFSPublicFolderBuilder.fromArweaveNode(
 			stubPublicFolderGQLNode as GQLNodeInterface,
 			fakeArweave
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPublicFolderGetDataResult);
+
 		const folderMetaData = await builder.build(stubPublicFolderGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
@@ -115,22 +115,22 @@ describe('ArFSPrivateFolderBuilder', () => {
 	const driveKeyForStubPrivateFolder = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
 
 	// prettier-ignore
-	const stubPrivateFolderGetDataResult = Uint8Array.from([
+	const stubPrivateFolderGetDataResult = Buffer.from(Uint8Array.from([
 		162,  27, 165,  86, 125, 152,  27,
 		194, 169, 118, 237, 181, 104, 108,
 		241, 209,  78, 150, 182,  23, 128,
 		 60, 158, 248, 149, 205,  62, 203,
 		105, 144, 222, 188, 176,  29
-	  ]);
+	  ]));
 
 	it('constructs expected folder from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateFolderGetDataResult);
-
 		const builder = ArFSPrivateFolderBuilder.fromArweaveNode(
 			stubPrivateFolderGQLNode as GQLNodeInterface,
 			fakeArweave,
 			driveKeyForStubPrivateFolder
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateFolderGetDataResult);
+
 		const folderMetaData = await builder.build(stubPrivateFolderGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
