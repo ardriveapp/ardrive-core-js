@@ -34,7 +34,7 @@ describe('LowestIndexBundlePacker class', () => {
 		it('packs a provided file entity into bundle', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(10),
+				byteCountAsDataItems: new ByteCount(10),
 				numberOfDataItems: 2
 			});
 
@@ -46,7 +46,7 @@ describe('LowestIndexBundlePacker class', () => {
 		it('packs a provided folder entity into bundle', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: folderUploadStats,
-				byteCountAsDataItem: new ByteCount(10),
+				byteCountAsDataItems: new ByteCount(10),
 				numberOfDataItems: 1
 			});
 
@@ -56,7 +56,7 @@ describe('LowestIndexBundlePacker class', () => {
 		it('packs an entity that would exceed the max size of the first bundle into a second bundle', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(50),
+				byteCountAsDataItems: new ByteCount(50),
 				numberOfDataItems: 2
 			});
 
@@ -66,7 +66,7 @@ describe('LowestIndexBundlePacker class', () => {
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(51),
+				byteCountAsDataItems: new ByteCount(51),
 				numberOfDataItems: 2
 			});
 
@@ -78,7 +78,7 @@ describe('LowestIndexBundlePacker class', () => {
 		it('packs an entity that would exceed the max data item limit of the first bundle into a second bundle', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(10),
+				byteCountAsDataItems: new ByteCount(10),
 				numberOfDataItems: 8
 			});
 
@@ -88,7 +88,7 @@ describe('LowestIndexBundlePacker class', () => {
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(15),
+				byteCountAsDataItems: new ByteCount(15),
 				numberOfDataItems: 3
 			});
 
@@ -100,7 +100,7 @@ describe('LowestIndexBundlePacker class', () => {
 		it('packs an entity that would exceed the limits of the first bundle into a second bundle, but will pack the third entity into the first bundle if it fits', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(20),
+				byteCountAsDataItems: new ByteCount(20),
 				numberOfDataItems: 2
 			});
 
@@ -109,7 +109,7 @@ describe('LowestIndexBundlePacker class', () => {
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(90),
+				byteCountAsDataItems: new ByteCount(90),
 				numberOfDataItems: 2
 			});
 
@@ -118,7 +118,7 @@ describe('LowestIndexBundlePacker class', () => {
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
-				byteCountAsDataItem: new ByteCount(50),
+				byteCountAsDataItems: new ByteCount(50),
 				numberOfDataItems: 2
 			});
 

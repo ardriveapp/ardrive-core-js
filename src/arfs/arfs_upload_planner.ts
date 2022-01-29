@@ -83,7 +83,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				// We will preserve the bundle index in this case because the metadata cannot be separated
 				// from the file data until ArFSDAO has generated a TxID from signing the transaction
 				v2TxToUpload.metaDataBundleIndex = bundlePacker.packIntoBundle({
-					byteCountAsDataItem: metaDataByteCountAsDataItem,
+					byteCountAsDataItems: metaDataByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
 			} else {
@@ -95,7 +95,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		} else {
 			// Otherwise we will always pack the metadata tx and data tx in the same bundle
 			bundlePacker.packIntoBundle({
-				byteCountAsDataItem: totalByteCountOfFileDataItems,
+				byteCountAsDataItems: totalByteCountOfFileDataItems,
 				numberOfDataItems: 2,
 				uploadStats: planFileParams
 			});
@@ -126,7 +126,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 				bundlePacker.packIntoBundle({
 					uploadStats: planFolderParams,
-					byteCountAsDataItem: folderByteCountAsDataItem,
+					byteCountAsDataItems: folderByteCountAsDataItem,
 					numberOfDataItems: 1
 				});
 			} else {

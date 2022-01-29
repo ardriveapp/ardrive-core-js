@@ -2,10 +2,10 @@ import { ByteCount, UploadStats } from '../types';
 
 export type BundleIndex = number;
 
-interface BundlePackParams {
+interface DataItemPlan {
 	// Upload stats can be undefined when a metaData for an over-sized file is packed
 	uploadStats?: UploadStats;
-	byteCountAsDataItem: ByteCount;
+	byteCountAsDataItems: ByteCount;
 	numberOfDataItems: number;
 }
 
@@ -22,7 +22,7 @@ export abstract class BundlePacker {
 		return this.plannedBundles;
 	}
 
-	public abstract packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex;
+	public abstract packIntoBundle(bundlePackParams: DataItemPlan): BundleIndex;
 
 	public abstract canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean;
 }
@@ -34,20 +34,20 @@ export abstract class BundlePacker {
  * but the fileMetaData will still be sent up with a bundle
  */
 export class LowestIndexBundlePacker extends BundlePacker {
-	public packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex {
-		const { byteCountAsDataItem, numberOfDataItems } = bundlePackParams;
+	public packIntoBundle(dataItemPlan: DataItemPlan): BundleIndex {
+		const { byteCountAsDataItems: byteCountAsDataItem, numberOfDataItems } = dataItemPlan;
 
 		for (let index = 0; index < this.bundles.length; index++) {
 			const bundle = this.bundles[index];
 			// Pack into lowest index bundle that has enough remaining size and data items
 			if (+byteCountAsDataItem <= bundle.remainingSize && numberOfDataItems <= bundle.remainingDataItems) {
-				bundle.addToBundle(bundlePackParams);
+				bundle.addToBundle(dataItemPlan);
 				return index;
 			}
 		}
 
 		// Otherwise we pack into a new bundle
-		this.bundles.push(new PlannedBundle(bundlePackParams, this.maxBundleSize, this.maxDataItemLimit));
+		this.bundles.push(new PlannedBundle(dataItemPlan, this.maxBundleSize, this.maxDataItemLimit));
 		return this.bundles.length - 1;
 	}
 
@@ -88,15 +88,15 @@ class PlannedBundle {
 	}
 
 	constructor(
-		initialBundlePackParams: BundlePackParams,
+		initialDataItemPlan: DataItemPlan,
 		private readonly maxBundleSize: ByteCount,
 		private readonly maxDataItemLimit: number
 	) {
-		this.addToBundle(initialBundlePackParams);
+		this.addToBundle(initialDataItemPlan);
 	}
 
-	addToBundle({ uploadStats, byteCountAsDataItem, numberOfDataItems }: BundlePackParams) {
-		this.totalSizeOfBundle += +byteCountAsDataItem;
+	addToBundle({ uploadStats, byteCountAsDataItems, numberOfDataItems }: DataItemPlan) {
+		this.totalSizeOfBundle += +byteCountAsDataItems;
 		this.totalDataItemsInBundle += numberOfDataItems;
 
 		// Metadata of over-sized file uploads can be added without an uploadStats
