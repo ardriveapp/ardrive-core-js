@@ -15,6 +15,14 @@ export class ByteCount implements Equatable<ByteCount> {
 		return this.byteCount;
 	}
 
+	plus(byteCount: ByteCount): ByteCount {
+		return new ByteCount(this.byteCount + byteCount.byteCount);
+	}
+
+	isGreaterThan(byteCount: ByteCount): boolean {
+		return this.byteCount > byteCount.byteCount;
+	}
+
 	toString(): string {
 		return `${this.byteCount}`;
 	}

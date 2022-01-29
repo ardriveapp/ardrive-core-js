@@ -30,9 +30,6 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePackerFactory;
 
-	protected readonly maxDataItemLimit: number;
-	protected readonly maxBundleLimit: ByteCount;
-
 	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
 	protected readonly feeMultiple?: FeeMultiple;
 	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
@@ -43,19 +40,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	constructor({
 		shouldBundle = true,
 		arFSTagSettings,
-		maxBundleLimit = MAX_BUNDLE_SIZE,
-		maxDataItemLimit = MAX_DATA_ITEM_LIMIT,
-		bundlePacker = (maxBundleSize, maxDataItems) => new LowestIndexBundlePacker(maxBundleSize, maxDataItems)
+		bundlePacker = () => new LowestIndexBundlePacker(MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT)
 	}: ArFSUploadPlannerConstructorParams) {
 		this.shouldBundle = shouldBundle;
 		this.arFSTagSettings = arFSTagSettings;
-		this.maxBundleLimit = maxBundleLimit;
 		this.bundlePacker = bundlePacker;
-
-		if (!Number.isFinite(maxDataItemLimit) || !Number.isInteger(maxDataItemLimit) || maxDataItemLimit < 2) {
-			throw new Error('Maximum data item limit must be an integer value of 2 or more!');
-		}
-		this.maxDataItemLimit = maxDataItemLimit;
 	}
 
 	/**
@@ -81,7 +70,10 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		);
 		const totalByteCountOfFileDataItems = new ByteCount(+fileDataItemByteCount + +metaDataByteCountAsDataItem);
 
-		if (!this.shouldBundle || +totalByteCountOfFileDataItems > +this.maxBundleLimit) {
+		if (
+			!this.shouldBundle ||
+			!bundlePacker.canPackDataItemsWithByteCounts([fileDataItemByteCount, metaDataByteCountAsDataItem])
+		) {
 			// If the file data is too large it must be sent as a v2 tx
 			const v2TxToUpload: V2TxPlan = { uploadStats: planFileParams, fileDataByteCount };
 
@@ -211,7 +203,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			return false;
 		})();
 
-		const bundlePacker = this.bundlePacker(this.maxBundleLimit, this.maxDataItemLimit);
+		const bundlePacker = this.bundlePacker();
 		const v2TxsToUpload: V2TxPlan[] = [];
 
 		for (const uploadStat of uploadStats) {

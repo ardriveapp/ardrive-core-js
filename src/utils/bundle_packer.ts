@@ -10,7 +10,11 @@ interface BundlePackParams {
 }
 
 export abstract class BundlePacker {
-	constructor(protected readonly maxBundleSize: ByteCount, protected readonly maxDataItemLimit: number) {}
+	constructor(protected readonly maxBundleSize: ByteCount, protected readonly maxDataItemLimit: number) {
+		if (!Number.isFinite(maxDataItemLimit) || !Number.isInteger(maxDataItemLimit) || maxDataItemLimit < 2) {
+			throw new Error('Maximum data item limit must be an integer value of 2 or more!');
+		}
+	}
 
 	protected plannedBundles: PlannedBundle[] = [];
 
@@ -19,6 +23,8 @@ export abstract class BundlePacker {
 	}
 
 	public abstract packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex;
+
+	public abstract canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean;
 }
 
 /**
@@ -30,14 +36,6 @@ export abstract class BundlePacker {
 export class LowestIndexBundlePacker extends BundlePacker {
 	public packIntoBundle(bundlePackParams: BundlePackParams): BundleIndex {
 		const { byteCountAsDataItem, numberOfDataItems } = bundlePackParams;
-
-		if (+byteCountAsDataItem > +this.maxBundleSize) {
-			throw new Error('Data item is too large to be packed into a bundle!');
-		}
-
-		if (numberOfDataItems > this.maxDataItemLimit) {
-			throw new Error('Data item count is too high to be packed into a bundle!');
-		}
 
 		for (let index = 0; index < this.bundles.length; index++) {
 			const bundle = this.bundles[index];
@@ -51,6 +49,18 @@ export class LowestIndexBundlePacker extends BundlePacker {
 		// Otherwise we pack into a new bundle
 		this.bundles.push(new PlannedBundle(bundlePackParams, this.maxBundleSize, this.maxDataItemLimit));
 		return this.bundles.length - 1;
+	}
+
+	public canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean {
+		if (byteCounts.reduce((a, b) => a.plus(b)).isGreaterThan(this.maxBundleSize)) {
+			return false;
+		}
+
+		if (byteCounts.length > this.maxDataItemLimit) {
+			return false;
+		}
+
+		return true;
 	}
 }
 

@@ -14,6 +14,7 @@ import { ByteCount } from '../types';
 import { CreateDriveBundlePlan, CreateDriveV2Plan, EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { wrapFileOrFolder, ArFSFolderToUpload } from './arfs_file_wrapper';
+import { LowestIndexBundlePacker } from '../utils/bundle_packer';
 
 describe('The ArFSUploadPlanner class', () => {
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
@@ -27,19 +28,6 @@ describe('The ArFSUploadPlanner class', () => {
 	const v2TxUploadPlanner = new ArFSUploadPlanner({
 		shouldBundle: false,
 		arFSTagSettings: arFSTagSettings
-	});
-
-	it('cannot be constructed with a max data item limit of less than 2', () => {
-		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 1 })).to.throw(
-			Error,
-			'Maximum data item limit must be an integer value of 2 or more!'
-		);
-	});
-	it('cannot be constructed with a non-integer decimal value as the max data item limit', () => {
-		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 5.5 })).to.throw(
-			Error,
-			'Maximum data item limit must be an integer value of 2 or more!'
-		);
 	});
 
 	describe('planUploadAllEntities method', () => {
@@ -111,7 +99,7 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a single file that is over the size limit', async () => {
 			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
 				arFSTagSettings,
-				maxBundleLimit: new ByteCount(3_000)
+				bundlePacker: () => new LowestIndexBundlePacker(new ByteCount(3_000), 500)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
 				stubFileUploadStats()
@@ -130,7 +118,7 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a two files that are over the size limit', async () => {
 			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
 				arFSTagSettings,
-				maxBundleLimit: new ByteCount(3_000)
+				bundlePacker: () => new LowestIndexBundlePacker(new ByteCount(3_000), 500)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
 				stubFileUploadStats(),

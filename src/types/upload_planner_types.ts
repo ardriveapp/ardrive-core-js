@@ -13,15 +13,13 @@ import { BundleIndex, BundlePacker } from '../utils/bundle_packer';
 import { ByteCount } from './byte_count';
 import { GQLTagInterface } from './gql_Types';
 
-export type BundlePackerFactory = (maxBundleSize: ByteCount, maxDataItems: number) => BundlePacker;
+export type BundlePackerFactory = () => BundlePacker;
 
 export interface ArFSUploadPlannerConstructorParams {
 	priceEstimator?: ARDataPriceEstimator;
 	arFSTagSettings: ArFSTagSettings;
 	communityOracle?: CommunityOracle;
 	bundlePacker?: BundlePackerFactory;
-	maxBundleLimit?: ByteCount;
-	maxDataItemLimit?: number;
 	feeMultiple?: FeeMultiple;
 	shouldBundle?: boolean;
 }
