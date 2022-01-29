@@ -16,14 +16,8 @@ export abstract class BundlePacker {
 		}
 	}
 
-	protected plannedBundles: PlannedBundle[] = [];
-
-	public get bundles(): PlannedBundle[] {
-		return this.plannedBundles;
-	}
-
+	public abstract bundles: PlannedBundle[];
 	public abstract packIntoBundle(bundlePackParams: DataItemPlan): BundleIndex;
-
 	public abstract canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean;
 }
 
@@ -34,6 +28,12 @@ export abstract class BundlePacker {
  * but the fileMetaData will still be sent up with a bundle
  */
 export class LowestIndexBundlePacker extends BundlePacker {
+	protected plannedBundles: PlannedBundle[] = [];
+
+	public get bundles(): PlannedBundle[] {
+		return this.plannedBundles;
+	}
+
 	public packIntoBundle(dataItemPlan: DataItemPlan): BundleIndex {
 		const { byteCountAsDataItems: byteCountAsDataItem, numberOfDataItems } = dataItemPlan;
 
