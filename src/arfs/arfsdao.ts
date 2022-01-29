@@ -771,10 +771,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 			if (dataTxRewardSettings) {
 				if (wrappedEntity.entityType !== 'file') {
-					throw new Error('Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!');
+					throw new Error('Invalid v2 tx plan, only files can have dataTxRewardSettings!');
 				}
 				if (communityTipSettings === undefined) {
-					throw new Error('Error: Invalid v2 tx plan, file uploads must include communityTipSettings!');
+					throw new Error('Invalid v2 tx plan, file uploads must include communityTipSettings!');
 				}
 
 				const prepFileParams = getPrepFileParams({ ...uploadStats, wrappedEntity });
@@ -790,7 +790,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					);
 				} else {
 					if (metaDataBundleIndex === undefined) {
-						throw new Error('Error: Invalid v2 tx plan, file upload must include a plan for the metadata!');
+						throw new Error('Invalid v2 tx plan, file upload must include a plan for the metadata!');
 					}
 					// Send file as v2, but prepare the metadata as data item
 					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
@@ -808,7 +808,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				results.fileResults.push(v2FileResult);
 			} else if (metaDataRewardSettings) {
 				if (wrappedEntity.entityType === 'file') {
-					throw new Error('Error: Invalid v2 tx plan, file uploads must have file data reward settings!');
+					throw new Error('Invalid v2 tx plan, file uploads must have file data reward settings!');
 				}
 
 				// Send this folder metadata up as a v2 tx
@@ -823,6 +823,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					folderMetaDataReward: metaDataTxReward,
 					driveKey
 				});
+			} else {
+				throw new Error(
+					'Invalid v2 tx plan, reward settings for a data tx or a meta data tx must be included!'
+				);
 			}
 		}
 
@@ -835,9 +839,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				if (wrappedEntity.entityType === 'folder') {
 					if (uploadStats.length === 1 && !metaDataDataItems) {
-						throw new Error(
-							'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
-						);
+						throw new Error('Invalid bundle plan, a single metadata transaction can not be bundled alone!');
 					}
 
 					// Prepare folder data item and results
@@ -854,7 +856,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
 				} else {
 					if (!communityTipSettings) {
-						throw new Error('Error: Invalid bundle plan, file uploads must include communityTipSettings!');
+						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
 					}
 
 					// Prepare file data item and results

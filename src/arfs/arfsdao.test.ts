@@ -950,7 +950,7 @@ describe('The ArFSDAO class', () => {
 						}
 					]
 				}),
-				errorMessage: 'Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!'
+				errorMessage: 'Invalid v2 tx plan, only files can have dataTxRewardSettings!'
 			});
 		});
 
@@ -966,7 +966,7 @@ describe('The ArFSDAO class', () => {
 						}
 					]
 				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file upload must include a plan for the metadata!'
+				errorMessage: 'Invalid v2 tx plan, file upload must include a plan for the metadata!'
 			});
 		});
 
@@ -982,7 +982,7 @@ describe('The ArFSDAO class', () => {
 						}
 					]
 				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file uploads must have file data reward settings!'
+				errorMessage: 'Invalid v2 tx plan, file uploads must have file data reward settings!'
 			});
 		});
 
@@ -1000,7 +1000,22 @@ describe('The ArFSDAO class', () => {
 						}
 					]
 				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file uploads must include communityTipSettings!'
+				errorMessage: 'Invalid v2 tx plan, file uploads must include communityTipSettings!'
+			});
+		});
+
+		it('throws an error if a provided v2 tx plan has no metaDataRewardSettings and no dataTxRewardSettings', async () => {
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.uploadAllEntities({
+					bundlePlans: [],
+					v2TxPlans: [
+						{
+							uploadStats: stubFileUploadStats(),
+							rewardSettings: {}
+						}
+					]
+				}),
+				errorMessage: 'Invalid v2 tx plan, reward settings for a data tx or a meta data tx must be included!'
 			});
 		});
 
@@ -1015,7 +1030,7 @@ describe('The ArFSDAO class', () => {
 					],
 					v2TxPlans: []
 				}),
-				errorMessage: 'Error: Invalid bundle plan, file uploads must include communityTipSettings!'
+				errorMessage: 'Invalid bundle plan, file uploads must include communityTipSettings!'
 			});
 		});
 
@@ -1030,7 +1045,7 @@ describe('The ArFSDAO class', () => {
 					],
 					v2TxPlans: []
 				}),
-				errorMessage: 'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
+				errorMessage: 'Invalid bundle plan, a single metadata transaction can not be bundled alone!'
 			});
 		});
 	});
