@@ -1,5 +1,9 @@
 import { expect } from 'chai';
-import { assertValidArFSFileName, assertValidArFSFolderName } from './arfs_entity_name_validators';
+import {
+	assertValidArFSDriveName,
+	assertValidArFSFileName,
+	assertValidArFSFolderName
+} from './arfs_entity_name_validators';
 
 describe('entity name validators', () => {
 	const validNames = [
@@ -41,6 +45,11 @@ describe('entity name validators', () => {
 			entity: 'folder',
 			methodName: 'assertValidArFSFolderName',
 			validationMethod: assertValidArFSFolderName
+		},
+		{
+			entity: 'drive',
+			methodName: 'assertValidArFSDriveName',
+			validationMethod: assertValidArFSDriveName
 		}
 	];
 
