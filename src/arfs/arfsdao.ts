@@ -614,7 +614,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									owner
 								}
 							],
-							communityTipSettings
+							communityTipSettings,
+							metaDataDataItems: []
 						}
 					],
 					v2TxPlans: []
@@ -662,7 +663,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									owner
 								}
 							],
-							communityTipSettings
+							communityTipSettings,
+							metaDataDataItems: []
 						}
 					],
 					v2TxPlans: []
@@ -801,9 +803,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					v2FileResult = fileResult;
 
 					// Add data item to its intended bundle plan
-					bundlePlans[metaDataBundleIndex].metaDataDataItems === undefined
-						? (bundlePlans[metaDataBundleIndex].metaDataDataItems = [metaDataDataItem])
-						: bundlePlans[metaDataBundleIndex].metaDataDataItems?.push(metaDataDataItem);
+					bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
 				}
 				results.fileResults.push(v2FileResult);
 			} else if (metaDataRewardSettings) {
@@ -838,7 +838,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const { wrappedEntity, driveKey } = uploadStat;
 
 				if (wrappedEntity.entityType === 'folder') {
-					if (uploadStats.length === 1 && !metaDataDataItems) {
+					if (uploadStats.length === 1 && metaDataDataItems.length < 1) {
 						throw new Error('Invalid bundle plan, a single metadata transaction can not be bundled alone!');
 					}
 
@@ -881,9 +881,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 
 			// Add any metaData data items from over-sized files sent as v2
-			if (metaDataDataItems !== undefined) {
-				dataItems.push(...metaDataDataItems);
-			}
+			dataItems.push(...metaDataDataItems);
 
 			const bundle = await this.prepareArFSObjectBundle({
 				dataItems,

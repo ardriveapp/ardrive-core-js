@@ -78,7 +78,8 @@ export class ArFSCostCalculator implements CostCalculator {
 			calculatedBundlePlan: {
 				uploadStats,
 				bundleRewardSettings,
-				communityTipSettings
+				communityTipSettings,
+				metaDataDataItems: []
 			},
 			totalPriceOfBundle
 		};

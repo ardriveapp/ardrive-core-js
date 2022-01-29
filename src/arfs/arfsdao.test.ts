@@ -733,6 +733,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(20) },
+						metaDataDataItems: [],
 						uploadStats: [stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
@@ -753,6 +754,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(10) },
+						metaDataDataItems: [],
 						uploadStats: [stubFolderUploadStats(), stubFolderUploadStats()]
 					}
 				],
@@ -775,6 +777,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(100) },
+						metaDataDataItems: [],
 						uploadStats: [stubFolderUploadStats(), stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
@@ -796,6 +799,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(500) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 1 Folder and 2 Files
 							stubFolderUploadStats(),
@@ -806,6 +810,7 @@ describe('The ArFSDAO class', () => {
 					},
 					{
 						bundleRewardSettings: { reward: W(2000) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 4 Files
 							stubFileUploadStats(),
@@ -817,6 +822,7 @@ describe('The ArFSDAO class', () => {
 					},
 					{
 						bundleRewardSettings: { reward: W(200) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 3 Folders
 							stubFolderUploadStats(),
@@ -849,6 +855,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(1337) },
+						metaDataDataItems: [],
 						uploadStats: [
 							stubFileUploadStats(),
 							stubFileUploadStats(),
@@ -902,6 +909,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(420) },
+						metaDataDataItems: [],
 						uploadStats: []
 					}
 				],
@@ -1025,6 +1033,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
+							metaDataDataItems: [],
 							uploadStats: [stubFileUploadStats()]
 						}
 					],
@@ -1040,6 +1049,7 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
+							metaDataDataItems: [],
 							uploadStats: [stubFolderUploadStats()]
 						}
 					],

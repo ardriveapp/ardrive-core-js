@@ -94,9 +94,10 @@ export interface BundlePlan {
 /** Bundle plan from ArFSCostCalculator with reward/tip settings determined */
 export interface CalculatedBundlePlan extends Omit<BundlePlan, 'totalByteCount'> {
 	bundleRewardSettings: RewardSettings;
+	/** Bundles with no file data will not have a community tip settings */
 	communityTipSettings?: CommunityTipSettings;
-	/** Meta data for over-sized files will be added to their bundle plan in the ArFSDAO layer  */
-	metaDataDataItems?: DataItem[];
+	/** Meta data for over-sized files will be added to their bundle plan in the ArFSDAO layer */
+	metaDataDataItems: DataItem[];
 }
 
 /** V2 tx plan from ArFSUploadPlanner with byteCounts for any file data or metadata transactions determined */
