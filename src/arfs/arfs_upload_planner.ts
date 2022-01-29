@@ -226,7 +226,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const bundlePlans: BundlePlan[] = [];
 		for (const { uploadStats, totalDataItems, totalSize } of bundlePacker.bundles) {
 			if (totalDataItems === 1) {
-				// Edge case: Do not send up a bundle with a data item
+				// Edge case: Do not send up a bundle containing a single data item
 				const { wrappedEntity, driveKey } = uploadStats[0];
 
 				// We know this will be a folder in this case because file meta data will
