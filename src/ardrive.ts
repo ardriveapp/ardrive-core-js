@@ -113,6 +113,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { assertValidArFSDriveName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -1204,13 +1205,19 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	public async createPublicDrive(params: CreatePublicDriveParams): Promise<ArFSResult> {
+		const { driveName } = params;
+
+		assertValidArFSDriveName(driveName);
+
 		return this.createDrive(getPublicCreateDriveEstimationPrototypes(params), (rewardSettings) =>
-			this.arFsDao.createPublicDrive({ driveName: params.driveName, rewardSettings })
+			this.arFsDao.createPublicDrive({ driveName, rewardSettings })
 		);
 	}
 
 	public async createPrivateDrive(params: CreatePrivateDriveParams): Promise<ArFSResult> {
 		const { driveName, newPrivateDriveData: newDriveData } = params;
+
+		assertValidArFSDriveName(driveName);
 
 		const createDriveResult = await this.createDrive(
 			await getPrivateCreateDriveEstimationPrototypes(params),
