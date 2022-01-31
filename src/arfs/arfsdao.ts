@@ -131,6 +131,7 @@ import {
 	CalculatedUploadPlan,
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
+	emptyV2TxPlans,
 	isBundleRewardSetting
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
@@ -618,19 +619,24 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 							metaDataDataItems: []
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				};
 			}
 
 			return {
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
-						rewardSettings,
-						communityTipSettings
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
 			};
 		})();
 
@@ -667,19 +673,24 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 							metaDataDataItems: []
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				};
 			}
 
 			return {
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey, owner },
-						rewardSettings,
-						communityTipSettings
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner, driveKey },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
 			};
 		})();
 
@@ -764,71 +775,58 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+		const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans: folderMetaDataPlan } = v2TxPlans;
 
-		for (const { rewardSettings, uploadStats, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
-			// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+		// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+		for (const {
+			dataTxRewardSettings,
+			uploadStats,
+			communityTipSettings,
+			metaDataBundleIndex
+		} of fileDataOnlyPlans) {
+			const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
 
-			const { dataTxRewardSettings, metaDataRewardSettings } = rewardSettings;
-			const { wrappedEntity, driveKey } = uploadStats;
-
-			if (dataTxRewardSettings) {
-				if (wrappedEntity.entityType !== 'file') {
-					throw new Error('Invalid v2 tx plan, only files can have dataTxRewardSettings!');
-				}
-				if (communityTipSettings === undefined) {
-					throw new Error('Invalid v2 tx plan, file uploads must include communityTipSettings!');
-				}
-
-				const prepFileParams = getPrepFileParams({ ...uploadStats, wrappedEntity });
-
-				let v2FileResult: FileResult;
-				if (metaDataRewardSettings) {
-					// File has reward settings for metadata, send both file and metadata as v2 txs
-					v2FileResult = await this.uploadFileAndMetaDataAsV2(
-						prepFileParams,
-						dataTxRewardSettings,
-						metaDataRewardSettings,
-						communityTipSettings
-					);
-				} else {
-					if (metaDataBundleIndex === undefined) {
-						throw new Error('Invalid v2 tx plan, file upload must include a plan for the metadata!');
-					}
-					// Send file as v2, but prepare the metadata as data item
-					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
-						prepFileParams,
-						dataTxRewardSettings,
-						communityTipSettings
-					);
-					v2FileResult = fileResult;
-
-					// Add data item to its intended bundle plan
-					bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
-				}
-				results.fileResults.push(v2FileResult);
-			} else if (metaDataRewardSettings) {
-				if (wrappedEntity.entityType === 'file') {
-					throw new Error('Invalid v2 tx plan, file uploads must have file data reward settings!');
-				}
-
-				// Send this folder metadata up as a v2 tx
-				const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
-					await getPrepFolderFactoryParams({ ...uploadStats, wrappedEntity }),
-					metaDataRewardSettings
-				);
-
-				results.folderResults.push({
-					folderId,
-					folderTxId: metaDataTxId,
-					folderMetaDataReward: metaDataTxReward,
-					driveKey
-				});
-			} else {
-				throw new Error(
-					'Invalid v2 tx plan, reward settings for a data tx or a meta data tx must be included!'
-				);
-			}
+			// Add data item to its intended bundle plan
+			bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
 		}
+		v2TxPlans.fileDataOnlyPlans = [];
+
+		for (const {
+			dataTxRewardSettings,
+			metaDataRewardSettings,
+			uploadStats,
+			communityTipSettings
+		} of fileAndMetaDataPlans) {
+			const fileResult = await this.uploadFileAndMetaDataAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				metaDataRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
+		}
+		v2TxPlans.fileAndMetaDataPlans = [];
+
+		for (const { metaDataRewardSettings, uploadStats } of folderMetaDataPlan) {
+			// Send this folder metadata up as a v2 tx
+			const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
+				await getPrepFolderFactoryParams(uploadStats),
+				metaDataRewardSettings
+			);
+
+			results.folderResults.push({
+				folderId,
+				folderTxId: metaDataTxId,
+				folderMetaDataReward: metaDataTxReward,
+				driveKey: uploadStats.driveKey
+			});
+		}
+		v2TxPlans.folderMetaDataPlans = [];
 
 		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling

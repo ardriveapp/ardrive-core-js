@@ -1,5 +1,6 @@
 import { DataItem } from 'arbundles';
 import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings } from '.';
+import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
 	ArFSDriveMetaDataPrototype,
 	ArFSFileMetaDataPrototype,
@@ -77,12 +78,12 @@ export type UploadFileRewardSettings = UploadFileV2TxRewardSettings | BundleRewa
 
 export interface UploadPlan {
 	bundlePlans: BundlePlan[];
-	v2TxPlans: V2TxPlan[];
+	v2TxPlans: V2TxPlans;
 }
 
 export interface CalculatedUploadPlan {
 	bundlePlans: CalculatedBundlePlan[];
-	v2TxPlans: CalculatedV2TxPlan[];
+	v2TxPlans: CalculatedV2TxPlans;
 }
 
 /** Bundle plan from ArFSUploadPlanner with totalByteCount determined */
@@ -100,18 +101,49 @@ export interface CalculatedBundlePlan extends Omit<BundlePlan, 'totalByteCount'>
 	metaDataDataItems: DataItem[];
 }
 
-/** V2 tx plan from ArFSUploadPlanner with byteCounts for any file data or metadata transactions determined */
-export interface V2TxPlan {
-	uploadStats: UploadStats;
-	fileDataByteCount?: ByteCount;
-	metaDataByteCount?: ByteCount;
-	metaDataBundleIndex?: BundleIndex;
+/** V2 tx plans from ArFSUploadPlanner with byteCounts for any file data or metadata transactions determined */
+export interface V2TxPlans {
+	fileAndMetaDataPlans: V2FileAndMetaDataPlan[];
+	fileDataOnlyPlans: V2FileDataOnlyPlan[];
+	folderMetaDataPlans: V2FolderMetaDataPlan[];
 }
 
-/** V2 tx plan from ArFSCostCalculator with reward/tip settings determined */
-export interface CalculatedV2TxPlan extends Omit<V2TxPlan, 'fileDataByteCount' | 'metaDataByteCount'> {
-	rewardSettings: Partial<UploadFileV2TxRewardSettings>;
-	communityTipSettings?: CommunityTipSettings;
+export const emptyV2TxPlans = { fileAndMetaDataPlans: [], fileDataOnlyPlans: [], folderMetaDataPlans: [] };
+
+/** V2 tx plans from ArFSCostCalculator with reward/tip settings determined */
+export interface CalculatedV2TxPlans {
+	fileAndMetaDataPlans: CalculatedFileAndMetaDataPlan[];
+	fileDataOnlyPlans: CalculatedFileDataOnlyPlan[];
+	folderMetaDataPlans: CalculatedFolderMetaDataPlan[];
+}
+
+export interface V2FileAndMetaDataPlan {
+	uploadStats: UploadStats<ArFSDataToUpload>;
+	fileDataByteCount: ByteCount;
+	metaDataByteCount: ByteCount;
+}
+export interface V2FileDataOnlyPlan {
+	uploadStats: UploadStats<ArFSDataToUpload>;
+	fileDataByteCount: ByteCount;
+	metaDataBundleIndex: BundleIndex;
+}
+export interface V2FolderMetaDataPlan {
+	uploadStats: UploadStats<ArFSFolderToUpload>;
+	metaDataByteCount: ByteCount;
+}
+
+export interface CalculatedFileAndMetaDataPlan
+	extends Omit<V2FileAndMetaDataPlan, 'fileDataByteCount' | 'metaDataByteCount'> {
+	dataTxRewardSettings: RewardSettings;
+	metaDataRewardSettings: RewardSettings;
+	communityTipSettings: CommunityTipSettings;
+}
+export interface CalculatedFileDataOnlyPlan extends Omit<V2FileDataOnlyPlan, 'fileDataByteCount'> {
+	dataTxRewardSettings: RewardSettings;
+	communityTipSettings: CommunityTipSettings;
+}
+export interface CalculatedFolderMetaDataPlan extends Omit<V2FolderMetaDataPlan, 'metaDataByteCount'> {
+	metaDataRewardSettings: RewardSettings;
 }
 
 export interface PlanEntityParams {

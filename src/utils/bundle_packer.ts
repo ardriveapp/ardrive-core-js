@@ -1,4 +1,10 @@
 import { ByteCount, UploadStats } from '../types';
+import {
+	V2FileAndMetaDataPlan,
+	V2FileDataOnlyPlan,
+	V2FolderMetaDataPlan,
+	V2TxPlans
+} from '../types/upload_planner_types';
 
 export type BundleIndex = number;
 
@@ -16,9 +22,15 @@ export abstract class BundlePacker {
 		}
 	}
 
+	public abstract readonly v2TxPlans: V2TxPlans;
 	public abstract readonly bundles: PlannedBundle[];
+
 	public abstract packIntoBundle(bundlePackParams: DataItemPlan): BundleIndex;
 	public abstract canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean;
+
+	public abstract addV2FileAndMetaDataPlan(fileAndMetaDataPlan: V2FileAndMetaDataPlan): void;
+	public abstract addV2FileDataOnlyPlan(fileDataOnlyPlan: V2FileDataOnlyPlan): void;
+	public abstract addV2FolderMetaDataPlan(folderMetaDataPlan: V2FolderMetaDataPlan): void;
 }
 
 /**
@@ -29,9 +41,13 @@ export abstract class BundlePacker {
  */
 export class LowestIndexBundlePacker extends BundlePacker {
 	protected plannedBundles: PlannedBundle[] = [];
+	protected plannedV2Txs: V2TxPlans = { fileAndMetaDataPlans: [], fileDataOnlyPlans: [], folderMetaDataPlans: [] };
 
 	public get bundles(): PlannedBundle[] {
 		return this.plannedBundles;
+	}
+	public get v2TxPlans(): V2TxPlans {
+		return this.plannedV2Txs;
 	}
 
 	public packIntoBundle(dataItemPlan: DataItemPlan): BundleIndex {
@@ -61,6 +77,16 @@ export class LowestIndexBundlePacker extends BundlePacker {
 		}
 
 		return true;
+	}
+
+	public addV2FileAndMetaDataPlan(fileAndMetaDataPlan: V2FileAndMetaDataPlan): void {
+		this.v2TxPlans.fileAndMetaDataPlans.push(fileAndMetaDataPlan);
+	}
+	public addV2FileDataOnlyPlan(fileDataOnlyPlan: V2FileDataOnlyPlan): void {
+		this.v2TxPlans.fileDataOnlyPlans.push(fileDataOnlyPlan);
+	}
+	public addV2FolderMetaDataPlan(folderMetaDataPlan: V2FolderMetaDataPlan): void {
+		this.v2TxPlans.folderMetaDataPlans.push(folderMetaDataPlan);
 	}
 }
 

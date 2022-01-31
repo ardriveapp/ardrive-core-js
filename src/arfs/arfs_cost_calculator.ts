@@ -3,17 +3,21 @@ import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { FeeMultiple, Winston, RewardSettings, W, CommunityTipSettings } from '../types';
 import {
 	CalculatedBundlePlan,
-	CalculatedV2TxPlan,
 	BundlePlan,
-	V2TxPlan,
-	UploadFileV2TxRewardSettings,
 	UploadPlan,
 	CalculatedUploadPlan,
 	CreateDrivePlan,
 	CalculatedCreateDrivePlan,
 	isBundlePlan,
 	CreateDriveV2Plan,
-	CreateDriveBundlePlan
+	CreateDriveBundlePlan,
+	V2FileAndMetaDataPlan,
+	CalculatedFileAndMetaDataPlan,
+	CalculatedFileDataOnlyPlan,
+	V2FileDataOnlyPlan,
+	CalculatedV2TxPlans,
+	V2FolderMetaDataPlan,
+	CalculatedFolderMetaDataPlan
 } from '../types/upload_planner_types';
 
 export interface CostCalculator {
@@ -85,45 +89,80 @@ export class ArFSCostCalculator implements CostCalculator {
 		};
 	}
 
-	/** Calculates fileDataRewardSettings, metaDataRewardSettings, and communityTipSettings for a planned v2 tx */
-	private async calculateCostsForV2TxPlan({
+	/** Calculates fileDataRewardSettings, metaDataRewardSettings, and communityTipSettings for a planned file and meta data v2 tx */
+	private async calculateCostsForV2FileAndMetaData({
 		fileDataByteCount,
 		metaDataByteCount,
-		uploadStats,
-		metaDataBundleIndex
-	}: V2TxPlan): Promise<{ calculatedV2TxPlan: CalculatedV2TxPlan; totalPriceOfV2Tx: Winston }> {
-		let totalPriceOfV2Tx: Winston = W(0);
-		const rewardSettings: Partial<UploadFileV2TxRewardSettings> = {};
-		let communityTipSettings: CommunityTipSettings | undefined = undefined;
+		uploadStats
+	}: V2FileAndMetaDataPlan): Promise<{
+		calculatedFileAndMetaDataPlan: CalculatedFileAndMetaDataPlan;
+		totalPriceOfV2Tx: Winston;
+	}> {
+		const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
+		const winstonPriceOfMetaDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataByteCount);
 
-		if (fileDataByteCount) {
-			const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
-			totalPriceOfV2Tx = totalPriceOfV2Tx.plus(this.boostedReward(winstonPriceOfDataTx));
+		const communityTipTarget = await this.communityOracle.selectTokenHolder();
+		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
 
-			rewardSettings.dataTxRewardSettings = this.rewardSettingsForWinston(winstonPriceOfDataTx);
-
-			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
-			const communityTipTarget = await this.communityOracle.selectTokenHolder();
-
-			totalPriceOfV2Tx = totalPriceOfV2Tx.plus(communityWinstonTip);
-			communityTipSettings = { communityTipTarget, communityWinstonTip };
-		}
-
-		if (metaDataByteCount) {
-			const winstonPriceOfMetaDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-				metaDataByteCount
-			);
-			totalPriceOfV2Tx = totalPriceOfV2Tx.plus(this.boostedReward(winstonPriceOfMetaDataTx));
-
-			rewardSettings.metaDataRewardSettings = this.rewardSettingsForWinston(winstonPriceOfMetaDataTx);
-		}
+		const totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx)
+			.plus(this.boostedReward(winstonPriceOfMetaDataTx))
+			.plus(communityWinstonTip);
 
 		return {
-			calculatedV2TxPlan: {
+			calculatedFileAndMetaDataPlan: {
 				uploadStats,
-				rewardSettings,
-				communityTipSettings,
+				communityTipSettings: { communityTipTarget, communityWinstonTip },
+				dataTxRewardSettings: this.rewardSettingsForWinston(winstonPriceOfDataTx),
+				metaDataRewardSettings: this.rewardSettingsForWinston(winstonPriceOfMetaDataTx)
+			},
+			totalPriceOfV2Tx
+		};
+	}
+
+	/** Calculates fileDataRewardSettings and communityTipSettings for a planned file data only v2 tx */
+	private async calculateCostsForV2FileDataOnly({
+		fileDataByteCount,
+		metaDataBundleIndex,
+		uploadStats
+	}: V2FileDataOnlyPlan): Promise<{
+		calculatedFileDataOnlyPlan: CalculatedFileDataOnlyPlan;
+		totalPriceOfV2Tx: Winston;
+	}> {
+		const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
+
+		const communityTipTarget = await this.communityOracle.selectTokenHolder();
+		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
+
+		const totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx).plus(communityWinstonTip);
+
+		return {
+			calculatedFileDataOnlyPlan: {
+				uploadStats,
+				communityTipSettings: { communityTipTarget, communityWinstonTip },
+				dataTxRewardSettings: this.rewardSettingsForWinston(winstonPriceOfDataTx),
 				metaDataBundleIndex
+			},
+			totalPriceOfV2Tx
+		};
+	}
+
+	/** Calculates fileDataRewardSettings and communityTipSettings for a planned folder metadata v2 tx */
+	// eslint-disable-next-line prettier/prettier
+	private async calculateCostsForV2FolderMetaData({
+		metaDataByteCount,
+		uploadStats
+	}: V2FolderMetaDataPlan): Promise<{
+		calculatedFolderMetaDataPlan: CalculatedFolderMetaDataPlan;
+		totalPriceOfV2Tx: Winston;
+	}> {
+		const winstonPriceOfMetaDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataByteCount);
+
+		const totalPriceOfV2Tx = this.boostedReward(winstonPriceOfMetaDataTx);
+
+		return {
+			calculatedFolderMetaDataPlan: {
+				uploadStats,
+				metaDataRewardSettings: this.rewardSettingsForWinston(winstonPriceOfMetaDataTx)
 			},
 			totalPriceOfV2Tx
 		};
@@ -135,7 +174,11 @@ export class ArFSCostCalculator implements CostCalculator {
 	}: UploadPlan): Promise<{ calculatedUploadPlan: CalculatedUploadPlan; totalWinstonPrice: Winston }> {
 		let totalWinstonPrice: Winston = W(0);
 		const calculatedBundlePlans: CalculatedBundlePlan[] = [];
-		const calculatedV2TxPlans: CalculatedV2TxPlan[] = [];
+		const calculatedV2TxPlans: CalculatedV2TxPlans = {
+			fileAndMetaDataPlans: [],
+			fileDataOnlyPlans: [],
+			folderMetaDataPlans: []
+		};
 
 		for (const plan of bundlePlans) {
 			const { calculatedBundlePlan, totalPriceOfBundle } = await this.calculateCostsForBundlePlan(plan);
@@ -144,11 +187,26 @@ export class ArFSCostCalculator implements CostCalculator {
 			calculatedBundlePlans.push(calculatedBundlePlan);
 		}
 
-		for (const plan of v2TxPlans) {
-			const { calculatedV2TxPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2TxPlan(plan);
-
+		for (const plan of v2TxPlans.fileAndMetaDataPlans) {
+			const { calculatedFileAndMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FileAndMetaData(
+				plan
+			);
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
-			calculatedV2TxPlans.push(calculatedV2TxPlan);
+			calculatedV2TxPlans.fileAndMetaDataPlans.push(calculatedFileAndMetaDataPlan);
+		}
+
+		for (const plan of v2TxPlans.fileDataOnlyPlans) {
+			const { calculatedFileDataOnlyPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FileDataOnly(plan);
+			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
+			calculatedV2TxPlans.fileDataOnlyPlans.push(calculatedFileDataOnlyPlan);
+		}
+
+		for (const plan of v2TxPlans.folderMetaDataPlans) {
+			const { calculatedFolderMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FolderMetaData(
+				plan
+			);
+			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
+			calculatedV2TxPlans.folderMetaDataPlans.push(calculatedFolderMetaDataPlan);
 		}
 
 		return {
