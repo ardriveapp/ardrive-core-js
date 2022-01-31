@@ -113,6 +113,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { assertValidArFSFileName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -440,6 +441,8 @@ export class ArDrive extends ArDriveAnonymous {
 			communityTipSettings: CommunityTipSettings
 		) => Promise<ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult>
 	): Promise<ArFSResult> {
+		assertValidArFSFileName(wrappedFile.getBaseFileName());
+
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 
 		const owner = await getOwnerAndAssertDrive(driveId);
