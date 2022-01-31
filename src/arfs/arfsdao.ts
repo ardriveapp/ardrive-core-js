@@ -883,7 +883,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Add any metaData data items from over-sized files sent as v2
 			dataItems.push(...metaDataDataItems);
 
-			const bundle = await this.prepareArFSObjectBundle({
+			const bundleTx = await this.prepareArFSObjectBundle({
 				dataItems,
 				rewardSettings: bundleRewardSettings,
 				communityTipSettings
@@ -893,12 +893,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			dataItems = [];
 
 			// This bundle is now complete, send it off before starting a new one
-			await this.sendTransactionsAsChunks([bundle]);
+			await this.sendTransactionsAsChunks([bundleTx]);
 
 			results.bundleResults.push({
-				bundleTxId: TxID(bundle.id),
+				bundleTxId: TxID(bundleTx.id),
 				communityTipSettings,
-				bundleReward: W(bundle.reward)
+				bundleReward: W(bundleTx.reward)
 			});
 		}
 
