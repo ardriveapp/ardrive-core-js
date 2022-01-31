@@ -71,7 +71,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(2);
-			expect(bundlePacker.bundles[1].totalSize).to.equal(51);
+			expect(+bundlePacker.bundles[1].totalSize).to.equal(51);
 			expect(bundlePacker.bundles[1].totalDataItems).to.equal(2);
 		});
 
@@ -93,7 +93,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(2);
-			expect(bundlePacker.bundles[1].totalSize).to.equal(15);
+			expect(+bundlePacker.bundles[1].totalSize).to.equal(15);
 			expect(bundlePacker.bundles[1].totalDataItems).to.equal(3);
 		});
 
@@ -114,7 +114,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(2);
-			expect(bundlePacker.bundles[1].totalSize).to.equal(90);
+			expect(+bundlePacker.bundles[1].totalSize).to.equal(90);
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
