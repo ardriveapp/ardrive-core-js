@@ -18,6 +18,7 @@ import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
+	let boostedArDrive: ArDrive;
 	let arweaveOracleStub: SinonStubbedInstance<ArweaveOracle>;
 	let communityOracleStub: SinonStubbedInstance<CommunityOracle>;
 	let priceEstimator: ARDataPriceRegressionEstimator;
@@ -61,18 +62,38 @@ describe('ArDrive class', () => {
 			arFSTagSettings,
 			uploadPlanner
 		);
+
+		boostedArDrive = new ArDrive(
+			wallet,
+			walletDao,
+			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
+			communityOracleStub,
+			'Unit Test',
+			'1.0',
+			priceEstimator,
+			new FeeMultiple(2.0),
+			true,
+			arFSTagSettings,
+			uploadPlanner
+		);
 	});
 
 	describe('estimateAndAssertCostOfFolderUpload function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
 			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
 				return Promise.resolve(W(0));
 			});
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
+				W(+stubPublicFolderTransactionData.sizeOf())
+			);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
 			});
 		});
 
@@ -82,6 +103,36 @@ describe('ArDrive class', () => {
 			});
 
 			const actual = await arDrive.estimateAndAssertCostOfFolderUpload(stubPublicFileTransactionData);
+			// TODO: Bummer to lose deep equal verification
+			expect(`${actual.metaDataBaseReward}`).to.equal('147');
+		});
+	});
+
+	describe('estimateAndAssertCostOfFileRename function', () => {
+		it('throws an error when there is an insufficient wallet balance', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
+				return Promise.resolve(W(0));
+			});
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
+				W(+stubPublicFileTransactionData.sizeOf())
+			);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
+			});
+		});
+
+		it('returns the correct reward data', async () => {
+			stub(walletDao, 'walletHasBalance').callsFake(() => {
+				return Promise.resolve(true);
+			});
+
+			const actual = await arDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData);
 			// TODO: Bummer to lose deep equal verification
 			expect(`${actual.metaDataBaseReward}`).to.equal('147');
 		});
