@@ -16,7 +16,7 @@ export abstract class BundlePacker {
 		}
 	}
 
-	public abstract bundles: PlannedBundle[];
+	public abstract readonly bundles: PlannedBundle[];
 	public abstract packIntoBundle(bundlePackParams: DataItemPlan): BundleIndex;
 	public abstract canPackDataItemsWithByteCounts(byteCounts: ByteCount[]): boolean;
 }
