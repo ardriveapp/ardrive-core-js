@@ -27,7 +27,7 @@ import { fakeEntityId, fakeTxID } from '../utils/constants';
 
 /** Derive a fake drive key from a stub drive key string for estimation and upload planning purposes */
 export const getFakeDriveKey = async (): Promise<DriveKey> => {
-	const fakeDriveKeyString = 'VTAOuxuewZZZZZZZZZZZZHipwJKXzXKxvZaKqFAKE/s';
+	const fakeDriveKeyString = 'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZFAKE/s';
 	const fakeDriveKey = Buffer.from(fakeDriveKeyString, 'base64');
 
 	return fakeDriveKey;
