@@ -62,4 +62,24 @@ describe('ByteCount class', () => {
 			expect(JSON.stringify({ byteCount })).to.equal('{"byteCount":12345}');
 		});
 	});
+
+	describe('plus function', () => {
+		it('correctly sums up ByteCount values', () => {
+			expect(new ByteCount(1).plus(new ByteCount(2)).toString()).to.equal('3');
+		});
+	});
+
+	describe('isGreaterThan function', () => {
+		it('returns false when other ByteCount is greater', () => {
+			expect(new ByteCount(1).isGreaterThan(new ByteCount(2))).to.be.false;
+		});
+
+		it('returns true when other ByteCount is lesser', () => {
+			expect(new ByteCount(2).isGreaterThan(new ByteCount(1))).to.be.true;
+		});
+
+		it('returns false when other ByteCount is equal', () => {
+			expect(new ByteCount(2).isGreaterThan(new ByteCount(2))).to.be.false;
+		});
+	});
 });
