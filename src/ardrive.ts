@@ -1435,14 +1435,15 @@ export class ArDrive extends ArDriveAnonymous {
 
 	private async estimateAndAssertCostOfMetaDataTx(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
 		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
+		const boostedReward = W(this.feeMultiple.boostReward(metaDataBaseReward.toString()));
 
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, metaDataBaseReward);
+		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, boostedReward);
 
 		if (!walletHasBalance) {
 			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
 
 			throw new Error(
-				`Wallet balance of ${walletBalance} Winston is not enough (${metaDataBaseReward}) for this transaction!`
+				`Wallet balance of ${walletBalance} Winston is not enough (${boostedReward}) for this transaction!`
 			);
 		}
 
