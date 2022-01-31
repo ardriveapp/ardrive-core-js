@@ -67,7 +67,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			fileMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
 		);
-		const totalByteCountOfFileDataItems = new ByteCount(+fileDataItemByteCount + +metaDataByteCountAsDataItem);
+		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
 
 		if (
 			!this.shouldBundle ||
@@ -235,7 +235,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				continue;
 			}
 
-			const bundledByteCount = bundledByteCountOfBundleToPack(new ByteCount(totalSize), totalDataItems);
+			const bundledByteCount = bundledByteCountOfBundleToPack(totalSize, totalDataItems);
 
 			bundlePlans.push({
 				uploadStats: uploadStats,
@@ -258,7 +258,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			rootFolderMetaDataPrototype.objectData.sizeOf(),
 			this.arFSTagSettings.baseArFSTagsIncluding({ tags: rootFolderMetaDataPrototype.gqlTags })
 		);
-		const totalDataItemByteCount = new ByteCount(+driveDataItemByteCount + +rootFolderDataItemByteCount);
+		const totalDataItemByteCount = driveDataItemByteCount.plus(rootFolderDataItemByteCount);
 
 		const totalBundledByteCount = bundledByteCountOfBundleToPack(totalDataItemByteCount, 2);
 

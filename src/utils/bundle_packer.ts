@@ -56,7 +56,10 @@ export class LowestIndexBundlePacker extends BundlePacker {
 		for (let index = 0; index < this.bundles.length; index++) {
 			const bundle = this.bundles[index];
 			// Pack into lowest index bundle that has enough remaining size and data items
-			if (+byteCountAsDataItem <= bundle.remainingSize && numberOfDataItems <= bundle.remainingDataItems) {
+			if (
+				bundle.remainingSize.isGreaterThan(byteCountAsDataItem) &&
+				numberOfDataItems <= bundle.remainingDataItems
+			) {
 				bundle.addToBundle(dataItemPlan);
 				return index;
 			}
@@ -93,11 +96,11 @@ export class LowestIndexBundlePacker extends BundlePacker {
 class PlannedBundle {
 	protected uploadStatsInBundle: UploadStats[] = [];
 
-	protected totalSizeOfBundle = 0;
+	protected totalSizeOfBundle = new ByteCount(0);
 	protected totalDataItemsInBundle = 0;
 
 	get remainingSize() {
-		return +this.maxBundleSize - this.totalSizeOfBundle;
+		return this.maxBundleSize.minus(this.totalSizeOfBundle);
 	}
 	get remainingDataItems() {
 		return this.maxDataItemLimit - this.totalDataItemsInBundle;
@@ -122,7 +125,7 @@ class PlannedBundle {
 	}
 
 	addToBundle({ uploadStats, byteCountAsDataItems, numberOfDataItems }: DataItemPlan) {
-		this.totalSizeOfBundle += +byteCountAsDataItems;
+		this.totalSizeOfBundle = this.totalSizeOfBundle.plus(byteCountAsDataItems);
 		this.totalDataItemsInBundle += numberOfDataItems;
 
 		// Metadata of over-sized file uploads can be added without an uploadStats

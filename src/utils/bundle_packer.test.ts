@@ -39,7 +39,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(1);
-			expect(bundlePacker.bundles[0].totalSize).to.equal(10);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(10);
 			expect(bundlePacker.bundles[0].totalDataItems).to.equal(2);
 		});
 
@@ -61,7 +61,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(1);
-			expect(bundlePacker.bundles[0].totalSize).to.equal(50);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(50);
 			expect(bundlePacker.bundles[0].totalDataItems).to.equal(2);
 
 			bundlePacker.packIntoBundle({
@@ -83,7 +83,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(1);
-			expect(bundlePacker.bundles[0].totalSize).to.equal(10);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(10);
 			expect(bundlePacker.bundles[0].totalDataItems).to.equal(8);
 
 			bundlePacker.packIntoBundle({
@@ -105,7 +105,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(1);
-			expect(bundlePacker.bundles[0].totalSize).to.equal(20);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(20);
 
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
@@ -123,7 +123,7 @@ describe('LowestIndexBundlePacker class', () => {
 			});
 
 			expect(bundlePacker.bundles.length).to.equal(2);
-			expect(bundlePacker.bundles[0].totalSize).to.equal(70);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(70);
 		});
 	});
 
