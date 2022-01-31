@@ -69,6 +69,16 @@ describe('ByteCount class', () => {
 		});
 	});
 
+	describe('minus function', () => {
+		it('correctly subtracts ByteCount values', () => {
+			expect(new ByteCount(2).minus(new ByteCount(1)).toString()).to.equal('1');
+		});
+
+		it('throws an error when the subtraction result is less than 0', () => {
+			expect(() => new ByteCount(1).minus(new ByteCount(2))).to.throw(Error);
+		});
+	});
+
 	describe('isGreaterThan function', () => {
 		it('returns false when other ByteCount is greater', () => {
 			expect(new ByteCount(1).isGreaterThan(new ByteCount(2))).to.be.false;
