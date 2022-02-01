@@ -156,14 +156,20 @@ describe('ArDrive class', () => {
 
 	describe('estimateAndAssertCostOfMoveFile function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
 			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
 				return Promise.resolve(W(0));
 			});
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
+				W(+stubPublicFileTransactionData.sizeOf())
+			);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
 			});
 		});
 
