@@ -34,8 +34,8 @@ describe('ArDrive class', () => {
 	);
 	const stubPublicFolderTransactionData = new ArFSPublicFolderTransactionData('stubName');
 	const getWalletWinstonBalanceZero = async () => W(0);
-	const getWalletWinstonBalanceEnougForFileTransaction = async () => W(+stubPublicFileTransactionData.sizeOf());
-	const getWalletWinstonBalanceEnougForFolderTransaction = async () => W(+stubPublicFolderTransactionData.sizeOf());
+	const getWalletWinstonBalanceEnoughForFileTransaction = async () => W(+stubPublicFileTransactionData.sizeOf());
+	const getWalletWinstonBalanceEnoughForFolderTransaction = async () => W(+stubPublicFolderTransactionData.sizeOf());
 
 	beforeEach(async () => {
 		// Set pricing algo up as x = y (bytes = Winston)
@@ -90,7 +90,7 @@ describe('ArDrive class', () => {
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFolderTransaction);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFolderTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
 			});
@@ -116,7 +116,7 @@ describe('ArDrive class', () => {
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFileTransaction);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFileTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
 			});
@@ -156,7 +156,7 @@ describe('ArDrive class', () => {
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFileTransaction);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFileTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
 			});
