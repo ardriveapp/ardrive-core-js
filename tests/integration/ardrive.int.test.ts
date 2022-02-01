@@ -114,6 +114,9 @@ describe('ArDrive class - integrated', () => {
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
 	const existingFileId = EID(stubEntityIDAlt.toString());
 
+	const invalidEntityName = '*\\/:*?:<>|_invalidName.png';
+	const validEntityName = 'some happy file name which is valid.txt';
+
 	beforeEach(() => {
 		// Set pricing algo up as x = y (bytes = Winston)
 		stub(arweaveOracle, 'getWinstonPriceForByteCount').callsFake((input) => Promise.resolve(W(+input)));
@@ -193,12 +196,25 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
 			});
 
+			it('throws if the given name is invalid', () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPublicFolder({
+						folderName: invalidEntityName,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID
+					}),
+					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				});
+			});
+
 			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
 				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
 
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.createPublicFolder({
-						folderName: 'TEST_FOLDER',
+						folderName: validEntityName,
 						driveId: stubEntityID,
 						parentFolderId: stubEntityID
 					}),
@@ -224,11 +240,11 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPublicDrive').resolves(stubPublicDrive());
 
 				const result = await arDrive.createPublicFolder({
-					folderName: 'TEST_FOLDER',
+					folderName: validEntityName,
 					driveId: stubEntityID,
 					parentFolderId: stubEntityID
 				});
-				assertCreateFolderExpectations(result, W(22));
+				assertCreateFolderExpectations(result, W(50));
 			});
 		});
 
@@ -237,12 +253,26 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
 			});
 
+			it('throws if the given name is invalid', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPrivateFolder({
+						folderName: invalidEntityName,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					}),
+					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				});
+			});
+
 			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
 				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
 
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.createPrivateFolder({
-						folderName: 'TEST_FOLDER',
+						folderName: validEntityName,
 						driveId: stubEntityID,
 						parentFolderId: stubEntityID,
 						driveKey: await getStubDriveKey()
@@ -271,12 +301,12 @@ describe('ArDrive class - integrated', () => {
 
 				const stubDriveKey = await getStubDriveKey();
 				const result = await arDrive.createPrivateFolder({
-					folderName: 'TEST_FOLDER',
+					folderName: validEntityName,
 					driveId: stubEntityID,
 					parentFolderId: stubEntityID,
 					driveKey: stubDriveKey
 				});
-				assertCreateFolderExpectations(result, W(38), urlEncodeHashKey(stubDriveKey));
+				assertCreateFolderExpectations(result, W(66), urlEncodeHashKey(stubDriveKey));
 			});
 		});
 

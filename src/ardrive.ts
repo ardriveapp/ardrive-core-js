@@ -113,6 +113,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -1059,6 +1060,8 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {
+		assertValidArFSFolderName(folderName);
+
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
 		await this.assertOwnerAddress(owner);
@@ -1107,6 +1110,8 @@ export class ArDrive extends ArDriveAnonymous {
 		driveKey,
 		parentFolderId
 	}: CreatePrivateFolderParams): Promise<ArFSResult> {
+		assertValidArFSFolderName(folderName);
+
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId, driveKey);
 		await this.assertOwnerAddress(owner);
