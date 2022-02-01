@@ -902,10 +902,11 @@ export class ArDrive extends ArDriveAnonymous {
 				feeMultiple: this.feeMultiple
 			};
 
-			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
+			const uploadFileResult = (await this.arFsDao.uploadPrivateFile({
 				wrappedFile,
 				driveId,
 				parentFolderId,
+				driveKey,
 				rewardSettings: {
 					dataTxRewardSettings,
 					metaDataRewardSettings
