@@ -51,13 +51,13 @@ export class LowestIndexBundlePacker extends BundlePacker {
 	}
 
 	public packIntoBundle(dataItemPlan: DataItemPlan): BundleIndex {
-		const { byteCountAsDataItems: byteCountAsDataItem, numberOfDataItems } = dataItemPlan;
+		const { byteCountAsDataItems, numberOfDataItems } = dataItemPlan;
 
 		for (let index = 0; index < this.bundles.length; index++) {
 			const bundle = this.bundles[index];
 			// Pack into lowest index bundle that has enough remaining size and data items
 			if (
-				bundle.remainingSize.isGreaterThan(byteCountAsDataItem) &&
+				bundle.remainingSize.isGreaterThanOrEqualTo(byteCountAsDataItems) &&
 				numberOfDataItems <= bundle.remainingDataItems
 			) {
 				bundle.addToBundle(dataItemPlan);
