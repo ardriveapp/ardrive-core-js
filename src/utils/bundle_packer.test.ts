@@ -75,6 +75,24 @@ describe('LowestIndexBundlePacker class', () => {
 			expect(bundlePacker.bundles[1].totalDataItems).to.equal(2);
 		});
 
+		it('packs entities into the expected bundle at the border of the max bundle and max data item limits', () => {
+			bundlePacker.packIntoBundle({
+				uploadStats: fileUploadStats,
+				byteCountAsDataItems: new ByteCount(50),
+				numberOfDataItems: 5
+			});
+
+			bundlePacker.packIntoBundle({
+				uploadStats: fileUploadStats,
+				byteCountAsDataItems: new ByteCount(50),
+				numberOfDataItems: 5
+			});
+
+			expect(bundlePacker.bundles.length).to.equal(1);
+			expect(+bundlePacker.bundles[0].totalSize).to.equal(100);
+			expect(bundlePacker.bundles[0].totalDataItems).to.equal(10);
+		});
+
 		it('packs an entity that would exceed the max data item limit of the first bundle into a second bundle', () => {
 			bundlePacker.packIntoBundle({
 				uploadStats: fileUploadStats,
