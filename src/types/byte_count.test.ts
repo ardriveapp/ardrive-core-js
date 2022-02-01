@@ -92,4 +92,18 @@ describe('ByteCount class', () => {
 			expect(new ByteCount(2).isGreaterThan(new ByteCount(2))).to.be.false;
 		});
 	});
+
+	describe('isGreaterThanOrEqualTo function', () => {
+		it('returns false when other ByteCount is greater', () => {
+			expect(new ByteCount(1).isGreaterThanOrEqualTo(new ByteCount(2))).to.be.false;
+		});
+
+		it('returns true when other ByteCount is lesser', () => {
+			expect(new ByteCount(2).isGreaterThanOrEqualTo(new ByteCount(1))).to.be.true;
+		});
+
+		it('returns true when other ByteCount is equal', () => {
+			expect(new ByteCount(2).isGreaterThanOrEqualTo(new ByteCount(2))).to.be.true;
+		});
+	});
 });
