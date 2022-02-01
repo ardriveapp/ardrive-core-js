@@ -113,7 +113,11 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { assertValidArFSDriveName, assertValidArFSFileName, assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
+import {
+	assertValidArFSDriveName,
+	assertValidArFSFileName,
+	assertValidArFSFolderName
+} from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -441,8 +445,6 @@ export class ArDrive extends ArDriveAnonymous {
 			communityTipSettings: CommunityTipSettings
 		) => Promise<ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult>
 	): Promise<ArFSResult> {
-		assertValidArFSFileName(wrappedFile.getBaseFileName());
-
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 
 		const owner = await getOwnerAndAssertDrive(driveId);
@@ -450,6 +452,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		wrappedFile.newFileName = destinationFileName;
+		assertValidArFSFileName(wrappedFile.destinationBaseName);
 		const nameConflictInfo = await getConflictInfoFn(parentFolderId);
 
 		await resolveFileNameConflicts({
