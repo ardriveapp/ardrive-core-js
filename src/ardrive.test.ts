@@ -33,6 +33,9 @@ describe('ArDrive class', () => {
 		'application/json'
 	);
 	const stubPublicFolderTransactionData = new ArFSPublicFolderTransactionData('stubName');
+	const getWalletWinstonBalanceZero = async () => W(0);
+	const getWalletWinstonBalanceEnougForFileTransaction = async () => W(+stubPublicFileTransactionData.sizeOf());
+	const getWalletWinstonBalanceEnougForFolderTransaction = async () => W(+stubPublicFolderTransactionData.sizeOf());
 
 	beforeEach(async () => {
 		// Set pricing algo up as x = y (bytes = Winston)
@@ -80,18 +83,14 @@ describe('ArDrive class', () => {
 
 	describe('estimateAndAssertCostOfFolderUpload function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
 			});
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
-				W(+stubPublicFolderTransactionData.sizeOf())
-			);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFolderTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
 			});
@@ -110,18 +109,14 @@ describe('ArDrive class', () => {
 
 	describe('estimateAndAssertCostOfFileRename function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
 			});
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
-				W(+stubPublicFileTransactionData.sizeOf())
-			);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFileTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
 			});
@@ -143,31 +138,25 @@ describe('ArDrive class', () => {
 			stub(walletDao, 'walletHasBalance').callsFake(() => {
 				return Promise.resolve(false);
 			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(4));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.assertWalletBalance(W(5)),
-				errorMessage: `Wallet balance of 4 Winston is not enough (5) for this action!`
+				promiseToError: arDrive.assertWalletBalance(W(1)),
+				errorMessage: `Wallet balance of 0 Winston is not enough (1) for this action!`
 			});
 		});
 	});
 
 	describe('estimateAndAssertCostOfMoveFile function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
 			});
 		});
 
 		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(async () =>
-				W(+stubPublicFileTransactionData.sizeOf())
-			);
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnougForFileTransaction);
 			await expectAsyncErrorThrow({
 				promiseToError: boostedArDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
 			});
