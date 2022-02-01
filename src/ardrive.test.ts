@@ -18,6 +18,7 @@ import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
+	let boostedArDrive: ArDrive;
 	let arweaveOracleStub: SinonStubbedInstance<ArweaveOracle>;
 	let communityOracleStub: SinonStubbedInstance<CommunityOracle>;
 	let priceEstimator: ARDataPriceRegressionEstimator;
@@ -32,6 +33,9 @@ describe('ArDrive class', () => {
 		'application/json'
 	);
 	const stubPublicFolderTransactionData = new ArFSPublicFolderTransactionData('stubName');
+	const getWalletWinstonBalanceZero = async () => W(0);
+	const getWalletWinstonBalanceEnoughForFileMetadataTx = async () => W(+stubPublicFileTransactionData.sizeOf());
+	const getWalletWinstonBalanceEnoughForFolderMetadataTx = async () => W(+stubPublicFolderTransactionData.sizeOf());
 
 	beforeEach(async () => {
 		// Set pricing algo up as x = y (bytes = Winston)
@@ -61,18 +65,34 @@ describe('ArDrive class', () => {
 			arFSTagSettings,
 			uploadPlanner
 		);
+
+		boostedArDrive = new ArDrive(
+			wallet,
+			walletDao,
+			new ArFSDAO(wallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
+			communityOracleStub,
+			'Unit Test',
+			'1.0',
+			priceEstimator,
+			new FeeMultiple(2.0),
+			true,
+			arFSTagSettings,
+			uploadPlanner
+		);
 	});
 
 	describe('estimateAndAssertCostOfFolderUpload function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFolderMetadataTx);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfFolderUpload(stubPublicFolderTransactionData)
 			});
 		});
 
@@ -87,32 +107,58 @@ describe('ArDrive class', () => {
 		});
 	});
 
+	describe('estimateAndAssertCostOfFileRename function', () => {
+		it('throws an error when there is an insufficient wallet balance', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFileMetadataTx);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData)
+			});
+		});
+
+		it('returns the correct reward data', async () => {
+			stub(walletDao, 'walletHasBalance').callsFake(() => {
+				return Promise.resolve(true);
+			});
+
+			const actual = await arDrive.estimateAndAssertCostOfFileRename(stubPublicFileTransactionData);
+			// TODO: Bummer to lose deep equal verification
+			expect(`${actual.metaDataBaseReward}`).to.equal('147');
+		});
+	});
+
 	describe('assertWalletBalanceFunction function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
 			stub(walletDao, 'walletHasBalance').callsFake(() => {
 				return Promise.resolve(false);
 			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(4));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.assertWalletBalance(W(5)),
-				errorMessage: `Wallet balance of 4 Winston is not enough (5) for this action!`
+				promiseToError: arDrive.assertWalletBalance(W(1)),
+				errorMessage: `Wallet balance of 0 Winston is not enough (1) for this action!`
 			});
 		});
 	});
 
 	describe('estimateAndAssertCostOfMoveFile function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
-			stub(walletDao, 'walletHasBalance').callsFake(() => {
-				return Promise.resolve(false);
-			});
-			stub(walletDao, 'getWalletWinstonBalance').callsFake(() => {
-				return Promise.resolve(W(0));
-			});
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
 			await expectAsyncErrorThrow({
 				promiseToError: arDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFileMetadataTx);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData)
 			});
 		});
 
