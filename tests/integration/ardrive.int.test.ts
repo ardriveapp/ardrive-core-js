@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
+import { statSync } from 'fs';
 import { ArDrive } from '../../src/ardrive';
 import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders';
 import { wrapFileOrFolder, ArFSFileToUpload } from '../../src/arfs/arfs_file_wrapper';
@@ -617,9 +618,10 @@ describe('ArDrive class - integrated', () => {
 				it('throws if the given name is invalid', () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
-					const wrappedFileWithInvalidName = wrapFileOrFolder(
-						'tests/stub_files/?:_invalidName.png'
-					) as ArFSFileToUpload;
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					const fileStats = statSync('test_wallet.json');
+					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
 
 					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPublicFile({
@@ -815,9 +817,10 @@ describe('ArDrive class - integrated', () => {
 				it('throws if the given name is invalid', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
-					const wrappedFileWithInvalidName = wrapFileOrFolder(
-						'tests/stub_files/?:_invalidName.png'
-					) as ArFSFileToUpload;
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					const fileStats = statSync('test_wallet.json');
+					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
 
 					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPrivateFile({
