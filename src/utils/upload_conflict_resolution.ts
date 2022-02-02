@@ -11,6 +11,7 @@ import {
 	upsertOnConflicts,
 	useExistingFolder
 } from '../types';
+import { errorMessage } from './error_message';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
 
 /** Throws an error if the entitiesToUpload contain conflicting file names being sent to the same destination folder */
@@ -263,7 +264,7 @@ export async function resolveFolderNameConflicts({
 			await resolveFileNameConflicts({
 				wrappedFile: file,
 				conflictResolution,
-				destinationFileName: file.getBaseName(),
+				destinationFileName: file.destinationBaseName,
 				prompts,
 				destFolderId: destinationFolderId,
 				getConflictInfoFn
@@ -276,10 +277,40 @@ export async function resolveFolderNameConflicts({
 				wrappedFolder: folder,
 				conflictResolution,
 				getConflictInfoFn,
-				destinationFolderName: folder.getBaseName(),
+				destinationFolderName: folder.destinationBaseName,
 				destFolderId: destinationFolderId,
 				prompts
 			});
+		}
+
+		assertAndRemoveConflictingEntities(wrappedFolder);
+	}
+}
+
+/** Uses conflictResolution on each file and folder to recursively remove skipped entities or error on conflicts */
+export function assertAndRemoveConflictingEntities(folder: ArFSFolderToUpload): void {
+	for (let index = 0; index < folder.files.length; index++) {
+		const childFile = folder.files[index];
+
+		if (childFile.conflictResolution === 'skip' || childFile.conflictResolution === 'upsert') {
+			// Remove from intended files if file will be skipped
+			folder.files.splice(index, 1);
+		} else if (childFile.conflictResolution === 'error') {
+			throw Error(errorMessage.entityNameExists);
+		}
+	}
+
+	for (let index = 0; index < folder.folders.length; index++) {
+		const childFolder = folder.folders[index];
+
+		if (childFolder.conflictResolution === 'skip') {
+			// Remove from intended folders if folder will be skipped
+			folder.folders.splice(index, 1);
+		} else if (childFolder.conflictResolution === 'error') {
+			throw Error(errorMessage.entityNameExists);
+		} else {
+			// Recurse into folder
+			assertAndRemoveConflictingEntities(childFolder);
 		}
 	}
 }
