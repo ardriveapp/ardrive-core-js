@@ -42,6 +42,7 @@ import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
+import { emptyV2TxPlans } from '../types/upload_planner_types';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -588,16 +589,17 @@ describe('The ArFSDAO class', () => {
 		it('returns the expected result for an upload plan with a single file as v2 transactions', async () => {
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: stubFileUploadStats(),
-						rewardSettings: {
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: stubFileUploadStats(),
 							dataTxRewardSettings: { reward: W(20) },
-							metaDataRewardSettings: { reward: W(5) }
-						},
-						communityTipSettings: stubCommunityTipSettings
-					}
-				]
+							metaDataRewardSettings: { reward: W(5) },
+							communityTipSettings: stubCommunityTipSettings
+						}
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(1);
@@ -614,16 +616,17 @@ describe('The ArFSDAO class', () => {
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { ...fileWithExistingId, driveKey: await getStubDriveKey() },
-						rewardSettings: {
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { ...fileWithExistingId, driveKey: await getStubDriveKey() },
 							dataTxRewardSettings: { reward: W(12) },
-							metaDataRewardSettings: { reward: W(4) }
-						},
-						communityTipSettings: stubCommunityTipSettings
-					}
-				]
+							metaDataRewardSettings: { reward: W(4) },
+							communityTipSettings: stubCommunityTipSettings
+						}
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(1);
@@ -636,14 +639,15 @@ describe('The ArFSDAO class', () => {
 		it('returns the expected result for an upload plan with a private folder as v2 transactions', async () => {
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { ...stubFolderUploadStats(), driveKey: await getStubDriveKey() },
-						rewardSettings: {
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					folderMetaDataPlans: [
+						{
+							uploadStats: { ...stubFolderUploadStats(), driveKey: await getStubDriveKey() },
 							metaDataRewardSettings: { reward: W(2) }
 						}
-					}
-				]
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(0);
@@ -659,14 +663,15 @@ describe('The ArFSDAO class', () => {
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: folderWithExpectedId,
-						rewardSettings: {
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					folderMetaDataPlans: [
+						{
+							uploadStats: folderWithExpectedId,
 							metaDataRewardSettings: { reward: W(8) }
 						}
-					}
-				]
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(0);
@@ -682,14 +687,15 @@ describe('The ArFSDAO class', () => {
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { ...folderWithExpectedId, driveKey: await getStubDriveKey() },
-						rewardSettings: {
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					folderMetaDataPlans: [
+						{
+							uploadStats: { ...folderWithExpectedId, driveKey: await getStubDriveKey() },
 							metaDataRewardSettings: { reward: W(13) }
 						}
-					}
-				]
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(0);
@@ -702,22 +708,23 @@ describe('The ArFSDAO class', () => {
 		it('returns the expected result for an upload plan with a folder and a file as v2 transactions', async () => {
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: stubFolderUploadStats(),
-						rewardSettings: {
+				v2TxPlans: {
+					fileDataOnlyPlans: [],
+					folderMetaDataPlans: [
+						{
+							uploadStats: stubFolderUploadStats(),
 							metaDataRewardSettings: { reward: W(5) }
 						}
-					},
-					{
-						uploadStats: stubFileUploadStats(),
-						rewardSettings: {
+					],
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: stubFileUploadStats(),
 							metaDataRewardSettings: { reward: W(10) },
-							dataTxRewardSettings: { reward: W(50) }
-						},
-						communityTipSettings: stubCommunityTipSettings
-					}
-				]
+							dataTxRewardSettings: { reward: W(50) },
+							communityTipSettings: stubCommunityTipSettings
+						}
+					]
+				}
 			});
 
 			expect(fileResults.length).to.equal(1);
@@ -733,11 +740,12 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(20) },
+						metaDataDataItems: [],
 						uploadStats: [stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			expect(fileResults.length).to.equal(1);
@@ -753,10 +761,11 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(10) },
+						metaDataDataItems: [],
 						uploadStats: [stubFolderUploadStats(), stubFolderUploadStats()]
 					}
 				],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			expect(fileResults.length).to.equal(0);
@@ -775,11 +784,12 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(100) },
+						metaDataDataItems: [],
 						uploadStats: [stubFolderUploadStats(), stubFileUploadStats()],
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			expect(bundleResults.length).to.equal(1);
@@ -796,6 +806,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(500) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 1 Folder and 2 Files
 							stubFolderUploadStats(),
@@ -806,6 +817,7 @@ describe('The ArFSDAO class', () => {
 					},
 					{
 						bundleRewardSettings: { reward: W(2000) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 4 Files
 							stubFileUploadStats(),
@@ -817,6 +829,7 @@ describe('The ArFSDAO class', () => {
 					},
 					{
 						bundleRewardSettings: { reward: W(200) },
+						metaDataDataItems: [],
 						uploadStats: [
 							// 3 Folders
 							stubFolderUploadStats(),
@@ -825,7 +838,7 @@ describe('The ArFSDAO class', () => {
 						]
 					}
 				],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			expect(bundleResults.length).to.equal(3);
@@ -849,6 +862,7 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(1337) },
+						metaDataDataItems: [],
 						uploadStats: [
 							stubFileUploadStats(),
 							stubFileUploadStats(),
@@ -858,22 +872,23 @@ describe('The ArFSDAO class', () => {
 						communityTipSettings: stubCommunityTipSettings
 					}
 				],
-				v2TxPlans: [
-					{
-						uploadStats: stubFileUploadStats(),
-						rewardSettings: {
+				v2TxPlans: {
+					fileDataOnlyPlans: [],
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: stubFileUploadStats(),
 							dataTxRewardSettings: { reward: W(20) },
-							metaDataRewardSettings: { reward: W(5) }
-						},
-						communityTipSettings: stubCommunityTipSettings
-					},
-					{
-						uploadStats: stubFolderUploadStats(),
-						rewardSettings: {
+							metaDataRewardSettings: { reward: W(5) },
+							communityTipSettings: stubCommunityTipSettings
+						}
+					],
+					folderMetaDataPlans: [
+						{
+							uploadStats: stubFolderUploadStats(),
 							metaDataRewardSettings: { reward: W(2) }
 						}
-					}
-				]
+					]
+				}
 			});
 
 			expect(bundleResults.length).to.equal(1);
@@ -902,27 +917,27 @@ describe('The ArFSDAO class', () => {
 				bundlePlans: [
 					{
 						bundleRewardSettings: { reward: W(420) },
+						metaDataDataItems: [],
 						uploadStats: []
 					}
 				],
-				v2TxPlans: [
-					{
-						uploadStats: stubFileUploadStats(),
-						rewardSettings: {
-							dataTxRewardSettings: { reward: W(59) }
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileDataOnlyPlans: [
+						{
+							uploadStats: stubFileUploadStats(),
+							dataTxRewardSettings: { reward: W(59) },
+							communityTipSettings: stubCommunityTipSettings,
+							metaDataBundleIndex: 0
 						},
-						communityTipSettings: stubCommunityTipSettings,
-						metaDataBundleIndex: 0
-					},
-					{
-						uploadStats: stubFileUploadStats(),
-						rewardSettings: {
-							dataTxRewardSettings: { reward: W(42) }
-						},
-						communityTipSettings: stubCommunityTipSettings,
-						metaDataBundleIndex: 0
-					}
-				]
+						{
+							uploadStats: stubFileUploadStats(),
+							dataTxRewardSettings: { reward: W(42) },
+							communityTipSettings: stubCommunityTipSettings,
+							metaDataBundleIndex: 0
+						}
+					]
+				}
 			});
 
 			expect(bundleResults.length).to.equal(1);
@@ -935,87 +950,19 @@ describe('The ArFSDAO class', () => {
 			assertFileResult(fileResults[1], 42);
 		});
 
-		it('throws an error if a provided v2 tx plan has a dataTxRewardSettings but no file entity to upload', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [],
-					v2TxPlans: [
-						{
-							uploadStats: stubFolderUploadStats(),
-							rewardSettings: {
-								dataTxRewardSettings: { reward: W(5) },
-								metaDataRewardSettings: { reward: W(1) }
-							},
-							communityTipSettings: stubCommunityTipSettings
-						}
-					]
-				}),
-				errorMessage: 'Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!'
-			});
-		});
-
-		it('throws an error if a provided v2 tx plan has a file entity to upload, but no metaDataRewardSettings nor a metaDataBundleIndex', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [],
-					v2TxPlans: [
-						{
-							uploadStats: stubFileUploadStats(),
-							rewardSettings: { dataTxRewardSettings: { reward: W(5) } },
-							communityTipSettings: stubCommunityTipSettings
-						}
-					]
-				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file upload must include a plan for the metadata!'
-			});
-		});
-
-		it('throws an error if a provided v2 tx plan has a file entity that has no dataTxRewardSettings', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [],
-					v2TxPlans: [
-						{
-							uploadStats: stubFileUploadStats(),
-							rewardSettings: { metaDataRewardSettings: { reward: W(55) } },
-							communityTipSettings: stubCommunityTipSettings
-						}
-					]
-				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file uploads must have file data reward settings!'
-			});
-		});
-
-		it('throws an error if a provided v2 tx plan has a file entity that has no communityTipSettings', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [],
-					v2TxPlans: [
-						{
-							uploadStats: stubFileUploadStats(),
-							rewardSettings: {
-								metaDataRewardSettings: { reward: W(55) },
-								dataTxRewardSettings: { reward: W(55) }
-							}
-						}
-					]
-				}),
-				errorMessage: 'Error: Invalid v2 tx plan, file uploads must include communityTipSettings!'
-			});
-		});
-
 		it('throws an error if a provided bundle plan has a file entity but no communityTipSettings', async () => {
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.uploadAllEntities({
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
+							metaDataDataItems: [],
 							uploadStats: [stubFileUploadStats()]
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				}),
-				errorMessage: 'Error: Invalid bundle plan, file uploads must include communityTipSettings!'
+				errorMessage: 'Invalid bundle plan, file uploads must include communityTipSettings!'
 			});
 		});
 
@@ -1025,12 +972,13 @@ describe('The ArFSDAO class', () => {
 					bundlePlans: [
 						{
 							bundleRewardSettings: { reward: W(20) },
+							metaDataDataItems: [],
 							uploadStats: [stubFolderUploadStats()]
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				}),
-				errorMessage: 'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
+				errorMessage: 'Invalid bundle plan, a single metadata transaction can not be bundled alone!'
 			});
 		});
 	});

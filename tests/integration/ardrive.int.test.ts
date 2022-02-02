@@ -1325,7 +1325,7 @@ describe('ArDrive class - integrated', () => {
 			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
 
 			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(3210);
+			expect(+fees[`${bundleTxId}`]).to.equal(4471);
 		});
 
 		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
@@ -1377,7 +1377,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
-			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11287);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(16331);
 		});
 
 		// Legacy bulk method test for to confirm backwards compatibility and coverage
@@ -1408,7 +1408,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
-			expect(+fees[`${created[8].bundleTxId}`]).to.equal(11927);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17183);
 		});
 
 		it('returns the expected ArFSResult for two empty folders', async () => {
@@ -1429,7 +1429,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[2]);
 
 			expect(feeKeys[0]).to.equal(`${created[2].bundleTxId!}`);
-			expect(+fees[`${created[2].bundleTxId}`]).to.equal(209);
+			expect(+fees[`${created[2].bundleTxId}`]).to.equal(2731);
 		});
 
 		it('throws an error if a folder name conflicts with a file name', async () => {

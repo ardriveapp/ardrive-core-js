@@ -23,19 +23,19 @@ describe('ArFSPublicFileBuilder', () => {
 	};
 
 	// prettier-ignore
-	const stubPublicFileGetDataResult = Uint8Array.from([
+	const stubPublicFileGetDataResult = Buffer.from(Uint8Array.from([
 		123, 34, 110, 97, 109, 101, 34, 58, 34, 50, 34, 44, 34, 115, 105, 122, 101, 34, 58, 50, 48, 52, 56, 44, 34, 108,
 		97, 115, 116, 77, 111, 100, 105, 102, 105, 101, 100, 68, 97, 116, 101, 34, 58, 49, 54, 51, 57, 48, 55, 51, 54,
 		51, 52, 50, 54, 57, 44, 34, 100, 97, 116, 97, 84, 120, 73, 100, 34, 58, 34, 121, 65, 111, 103, 97, 71, 87, 87,
 		89, 103, 87, 79, 53, 120, 87, 90, 101, 118, 98, 52, 53, 89, 55, 89, 82, 112, 55, 69, 57, 105, 68, 115, 118, 107,
 		74, 118, 102, 82, 55, 84, 111, 57, 99, 34, 44, 34, 100, 97, 116, 97, 67, 111, 110, 116, 101, 110, 116, 84, 121,
 		112, 101, 34, 58, 34, 117, 110, 107, 110, 111, 119, 110, 34, 125
-	]);
+	]));
 
 	it('constructs expected file from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicFileGetDataResult);
-
 		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, fakeArweave);
+		stub(builder, 'getDataForTxID').resolves(stubPublicFileGetDataResult);
+
 		const fileMetaData = await builder.build(stubPublicFileGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
@@ -117,7 +117,7 @@ describe('ArFSPrivateFileBuilder', () => {
 	const driveKeyForStubPrivateFile = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
 
 	// prettier-ignore
-	const stubPrivateFileGetDataResult = Uint8Array.from([
+	const stubPrivateFileGetDataResult = Buffer.from(Uint8Array.from([
 		191, 33, 16, 68, 196, 236, 87, 215, 82, 142, 114, 45, 167, 253, 197, 161, 23, 85, 54, 148, 155, 255, 204, 0, 4,
 		86, 52, 113, 88, 185, 50, 158, 169, 23, 118, 123, 120, 85, 233, 106, 227, 6, 71, 99, 254, 163, 237, 236, 237,
 		199, 10, 37, 233, 120, 63, 81, 245, 93, 77, 246, 191, 226, 1, 83, 248, 194, 69, 62, 69, 72, 90, 47, 41, 32, 32,
@@ -125,16 +125,16 @@ describe('ArFSPrivateFileBuilder', () => {
 		195, 178, 174, 168, 85, 129, 133, 220, 120, 129, 14, 222, 186, 134, 86, 1, 51, 15, 113, 156, 147, 216, 156, 15,
 		11, 165, 204, 211, 204, 216, 138, 210, 74, 40, 117, 187, 160, 211, 161, 250, 132, 240, 122, 193, 166, 132, 139,
 		125, 178, 34, 4, 33, 108, 187, 176, 191, 151, 146, 234, 138
-	]);
+	]));
 
 	it('constructs expected file from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateFileGetDataResult);
-
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
 			stubPrivateFileGQLNode as GQLNodeInterface,
 			fakeArweave,
 			driveKeyForStubPrivateFile
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateFileGetDataResult);
+
 		const fileMetaData = await builder.build(stubPrivateFileGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import { fakeArweave, stubFileUploadStats, stubArweaveAddress } from '../../tests/stubs';
+import { fakeArweave, stubFileUploadStats, stubArweaveAddress, stubEmptyFolderStats } from '../../tests/stubs';
 import { ArDriveCommunityOracle } from '../exports';
 import { ARDataPriceNetworkEstimator } from '../pricing/ar_data_price_network_estimator';
 import { ByteCount, FeeMultiple, W } from '../types';
-import { BundleRewardSettings, CreateDriveV2TxRewardSettings } from '../types/upload_planner_types';
+import { BundleRewardSettings, CreateDriveV2TxRewardSettings, emptyV2TxPlans } from '../types/upload_planner_types';
 import { ArFSCostCalculator } from './arfs_cost_calculator';
 
 describe('ArFSCostCalculator class', () => {
@@ -32,13 +32,17 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan for an upload plan with a bundlePlan that has no file upload stats', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
 				bundlePlans: [{ uploadStats: [], totalByteCount: new ByteCount(10) }],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { bundleRewardSettings, uploadStats, communityTipSettings } = bundlePlans[0];
 
@@ -54,13 +58,17 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan for an upload plan with a bundlePlan that has file upload stats', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
 				bundlePlans: [{ uploadStats: [stubUploadStatsWithFile], totalByteCount: new ByteCount(10) }],
-				v2TxPlans: []
+				v2TxPlans: emptyV2TxPlans
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { bundleRewardSettings, uploadStats, communityTipSettings } = bundlePlans[0];
 
@@ -81,21 +89,25 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan for an upload plan with a v2TxPlan that has only a meta data byte count', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
 				bundlePlans: [],
-				v2TxPlans: [{ uploadStats: stubUploadStatsWithFile, metaDataByteCount: new ByteCount(5) }]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					folderMetaDataPlans: [{ uploadStats: stubEmptyFolderStats(), metaDataByteCount: new ByteCount(5) }]
+				}
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
-			expect(v2TxPlans.length).to.equal(1);
 
-			const { rewardSettings, communityTipSettings } = v2TxPlans[0];
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(1);
 
-			expect(communityTipSettings).to.be.undefined;
-			expect(rewardSettings.dataTxRewardSettings).to.be.undefined;
+			const { metaDataRewardSettings } = folderMetaDataPlans[0];
 
-			expect(+rewardSettings.metaDataRewardSettings!.reward!).to.equal(5);
-			expect(+rewardSettings.metaDataRewardSettings!.feeMultiple!).to.equal(1);
+			expect(+metaDataRewardSettings.reward!).to.equal(5);
+			expect(+metaDataRewardSettings.feeMultiple!).to.equal(1);
 
 			expect(+totalWinstonPrice).to.equal(5);
 		});
@@ -103,32 +115,39 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan for an upload plan with a v2TxPlan that has a file data byte count and a meta data byte count', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: stubUploadStatsWithFile,
-						metaDataByteCount: new ByteCount(5),
-						fileDataByteCount: new ByteCount(20)
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: stubUploadStatsWithFile,
+							metaDataByteCount: new ByteCount(5),
+							fileDataByteCount: new ByteCount(20)
+						}
+					]
+				}
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
-			expect(v2TxPlans.length).to.equal(1);
 
-			const { rewardSettings, communityTipSettings } = v2TxPlans[0];
+			expect(fileAndMetaDataPlans.length).to.equal(1);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
-			expect(`${communityTipSettings?.communityTipTarget}`).to.equal(
+			const { dataTxRewardSettings, metaDataRewardSettings, communityTipSettings } = fileAndMetaDataPlans[0];
+
+			expect(`${communityTipSettings.communityTipTarget}`).to.equal(
 				'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'
 			);
-			expect(+communityTipSettings!.communityWinstonTip).to.equal(1_234);
+			expect(+communityTipSettings.communityWinstonTip).to.equal(1_234);
 
-			expect(+rewardSettings.dataTxRewardSettings!.reward!).to.equal(20);
-			expect(+rewardSettings.dataTxRewardSettings!.feeMultiple!).to.equal(1);
+			expect(+dataTxRewardSettings.reward!).to.equal(20);
+			expect(+dataTxRewardSettings.feeMultiple!).to.equal(1);
 
-			expect(+rewardSettings.metaDataRewardSettings!.reward!).to.equal(5);
-			expect(+rewardSettings.metaDataRewardSettings!.feeMultiple!).to.equal(1);
+			expect(+metaDataRewardSettings.reward!).to.equal(5);
+			expect(+metaDataRewardSettings.feeMultiple!).to.equal(1);
 
 			// (data reward: 20) + (metadata reward: 5) + (commTip: 1,234) = (totalPrice)
 			expect(+totalWinstonPrice).to.equal(1_259);
@@ -137,30 +156,38 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan for an upload plan with a v2TxPlan that has only a file data byte count', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await costCalc.calculateCostsForUploadPlan({
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: stubUploadStatsWithFile,
-						fileDataByteCount: new ByteCount(25)
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileDataOnlyPlans: [
+						{
+							uploadStats: stubUploadStatsWithFile,
+							fileDataByteCount: new ByteCount(25),
+							metaDataBundleIndex: 0
+						}
+					]
+				}
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
-			expect(v2TxPlans.length).to.equal(1);
 
-			const { rewardSettings, communityTipSettings } = v2TxPlans[0];
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(1);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
-			expect(`${communityTipSettings?.communityTipTarget}`).to.equal(
+			const { dataTxRewardSettings, metaDataBundleIndex, communityTipSettings } = fileDataOnlyPlans[0];
+
+			expect(`${communityTipSettings.communityTipTarget}`).to.equal(
 				'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'
 			);
-			expect(+communityTipSettings!.communityWinstonTip).to.equal(1_234);
+			expect(+communityTipSettings.communityWinstonTip).to.equal(1_234);
 
-			expect(+rewardSettings.dataTxRewardSettings!.reward!).to.equal(25);
-			expect(+rewardSettings.dataTxRewardSettings!.feeMultiple!).to.equal(1);
+			expect(+dataTxRewardSettings.reward!).to.equal(25);
+			expect(+dataTxRewardSettings.feeMultiple!).to.equal(1);
 
-			expect(rewardSettings.metaDataRewardSettings).to.be.undefined;
+			expect(metaDataBundleIndex).to.equal(0);
 
 			// (dataTxReward) + (commTip) = (totalPrice)
 			expect(+totalWinstonPrice).to.equal(1_259);
@@ -169,19 +196,21 @@ describe('ArFSCostCalculator class', () => {
 		it('returns the expected calculated upload plan with a boosted calculator', async () => {
 			const { calculatedUploadPlan, totalWinstonPrice } = await boostedX10CostCalc.calculateCostsForUploadPlan({
 				bundlePlans: [{ uploadStats: [stubUploadStatsWithFile], totalByteCount: new ByteCount(10) }],
-				v2TxPlans: [
-					{
-						uploadStats: stubUploadStatsWithFile,
-						metaDataByteCount: new ByteCount(5),
-						fileDataByteCount: new ByteCount(20)
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: stubUploadStatsWithFile,
+							metaDataByteCount: new ByteCount(5),
+							fileDataByteCount: new ByteCount(20)
+						}
+					]
+				}
 			});
 
 			const { bundlePlans, v2TxPlans } = calculatedUploadPlan;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(1);
 
 			const { bundleRewardSettings, uploadStats, communityTipSettings: bundleCommTipSettings } = bundlePlans[0];
 
@@ -195,16 +224,26 @@ describe('ArFSCostCalculator class', () => {
 			expect(+bundleRewardSettings.reward!).to.equal(10);
 			expect(+bundleRewardSettings.feeMultiple!).to.equal(10);
 
-			const { rewardSettings, communityTipSettings: v2CommTipSettings } = v2TxPlans[0];
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
-			expect(`${v2CommTipSettings?.communityTipTarget}`).to.equal('abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH');
-			expect(+v2CommTipSettings!.communityWinstonTip).to.equal(1_234);
+			expect(fileAndMetaDataPlans.length).to.equal(1);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
-			expect(+rewardSettings.dataTxRewardSettings!.reward!).to.equal(20);
-			expect(+rewardSettings.dataTxRewardSettings!.feeMultiple!).to.equal(10);
+			const {
+				metaDataRewardSettings,
+				dataTxRewardSettings,
+				communityTipSettings: v2CommTipSettings
+			} = fileAndMetaDataPlans[0];
 
-			expect(+rewardSettings.metaDataRewardSettings!.reward!).to.equal(5);
-			expect(+rewardSettings.metaDataRewardSettings!.feeMultiple!).to.equal(10);
+			expect(`${v2CommTipSettings.communityTipTarget}`).to.equal('abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH');
+			expect(+v2CommTipSettings.communityWinstonTip).to.equal(1_234);
+
+			expect(+dataTxRewardSettings.reward!).to.equal(20);
+			expect(+dataTxRewardSettings.feeMultiple!).to.equal(10);
+
+			expect(+metaDataRewardSettings.reward!).to.equal(5);
+			expect(+metaDataRewardSettings.feeMultiple!).to.equal(10);
 
 			// ((bundleReward * 10) + (dataReward * 10) + (metaReward * 10) + (v2CommTip) + (bundleCommTip) = (totalPrice)
 			// 100 + 200 + 50 + 1234 + 1234 = 2818

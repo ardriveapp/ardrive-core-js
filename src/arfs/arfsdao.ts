@@ -131,10 +131,12 @@ import {
 	CalculatedUploadPlan,
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
+	emptyV2TxPlans,
 	isBundleRewardSetting
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
+import axiosRetry, { exponentialDelay } from 'axios-retry';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
@@ -613,22 +615,28 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									owner
 								}
 							],
-							communityTipSettings
+							communityTipSettings,
+							metaDataDataItems: []
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				};
 			}
 
 			return {
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
-						rewardSettings,
-						communityTipSettings
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
 			};
 		})();
 
@@ -661,22 +669,28 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 									owner
 								}
 							],
-							communityTipSettings
+							communityTipSettings,
+							metaDataDataItems: []
 						}
 					],
-					v2TxPlans: []
+					v2TxPlans: emptyV2TxPlans
 				};
 			}
 
 			return {
 				bundlePlans: [],
-				v2TxPlans: [
-					{
-						uploadStats: { destDriveId, destFolderId, wrappedEntity, driveKey, owner },
-						rewardSettings,
-						communityTipSettings
-					}
-				]
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner, driveKey },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
 			};
 		})();
 
@@ -761,69 +775,58 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+		const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans: folderMetaDataPlan } = v2TxPlans;
 
-		for (const { rewardSettings, uploadStats, communityTipSettings, metaDataBundleIndex } of v2TxPlans) {
-			// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+		// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+		for (const {
+			dataTxRewardSettings,
+			uploadStats,
+			communityTipSettings,
+			metaDataBundleIndex
+		} of fileDataOnlyPlans) {
+			const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
 
-			const { dataTxRewardSettings, metaDataRewardSettings } = rewardSettings;
-			const { wrappedEntity, driveKey } = uploadStats;
-
-			if (dataTxRewardSettings) {
-				if (wrappedEntity.entityType !== 'file') {
-					throw new Error('Error: Invalid v2 tx plan, only files can have dataTxRewardSettings!');
-				}
-				if (communityTipSettings === undefined) {
-					throw new Error('Error: Invalid v2 tx plan, file uploads must include communityTipSettings!');
-				}
-
-				const prepFileParams = getPrepFileParams({ ...uploadStats, wrappedEntity });
-
-				let v2FileResult: FileResult;
-				if (metaDataRewardSettings) {
-					// File has reward settings for metadata, send both file and metadata as v2 txs
-					v2FileResult = await this.uploadFileAndMetaDataAsV2(
-						prepFileParams,
-						dataTxRewardSettings,
-						metaDataRewardSettings,
-						communityTipSettings
-					);
-				} else {
-					if (metaDataBundleIndex === undefined) {
-						throw new Error('Error: Invalid v2 tx plan, file upload must include a plan for the metadata!');
-					}
-					// Send file as v2, but prepare the metadata as data item
-					const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
-						prepFileParams,
-						dataTxRewardSettings,
-						communityTipSettings
-					);
-					v2FileResult = fileResult;
-
-					// Add data item to its intended bundle plan
-					bundlePlans[metaDataBundleIndex].metaDataDataItems === undefined
-						? (bundlePlans[metaDataBundleIndex].metaDataDataItems = [metaDataDataItem])
-						: bundlePlans[metaDataBundleIndex].metaDataDataItems?.push(metaDataDataItem);
-				}
-				results.fileResults.push(v2FileResult);
-			} else if (metaDataRewardSettings) {
-				if (wrappedEntity.entityType === 'file') {
-					throw new Error('Error: Invalid v2 tx plan, file uploads must have file data reward settings!');
-				}
-
-				// Send this folder metadata up as a v2 tx
-				const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
-					await getPrepFolderFactoryParams({ ...uploadStats, wrappedEntity }),
-					metaDataRewardSettings
-				);
-
-				results.folderResults.push({
-					folderId,
-					folderTxId: metaDataTxId,
-					folderMetaDataReward: metaDataTxReward,
-					driveKey
-				});
-			}
+			// Add data item to its intended bundle plan
+			bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
 		}
+		v2TxPlans.fileDataOnlyPlans = [];
+
+		for (const {
+			dataTxRewardSettings,
+			metaDataRewardSettings,
+			uploadStats,
+			communityTipSettings
+		} of fileAndMetaDataPlans) {
+			const fileResult = await this.uploadFileAndMetaDataAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				metaDataRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
+		}
+		v2TxPlans.fileAndMetaDataPlans = [];
+
+		for (const { metaDataRewardSettings, uploadStats } of folderMetaDataPlan) {
+			// Send this folder metadata up as a v2 tx
+			const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
+				await getPrepFolderFactoryParams(uploadStats),
+				metaDataRewardSettings
+			);
+
+			results.folderResults.push({
+				folderId,
+				folderTxId: metaDataTxId,
+				folderMetaDataReward: metaDataTxReward,
+				driveKey: uploadStats.driveKey
+			});
+		}
+		v2TxPlans.folderMetaDataPlans = [];
 
 		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
@@ -833,10 +836,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const { wrappedEntity, driveKey } = uploadStat;
 
 				if (wrappedEntity.entityType === 'folder') {
-					if (uploadStats.length === 1 && !metaDataDataItems) {
-						throw new Error(
-							'Error: Invalid bundle plan, a single metadata transaction can not be bundled alone!'
-						);
+					if (uploadStats.length === 1 && metaDataDataItems.length < 1) {
+						throw new Error('Invalid bundle plan, a single metadata transaction can not be bundled alone!');
 					}
 
 					// Prepare folder data item and results
@@ -853,7 +854,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
 				} else {
 					if (!communityTipSettings) {
-						throw new Error('Error: Invalid bundle plan, file uploads must include communityTipSettings!');
+						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
 					}
 
 					// Prepare file data item and results
@@ -878,11 +879,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			}
 
 			// Add any metaData data items from over-sized files sent as v2
-			if (metaDataDataItems !== undefined) {
-				dataItems.push(...metaDataDataItems);
-			}
+			dataItems.push(...metaDataDataItems);
 
-			const bundle = await this.prepareArFSObjectBundle({
+			const bundleTx = await this.prepareArFSObjectBundle({
 				dataItems,
 				rewardSettings: bundleRewardSettings,
 				communityTipSettings
@@ -892,12 +891,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			dataItems = [];
 
 			// This bundle is now complete, send it off before starting a new one
-			await this.sendTransactionsAsChunks([bundle]);
+			await this.sendTransactionsAsChunks([bundleTx]);
 
 			results.bundleResults.push({
-				bundleTxId: TxID(bundle.id),
+				bundleTxId: TxID(bundleTx.id),
 				communityTipSettings,
-				bundleReward: W(bundle.reward)
+				bundleReward: W(bundleTx.reward)
 			});
 		}
 
@@ -1400,9 +1399,26 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
 
-					const driveDataBuffer = Buffer.from(
-						await this.arweave.transactions.getData(edgeOfFirstDrive.node.id, { decode: true })
-					);
+					const protocol = this.arweave.api.config.protocol ?? 'https';
+					const host = this.arweave.api.config.host ?? 'arweave.net';
+					const portStr = this.arweave.api.config.port ? `:${this.arweave.api.config.port}` : '';
+					const reqURL = `${protocol}://${host}${portStr}/${edgeOfFirstDrive.node.id}`;
+					const axiosInstance = axios.create();
+					const maxRetries = 5;
+					axiosRetry(axiosInstance, {
+						retries: maxRetries,
+						retryDelay: (retryNumber) => {
+							console.error(`Retry attempt ${retryNumber}/${maxRetries} of request to ${reqURL}`);
+							return exponentialDelay(retryNumber);
+						}
+					});
+					const {
+						data: driveDataBuffer
+					}: {
+						data: Buffer;
+					} = await axiosInstance.get(reqURL, {
+						responseType: 'arraybuffer'
+					});
 
 					try {
 						// Attempt to decrypt drive to assert drive key is correct

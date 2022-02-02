@@ -14,6 +14,7 @@ import { ByteCount } from '../types';
 import { CreateDriveBundlePlan, CreateDriveV2Plan, EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { ArFSUploadPlanner } from './arfs_upload_planner';
 import { wrapFileOrFolder, ArFSFolderToUpload } from './arfs_file_wrapper';
+import { LowestIndexBundlePacker } from '../utils/bundle_packer';
 
 describe('The ArFSUploadPlanner class', () => {
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Fabulous-Test', appVersion: '1.2' });
@@ -29,26 +30,17 @@ describe('The ArFSUploadPlanner class', () => {
 		arFSTagSettings: arFSTagSettings
 	});
 
-	it('cannot be constructed with a max data item limit of less than 2', () => {
-		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 1 })).to.throw(
-			Error,
-			'Maximum data item limit must be an integer value of 2 or more!'
-		);
-	});
-	it('cannot be constructed with a non-integer decimal value as the max data item limit', () => {
-		expect(() => new ArFSUploadPlanner({ arFSTagSettings, maxDataItemLimit: 5.5 })).to.throw(
-			Error,
-			'Maximum data item limit must be an integer value of 2 or more!'
-		);
-	});
-
 	describe('planUploadAllEntities method', () => {
 		it('returns the expected uploadPlan for a single wrappedFile', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFileUploadStats()]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
@@ -59,14 +51,18 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a single wrappedFolder', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFolderUploadStats()]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(8);
-			expect(+totalByteCount).to.equal(11263);
+			expect(+totalByteCount).to.equal(16295);
 		});
 
 		it('returns the expected uploadPlan for a folder with an existing folder id', async () => {
@@ -79,14 +75,18 @@ describe('The ArFSUploadPlanner class', () => {
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
 				{ ...stubFolderUploadStats(), wrappedEntity: wrappedFolderWithExistingId }
 			]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(7);
-			expect(+totalByteCount).to.equal(11172);
+			expect(+totalByteCount).to.equal(14946);
 
 			// Expect first upload stat to have our existing stub folder id
 			expect(`${uploadStats[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
@@ -98,9 +98,13 @@ describe('The ArFSUploadPlanner class', () => {
 				stubFileUploadStats(),
 				stubFileUploadStats()
 			]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(1);
-			expect(v2TxPlans.length).to.equal(0);
+
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
 
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
@@ -111,26 +115,29 @@ describe('The ArFSUploadPlanner class', () => {
 		it('returns the expected uploadPlan for a single file that is over the size limit', async () => {
 			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
 				arFSTagSettings,
-				maxBundleLimit: new ByteCount(3_000)
+				bundlePacker: () => new LowestIndexBundlePacker(new ByteCount(3_000), 500)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
 				stubFileUploadStats()
 			]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
-			expect(v2TxPlans.length).to.equal(1);
 
-			const { fileDataByteCount, metaDataByteCount, metaDataBundleIndex } = v2TxPlans[0];
+			expect(fileAndMetaDataPlans.length).to.equal(1);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
+
+			const { fileDataByteCount, metaDataByteCount } = fileAndMetaDataPlans[0];
 
 			expect(+fileDataByteCount!).to.equal(3204);
 			expect(+metaDataByteCount!).to.equal(166);
-			expect(metaDataBundleIndex).to.be.undefined;
 		});
 
 		it('returns the expected uploadPlan for a two files that are over the size limit', async () => {
 			const uploadPlannerWithLowByteLimit = new ArFSUploadPlanner({
 				arFSTagSettings,
-				maxBundleLimit: new ByteCount(3_000)
+				bundlePacker: () => new LowestIndexBundlePacker(new ByteCount(3_000), 500)
 			});
 			const { bundlePlans, v2TxPlans } = await uploadPlannerWithLowByteLimit.planUploadAllEntities([
 				stubFileUploadStats(),
@@ -139,18 +146,21 @@ describe('The ArFSUploadPlanner class', () => {
 
 			// Expect one bundle for the 2 metadata data items
 			expect(bundlePlans.length).to.equal(1);
+
 			const { uploadStats, totalByteCount: bundleByteCount } = bundlePlans[0];
 			expect(+bundleByteCount).to.equal(3108);
 			expect(uploadStats.length).to.equal(0);
 
-			// Expect two v2 transactions for the oversized files
-			expect(v2TxPlans.length).to.equal(2);
-			for (const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } of v2TxPlans) {
-				expect(+fileDataByteCount!).to.equal(3204);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
-				// V2 tx plan will have a metadata bundle index for
+			// Expect two v2 transactions for the oversized files
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(2);
+			expect(folderMetaDataPlans.length).to.equal(0);
+
+			for (const { fileDataByteCount, metaDataBundleIndex } of fileDataOnlyPlans) {
+				expect(+fileDataByteCount!).to.equal(3204);
 				expect(metaDataBundleIndex).to.equal(0);
-				expect(metaDataByteCount).to.be.undefined;
 			}
 		});
 
@@ -160,44 +170,58 @@ describe('The ArFSUploadPlanner class', () => {
 				stubFileUploadStats(),
 				stubFileUploadStats()
 			]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
 
-			expect(v2TxPlans.length).to.equal(2);
-			for (const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } of v2TxPlans) {
-				expect(+fileDataByteCount!).to.equal(3204);
-				expect(+metaDataByteCount!).to.equal(166);
-				expect(metaDataBundleIndex).to.be.undefined;
+			expect(fileAndMetaDataPlans.length).to.equal(2);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(0);
+
+			for (const { fileDataByteCount, metaDataByteCount } of fileAndMetaDataPlans) {
+				expect(+fileDataByteCount).to.equal(3204);
+				expect(+metaDataByteCount).to.equal(166);
 			}
 		});
 
-		const bulkFolderV2Expectations = [
-			{ expectedMetaDataSize: 27 },
+		const bulkFolderFileDataExpectations = [
 			{ expectedFileSize: 12, expectedMetaDataSize: 158 },
-			{ expectedMetaDataSize: 24 },
 			{ expectedFileSize: 12, expectedMetaDataSize: 160 },
-			{ expectedMetaDataSize: 23 },
 			{ expectedFileSize: 14, expectedMetaDataSize: 159 },
-			{ expectedMetaDataSize: 28 },
 			{ expectedFileSize: 14, expectedMetaDataSize: 164 }
+		];
+
+		const bulkFolderMetaDataExpectations = [
+			{ expectedMetaDataSize: 27 },
+			{ expectedMetaDataSize: 24 },
+			{ expectedMetaDataSize: 23 },
+			{ expectedMetaDataSize: 28 }
 		];
 
 		it('returns the expected uploadPlan for a wrappedFolder when shouldBundle is set to false', async () => {
 			const uploadPlanner = new ArFSUploadPlanner({ arFSTagSettings, shouldBundle: false });
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([stubFolderUploadStats()]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			expect(bundlePlans.length).to.equal(0);
 
-			expect(v2TxPlans.length).to.equal(8);
-			for (let index = 0; index < v2TxPlans.length; index++) {
-				const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } = v2TxPlans[index];
-				const { expectedFileSize, expectedMetaDataSize } = bulkFolderV2Expectations[index];
+			expect(fileAndMetaDataPlans.length).to.equal(4);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(4);
 
-				if (expectedFileSize) {
-					expect(+fileDataByteCount!).to.equal(expectedFileSize);
-				}
-				expect(+metaDataByteCount!).to.equal(expectedMetaDataSize);
-				expect(metaDataBundleIndex).to.be.undefined;
+			for (let index = 0; index < fileAndMetaDataPlans.length; index++) {
+				const { fileDataByteCount, metaDataByteCount } = fileAndMetaDataPlans[index];
+				const { expectedFileSize, expectedMetaDataSize } = bulkFolderFileDataExpectations[index];
+
+				expect(+fileDataByteCount).to.equal(expectedFileSize);
+				expect(+metaDataByteCount).to.equal(expectedMetaDataSize);
+			}
+
+			for (let index = 0; index < folderMetaDataPlans.length; index++) {
+				const { metaDataByteCount } = folderMetaDataPlans[index];
+				const { expectedMetaDataSize } = bulkFolderMetaDataExpectations[index];
+
+				expect(+metaDataByteCount).to.equal(expectedMetaDataSize);
 			}
 		});
 
@@ -212,16 +236,18 @@ describe('The ArFSUploadPlanner class', () => {
 			const { bundlePlans, v2TxPlans } = await uploadPlanner.planUploadAllEntities([
 				{ ...stubFolderUploadStats(), wrappedEntity: emptyWrappedFolder }
 			]);
+			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
 
 			// Expect no bundles for a single folder meta data upload
 			expect(bundlePlans.length).to.equal(0);
-			expect(v2TxPlans.length).to.equal(1);
 
-			const { fileDataByteCount, metaDataBundleIndex, metaDataByteCount } = v2TxPlans[0];
+			expect(fileAndMetaDataPlans.length).to.equal(0);
+			expect(fileDataOnlyPlans.length).to.equal(0);
+			expect(folderMetaDataPlans.length).to.equal(1);
 
-			expect(fileDataByteCount).to.be.undefined;
-			expect(+metaDataByteCount!).to.equal(27);
-			expect(metaDataBundleIndex).to.be.undefined;
+			const { metaDataByteCount } = folderMetaDataPlans[0];
+
+			expect(+metaDataByteCount).to.equal(27);
 		});
 	});
 
