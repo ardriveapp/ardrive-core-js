@@ -1315,15 +1315,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		driveKey: DriveKey
 	): Promise<NameConflictInfo> {
 		const cacheKey = { folderId, owner, driveKey };
-		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
+		const cachedConflictInfo = this.caches.privateConflictCache.get(cacheKey);
 		if (cachedConflictInfo) {
 			return cachedConflictInfo;
 		}
 
-		return this.caches.publicConflictCache.put(
+		return this.caches.privateConflictCache.put(
 			cacheKey,
 			(async () => {
-				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+				const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
 				return {
 					files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
 					folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
