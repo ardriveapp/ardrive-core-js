@@ -49,7 +49,9 @@ import {
 	fakeArweave,
 	stubFileUploadStats,
 	stubEmptyFolderStats,
-	stubFolderUploadStats
+	stubFolderUploadStats,
+	stubEmptyFolderToUpload,
+	stubFileToUpload
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -1409,6 +1411,150 @@ describe('ArDrive class - integrated', () => {
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
 			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17183);
+		});
+
+		it('returns the expected ArFSResult with a folder that has conflicting names within its tree and uses --skip conflictResolution', async () => {
+			const conflictingFileInRoot = stubFileToUpload('CONFLICTING_FILE_NAME');
+			const conflictingFileInParent = stubFileToUpload('CONFLICTING_FILE_NAME');
+			const conflictingFileInChild = stubFileToUpload('CONFLICTING_FILE_NAME');
+
+			const childFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			childFolder.files = [conflictingFileInChild];
+
+			const parentFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			parentFolder.folders = [childFolder];
+			parentFolder.files = [conflictingFileInParent];
+
+			const rootFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			rootFolder.folders = [parentFolder];
+			rootFolder.files = [conflictingFileInRoot];
+
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: rootFolder, destFolderId: stubEntityID }],
+				conflictResolution: 'skip'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {}
+			});
+		});
+
+		it('returns the expected ArFSResult with a folder that has conflicting names within its tree and uses --upsert conflictResolution on files that return the expected unchanged last modified date', async () => {
+			const conflictingFileInRoot = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInRoot, 'lastModifiedDate').get(() => new UnixTime(420));
+			const conflictingFileInParent = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInParent, 'lastModifiedDate').get(() => new UnixTime(420));
+			const conflictingFileInChild = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInChild, 'lastModifiedDate').get(() => new UnixTime(420));
+
+			const childFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			childFolder.files = [conflictingFileInChild];
+
+			const parentFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			parentFolder.folders = [childFolder];
+			parentFolder.files = [conflictingFileInParent];
+
+			const rootFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			rootFolder.folders = [parentFolder];
+			rootFolder.files = [conflictingFileInRoot];
+
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: rootFolder, destFolderId: stubEntityID }],
+				conflictResolution: 'upsert'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {}
+			});
+		});
+
+		it('returns the expected revision ArFSResults with a folder that has conflicting names within its tree and uses --upsert conflictResolution on files that return unique different last modified dates', async () => {
+			const conflictingFileInRoot = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInRoot, 'lastModifiedDate').get(() => new UnixTime(1337));
+			const conflictingFileInParent = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInParent, 'lastModifiedDate').get(() => new UnixTime(10101));
+			const conflictingFileInChild = stubFileToUpload('CONFLICTING_FILE_NAME');
+			stub(conflictingFileInChild, 'lastModifiedDate').get(() => new UnixTime(90909));
+
+			const childFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			childFolder.files = [conflictingFileInChild];
+
+			const parentFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			parentFolder.folders = [childFolder];
+			parentFolder.files = [conflictingFileInParent];
+
+			const rootFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			rootFolder.folders = [parentFolder];
+			rootFolder.files = [conflictingFileInRoot];
+
+			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: rootFolder, destFolderId: stubEntityID }],
+				conflictResolution: 'upsert'
+			});
+
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(4);
+			expect(tips.length).to.equal(1);
+			expect(feeKeys.length).to.equal(1);
+
+			assertFileCreatedResult(created[0], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+			assertFileCreatedResult(created[1], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+			assertFileCreatedResult(created[2], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+
+			assertBundleCreatedResult(created[3]);
+
+			const bundleTxId = created[3].bundleTxId;
+
+			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
+			expect(+fees[`${bundleTxId}`]).to.equal(17803);
+
+			assertTipSetting(tips[0], bundleTxId!);
+		});
+
+		it('returns the expected revision ArFSResults with a folder that has conflicting names within its tree and uses --replace conflictResolution', async () => {
+			const conflictingFileInRoot = stubFileToUpload('CONFLICTING_FILE_NAME');
+			const conflictingFileInParent = stubFileToUpload('CONFLICTING_FILE_NAME');
+			const conflictingFileInChild = stubFileToUpload('CONFLICTING_FILE_NAME');
+
+			const childFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			childFolder.files = [conflictingFileInChild];
+
+			const parentFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			parentFolder.folders = [childFolder];
+			parentFolder.files = [conflictingFileInParent];
+
+			const rootFolder = stubEmptyFolderToUpload('CONFLICTING_FOLDER_NAME');
+			rootFolder.folders = [parentFolder];
+			rootFolder.files = [conflictingFileInRoot];
+
+			const { created, fees, tips } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: rootFolder, destFolderId: stubEntityID }],
+				conflictResolution: 'replace'
+			});
+
+			const feeKeys = Object.keys(fees);
+
+			expect(created.length).to.equal(4);
+			expect(tips.length).to.equal(1);
+			expect(feeKeys.length).to.equal(1);
+
+			assertFileCreatedResult(created[0], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+			assertFileCreatedResult(created[1], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+			assertFileCreatedResult(created[2], false, EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7'));
+
+			assertBundleCreatedResult(created[3]);
+
+			const bundleTxId = created[3].bundleTxId;
+
+			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
+			expect(+fees[`${bundleTxId}`]).to.equal(17828);
+
+			assertTipSetting(tips[0], bundleTxId!);
 		});
 
 		it('returns the expected ArFSResult for two empty folders', async () => {
