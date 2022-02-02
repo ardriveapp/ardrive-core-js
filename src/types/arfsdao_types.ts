@@ -21,7 +21,9 @@ import {
 	DriveKey,
 	FolderHierarchy,
 	ArFSPublicFolder,
-	ArFSPrivateFolder
+	ArFSPrivateFolder,
+	ArFSPublicDrive,
+	ArFSPrivateDrive
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -170,6 +172,16 @@ export interface ArFSRenamePublicFolderParams {
 export type ArFSRenamePrivateFolderParams = ArFSRenamePublicFolderParams &
 	WithDriveKey & {
 		folder: ArFSPrivateFolder;
+	};
+
+export interface ArFSRenamePublicDriveParams {
+	drive: ArFSPublicDrive;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+}
+export type ArFSRenamePrivateDriveParams = ArFSRenamePublicDriveParams &
+	WithDriveKey & {
+		drive: ArFSPrivateDrive;
 	};
 
 export type CommunityTipSettings = {

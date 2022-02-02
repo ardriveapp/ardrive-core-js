@@ -17,7 +17,9 @@ import {
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSFileMetadataTransactionData,
-	ArFSObjectTransactionData
+	ArFSObjectTransactionData,
+	ArFSPublicDriveTransactionData,
+	ArFSPrivateDriveTransactionData
 } from './arfs/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
@@ -75,7 +77,10 @@ import {
 	GetPrivateFolderParams,
 	GetPrivateFileParams,
 	ListPrivateFolderParams,
-	MetaDataBaseCosts
+	MetaDataBaseCosts,
+	TipData,
+	RenamePublicDriveParams,
+	RenamePrivateDriveParams
 } from './types';
 import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
@@ -117,8 +122,11 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { assertValidArFSFileName, assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
-import { TipData } from './exports';
+import {
+	assertValidArFSDriveName,
+	assertValidArFSFileName,
+	assertValidArFSFolderName
+} from './arfs/arfs_entity_name_validators';
 import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -1425,6 +1433,10 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.estimateAndAssertCostOfMetaDataTx(metadata);
 	}
 
+	async estimateAndAssertCostOfDriveRename(metadata: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
+		return this.estimateAndAssertCostOfMetaDataTx(metadata);
+	}
+
 	private async estimateAndAssertCostOfMetaDataTx(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
 		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
 		const boostedReward = W(this.feeMultiple.boostReward(metaDataBaseReward.toString()));
@@ -1638,6 +1650,72 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'folder',
 					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
+	async renamePublicDrive({ driveId, newName }: RenamePublicDriveParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getOwnerForDriveId(driveId);
+		await this.assertOwnerAddress(owner);
+		const drive = await this.getPublicDrive({ driveId, owner });
+		if (drive.name === newName) {
+			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
+		}
+		assertValidArFSDriveName(newName);
+		const driveMetadataTxDataStub = new ArFSPublicDriveTransactionData(newName, drive.rootFolderId);
+		const reward = await this.estimateAndAssertCostOfDriveRename(driveMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePublicDrive({
+			drive,
+			newName,
+			metadataRewardSettings
+		});
+
+		return {
+			created: [
+				{
+					type: 'drive',
+					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
+	async renamePrivateDrive({ driveId, newName, driveKey }: RenamePrivateDriveParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getOwnerForDriveId(driveId);
+		await this.assertOwnerAddress(owner);
+		const drive = await this.getPrivateDrive({ driveId, owner, driveKey });
+		if (drive.name === newName) {
+			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
+		}
+		assertValidArFSDriveName(newName);
+		const driveMetadataTxDataStub = await ArFSPrivateDriveTransactionData.from(
+			newName,
+			drive.rootFolderId,
+			driveKey
+		);
+		const reward = await this.estimateAndAssertCostOfDriveRename(driveMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePrivateDrive({
+			drive,
+			newName,
+			metadataRewardSettings,
+			driveKey
+		});
+
+		return {
+			created: [
+				{
+					type: 'drive',
+					entityId: result.entityId,
+					key: urlEncodeHashKey(driveKey),
 					metadataTxId: result.metaDataTxId
 				}
 			],
