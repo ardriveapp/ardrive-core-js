@@ -1383,12 +1383,24 @@ export class ArDrive extends ArDriveAnonymous {
 		driveKey,
 		maxDepth = 0,
 		includeRoot = false,
-		owner
-	}: ListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+		owner,
+		withKeys = false
+	}: ListPrivateFolderParams & { withKeys: boolean }): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
+
+		if (withKeys) {
+			const children = this.arFsDao.listPrivateFolderWithKeys({
+				folderId,
+				driveKey,
+				maxDepth,
+				includeRoot,
+				owner
+			});
+			return children;
+		}
 
 		const children = this.arFsDao.listPrivateFolder({ folderId, driveKey, maxDepth, includeRoot, owner });
 		return children;

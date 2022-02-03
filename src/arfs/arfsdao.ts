@@ -147,7 +147,8 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from '../exports';
+import { ArFSPrivateFileOrFolderWithPathsAndKeys, ArFSPublicFileOrFolderWithPaths } from '../exports';
+import { ArFSPrivateFileOrFolderWithPathsAndKeysBuider } from './arfs_builders/arfs_with_keys_builders';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1342,6 +1343,47 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const entitiesWithPath = children.map((entity) => new ArFSPrivateFileOrFolderWithPaths(entity, hierarchy));
 		return entitiesWithPath;
+	}
+
+	/**
+	 * Lists the children of certain private folder
+	 * @param {FolderID} folderId the folder ID to list children of
+	 * @param {DriveKey} driveKey the drive key used for drive and folder data decryption and file key derivation
+	 * @param {number} maxDepth a non-negative integer value indicating the depth of the folder tree to list where 0 = this folder's contents only
+	 * @param {boolean} includeRoot whether or not folderId's folder data should be included in the listing
+	 * @returns {ArFSPrivateFileOrFolderWithPaths[]} an array representation of the children and parent folder
+	 */
+	async listPrivateFolderWithKeys({
+		folderId,
+		driveKey,
+		maxDepth,
+		includeRoot,
+		owner
+	}: ArFSListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPathsAndKeys[]> {
+		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+			throw new Error('maxDepth should be a non-negative integer!');
+		}
+
+		const folder = await this.getPrivateFolder(folderId, driveKey, owner);
+
+		// Fetch all of the folder entities within the drive
+		const { hierarchy, childFiles, childFolders } = await this.separatedHierarchyOfFolder(
+			folder,
+			owner,
+			driveKey,
+			maxDepth
+		);
+
+		if (includeRoot) {
+			childFolders.unshift(folder);
+		}
+
+		const children = [...childFolders, ...childFiles];
+
+		const entitiesBuilders = children.map(
+			(entity) => new ArFSPrivateFileOrFolderWithPathsAndKeysBuider(entity, hierarchy, driveKey)
+		);
+		return Promise.all(entitiesBuilders.map((builder) => builder.build()));
 	}
 
 	async assertValidPassword(password: string): Promise<void> {
