@@ -289,7 +289,8 @@ export async function resolveFolderNameConflicts({
 
 /** Uses conflictResolution on each file and folder to recursively remove skipped entities or error on conflicts */
 export function assertAndRemoveConflictingEntities(folder: ArFSFolderToUpload): void {
-	for (let index = 0; index < folder.files.length; index++) {
+	let index = folder.files.length;
+	while (index--) {
 		const childFile = folder.files[index];
 
 		if (childFile.conflictResolution === 'skip' || childFile.conflictResolution === 'upsert') {
@@ -300,7 +301,8 @@ export function assertAndRemoveConflictingEntities(folder: ArFSFolderToUpload): 
 		}
 	}
 
-	for (let index = 0; index < folder.folders.length; index++) {
+	index = folder.folders.length;
+	while (index--) {
 		const childFolder = folder.folders[index];
 
 		if (childFolder.conflictResolution === 'skip') {
