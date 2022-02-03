@@ -1595,9 +1595,6 @@ describe('ArDrive class - integrated', () => {
 				conflictResolution: 'upsert'
 			});
 
-			console.log('fees', JSON.stringify(fees, null, 4));
-			console.log('created', JSON.stringify(created, null, 4));
-			console.log('tips', JSON.stringify(tips, null, 4));
 			const feeKeys = Object.keys(fees);
 
 			expect(created.length).to.equal(3);
