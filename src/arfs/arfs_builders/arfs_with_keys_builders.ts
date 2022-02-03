@@ -4,7 +4,8 @@ import {
 	ArFSPrivateFolder,
 	FolderHierarchy
 } from '../../exports';
-import { DriveKey, FileKey } from '../../types';
+import { DriveKey } from '../../types';
+import { urlEncodeHashKey } from '../../utils/common';
 import { deriveFileKey } from '../../utils/crypto';
 
 export class ArFSPrivateFileOrFolderWithPathsAndKeysBuider {
@@ -16,14 +17,19 @@ export class ArFSPrivateFileOrFolderWithPathsAndKeysBuider {
 
 	async build(): Promise<ArFSPrivateFileOrFolderWithPathsAndKeys> {
 		const fileKey = await this.getFileKey();
-		return new ArFSPrivateFileOrFolderWithPathsAndKeys(this.entity, this.hierarchy, this.driveKey, fileKey);
+		return new ArFSPrivateFileOrFolderWithPathsAndKeys(
+			this.entity,
+			this.hierarchy,
+			urlEncodeHashKey(this.driveKey),
+			fileKey
+		);
 	}
 
-	private async getFileKey(): Promise<FileKey | undefined> {
+	private async getFileKey(): Promise<string | undefined> {
 		if (this.entity.entityType === 'file') {
 			const fileId = this.entity.entityId;
 			const fileKey = await deriveFileKey(`${fileId}`, this.driveKey);
-			return fileKey;
+			return urlEncodeHashKey(fileKey);
 		}
 		return;
 	}
