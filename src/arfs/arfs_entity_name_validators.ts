@@ -1,4 +1,5 @@
 import { EntityType } from '../types';
+import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 
 const RESERVED_CHARACTERS = ['\\\\', '/', ':', '*', '?', '"', '<', '>', '|'];
 const HUMAN_READABLE_RESERVED_CHARACTERS = RESERVED_CHARACTERS.map((char) => `'${char}'`).join(', ');
@@ -37,4 +38,20 @@ export function assertValidArFSEntityNameFactory(entityType: EntityType): (name:
 		}
 		return true;
 	};
+}
+
+export function assertNamesWithinFolder(rootFolder: ArFSFolderToUpload, rootFolderDestName?: string): boolean {
+	assertValidArFSFolderName(rootFolderDestName ?? rootFolder.getBaseFileName());
+
+	for (const file of rootFolder.files) {
+		assertValidArFSFileName(file.destinationBaseName);
+	}
+
+	for (const folder of rootFolder.folders) {
+		assertValidArFSFolderName(folder.getBaseFileName());
+
+		assertNamesWithinFolder(folder);
+	}
+
+	return true;
 }
