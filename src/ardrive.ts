@@ -116,7 +116,8 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import {
 	assertValidArFSDriveName,
 	assertValidArFSFileName,
-	assertValidArFSFolderName
+	assertValidArFSFolderName,
+	assertNamesWithinFolder
 } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
@@ -591,6 +592,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
+		assertNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId);
 
 		await resolveFolderNameConflicts({
@@ -783,6 +785,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
+		assertNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey);
 
 		await resolveFolderNameConflicts({
