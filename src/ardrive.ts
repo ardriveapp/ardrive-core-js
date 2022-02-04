@@ -716,7 +716,7 @@ export class ArDrive extends ArDriveAnonymous {
 			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
 				wrappedFile,
 				driveId,
-				parentFolderId,
+				parentFolderId: folderId,
 				rewardSettings: {
 					dataTxRewardSettings,
 					metaDataRewardSettings
@@ -908,10 +908,11 @@ export class ArDrive extends ArDriveAnonymous {
 				feeMultiple: this.feeMultiple
 			};
 
-			const uploadFileResult = (await this.arFsDao.uploadPublicFile({
+			const uploadFileResult = (await this.arFsDao.uploadPrivateFile({
 				wrappedFile,
 				driveId,
-				parentFolderId,
+				parentFolderId: folderId,
+				driveKey,
 				rewardSettings: {
 					dataTxRewardSettings,
 					metaDataRewardSettings

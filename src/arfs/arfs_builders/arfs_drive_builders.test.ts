@@ -24,18 +24,17 @@ const stubPublicDriveGQLNode: Partial<GQLNodeInterface> = {
 };
 
 // prettier-ignore
-const stubPublicDriveGetDataResult = Uint8Array.from([
+const stubPublicDriveGetDataResult = Buffer.from(Uint8Array.from([
 	123, 34, 110, 97, 109, 101, 34, 58, 34, 116, 104, 101, 45, 109, 97, 110, 105, 102, 101, 115, 116, 45, 122, 111,
 	110, 101, 34, 44, 34, 114, 111, 111, 116, 70, 111, 108, 100, 101, 114, 73, 100, 34, 58, 34, 98, 52, 54, 53, 56,
 	56, 51, 102, 45, 98, 52, 48, 48, 45, 52, 52, 57, 54, 45, 57, 100, 99, 53, 45, 55, 99, 100, 50, 97, 54, 102, 102,
 	50, 51, 52, 99, 34, 125
-]);
+]));
 
 describe('ArFSPublicDriveBuilder', () => {
 	it('constructs expected drive from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
-
 		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, fakeArweave);
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 		const driveMetaData = await builder.build(stubPublicDriveGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
@@ -69,12 +68,12 @@ describe('ArFSPublicDriveBuilder', () => {
 		stub(fakeArweave.api, 'post').resolves({
 			data: { data: { transactions: { edges: [{ node: stubPublicDriveGQLNode }] } } }
 		} as AxiosResponse<unknown>);
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
 
 		const builder = new ArFSPublicDriveBuilder({
 			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
 			arweave: fakeArweave
 		});
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 
 		const driveMetaData = await builder.build();
 
@@ -86,12 +85,12 @@ describe('ArFSPublicDriveBuilder', () => {
 		stub(fakeArweave.api, 'post').resolves({
 			data: { data: { transactions: { edges: [] } } }
 		} as AxiosResponse<unknown>);
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
 
 		const builder = new ArFSPublicDriveBuilder({
 			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
 			arweave: fakeArweave
 		});
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 
 		await expectAsyncErrorThrow({
 			promiseToError: builder.build(),
@@ -148,22 +147,22 @@ const stubPrivateDriveGQLNode: Partial<GQLNodeInterface> = {
 const driveKeyForStubPrivateDrive = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
 
 // prettier-ignore
-const stubPrivateDriveGetDataResult = Uint8Array.from([
+const stubPrivateDriveGetDataResult = Buffer.from(Uint8Array.from([
 	233, 129, 16, 177, 200, 130, 75, 210, 22, 62, 0, 84, 34, 208, 19, 112, 9, 67, 233, 86, 158, 0, 239, 24, 54, 182, 81,
 	146, 70, 148, 76, 123, 4, 31, 129, 79, 5, 133, 218, 94, 200, 54, 254, 235, 93, 164, 118, 112, 61, 162, 31, 149, 135,
 	129, 71, 121, 242, 251, 103, 24, 103, 126, 234, 173, 111, 250, 68, 22, 253, 19, 183, 79, 210, 239, 145, 124, 18,
 	114, 123, 249, 169, 92, 37, 217, 64, 84, 226, 121
-]);
+]));
 
 describe('ArFSPrivateDriveBuilder', () => {
 	it('constructs expected drive from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateDriveGetDataResult);
-
 		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
 			fakeArweave,
 			driveKeyForStubPrivateDrive
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
+
 		const driveMetaData = await builder.build(stubPrivateDriveGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
@@ -236,13 +235,13 @@ describe('SafeArFSDriveBuilder', () => {
 	const emptyPrivateKeyData = new PrivateKeyData({});
 
 	it('constructs expected public drive from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPublicDriveGetDataResult);
-
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPublicDriveGQLNode as GQLNodeInterface,
 			fakeArweave,
 			emptyPrivateKeyData
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
+
 		const driveMetaData = await builder.build(stubPublicDriveGQLNode as GQLNodeInterface);
 
 		// Ensure GQL tags on metadata are consistent
@@ -264,13 +263,13 @@ describe('SafeArFSDriveBuilder', () => {
 	});
 
 	it('constructs and decrypts expected private drive from node', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateDriveGetDataResult);
-
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
 			fakeArweave,
 			stubPrivateKeyData
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
+
 		const driveMetaData = (await builder.build(stubPrivateDriveGQLNode as GQLNodeInterface)) as ArFSPrivateDrive;
 
 		// Ensure GQL tags on metadata are consistent
@@ -293,13 +292,13 @@ describe('SafeArFSDriveBuilder', () => {
 	});
 
 	it('gracefully fails decrypting private drives, replacing values with "ENCRYPTED"', async () => {
-		stub(fakeArweave.transactions, 'getData').resolves(stubPrivateDriveGetDataResult);
-
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
 			fakeArweave,
 			emptyPrivateKeyData
 		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
+
 		const driveMetaData = await builder.build(stubPrivateDriveGQLNode as GQLNodeInterface);
 
 		// Verify that the data JSON field were successfully decrypted
