@@ -90,7 +90,7 @@ describe('entity name validators', () => {
 		const { entity, methodName } = test;
 
 		describe(`${methodName} method`, () => {
-			it('do not throws when fed with an ArFS compliant name', () => {
+			it('does not throw an error when fed with an ArFS compliant name', () => {
 				validNames.forEach((name) => {
 					if (isFolderWithChildren(test)) {
 						const { validationMethod } = test;
