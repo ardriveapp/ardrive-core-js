@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { statSync } from 'fs';
 import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
-
 import {
 	assertArFSCompliantNamesWithinFolder,
 	assertValidArFSDriveName,
