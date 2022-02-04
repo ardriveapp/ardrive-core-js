@@ -541,8 +541,8 @@ export function readJWKFile(path: string): Wallet {
 	return wallet;
 }
 
-export async function fetchMempool(): Promise<string[]> {
-	const response = await axios.get('https://arweave.net/tx/pending');
+export async function fetchMempool(gateway = new URL('https://arweave.net/')): Promise<string[]> {
+	const response = await axios.get(`${gateway.href}tx/pending`);
 	return response.data;
 }
 
