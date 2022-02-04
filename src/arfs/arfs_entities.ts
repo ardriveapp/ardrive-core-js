@@ -1,4 +1,4 @@
-import { FolderHierarchy } from './folderHierarchy';
+import { FolderHierarchy } from './folder_hierarchy';
 import {
 	CipherIV,
 	DataContentType,

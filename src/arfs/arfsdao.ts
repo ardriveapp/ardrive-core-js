@@ -60,7 +60,7 @@ import {
 	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
-import { FolderHierarchy } from './folderHierarchy';
+import { FolderHierarchy } from './folder_hierarchy';
 
 import {
 	ArFSAnonymousCache,
