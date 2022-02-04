@@ -115,7 +115,10 @@ describe('ArDrive class - integrated', () => {
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
 	const existingFileId = EID(stubEntityIDAlt.toString());
 
-	const invalidEntityName = '*\\/:*?:<>|_invalidName.png';
+	const invalidEntityNameShort = '';
+	const invalidEntityNameLong =
+		'+===============================================================================================================================================================================================================================================================';
+	const invalidEntityNameNullChar = '\0';
 	const validEntityName = 'some happy file name which is valid.txt';
 
 	beforeEach(() => {
@@ -146,12 +149,32 @@ describe('ArDrive class - integrated', () => {
 
 	describe('drive function', () => {
 		describe('createPublicDrive', () => {
-			it('throws if the given name is invalid', () => {
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPublicDrive({
-						driveName: invalidEntityName
-					}),
-					errorMessage: `The drive name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+			describe('entity name validation', () => {
+				it('throws if the given name is empty', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicDrive({
+							driveName: invalidEntityNameShort
+						}),
+						errorMessage: `The drive name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicDrive({
+							driveName: invalidEntityNameLong
+						}),
+						errorMessage: `The drive name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicDrive({
+							driveName: invalidEntityNameNullChar
+						}),
+						errorMessage: `The drive name cannot contain null characters`
+					});
 				});
 			});
 
@@ -171,19 +194,53 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		describe('createPrivateDrive', () => {
-			it('throws if the given name is invalid', async () => {
-				const stubDriveKey = await getStubDriveKey();
-				const stubPrivateDriveData: PrivateDriveKeyData = {
-					driveId: stubEntityID,
-					driveKey: stubDriveKey
-				};
+			describe('entity name validation', () => {
+				it('throws if the given name is empty', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					const stubPrivateDriveData: PrivateDriveKeyData = {
+						driveId: stubEntityID,
+						driveKey: stubDriveKey
+					};
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPrivateDrive({
-						driveName: invalidEntityName,
-						newPrivateDriveData: stubPrivateDriveData
-					}),
-					errorMessage: `The drive name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateDrive({
+							driveName: invalidEntityNameShort,
+							newPrivateDriveData: stubPrivateDriveData
+						}),
+						errorMessage: `The drive name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					const stubPrivateDriveData: PrivateDriveKeyData = {
+						driveId: stubEntityID,
+						driveKey: stubDriveKey
+					};
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateDrive({
+							driveName: invalidEntityNameLong,
+							newPrivateDriveData: stubPrivateDriveData
+						}),
+						errorMessage: `The drive name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					const stubPrivateDriveData: PrivateDriveKeyData = {
+						driveId: stubEntityID,
+						driveKey: stubDriveKey
+					};
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateDrive({
+							driveName: invalidEntityNameNullChar,
+							newPrivateDriveData: stubPrivateDriveData
+						}),
+						errorMessage: `The drive name cannot contain null characters`
+					});
 				});
 			});
 
@@ -225,16 +282,42 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
 			});
 
-			it('throws if the given name is invalid', () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+			describe('entity name validation', () => {
+				beforeEach(() => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				});
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPublicFolder({
-						folderName: invalidEntityName,
-						driveId: stubEntityID,
-						parentFolderId: stubEntityID
-					}),
-					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				it('throws if the given name is empty', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolder({
+							folderName: invalidEntityNameShort,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolder({
+							folderName: invalidEntityNameShort,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolder({
+							folderName: invalidEntityNameNullChar,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
 				});
 			});
 
@@ -282,17 +365,45 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
 			});
 
-			it('throws if the given name is invalid', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+			describe('entity name validation', () => {
+				beforeEach(() => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				});
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPrivateFolder({
-						folderName: invalidEntityName,
-						driveId: stubEntityID,
-						parentFolderId: stubEntityID,
-						driveKey: await getStubDriveKey()
-					}),
-					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				it('throws if the given name is empty', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolder({
+							folderName: invalidEntityNameShort,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID,
+							driveKey: await getStubDriveKey()
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolder({
+							folderName: invalidEntityNameShort,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID,
+							driveKey: await getStubDriveKey()
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolder({
+							folderName: invalidEntityNameNullChar,
+							driveId: stubEntityID,
+							parentFolderId: stubEntityID,
+							driveKey: await getStubDriveKey()
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
 				});
 			});
 
@@ -588,239 +699,274 @@ describe('ArDrive class - integrated', () => {
 				assertCreateFolderExpectations(result, W(36), urlEncodeHashKey(await getStubDriveKey()));
 			});
 		});
+	});
 
-		describe('file function', () => {
-			const stubbedFileAskPrompts: FileConflictPrompts = {
-				fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
-				fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
-			};
-			let wrappedFile: ArFSFileToUpload;
+	describe('file function', () => {
+		const stubbedFileAskPrompts: FileConflictPrompts = {
+			fileToFileNameConflict: () => Promise.resolve({ resolution: 'skip' }),
+			fileToFolderNameConflict: () => Promise.resolve({ resolution: 'skip' })
+		};
+		let wrappedFile: ArFSFileToUpload;
+		const fileStats = statSync('test_wallet.json');
 
-			describe('uploadPublicFile', () => {
+		describe('uploadPublicFile', () => {
+			beforeEach(() => {
+				wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+
+				stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
+				stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+
+				stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
+					files: [
+						{
+							fileName: 'CONFLICTING_FILE_NAME',
+							fileId: existingFileId,
+							lastModifiedDate: new UnixTime(420)
+						}
+					],
+					folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+				});
+			});
+
+			describe('entity name validation', () => {
+				const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+
 				beforeEach(() => {
-					wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
-
-					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
-					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
-
-					stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves({
-						files: [
-							{
-								fileName: 'CONFLICTING_FILE_NAME',
-								fileId: existingFileId,
-								lastModifiedDate: new UnixTime(420)
-							}
-						],
-						folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-					});
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				});
 
-				it('throws if the given name is invalid', () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
+				it('throws if the given name is empty', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
-					const fileStats = statSync('test_wallet.json');
-					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
-					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
 					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: EID(stubEntityID.toString()),
+							parentFolderId: stubEntityID,
 							wrappedFile: wrappedFileWithInvalidName
 						}),
-						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
+				it('throws if the given name is too long', () => {
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
-				});
-
-				it('throws an error if destination folder has a conflicting FOLDER name', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
-					await expectAsyncErrorThrow({
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPublicFile({
 							parentFolderId: stubEntityID,
-							wrappedFile,
-							destinationFileName: 'CONFLICTING_FOLDER_NAME'
+							wrappedFile: wrappedFileWithInvalidName
 						}),
-						errorMessage: 'Entity name already exists in destination folder!'
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				it('throws if the given name is a null character', () => {
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
 
-					const result = await arDrive.uploadPublicFile({
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPublicFile({
+							parentFolderId: stubEntityID,
+							wrappedFile: wrappedFileWithInvalidName
+						}),
+						errorMessage: `The file name cannot contain null characters`
+					});
+				});
+			});
+
+			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPublicFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
+				});
+			});
+
+			it('throws an error if destination folder has a conflicting FOLDER name', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPublicFile({
 						parentFolderId: stubEntityID,
 						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'skip'
-					});
+						destinationFileName: 'CONFLICTING_FOLDER_NAME'
+					}),
+					errorMessage: 'Entity name already exists in destination folder!'
+				});
+			});
 
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
-					});
+			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'skip'
 				});
 
-				it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				expect(result).to.deep.equal({
+					created: [],
+					tips: [],
+					fees: {}
+				});
+			});
 
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'replace'
-					});
+			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
-					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3204), W(171), W(1), 'public', existingFileId);
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: EID(stubEntityID.toString()),
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'replace'
 				});
 
-				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
+				// Pass expected existing file id, so that the file would be considered a revision
+				assertUploadFileExpectations(result, W(3204), W(171), W(1), 'public', existingFileId);
+			});
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: stubEntityID,
-							wrappedFile,
-							destinationFileName: 'CONFLICTING_FILE_NAME',
-							conflictResolution: 'upsert'
-						}),
-						errorMessage: 'The file to upload matches an existing file entity!'
-					});
-				});
+			it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
 
-				it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
-
-					const result = await arDrive.uploadPublicFile({
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPublicFile({
 						parentFolderId: stubEntityID,
 						wrappedFile,
 						destinationFileName: 'CONFLICTING_FILE_NAME',
 						conflictResolution: 'upsert'
-					});
-
-					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3204), W(162), W('1'), 'public', existingFileId);
-				});
-
-				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'rename',
-						newFileName: 'New File!'
-					});
-
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						prompts: stubbedFileAskPrompts
-					});
-
-					assertUploadFileExpectations(result, W(3204), W(159), W('1'), 'public');
-				});
-
-				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'replace'
-					});
-
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						prompts: stubbedFileAskPrompts
-					});
-
-					assertUploadFileExpectations(result, W(3204), W(171), W('1'), 'public', existingFileId);
-				});
-
-				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'skip'
-					});
-
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						prompts: stubbedFileAskPrompts
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
-					});
-				});
-
-				it('returns the correct bundled ArFSResult', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
-					const result = await bundledArDrive.uploadPublicFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile
-					});
-					assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
-				});
-
-				it('returns the correct ArFSResult', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
-					const result = await arDrive.uploadPublicFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile
-					});
-					assertUploadFileExpectations(result, W(3204), W(166), W(1), 'public');
+					}),
+					errorMessage: 'The file to upload matches an existing file entity!'
 				});
 			});
 
-			describe('uploadPrivateFile', () => {
-				beforeEach(() => {
-					wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
 
-					stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
-					stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
-
-					stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves({
-						files: [
-							{
-								fileName: 'CONFLICTING_FILE_NAME',
-								fileId: existingFileId,
-								lastModifiedDate: new UnixTime(420)
-							}
-						],
-						folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
-					});
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'upsert'
 				});
 
-				it('throws if the given name is invalid', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				// Pass expected existing file id, so that the file would be considered a revision
+				assertUploadFileExpectations(result, W(3204), W(162), W('1'), 'public', existingFileId);
+			});
 
+			it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'rename',
+					newFileName: 'New File!'
+				});
+
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					prompts: stubbedFileAskPrompts
+				});
+
+				assertUploadFileExpectations(result, W(3204), W(159), W('1'), 'public');
+			});
+
+			it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'replace'
+				});
+
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					prompts: stubbedFileAskPrompts
+				});
+
+				assertUploadFileExpectations(result, W(3204), W(171), W('1'), 'public', existingFileId);
+			});
+
+			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'skip'
+				});
+
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					prompts: stubbedFileAskPrompts
+				});
+
+				expect(result).to.deep.equal({
+					created: [],
+					tips: [],
+					fees: {}
+				});
+			});
+
+			it('returns the correct bundled ArFSResult', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				const result = await bundledArDrive.uploadPublicFile({
+					parentFolderId: EID(stubEntityID.toString()),
+					wrappedFile
+				});
+				assertUploadFileExpectations(result, W(5959), W(166), W(1), 'public', undefined, true);
+			});
+
+			it('returns the correct ArFSResult', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				const result = await arDrive.uploadPublicFile({
+					parentFolderId: EID(stubEntityID.toString()),
+					wrappedFile
+				});
+				assertUploadFileExpectations(result, W(3204), W(166), W(1), 'public');
+			});
+		});
+
+		describe('uploadPrivateFile', () => {
+			beforeEach(() => {
+				wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+
+				stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
+				stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+
+				stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves({
+					files: [
+						{
+							fileName: 'CONFLICTING_FILE_NAME',
+							fileId: existingFileId,
+							lastModifiedDate: new UnixTime(420)
+						}
+					],
+					folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+				});
+			});
+
+			describe('entity name validation', () => {
+				const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+
+				beforeEach(() => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				});
+
+				it('throws if the given name is empty', async () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
-					const fileStats = statSync('test_wallet.json');
-					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
-					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
 					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPrivateFile({
@@ -828,610 +974,734 @@ describe('ArDrive class - integrated', () => {
 							wrappedFile: wrappedFileWithInvalidName,
 							driveKey: await getStubDriveKey()
 						}),
-						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
+				it('throws if the given name is too long', async () => {
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-					await expectAsyncErrorThrow({
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPrivateFile({
 							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile,
+							wrappedFile: wrappedFileWithInvalidName,
 							driveKey: await getStubDriveKey()
 						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('throws an error if destination folder has a conflicting FOLDER name', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				it('throws if the given name is a null character', async () => {
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
 
-					await expectAsyncErrorThrow({
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.uploadPrivateFile({
 							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile,
-							driveKey: await getStubDriveKey(),
-							destinationFileName: 'CONFLICTING_FOLDER_NAME'
+							wrappedFile: wrappedFileWithInvalidName,
+							driveKey: await getStubDriveKey()
 						}),
-						errorMessage: 'Entity name already exists in destination folder!'
+						errorMessage: `The file name cannot contain null characters`
 					});
-				});
-
-				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						driveKey: await getStubDriveKey(),
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'skip'
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
-					});
-				});
-
-				it('returns the correct ArFSResult revision with if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						driveKey: await getStubDriveKey(),
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'replace'
-					});
-
-					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3220), W(187), W(1), 'private', existingFileId);
-				});
-
-				it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
-
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile,
-							driveKey: await getStubDriveKey(),
-							destinationFileName: 'CONFLICTING_FILE_NAME',
-							conflictResolution: 'upsert'
-						}),
-						errorMessage: 'The file to upload matches an existing file entity!'
-					});
-				});
-
-				it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'upsert',
-						driveKey: await getStubDriveKey()
-					});
-
-					// Pass expected existing file id, so that the file would be considered a revision
-					assertUploadFileExpectations(result, W(3220), W(178), W('1'), 'private', existingFileId);
-				});
-
-				it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'rename',
-						newFileName: 'New File!'
-					});
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						driveKey: await getStubDriveKey(),
-						prompts: stubbedFileAskPrompts
-					});
-
-					assertUploadFileExpectations(result, W(3220), W(175), W('1'), 'private');
-				});
-
-				it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'replace'
-					});
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						driveKey: await getStubDriveKey(),
-						prompts: stubbedFileAskPrompts
-					});
-
-					assertUploadFileExpectations(result, W(3220), W(187), W('1'), 'private', existingFileId);
-				});
-
-				it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
-						resolution: 'skip'
-					});
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: stubEntityID,
-						wrappedFile,
-						destinationFileName: 'CONFLICTING_FILE_NAME',
-						conflictResolution: 'ask',
-						driveKey: await getStubDriveKey(),
-						prompts: stubbedFileAskPrompts
-					});
-
-					expect(result).to.deep.equal({
-						created: [],
-						tips: [],
-						fees: {}
-					});
-				});
-
-				it('returns the correct bundled ArFSResult', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					const stubDriveKey = await getStubDriveKey();
-
-					const result = await bundledArDrive.uploadPrivateFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile,
-						driveKey: stubDriveKey
-					});
-					assertUploadFileExpectations(result, W(6052), W(182), W(1), 'private', undefined, true);
-				});
-
-				it('returns the correct ArFSResult', async () => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-					const stubDriveKey = await getStubDriveKey();
-
-					const result = await arDrive.uploadPrivateFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile,
-						driveKey: stubDriveKey
-					});
-					assertUploadFileExpectations(result, W(3220), W(182), W(1), 'private');
 				});
 			});
 
-			describe('movePublicFile', () => {
-				beforeEach(() => {
-					stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
+			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile,
+						driveKey: await getStubDriveKey()
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
+				});
+			});
+
+			it('throws an error if destination folder has a conflicting FOLDER name', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile,
+						driveKey: await getStubDriveKey(),
+						destinationFileName: 'CONFLICTING_FOLDER_NAME'
+					}),
+					errorMessage: 'Entity name already exists in destination folder!'
+				});
+			});
+
+			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					driveKey: await getStubDriveKey(),
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'skip'
 				});
 
-				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-					stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
+				expect(result).to.deep.equal({
+					created: [],
+					tips: [],
+					fees: {}
+				});
+			});
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePublicFile({
-							fileId: stubEntityID,
-							newParentFolderId: stubEntityIDAlt
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
+			it('returns the correct ArFSResult revision with if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					driveKey: await getStubDriveKey(),
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'replace'
 				});
 
-				it('throws an error if the destination folder has a conflicting entity name', async () => {
-					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: 'CONFLICTING_NAME' }));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+				// Pass expected existing file id, so that the file would be considered a revision
+				assertUploadFileExpectations(result, W(3220), W(187), W(1), 'private', existingFileId);
+			});
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePublicFile({
-							fileId: stubEntityID,
-							newParentFolderId: stubEntityIDAlt
-						}),
-						errorMessage: 'Entity name already exists in destination folder!'
-					});
+			it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile,
+						driveKey: await getStubDriveKey(),
+						destinationFileName: 'CONFLICTING_FILE_NAME',
+						conflictResolution: 'upsert'
+					}),
+					errorMessage: 'The file to upload matches an existing file entity!'
+				});
+			});
+
+			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'upsert',
+					driveKey: await getStubDriveKey()
 				});
 
-				it('throws an error if the new parent folder id matches its current parent folder id', async () => {
-					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({}));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+				// Pass expected existing file id, so that the file would be considered a revision
+				assertUploadFileExpectations(result, W(3220), W(178), W('1'), 'private', existingFileId);
+			});
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePublicFile({
-							fileId: stubEntityID,
-							newParentFolderId: EID(stubEntityID.toString())
-						})
-					});
+			it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'rename',
+					newFileName: 'New File!'
 				});
 
-				it('throws an error if the file is being moved to a different drive', async () => {
-					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ driveId: unexpectedDriveId }));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePublicFile({
-							fileId: stubEntityID,
-							newParentFolderId: EID(stubEntityID.toString())
-						}),
-						errorMessage: 'Entity must stay in the same drive!'
-					});
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					driveKey: await getStubDriveKey(),
+					prompts: stubbedFileAskPrompts
 				});
 
-				it('returns the correct ArFSResult', async () => {
-					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({}));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+				assertUploadFileExpectations(result, W(3220), W(175), W('1'), 'private');
+			});
 
-					const result = await arDrive.movePublicFile({
+			it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'replace'
+				});
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					driveKey: await getStubDriveKey(),
+					prompts: stubbedFileAskPrompts
+				});
+
+				assertUploadFileExpectations(result, W(3220), W(187), W('1'), 'private', existingFileId);
+			});
+
+			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
+					resolution: 'skip'
+				});
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: stubEntityID,
+					wrappedFile,
+					destinationFileName: 'CONFLICTING_FILE_NAME',
+					conflictResolution: 'ask',
+					driveKey: await getStubDriveKey(),
+					prompts: stubbedFileAskPrompts
+				});
+
+				expect(result).to.deep.equal({
+					created: [],
+					tips: [],
+					fees: {}
+				});
+			});
+
+			it('returns the correct bundled ArFSResult', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				const stubDriveKey = await getStubDriveKey();
+
+				const result = await bundledArDrive.uploadPrivateFile({
+					parentFolderId: EID(stubEntityID.toString()),
+					wrappedFile,
+					driveKey: stubDriveKey
+				});
+				assertUploadFileExpectations(result, W(6052), W(182), W(1), 'private', undefined, true);
+			});
+
+			it('returns the correct ArFSResult', async () => {
+				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+				const stubDriveKey = await getStubDriveKey();
+
+				const result = await arDrive.uploadPrivateFile({
+					parentFolderId: EID(stubEntityID.toString()),
+					wrappedFile,
+					driveKey: stubDriveKey
+				});
+				assertUploadFileExpectations(result, W(3220), W(182), W(1), 'private');
+			});
+		});
+
+		describe('movePublicFile', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
+			});
+
+			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
+				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePublicFile({
 						fileId: stubEntityID,
 						newParentFolderId: stubEntityIDAlt
-					});
-					assertMoveFileExpectations(result, W(153), 'public');
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
 				});
 			});
 
-			describe('movePrivateFile', () => {
-				beforeEach(() => {
-					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
+			it('throws an error if the destination folder has a conflicting entity name', async () => {
+				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: 'CONFLICTING_NAME' }));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePublicFile({
+						fileId: stubEntityID,
+						newParentFolderId: stubEntityIDAlt
+					}),
+					errorMessage: 'Entity name already exists in destination folder!'
 				});
+			});
 
-				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-					stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
+			it('throws an error if the new parent folder id matches its current parent folder id', async () => {
+				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({}));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePrivateFile({
-							fileId: stubEntityID,
-							newParentFolderId: stubEntityIDAlt,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePublicFile({
+						fileId: stubEntityID,
+						newParentFolderId: EID(stubEntityID.toString())
+					})
 				});
+			});
 
-				it('throws an error if the destination folder has a conflicting entity name', async () => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: 'CONFLICTING_NAME' }));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+			it('throws an error if the file is being moved to a different drive', async () => {
+				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ driveId: unexpectedDriveId }));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePrivateFile({
-							fileId: stubEntityID,
-							newParentFolderId: stubEntityIDAlt,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: 'Entity name already exists in destination folder!'
-					});
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePublicFile({
+						fileId: stubEntityID,
+						newParentFolderId: EID(stubEntityID.toString())
+					}),
+					errorMessage: 'Entity must stay in the same drive!'
 				});
+			});
 
-				it('throws an error if the new parent folder id matches its current parent folder id', async () => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+			it('returns the correct ArFSResult', async () => {
+				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({}));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePrivateFile({
-							fileId: stubEntityID,
-							newParentFolderId: EID(stubEntityID.toString()),
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `File already has parent folder with ID: ${stubEntityID}`
-					});
+				const result = await arDrive.movePublicFile({
+					fileId: stubEntityID,
+					newParentFolderId: stubEntityIDAlt
 				});
+				assertMoveFileExpectations(result, W(153), 'public');
+			});
+		});
 
-				it('throws an error if the file is being moved to a different drive', async () => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ driveId: unexpectedDriveId }));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+		describe('movePrivateFile', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
+			});
 
-					await expectAsyncErrorThrow({
-						promiseToError: arDrive.movePrivateFile({
-							fileId: stubEntityID,
-							newParentFolderId: EID(stubEntityID.toString()),
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: 'Entity must stay in the same drive!'
-					});
-				});
+			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
+				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
 
-				it('returns the correct ArFSResult', async () => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
-					stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-
-					const result = await arDrive.movePrivateFile({
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePrivateFile({
 						fileId: stubEntityID,
 						newParentFolderId: stubEntityIDAlt,
 						driveKey: await getStubDriveKey()
-					});
-					assertMoveFileExpectations(result, W(169), 'private');
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
 				});
 			});
 
-			describe('renamePublicFile', () => {
-				const stubFileName = 'Test Public File Metadata';
-				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
-				const validFileName = 'some happy file name which is valid.txt';
-				const conflictingName = 'CONFLICTING_NAME';
+			it('throws an error if the destination folder has a conflicting entity name', async () => {
+				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: 'CONFLICTING_NAME' }));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-				beforeEach(() => {
-					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: stubFileName }));
-					stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-				});
-
-				it('throws if the owner mismatches', () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: validFileName
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
-				});
-
-				it('throws if the given name is the same as the current one', () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: stubFileName
-						}),
-						errorMessage: `To rename a file, the new name must be different`
-					});
-				});
-
-				it('throws if the given name is invalid', () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: invalidFileName
-						}),
-						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
-					});
-				});
-
-				it('throws if the new name collides with an on-chain sibling', () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: conflictingName
-						}),
-						errorMessage: `There already is an entity named that way`
-					});
-				});
-
-				it('succeeds creating the transaction if a healthy input is given', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					const { created, tips, fees } = await arDrive.renamePublicFile({
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePrivateFile({
 						fileId: stubEntityID,
-						newName: validFileName
-					});
-					expect(created.length).to.equal(1);
-					expect(tips.length).to.equal(0);
-					expect(Object.keys(fees).length).to.equal(1);
-					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+						newParentFolderId: stubEntityIDAlt,
+						driveKey: await getStubDriveKey()
+					}),
+					errorMessage: 'Entity name already exists in destination folder!'
 				});
 			});
 
-			describe('renamePrivateFile', async () => {
-				const stubFileName = 'Test Private File Metadata';
-				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
-				const validFileName = 'some happy file name which is valid.txt';
-				const conflictingName = 'CONFLICTING_NAME';
+			it('throws an error if the new parent folder id matches its current parent folder id', async () => {
+				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-				const stubDriveKey = getStubDriveKey();
-
-				beforeEach(() => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: stubFileName }));
-					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-				});
-
-				it('throws if the owner mismatches', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: validFileName,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
-				});
-
-				it('throws if the given name is the same as the current one', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: stubFileName,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `To rename a file, the new name must be different`
-					});
-				});
-
-				it('throws if the given name is invalid', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: invalidFileName,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
-					});
-				});
-
-				it('throws if the new name collides with an on-chain sibling', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: 'CONFLICTING_NAME',
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `There already is an entity named that way`
-					});
-				});
-
-				it('succeeds creating the transaction if a healthy input is given', async () => {
-					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
-					const { created, tips, fees } = await arDrive.renamePrivateFile({
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePrivateFile({
 						fileId: stubEntityID,
-						newName: 'some happy file name which is valid.txt',
-						driveKey: await stubDriveKey
-					});
-					expect(created.length).to.equal(1);
-					expect(tips.length).to.equal(0);
-					expect(Object.keys(fees).length).to.equal(1);
-					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+						newParentFolderId: EID(stubEntityID.toString()),
+						driveKey: await getStubDriveKey()
+					}),
+					errorMessage: `File already has parent folder with ID: ${stubEntityID}`
 				});
 			});
 
-			describe('renamePublicFolder', () => {
-				const stubFileName = 'Test Public File Metadata';
-				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
-				const validFileName = 'some happy file name which is valid.txt';
-				const conflictingName = 'CONFLICTING_NAME';
+			it('throws an error if the file is being moved to a different drive', async () => {
+				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ driveId: unexpectedDriveId }));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-				beforeEach(() => {
-					stub(arfsDao, 'getPublicFolder').resolves(stubPublicFile({ fileName: stubFileName }));
-					stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-				});
-
-				it('throws if the owner mismatches', () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: validFileName
-						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
-					});
-				});
-
-				it('throws if the given name is the same as the current one', () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: stubFileName
-						}),
-						errorMessage: `New folder name '${stubFileName}' must be different from the current folder name!`
-					});
-				});
-
-				it('throws if the given name is invalid', () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: invalidFileName
-						}),
-						errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
-					});
-				});
-
-				it('throws if the new name collides with an on-chain sibling', () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: conflictingName
-						}),
-						errorMessage: `There already is an entity named that way`
-					});
-				});
-
-				it('succeeds creating the transaction if a healthy input is given', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					const { created, tips, fees } = await arDrive.renamePublicFolder({
-						folderId: stubEntityID,
-						newName: validFileName
-					});
-					expect(created.length).to.equal(1);
-					expect(tips.length).to.equal(0);
-					expect(Object.keys(fees).length).to.equal(1);
-					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+				await expectAsyncErrorThrow({
+					promiseToError: arDrive.movePrivateFile({
+						fileId: stubEntityID,
+						newParentFolderId: EID(stubEntityID.toString()),
+						driveKey: await getStubDriveKey()
+					}),
+					errorMessage: 'Entity must stay in the same drive!'
 				});
 			});
 
-			describe('renamePrivateFolder', async () => {
-				const stubFileName = 'Test Private File Metadata';
-				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
-				const validFileName = 'some happy file name which is valid.txt';
-				const conflictingName = 'CONFLICTING_NAME';
+			it('returns the correct ArFSResult', async () => {
+				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
+				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-				const stubDriveKey = getStubDriveKey();
+				const result = await arDrive.movePrivateFile({
+					fileId: stubEntityID,
+					newParentFolderId: stubEntityIDAlt,
+					driveKey: await getStubDriveKey()
+				});
+				assertMoveFileExpectations(result, W(169), 'private');
+			});
+		});
 
+		describe('renamePublicFile', () => {
+			const stubFileName = 'Test Public File Metadata';
+			const conflictingName = 'CONFLICTING_NAME';
+
+			beforeEach(() => {
+				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+			});
+
+			it('throws if the owner mismatches', () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: validEntityName
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
+				});
+			});
+
+			it('throws if the given name is the same as the current one', () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: stubFileName
+					}),
+					errorMessage: `To rename a file, the new name must be different`
+				});
+			});
+
+			describe('entity name validation', () => {
 				beforeEach(() => {
-					stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFile({ fileName: stubFileName }));
-					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
 				});
 
-				it('throws if the owner mismatches', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
+				it('throws if the given name is empty', () => {
 					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: validFileName,
-							driveKey: await stubDriveKey
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: invalidEntityNameShort
 						}),
-						errorMessage: 'Supplied wallet is not the owner of this drive!'
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('throws if the given name is the same as the current one', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				it('throws if the given name is too long', () => {
 					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: stubFileName,
-							driveKey: await stubDriveKey
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: invalidEntityNameLong
 						}),
-						errorMessage: `New folder name '${stubFileName}' must be different from the current folder name!`
+						errorMessage: `The file name must contain between 1 and 255 characters`
 					});
 				});
 
-				it('throws if the given name is invalid', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				it('throws if the given name is a null character', () => {
 					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: invalidFileName,
-							driveKey: await stubDriveKey
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: invalidEntityNameNullChar
 						}),
-						errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+						errorMessage: `The file name cannot contain null characters`
 					});
 				});
+			});
 
-				it('throws if the new name collides with an on-chain sibling', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: 'CONFLICTING_NAME',
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `There already is an entity named that way`
-					});
+			it('throws if the new name collides with an on-chain sibling', () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: conflictingName
+					}),
+					errorMessage: `There already is an entity named that way`
 				});
+			});
 
-				it('succeeds creating the transaction if a healthy input is given', async () => {
-					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-					const { created, tips, fees } = await arDrive.renamePrivateFolder({
-						folderId: stubEntityID,
-						newName: 'some happy file name which is valid.txt',
+			it('succeeds creating the transaction if a healthy input is given', async () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				const { created, tips, fees } = await arDrive.renamePublicFile({
+					fileId: stubEntityID,
+					newName: validEntityName
+				});
+				expect(created.length).to.equal(1);
+				expect(tips.length).to.equal(0);
+				expect(Object.keys(fees).length).to.equal(1);
+				expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+			});
+		});
+
+		describe('renamePrivateFile', async () => {
+			const stubFileName = 'Test Private File Metadata';
+			const conflictingName = 'CONFLICTING_NAME';
+
+			const stubDriveKey = getStubDriveKey();
+
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+			});
+
+			it('throws if the owner mismatches', async () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: validEntityName,
 						driveKey: await stubDriveKey
-					});
-					expect(created.length).to.equal(1);
-					expect(tips.length).to.equal(0);
-					expect(Object.keys(fees).length).to.equal(1);
-					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
 				});
+			});
+
+			it('throws if the given name is the same as the current one', async () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: stubFileName,
+						driveKey: await stubDriveKey
+					}),
+					errorMessage: `To rename a file, the new name must be different`
+				});
+			});
+
+			describe('entity name validation', () => {
+				beforeEach(() => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				});
+
+				it('throws if the given name is empty', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: invalidEntityNameShort,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: EID(stubEntityID.toString()),
+							newName: invalidEntityNameLong,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: invalidEntityNameNullChar,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The file name cannot contain null characters`
+					});
+				});
+			});
+
+			it('throws if the new name collides with an on-chain sibling', async () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: 'CONFLICTING_NAME',
+						driveKey: await stubDriveKey
+					}),
+					errorMessage: `There already is an entity named that way`
+				});
+			});
+
+			it('succeeds creating the transaction if a healthy input is given', async () => {
+				stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+				const { created, tips, fees } = await arDrive.renamePrivateFile({
+					fileId: stubEntityID,
+					newName: 'some happy file name which is valid.txt',
+					driveKey: await stubDriveKey
+				});
+				expect(created.length).to.equal(1);
+				expect(tips.length).to.equal(0);
+				expect(Object.keys(fees).length).to.equal(1);
+				expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+			});
+		});
+
+		describe('renamePublicFolder', () => {
+			const stubFileName = 'Test Public File Metadata';
+			const conflictingName = 'CONFLICTING_NAME';
+
+			beforeEach(() => {
+				stub(arfsDao, 'getPublicFolder').resolves(stubPublicFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+			});
+
+			it('throws if the owner mismatches', () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: validEntityName
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
+				});
+			});
+
+			it('throws if the given name is the same as the current one', () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: stubFileName
+					}),
+					errorMessage: `New folder name '${stubFileName}' must be different from the current folder name!`
+				});
+			});
+
+			describe('entity name validation', () => {
+				beforeEach(() => {
+					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				});
+
+				it('throws if the given name is empty', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameShort
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameLong
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameNullChar
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
+				});
+			});
+
+			it('throws if the new name collides with an on-chain sibling', () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: conflictingName
+					}),
+					errorMessage: `There already is an entity named that way`
+				});
+			});
+
+			it('succeeds creating the transaction if a healthy input is given', async () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				const { created, tips, fees } = await arDrive.renamePublicFolder({
+					folderId: stubEntityID,
+					newName: validEntityName
+				});
+				expect(created.length).to.equal(1);
+				expect(tips.length).to.equal(0);
+				expect(Object.keys(fees).length).to.equal(1);
+				expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+			});
+		});
+
+		describe('renamePrivateFolder', async () => {
+			const stubFileName = 'Test Private File Metadata';
+			const conflictingName = 'CONFLICTING_NAME';
+
+			const stubDriveKey = getStubDriveKey();
+
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+			});
+
+			it('throws if the owner mismatches', async () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: validEntityName,
+						driveKey: await stubDriveKey
+					}),
+					errorMessage: 'Supplied wallet is not the owner of this drive!'
+				});
+			});
+
+			it('throws if the given name is the same as the current one', async () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: stubFileName,
+						driveKey: await stubDriveKey
+					}),
+					errorMessage: `New folder name '${stubFileName}' must be different from the current folder name!`
+				});
+			});
+
+			describe('entity name validation', () => {
+				beforeEach(() => {
+					stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				});
+
+				it('throws if the given name is empty', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameShort,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is too long', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameLong,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if the given name is a null character', async () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFolder({
+							folderId: stubEntityID,
+							newName: invalidEntityNameNullChar,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
+				});
+			});
+
+			it('throws if the new name collides with an on-chain sibling', async () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: 'CONFLICTING_NAME',
+						driveKey: await stubDriveKey
+					}),
+					errorMessage: `There already is an entity named that way`
+				});
+			});
+
+			it('succeeds creating the transaction if a healthy input is given', async () => {
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				const { created, tips, fees } = await arDrive.renamePrivateFolder({
+					folderId: stubEntityID,
+					newName: 'some happy file name which is valid.txt',
+					driveKey: await stubDriveKey
+				});
+				expect(created.length).to.equal(1);
+				expect(tips.length).to.equal(0);
+				expect(Object.keys(fees).length).to.equal(1);
+				expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
 			});
 		});
 	});
@@ -1447,59 +1717,177 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		describe('createPublicFolderAndUploadChildren', () => {
-			it('throws if an folder name is invalid', () => {
-				stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+			describe('entity name validation', () => {
+				it('throws if folder name is empty', () => {
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPublicFolderAndUploadChildren({
-						parentFolderId: stubEntityID,
-						wrappedFolder: wrappedFolderWithInvalidName
-					}),
-					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
 				});
-			});
 
-			it('throws if an file name is invalid', () => {
-				stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(invalidEntityName);
+				it('throws if folder name is too long', () => {
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPublicFolderAndUploadChildren({
-						parentFolderId: stubEntityID,
-						wrappedFolder: wrappedFolderWithInvalidName
-					}),
-					errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if folder name is a null character', () => {
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
+				});
+
+				it('throws if file name is empty', () => {
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameShort
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if file name is too long', () => {
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameShort
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if file name is a null character', () => {
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameNullChar
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPublicFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName
+						}),
+						errorMessage: `The file name cannot contain null characters`
+					});
 				});
 			});
 		});
 
 		describe('createPrivateFolderAndUploadChildren', () => {
-			it('throws if an folder name is invalid', async () => {
-				const stubDriveKey = await getStubDriveKey();
+			describe('entity name validation', () => {
+				it('throws if folder name is empty', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
-				stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
-
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-						parentFolderId: stubEntityID,
-						wrappedFolder: wrappedFolderWithInvalidName,
-						driveKey: stubDriveKey
-					}),
-					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
 				});
-			});
 
-			it('throws if an file name is invalid', async () => {
-				const stubDriveKey = await getStubDriveKey();
+				it('throws if folder name is too long', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-				stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(invalidEntityName);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The folder name must contain between 1 and 255 characters`
+					});
+				});
 
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-						parentFolderId: stubEntityID,
-						wrappedFolder: wrappedFolderWithInvalidName,
-						driveKey: stubDriveKey
-					}),
-					errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				it('throws if folder name is a null character', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The folder name cannot contain null characters`
+					});
+				});
+
+				it('throws if file name is empty', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameShort
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if file name is too long', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameShort
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The file name must contain between 1 and 255 characters`
+					});
+				});
+
+				it('throws if file name is a null character', async () => {
+					const stubDriveKey = await getStubDriveKey();
+					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
+						invalidEntityNameNullChar
+					);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+							parentFolderId: stubEntityID,
+							wrappedFolder: wrappedFolderWithInvalidName,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: `The file name cannot contain null characters`
+					});
 				});
 			});
 		});

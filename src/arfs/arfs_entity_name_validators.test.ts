@@ -16,11 +16,7 @@ describe('entity name validators', () => {
 		'abcdefghijklmnopqrstuvwxyz',
 		'ñññññññññññññññññ.png',
 		'valid name with     spaces.txt',
-		'valid.name.with.....dots.txt'
-	];
-	const tooLongName =
-		'+===============================================================================================================================================================================================================================================================';
-	const namesWithReservedCharacters = [
+		'valid.name.with.....dots.txt',
 		'\\\\\\\\\\\\\\\\\\\\.png',
 		'//////////.png',
 		'::::::::::.png',
@@ -29,15 +25,18 @@ describe('entity name validators', () => {
 		'"""""""""".png',
 		'<<<<<<<<<<.png',
 		'>>>>>>>>>>.png',
-		'||||||||||.png'
-	];
-	const namesWithLeadingSpaces = ['  thisIsAFileNameWithTwoLeadingSpaces.doc', ' thisFilenameHasOneSingleSpace.doc'];
-	const namesWithTrailingSpacesOrDots = [
+		'||||||||||.png',
+		'  thisIsAFileNameWithTwoLeadingSpaces.doc',
+		' thisFilenameHasOneSingleSpace.doc',
 		'soWeHaveAFileNameThatEndsWithADot.',
 		'thenAFileNameWithMultipleDots...',
 		'aFileNameWithATrailingSpace ',
 		'anotherFileNameWithSpaces   '
 	];
+	const tooLongName =
+		'+===============================================================================================================================================================================================================================================================';
+
+	const nullCharactersRepresentations = ['\0', '\x00'];
 
 	type Test = {
 		entity: string;
@@ -91,17 +90,17 @@ describe('entity name validators', () => {
 		const { entity, methodName } = test;
 
 		describe(`${methodName} method`, () => {
-			it('returns true when fed with an ArFS compliant name', () => {
+			it('do not throws when fed with an ArFS compliant name', () => {
 				validNames.forEach((name) => {
 					if (isFolderWithChildren(test)) {
 						const { validationMethod } = test;
 						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'getBaseFileName').returns(name);
 
-						expect(validationMethod(wrappedFolderWithValidName)).to.be.true;
+						expect(validationMethod(wrappedFolderWithValidName)).to.not.throw;
 						wrappedFolderStub.restore();
 					} else {
 						const { validationMethod } = test;
-						expect(validationMethod(name)).to.be.true;
+						expect(validationMethod(name)).to.not.throw;
 					}
 				});
 			});
@@ -136,47 +135,10 @@ describe('entity name validators', () => {
 				}
 			});
 
-			it('throws when the name contains reserved characters', () => {
-				const expectedError = `The ${entity} name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`;
+			it('throws when the name contains null characters', () => {
+				const expectedError = `The ${entity} name cannot contain null characters`;
 
-				namesWithReservedCharacters.forEach((invalidName) => {
-					if (isFolderWithChildren(test)) {
-						const { validationMethod } = test;
-						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'getBaseFileName').returns(
-							invalidName
-						);
-
-						expect(() => validationMethod(wrappedFolderWithValidName)).to.throw(expectedError);
-						wrappedFolderStub.restore();
-					} else {
-						const { validationMethod } = test;
-						expect(() => validationMethod(invalidName)).to.throw(expectedError);
-					}
-				});
-			});
-
-			it('throws when the name contains leading spaces', () => {
-				const expectedError = `The ${entity} name cannot start with spaces`;
-
-				namesWithLeadingSpaces.forEach((invalidName) => {
-					if (isFolderWithChildren(test)) {
-						const { validationMethod } = test;
-						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'getBaseFileName').returns(
-							invalidName
-						);
-
-						expect(() => validationMethod(wrappedFolderWithValidName)).to.throw(expectedError);
-						wrappedFolderStub.restore();
-					} else {
-						const { validationMethod } = test;
-						expect(() => validationMethod(invalidName)).to.throw(expectedError);
-					}
-				});
-			});
-
-			it('throws when the name contains trailing dots or spaces', () => {
-				const expectedError = `The ${entity} name cannot have trailing dots or spaces`;
-				namesWithTrailingSpacesOrDots.forEach((invalidName) => {
+				nullCharactersRepresentations.forEach((invalidName) => {
 					if (isFolderWithChildren(test)) {
 						const { validationMethod } = test;
 						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'getBaseFileName').returns(
