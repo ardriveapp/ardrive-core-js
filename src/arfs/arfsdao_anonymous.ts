@@ -23,14 +23,14 @@ import {
 	ArFSPublicFolder
 } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, graphQLURL } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
 import axios, { AxiosRequestConfig } from 'axios';
-import { gatewayURL } from '../utils/constants';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
+import { gqlUrlForArweave, gatewayUrlForArweave } from '../exports';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -100,7 +100,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
 				if (!edges.length) {
@@ -126,7 +126,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			(async () => {
 				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
 
-				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 				const { data } = response.data;
 				const { transactions } = data;
 
@@ -212,7 +212,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({ tags: [{ name: 'Entity-Type', value: 'drive' }], cursor, owner: address });
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -258,7 +258,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -295,7 +295,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -369,7 +369,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	 * @returns {Promise<Readable>}
 	 */
 	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
-		const dataTxUrl = `${gatewayURL}${fileTxId}`;
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave)}${fileTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
@@ -432,7 +432,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 				/*
 				 * FIXME: Downloading all files at once consumes a lot of resources.
-				 * TODO: Implement a download manager for downloading in paralel
+				 * TODO: Implement a download manager for downloading in parallel
 				 * Doing it sequentially for now
 				 */
 				const dataStream = await this.getPublicDataStream(file.dataTxId);

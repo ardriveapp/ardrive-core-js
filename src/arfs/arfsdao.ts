@@ -69,7 +69,7 @@ import {
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gatewayURL, authTagLength, graphQLURL } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -147,7 +147,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from '../exports';
+import { ArFSPublicFileOrFolderWithPaths, gatewayUrlForArweave, gqlUrlForArweave } from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1026,7 +1026,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1067,7 +1067,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1116,7 +1116,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner: filterOnOwner ? owner : undefined
 			});
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1243,7 +1243,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
 				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
 				if (!edges.length) {
@@ -1271,10 +1271,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
 
-					const protocol = this.arweave.api.config.protocol ?? 'https';
-					const host = this.arweave.api.config.host ?? 'arweave.net';
-					const portStr = this.arweave.api.config.port ? `:${this.arweave.api.config.port}` : '';
-					const reqURL = `${protocol}://${host}${portStr}/${edgeOfFirstDrive.node.id}`;
+					const reqURL = `${gatewayUrlForArweave(this.arweave)}${edgeOfFirstDrive.node.id}`;
 					const axiosInstance = axios.create();
 					const maxRetries = 5;
 					axiosRetry(axiosInstance, {
@@ -1355,7 +1352,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner: walletAddress,
 			sort: ASCENDING_ORDER
 		});
-		const response = await this.arweave.api.post(graphQLURL, query);
+		const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), query);
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
@@ -1400,7 +1397,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				ids: txIDs,
 				cursor
 			});
-			const response = await this.arweave.api.post(graphQLURL, query);
+			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), query);
 			const { data } = response.data;
 			const { errors } = response.data;
 			if (errors) {
@@ -1436,7 +1433,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
 		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - authTagLength;
-		const dataTxUrl = `${gatewayURL}${privateFile.dataTxId}`;
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave)}${privateFile.dataTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
@@ -1454,7 +1451,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const authTagIndex = +dataLength - authTagLength;
 		const response = await axios({
 			method: 'GET',
-			url: `${gatewayURL}${privateFile.dataTxId}`,
+			url: `${gatewayUrlForArweave(this.arweave)}${privateFile.dataTxId}`,
 			headers: {
 				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
 			},
