@@ -14,10 +14,14 @@ import {
 	ArFSObjectTransactionData,
 	ArFSEntityToUpload,
 	WithDriveKey,
+	ArFSPublicFile,
+	ArFSPrivateFile,
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
 	DriveKey,
-	FolderHierarchy
+	FolderHierarchy,
+	ArFSPublicFolder,
+	ArFSPrivateFolder
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -147,6 +151,26 @@ export interface ArFSGetPublicChildFolderIdsParams {
 	owner: ArweaveAddress;
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
+
+export interface ArFSRenamePublicFileParams {
+	file: ArFSPublicFile;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+}
+export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
+	WithDriveKey & {
+		file: ArFSPrivateFile;
+	};
+
+export interface ArFSRenamePublicFolderParams {
+	folder: ArFSPublicFolder;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+}
+export type ArFSRenamePrivateFolderParams = ArFSRenamePublicFolderParams &
+	WithDriveKey & {
+		folder: ArFSPrivateFolder;
+	};
 
 export type CommunityTipSettings = {
 	communityTipTarget: ArweaveAddress;
