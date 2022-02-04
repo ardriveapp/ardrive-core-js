@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-
 import {
 	assertValidArFSDriveName,
 	assertValidArFSFileName,
