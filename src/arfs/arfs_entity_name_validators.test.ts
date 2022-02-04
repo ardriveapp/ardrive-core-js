@@ -4,7 +4,7 @@ import { statSync } from 'fs';
 import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 
 import {
-	assertNamesWithinFolder,
+	assertArFSCompliantNamesWithinFolder,
 	assertValidArFSDriveName,
 	assertValidArFSFileName,
 	assertValidArFSFolderName
@@ -51,7 +51,7 @@ describe('entity name validators', () => {
 	} & Test;
 
 	type FolderWithChildrenTest = {
-		validationMethod: typeof assertNamesWithinFolder;
+		validationMethod: typeof assertArFSCompliantNamesWithinFolder;
 	} & Test;
 
 	function isFolderWithChildren(test: EntityTest | FolderWithChildrenTest): test is FolderWithChildrenTest {
@@ -79,8 +79,8 @@ describe('entity name validators', () => {
 		},
 		{
 			entity: 'folder',
-			methodName: 'assertNamesWithinFolder',
-			validationMethod: assertNamesWithinFolder,
+			methodName: 'assertArFSCompliantNamesWithinFolder',
+			validationMethod: assertArFSCompliantNamesWithinFolder,
 			isFolderWithChildren: true
 		}
 	];

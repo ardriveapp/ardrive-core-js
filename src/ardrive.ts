@@ -117,7 +117,7 @@ import {
 	assertValidArFSDriveName,
 	assertValidArFSFileName,
 	assertValidArFSFolderName,
-	assertNamesWithinFolder
+	assertArFSCompliantNamesWithinFolder
 } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
@@ -592,7 +592,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
-		assertNamesWithinFolder(wrappedFolder, destParentFolderName);
+		assertArFSCompliantNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId);
 
 		await resolveFolderNameConflicts({
@@ -785,7 +785,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
-		assertNamesWithinFolder(wrappedFolder, destParentFolderName);
+		assertArFSCompliantNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey);
 
 		await resolveFolderNameConflicts({

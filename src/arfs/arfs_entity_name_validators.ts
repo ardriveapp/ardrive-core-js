@@ -40,7 +40,10 @@ export function assertValidArFSEntityNameFactory(entityType: EntityType): (name:
 	};
 }
 
-export function assertNamesWithinFolder(rootFolder: ArFSFolderToUpload, rootFolderDestName?: string): boolean {
+export function assertArFSCompliantNamesWithinFolder(
+	rootFolder: ArFSFolderToUpload,
+	rootFolderDestName?: string
+): boolean {
 	assertValidArFSFolderName(rootFolderDestName ?? rootFolder.getBaseFileName());
 
 	for (const file of rootFolder.files) {
@@ -50,7 +53,7 @@ export function assertNamesWithinFolder(rootFolder: ArFSFolderToUpload, rootFold
 	for (const folder of rootFolder.folders) {
 		assertValidArFSFolderName(folder.getBaseFileName());
 
-		assertNamesWithinFolder(folder);
+		assertArFSCompliantNamesWithinFolder(folder);
 	}
 
 	return true;
