@@ -11,6 +11,7 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
 import { ByteCount } from '../types';
+import Arweave from 'arweave';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -544,6 +545,20 @@ export function readJWKFile(path: string): Wallet {
 export async function fetchMempool(gateway = new URL('https://arweave.net/')): Promise<string[]> {
 	const response = await axios.get(`${gateway.href}tx/pending`);
 	return response.data;
+}
+
+/** Derives gateway URL from provided Arweave instance */
+export function gatewayUrlForArweave(arweave: Arweave): string {
+	const protocol = arweave.api.config.protocol ?? 'https';
+	const host = arweave.api.config.host ?? 'arweave.net';
+	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
+
+	return `${protocol}://${host}${portStr}/`;
+}
+
+/** Derives GQL endpoint on gateway URL from provided Arweave instance */
+export function gqlUrlForArweave(arweave: Arweave): string {
+	return `${gatewayUrlForArweave(arweave)}graphql/`;
 }
 
 export function urlEncodeHashKey(keyBuffer: Buffer): string {
