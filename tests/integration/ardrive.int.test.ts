@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect } from 'chai';
 import { stub } from 'sinon';
+import { statSync } from 'fs';
 import { ArDrive } from '../../src/ardrive';
 import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders';
-import { wrapFileOrFolder, ArFSFileToUpload } from '../../src/arfs/arfs_file_wrapper';
+import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
 import { deriveDriveKey } from '../../src/utils/crypto';
@@ -614,6 +615,23 @@ describe('ArDrive class - integrated', () => {
 					});
 				});
 
+				it('throws if the given name is invalid', () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					const fileStats = statSync('test_wallet.json');
+					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPublicFile({
+							parentFolderId: EID(stubEntityID.toString()),
+							wrappedFile: wrappedFileWithInvalidName
+						}),
+						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					});
+				});
+
 				it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
 					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
 
@@ -793,6 +811,24 @@ describe('ArDrive class - integrated', () => {
 							}
 						],
 						folders: [{ folderName: 'CONFLICTING_FOLDER_NAME', folderId: stubEntityID }]
+					});
+				});
+
+				it('throws if the given name is invalid', async () => {
+					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
+					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
+					const fileStats = statSync('test_wallet.json');
+					const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
+					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.uploadPrivateFile({
+							parentFolderId: EID(stubEntityID.toString()),
+							wrappedFile: wrappedFileWithInvalidName,
+							driveKey: await getStubDriveKey()
+						}),
+						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
 					});
 				});
 
@@ -1109,6 +1145,75 @@ describe('ArDrive class - integrated', () => {
 						driveKey: await getStubDriveKey()
 					});
 					assertMoveFileExpectations(result, W(169), 'private');
+				});
+			});
+		});
+	});
+
+	describe('folder and children function', () => {
+		const fileStats = statSync('tests/stub_files');
+		const wrappedFolderWithInvalidName = new ArFSFolderToUpload('tests/stub_files', fileStats);
+
+		beforeEach(() => {
+			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+		});
+
+		describe('createPublicFolderAndUploadChildren', () => {
+			it('throws if an folder name is invalid', () => {
+				stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					}),
+					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				});
+			});
+
+			it('throws if an file name is invalid', () => {
+				stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(invalidEntityName);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					}),
+					errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				});
+			});
+		});
+
+		describe('createPrivateFolderAndUploadChildren', () => {
+			it('throws if an folder name is invalid', async () => {
+				const stubDriveKey = await getStubDriveKey();
+
+				stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityName);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					}),
+					errorMessage: `The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+				});
+			});
+
+			it('throws if an file name is invalid', async () => {
+				const stubDriveKey = await getStubDriveKey();
+
+				stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(invalidEntityName);
+
+				return expectAsyncErrorThrow({
+					promiseToError: arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					}),
+					errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
 				});
 			});
 		});

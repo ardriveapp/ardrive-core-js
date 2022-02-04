@@ -113,7 +113,12 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { assertValidArFSDriveName, assertValidArFSFolderName } from './arfs/arfs_entity_name_validators';
+import {
+	assertValidArFSDriveName,
+	assertValidArFSFileName,
+	assertValidArFSFolderName,
+	assertArFSCompliantNamesWithinFolder
+} from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -448,6 +453,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		wrappedFile.newFileName = destinationFileName;
+		assertValidArFSFileName(wrappedFile.destinationBaseName);
 		const nameConflictInfo = await getConflictInfoFn(parentFolderId);
 
 		await resolveFileNameConflicts({
@@ -586,6 +592,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
+		assertArFSCompliantNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPublicNameConflictInfoInFolder(parentFolderId);
 
 		await resolveFolderNameConflicts({
@@ -778,6 +785,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Derive destination name and names already within provided destination folder
 		destParentFolderName ??= wrappedFolder.getBaseFileName();
+		assertArFSCompliantNamesWithinFolder(wrappedFolder, destParentFolderName);
 		const nameConflictInfo = await this.arFsDao.getPrivateNameConflictInfoInFolder(parentFolderId, driveKey);
 
 		await resolveFolderNameConflicts({
