@@ -133,6 +133,32 @@ describe('ArDrive class', () => {
 		});
 	});
 
+	describe('estimateAndAssertCostOfFolderRename function', () => {
+		it('throws an error when there is an insufficient wallet balance', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceZero);
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.estimateAndAssertCostOfFolderRename(stubPublicFolderTransactionData)
+			});
+		});
+
+		it('Throws an error when there is insufficient wallet balance if boosted', async () => {
+			stub(walletDao, 'getWalletWinstonBalance').callsFake(getWalletWinstonBalanceEnoughForFolderMetadataTx);
+			await expectAsyncErrorThrow({
+				promiseToError: boostedArDrive.estimateAndAssertCostOfFolderRename(stubPublicFolderTransactionData)
+			});
+		});
+
+		it('returns the correct reward data', async () => {
+			stub(walletDao, 'walletHasBalance').callsFake(() => {
+				return Promise.resolve(true);
+			});
+
+			const actual = await arDrive.estimateAndAssertCostOfFolderRename(stubPublicFolderTransactionData);
+			// TODO: Bummer to lose deep equal verification
+			expect(`${actual.metaDataBaseReward}`).to.equal('19');
+		});
+	});
+
 	describe('assertWalletBalanceFunction function', () => {
 		it('throws an error when there is an insufficient wallet balance', async () => {
 			stub(walletDao, 'walletHasBalance').callsFake(() => {

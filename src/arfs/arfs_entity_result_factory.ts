@@ -54,6 +54,10 @@ export interface ArFSRenameFileResult extends ArFSRenameEntityResult {
 	entityId: FileID;
 }
 
+export interface ArFSRenameFolderResult extends ArFSRenameEntityResult {
+	entityId: FolderID;
+}
+
 export type WithDriveKey = { driveKey: DriveKey };
 export type WithFileKey = { fileKey: FileKey };
 
@@ -83,6 +87,9 @@ export type ArFSMovePrivateFileResult = ArFSMoveFileResult & WithFileKey;
 
 export type ArFSRenamePublicFileResult = ArFSRenameFileResult;
 export type ArFSRenamePrivateFileResult = ArFSRenameFileResult & WithFileKey;
+
+export type ArFSRenamePublicFolderResult = ArFSRenameFolderResult;
+export type ArFSRenamePrivateFolderResult = ArFSRenameFolderResult & WithDriveKey;
 
 // Result factory function types
 export type ArFSMoveEntityResultFactory<R extends ArFSMoveEntityResult> = (result: ArFSMoveEntityResult) => R;
