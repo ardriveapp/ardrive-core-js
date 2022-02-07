@@ -5,39 +5,38 @@ import { expect } from 'chai';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import {
-	readJWKFile,
-	GatewayOracle,
-	ArDriveCommunityOracle,
-	ArFSDAO,
-	ArDrive,
 	FeeMultiple,
-	gatewayUrlForArweave,
 	FolderID,
 	TransactionID,
 	DriveID,
-	wrapFileOrFolder,
-	ArFSFileToUpload,
 	UnixTime,
-	PrivateDriveKeyData,
-	JWKWallet,
 	DriveKey,
-	ArFSFolderToUpload,
-	ArFSPublicFolder,
-	ArFSPrivateDrive,
-	ArFSPublicDrive,
-	ArFSPrivateFolder,
-	ArFSPrivateFile,
-	ArFSEntity,
-	ArFSPublicFile,
 	FileID,
 	DataContentType,
-	ByteCount,
-	alphabeticalOrder,
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSPrivateFileOrFolderWithPaths
-} from '../../src/exports';
+	ByteCount
+} from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
+import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
+import { ArDrive } from '../../src/ardrive';
+
+import { JWKWallet } from '../../src/jwk_wallet';
+import { GatewayOracle } from '../../src/pricing/gateway_oracle';
+import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
+import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
+import { ArFSFileToUpload, ArFSFolderToUpload, wrapFileOrFolder } from '../../src/arfs/arfs_file_wrapper';
+import { alphabeticalOrder } from '../../src/utils/sort_functions';
+import {
+	ArFSEntity,
+	ArFSPrivateDrive,
+	ArFSPrivateFile,
+	ArFSPrivateFileOrFolderWithPaths,
+	ArFSPrivateFolder,
+	ArFSPublicDrive,
+	ArFSPublicFile,
+	ArFSPublicFileOrFolderWithPaths,
+	ArFSPublicFolder
+} from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', () => {
 	const wallet = readJWKFile('./test_wallet.json');
