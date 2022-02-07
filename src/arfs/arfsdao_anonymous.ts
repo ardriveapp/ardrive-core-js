@@ -30,7 +30,7 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gqlUrlForArweave, gatewayUrlForArweave } from '../exports';
+import { gatewayUrlForArweave } from '../utils/common';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -100,7 +100,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+				const response = await this.arweave.api.post('graphql', gqlQuery);
 				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
 				if (!edges.length) {
@@ -126,7 +126,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			(async () => {
 				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
 
-				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+				const response = await this.arweave.api.post('graphql', gqlQuery);
 				const { data } = response.data;
 				const { transactions } = data;
 
@@ -212,7 +212,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({ tags: [{ name: 'Entity-Type', value: 'drive' }], cursor, owner: address });
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -258,7 +258,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -295,7 +295,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;

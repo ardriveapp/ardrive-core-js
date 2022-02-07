@@ -19,7 +19,7 @@ import {
 } from '../../types';
 import axios from 'axios';
 import axiosRetry, { exponentialDelay } from 'axios-retry';
-import { gatewayUrlForArweave, gqlUrlForArweave } from '../../utils/common';
+import { gatewayUrlForArweave } from '../../utils/common';
 
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
@@ -74,7 +74,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		if (!node) {
 			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 
 			const { data } = response.data;
 			const transactions: GQLTransactionsResultInterface = data.transactions;

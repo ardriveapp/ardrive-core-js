@@ -556,11 +556,6 @@ export function gatewayUrlForArweave(arweave: Arweave): string {
 	return `${protocol}://${host}${portStr}/`;
 }
 
-/** Derives GQL endpoint on gateway URL from provided Arweave instance */
-export function gqlUrlForArweave(arweave: Arweave): string {
-	return `${gatewayUrlForArweave(arweave)}graphql/`;
-}
-
 export function urlEncodeHashKey(keyBuffer: Buffer): string {
 	return keyBuffer.toString('base64').replace('=', '');
 }

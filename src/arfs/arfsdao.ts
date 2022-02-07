@@ -15,7 +15,8 @@ import {
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
 	ArFSPrivateFileOrFolderWithPaths,
-	ENCRYPTED_DATA_PLACEHOLDER
+	ENCRYPTED_DATA_PLACEHOLDER,
+	ArFSPublicFileOrFolderWithPaths
 } from './arfs_entities';
 import {
 	ArFSCreateFolderResult,
@@ -131,6 +132,10 @@ import {
 	ArFSPrepareDataItemsParams,
 	ArFSPrepareObjectBundleParams,
 	ArFSRenamePublicFileParams,
+	ArFSRenamePrivateDriveParams,
+	ArFSRenamePrivateFolderParams,
+	ArFSRenamePublicDriveParams,
+	ArFSRenamePublicFolderParams,
 	ArFSRenamePrivateFileParams,
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
@@ -155,15 +160,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import {
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSRenamePrivateDriveParams,
-	ArFSRenamePrivateFolderParams,
-	ArFSRenamePublicDriveParams,
-	ArFSRenamePublicFolderParams,
-	gatewayUrlForArweave,
-	gqlUrlForArweave
-} from '../exports';
+import { gatewayUrlForArweave } from '../utils/common';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1042,7 +1039,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1083,7 +1080,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1132,7 +1129,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner: filterOnOwner ? owner : undefined
 			});
 
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+			const response = await this.arweave.api.post('graphql', gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1259,7 +1256,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), gqlQuery);
+				const response = await this.arweave.api.post('graphql', gqlQuery);
 				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
 				if (!edges.length) {
@@ -1368,7 +1365,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner: walletAddress,
 			sort: ASCENDING_ORDER
 		});
-		const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), query);
+		const response = await this.arweave.api.post('graphql', query);
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
@@ -1413,7 +1410,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				ids: txIDs,
 				cursor
 			});
-			const response = await this.arweave.api.post(gqlUrlForArweave(this.arweave), query);
+			const response = await this.arweave.api.post('graphql', query);
 			const { data } = response.data;
 			const { errors } = response.data;
 			if (errors) {
