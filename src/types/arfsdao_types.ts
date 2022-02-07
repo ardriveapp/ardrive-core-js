@@ -14,6 +14,8 @@ import {
 	ArFSObjectTransactionData,
 	ArFSEntityToUpload,
 	WithDriveKey,
+	ArFSPublicFile,
+	ArFSPrivateFile,
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
 	DriveKey,
@@ -147,6 +149,16 @@ export interface ArFSGetPublicChildFolderIdsParams {
 	owner: ArweaveAddress;
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
+
+export interface ArFSRenamePublicFileParams {
+	file: ArFSPublicFile;
+	newName: string;
+	metadataRewardSettings: RewardSettings;
+}
+export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
+	WithDriveKey & {
+		file: ArFSPrivateFile;
+	};
 
 export type CommunityTipSettings = {
 	communityTipTarget: ArweaveAddress;

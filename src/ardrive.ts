@@ -45,6 +45,8 @@ import {
 	skipOnConflicts,
 	upsertOnConflicts,
 	emptyManifestResult,
+	RenamePublicFileParams,
+	RenamePrivateFileParams,
 	CommunityTipSettings,
 	ArFSDownloadPrivateFolderParams
 } from './types';
@@ -113,6 +115,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { assertValidArFSFileName } from './arfs/arfs_entity_name_validators';
 import { TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
@@ -1368,7 +1371,6 @@ export class ArDrive extends ArDriveAnonymous {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		}
-		await this.assertOwnerAddress(owner);
 
 		return this.arFsDao.getPrivateFile(fileId, driveKey, owner);
 	}
@@ -1405,41 +1407,34 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	async estimateAndAssertCostOfMoveFile(
-		fileTransactionData: ArFSFileMetadataTransactionData
-	): Promise<MetaDataBaseCosts> {
-		const fileMetaTransactionDataReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(
-			fileTransactionData.sizeOf()
-		);
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, fileMetaTransactionDataReward);
-
-		if (!walletHasBalance) {
-			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
-
-			throw new Error(
-				`Wallet balance of ${walletBalance} Winston is not enough (${fileMetaTransactionDataReward}) for moving file!`
-			);
-		}
-
-		return { metaDataBaseReward: fileMetaTransactionDataReward };
+	async estimateAndAssertCostOfMoveFile(metadata: ArFSFileMetadataTransactionData): Promise<MetaDataBaseCosts> {
+		return this.estimateAndAssertCostOfMetaDataTx(metadata);
 	}
 
 	async estimateAndAssertCostOfFolderUpload(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
-		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
-		const totalWinstonPrice = metaDataBaseReward;
+		return this.estimateAndAssertCostOfMetaDataTx(metaData);
+	}
 
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, totalWinstonPrice);
+	async estimateAndAssertCostOfFileRename(metadata: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
+		return this.estimateAndAssertCostOfMetaDataTx(metadata);
+	}
+
+	private async estimateAndAssertCostOfMetaDataTx(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
+		const metaDataBaseReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaData.sizeOf());
+		const boostedReward = W(this.feeMultiple.boostReward(metaDataBaseReward.toString()));
+
+		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, boostedReward);
 
 		if (!walletHasBalance) {
 			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
 
 			throw new Error(
-				`Wallet balance of ${walletBalance} Winston is not enough (${totalWinstonPrice}) for folder creation!`
+				`Wallet balance of ${walletBalance} Winston is not enough (${boostedReward}) for this transaction!`
 			);
 		}
 
 		return {
-			metaDataBaseReward: totalWinstonPrice
+			metaDataBaseReward
 		};
 	}
 
@@ -1472,6 +1467,104 @@ export class ArDrive extends ArDriveAnonymous {
 		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
 		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();
+	}
+
+	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID): Promise<void> {
+		const allSiblingNames = await this.arFsDao.getPublicEntityNamesInFolder(folderId);
+		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
+			return accumulator || siblingName === name;
+		}, false);
+		if (collidesWithExistingSiblingName) {
+			throw new Error(`There already is an entity named that way`);
+		}
+	}
+
+	async assertUniqueNameWithinPrivateFolder(name: string, folderId: FolderID, driveKey: DriveKey): Promise<void> {
+		const allSiblingNames = await this.arFsDao.getPrivateEntityNamesInFolder(folderId, driveKey);
+		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
+			return accumulator || siblingName === name;
+		}, false);
+		if (collidesWithExistingSiblingName) {
+			throw new Error(`There already is an entity named that way`);
+		}
+	}
+
+	async renamePublicFile({ fileId, newName }: RenamePublicFileParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPublicFile({ fileId, owner });
+		if (file.name === newName) {
+			throw new Error(`To rename a file, the new name must be different`);
+		}
+		assertValidArFSFileName(newName);
+		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
+		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
+			newName,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType
+		);
+		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePublicFile({
+			file,
+			newName,
+			metadataRewardSettings
+		});
+
+		return {
+			created: [
+				{
+					type: 'file',
+					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
+	async renamePrivateFile({ fileId, newName, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		await this.assertOwnerAddress(owner);
+		const file = await this.getPrivateFile({ fileId, driveKey, owner });
+		if (file.name === newName) {
+			throw new Error(`To rename a file, the new name must be different`);
+		}
+		assertValidArFSFileName(newName);
+		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
+		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
+			newName,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType,
+			file.fileId,
+			driveKey
+		);
+		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+		const result = await this.arFsDao.renamePrivateFile({
+			file,
+			newName,
+			metadataRewardSettings,
+			driveKey
+		});
+
+		return {
+			created: [
+				{
+					type: 'file',
+					entityId: result.entityId,
+					key: urlEncodeHashKey(result.fileKey),
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
 	}
 
 	async downloadPrivateFolder({

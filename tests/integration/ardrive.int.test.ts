@@ -1053,6 +1053,149 @@ describe('ArDrive class - integrated', () => {
 					assertMoveFileExpectations(result, W(169), 'private');
 				});
 			});
+
+			describe('renamePublicFile', () => {
+				const stubFileName = 'Test Public File Metadata';
+				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
+				const validFileName = 'some happy file name which is valid.txt';
+				const conflictingName = 'CONFLICTING_NAME';
+
+				beforeEach(() => {
+					stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: stubFileName }));
+					stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+				});
+
+				it('throws if the owner mismatches', () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: validFileName
+						}),
+						errorMessage: 'Supplied wallet is not the owner of this drive!'
+					});
+				});
+
+				it('throws if the given name is the same as the current one', () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: stubFileName
+						}),
+						errorMessage: `To rename a file, the new name must be different`
+					});
+				});
+
+				it('throws if the given name is invalid', () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: invalidFileName
+						}),
+						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					});
+				});
+
+				it('throws if the new name collides with an on-chain sibling', () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePublicFile({
+							fileId: stubEntityID,
+							newName: conflictingName
+						}),
+						errorMessage: `There already is an entity named that way`
+					});
+				});
+
+				it('succeeds creating the transaction if a healthy input is given', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					const { created, tips, fees } = await arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: validFileName
+					});
+					expect(created.length).to.equal(1);
+					expect(tips.length).to.equal(0);
+					expect(Object.keys(fees).length).to.equal(1);
+					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+				});
+			});
+
+			describe('renamePrivateFile', async () => {
+				const stubFileName = 'Test Private File Metadata';
+				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
+				const validFileName = 'some happy file name which is valid.txt';
+				const conflictingName = 'CONFLICTING_NAME';
+
+				const stubDriveKey = getStubDriveKey();
+
+				beforeEach(() => {
+					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: stubFileName }));
+					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
+				});
+
+				it('throws if the owner mismatches', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: validFileName,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: 'Supplied wallet is not the owner of this drive!'
+					});
+				});
+
+				it('throws if the given name is the same as the current one', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: stubFileName,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `To rename a file, the new name must be different`
+					});
+				});
+
+				it('throws if the given name is invalid', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: invalidFileName,
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '"', '<', '>', '|')`
+					});
+				});
+
+				it('throws if the new name collides with an on-chain sibling', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.renamePrivateFile({
+							fileId: stubEntityID,
+							newName: 'CONFLICTING_NAME',
+							driveKey: await stubDriveKey
+						}),
+						errorMessage: `There already is an entity named that way`
+					});
+				});
+
+				it('succeeds creating the transaction if a healthy input is given', async () => {
+					stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+					const { created, tips, fees } = await arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: 'some happy file name which is valid.txt',
+						driveKey: await stubDriveKey
+					});
+					expect(created.length).to.equal(1);
+					expect(tips.length).to.equal(0);
+					expect(Object.keys(fees).length).to.equal(1);
+					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
+				});
+			});
 		});
 	});
 
