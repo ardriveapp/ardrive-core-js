@@ -548,12 +548,12 @@ export async function fetchMempool(gateway = new URL('https://arweave.net/')): P
 }
 
 /** Derives gateway URL from provided Arweave instance */
-export function gatewayUrlForArweave(arweave: Arweave): string {
+export function gatewayUrlForArweave(arweave: Arweave): URL {
 	const protocol = arweave.api.config.protocol ?? 'https';
 	const host = arweave.api.config.host ?? 'arweave.net';
 	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
 
-	return `${protocol}://${host}${portStr}/`;
+	return new URL(`${protocol}://${host}${portStr}/`);
 }
 
 export function urlEncodeHashKey(keyBuffer: Buffer): string {

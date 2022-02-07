@@ -1284,7 +1284,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
 
-					const reqURL = `${gatewayUrlForArweave(this.arweave)}${edgeOfFirstDrive.node.id}`;
+					const reqURL = `${gatewayUrlForArweave(this.arweave).href}${edgeOfFirstDrive.node.id}`;
 					const axiosInstance = axios.create();
 					const maxRetries = 5;
 					axiosRetry(axiosInstance, {
@@ -1446,7 +1446,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
 		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - authTagLength;
-		const dataTxUrl = `${gatewayUrlForArweave(this.arweave)}${privateFile.dataTxId}`;
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${privateFile.dataTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
@@ -1464,7 +1464,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const authTagIndex = +dataLength - authTagLength;
 		const response = await axios({
 			method: 'GET',
-			url: `${gatewayUrlForArweave(this.arweave)}${privateFile.dataTxId}`,
+			url: `${gatewayUrlForArweave(this.arweave).href}${privateFile.dataTxId}`,
 			headers: {
 				Range: `bytes=${authTagIndex}-${+dataLength - 1}`
 			},

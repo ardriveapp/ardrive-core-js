@@ -128,7 +128,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	async getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		const reqURL = `${gatewayUrlForArweave(this.arweave)}${txId}`;
+		const reqURL = `${gatewayUrlForArweave(this.arweave).href}${txId}`;
 		const axiosInstance = axios.create();
 		const maxRetries = 5;
 		axiosRetry(axiosInstance, {

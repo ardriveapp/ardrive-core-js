@@ -369,7 +369,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	 * @returns {Promise<Readable>}
 	 */
 	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
-		const dataTxUrl = `${gatewayUrlForArweave(this.arweave)}${fileTxId}`;
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${fileTxId}`;
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
