@@ -39,20 +39,12 @@ import {
 } from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', function () {
-	this.timeout(5000);
-
 	const wallet = readJWKFile('./test_wallet.json');
 
 	let arDrive: ArDrive;
-
 	let arweave: Arweave;
-	// let arlocal: ArLocal;
 
 	before(async () => {
-		// Note: Each test running concurrently has to have ArLocal set to a different port!
-		// arlocal = new ArLocal(1900, false, 'coverage');
-		// await arlocal.start();
-
 		arweave = Arweave.init({
 			host: 'localhost',
 			port: 1984,
@@ -89,10 +81,6 @@ describe('ArLocal Integration Tests', function () {
 			bundledUploadPlanner
 		);
 		await arweave.api.get(`mine`);
-	});
-
-	after(async () => {
-		// await arlocal.stop();
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
