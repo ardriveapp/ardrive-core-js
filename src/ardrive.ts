@@ -128,7 +128,6 @@ import {
 	assertValidArFSFolderName,
 	assertArFSCompliantNamesWithinFolder
 } from './arfs/arfs_entity_name_validators';
-import { TipData } from './exports';
 import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 
 export class ArDrive extends ArDriveAnonymous {
