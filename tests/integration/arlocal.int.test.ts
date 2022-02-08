@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import ArLocal from 'arlocal';
+// import ArLocal from 'arlocal';
 import Arweave from 'arweave';
 import { expect } from 'chai';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
@@ -38,22 +38,24 @@ import {
 	ArFSPublicFolder
 } from '../../src/arfs/arfs_entities';
 
-describe('ArLocal Integration Tests', () => {
+describe('ArLocal Integration Tests', function () {
+	this.timeout(5000);
+
 	const wallet = readJWKFile('./test_wallet.json');
 
 	let arDrive: ArDrive;
 
 	let arweave: Arweave;
-	let arlocal: ArLocal;
+	// let arlocal: ArLocal;
 
 	before(async () => {
 		// Note: Each test running concurrently has to have ArLocal set to a different port!
-		arlocal = new ArLocal(1900, false, 'coverage');
-		await arlocal.start();
+		// arlocal = new ArLocal(1900, false, 'coverage');
+		// await arlocal.start();
 
 		arweave = Arweave.init({
 			host: 'localhost',
-			port: 1900,
+			port: 1984,
 			protocol: 'http'
 		});
 
@@ -90,7 +92,7 @@ describe('ArLocal Integration Tests', () => {
 	});
 
 	after(async () => {
-		await arlocal.stop();
+		// await arlocal.stop();
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
