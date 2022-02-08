@@ -13,10 +13,9 @@ import {
 import { ArFSPrivateFileOrFolderWithPathsAndKeys, FolderHierarchy } from '../../exports';
 import { DriveKey, FileKey } from '../../types';
 import { urlEncodeHashKey } from '../../utils/common';
-import { deriveFileKey } from '../../utils/crypto';
 import { RootFolderID } from './arfs_folder_builders';
 
-describe('ArFSPrivateFileOrFolderWithPathsAndKeysBuider class', () => {
+describe('ArFSPrivateFileOrFolderWithPathsAndKeys class', () => {
 	/*
 	 * The stubbed folders describes the following tree
 	 * - The drive name/
@@ -70,7 +69,7 @@ describe('ArFSPrivateFileOrFolderWithPathsAndKeysBuider class', () => {
 	before(async () => {
 		stubHierarchy = FolderHierarchy.newFromEntities(allFolders);
 		driveKey = await getStubDriveKey();
-		fileKey = await deriveFileKey(`${stubFile.fileId}`, driveKey);
+		fileKey = stubFile.fileKey;
 	});
 
 	it('Built folders will have the extra driveKey attribute set', async () => {
