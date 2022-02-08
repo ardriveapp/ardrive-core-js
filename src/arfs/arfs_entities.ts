@@ -15,9 +15,10 @@ import {
 	DriveAuthMode,
 	DrivePrivacy,
 	EntityType,
-	FileKey
+	FileKey,
+	DriveKey
 } from '../types';
-import { encryptedDataSize } from '../utils/common';
+import { encryptedDataSize, urlEncodeHashKey } from '../utils/common';
 
 // The primary ArFS entity that all other entities inherit from.
 export class ArFSEntity {
@@ -217,12 +218,12 @@ export class ArFSPrivateFileOrFolderWithPathsAndKeys extends ArFSPrivateFileOrFo
 	readonly driveKey: string;
 	readonly fileKey?: string;
 
-	constructor(entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: string) {
+	constructor(entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: DriveKey) {
 		super(entity, hierarchy);
-		this.driveKey = driveKey;
+		this.driveKey = urlEncodeHashKey(driveKey);
 
 		const entityAsFile = entity as ArFSPrivateFile;
-		this.fileKey = entityAsFile.fileKey ? entityAsFile.fileKey.toString() : undefined;
+		this.fileKey = entityAsFile.fileKey ? urlEncodeHashKey(entityAsFile.fileKey) : undefined;
 	}
 }
 
