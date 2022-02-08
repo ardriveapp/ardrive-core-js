@@ -147,9 +147,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				case 'Cipher':
 					this.cipher = value;
 					break;
-				case 'File-Key':
-					this.fileKey = Buffer.from(value);
-					break;
 				default:
 					unparsedTags.push(tag);
 					break;
