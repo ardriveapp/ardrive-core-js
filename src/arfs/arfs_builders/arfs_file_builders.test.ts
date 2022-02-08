@@ -109,7 +109,7 @@ describe('ArFSPrivateFileBuilder', () => {
 			{ name: 'Parent-Folder-Id', value: 'dde0a0ef-6cd2-45d1-a9b0-97350d9fec21' },
 			{ name: 'File-Id', value: '238e50a9-937b-4160-a3ac-5f8bb0325b70' },
 			{ name: 'Cipher', value: 'AES256-GCM' },
-			{ name: 'Cipher-IV', value: 'nzpsVIcV1vymvT/h' },
+			{ name: 'Cipher-IV', value: 'OqFPdYxI144JrO66' },
 			{ name: 'Extra-Tag', value: 'for coverage' }
 		]
 	};
@@ -117,15 +117,20 @@ describe('ArFSPrivateFileBuilder', () => {
 	const driveKeyForStubPrivateFile = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
 
 	// prettier-ignore
-	const stubPrivateFileGetDataResult = Buffer.from(Uint8Array.from([
-		191, 33, 16, 68, 196, 236, 87, 215, 82, 142, 114, 45, 167, 253, 197, 161, 23, 85, 54, 148, 155, 255, 204, 0, 4,
-		86, 52, 113, 88, 185, 50, 158, 169, 23, 118, 123, 120, 85, 233, 106, 227, 6, 71, 99, 254, 163, 237, 236, 237,
-		199, 10, 37, 233, 120, 63, 81, 245, 93, 77, 246, 191, 226, 1, 83, 248, 194, 69, 62, 69, 72, 90, 47, 41, 32, 32,
-		208, 183, 50, 17, 133, 246, 141, 120, 134, 135, 166, 76, 69, 84, 202, 166, 164, 255, 43, 225, 218, 153, 246,
-		195, 178, 174, 168, 85, 129, 133, 220, 120, 129, 14, 222, 186, 134, 86, 1, 51, 15, 113, 156, 147, 216, 156, 15,
-		11, 165, 204, 211, 204, 216, 138, 210, 74, 40, 117, 187, 160, 211, 161, 250, 132, 240, 122, 193, 166, 132, 139,
-		125, 178, 34, 4, 33, 108, 187, 176, 191, 151, 146, 234, 138
-	]));
+	const stubPrivateFileGetDataResult = Buffer.from(
+		Uint8Array.from([
+			202, 4, 129, 120, 14, 36, 57, 46, 185, 160, 207, 220, 169, 215, 183, 75, 203, 51, 40, 193, 40, 101, 20, 194,
+			64, 105, 113, 153, 131, 14, 226, 214, 45, 123, 112, 93, 90, 74, 120, 111, 149, 45, 75, 41, 120, 129, 216,
+			118, 200, 44, 4, 59, 27, 182, 144, 60, 245, 132, 39, 105, 239, 59, 204, 124, 141, 177, 75, 198, 82, 209, 74,
+			110, 90, 62, 0, 161, 241, 40, 103, 135, 237, 133, 101, 187, 79, 75, 113, 30, 52, 186, 218, 181, 99, 8, 112,
+			177, 174, 171, 63, 77, 105, 144, 20, 203, 253, 55, 233, 212, 71, 35, 119, 170, 238, 30, 1, 53, 42, 212, 69,
+			218, 11, 171, 189, 46, 175, 5, 225, 92, 191, 158, 129, 183, 94, 188, 112, 3, 188, 63, 150, 18, 43, 218, 64,
+			93, 83, 51, 174, 149, 8, 88, 33, 232, 102, 223, 48, 117, 160, 157, 62, 105, 226, 233, 249, 92, 4, 219, 255,
+			68, 254, 183, 106, 116, 201, 153, 220, 103, 105, 168, 244, 191, 126, 173, 121, 208, 211, 204, 181, 7, 125,
+			76, 92, 182, 144, 210, 28, 100, 160, 110, 222, 40, 53, 87, 71, 199, 81, 143, 235, 100, 149, 51, 211, 103,
+			119, 112
+		])
+	);
 
 	it('constructs expected file from node', async () => {
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
@@ -136,7 +141,6 @@ describe('ArFSPrivateFileBuilder', () => {
 		stub(builder, 'getDataForTxID').resolves(stubPrivateFileGetDataResult);
 
 		const fileMetaData = await builder.build(stubPrivateFileGQLNode as GQLNodeInterface);
-
 		// Ensure GQL tags on metadata are consistent
 		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
 		expect(fileMetaData.appVersion).to.equal('1.2.0');
