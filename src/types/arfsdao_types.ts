@@ -17,7 +17,8 @@ import {
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
 	DriveKey,
-	FolderHierarchy
+	FolderHierarchy,
+	ArFSPrivateFileOrFolderWithPaths
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -131,6 +132,7 @@ export interface ArFSListPublicFolderParams {
 	maxDepth: number;
 	includeRoot: boolean;
 	owner: ArweaveAddress;
+	entityWrapper?: typeof ArFSPrivateFileOrFolderWithPaths;
 }
 export type ArFSListPrivateFolderParams = ArFSListPublicFolderParams & WithDriveKey;
 
