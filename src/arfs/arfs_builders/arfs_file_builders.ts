@@ -184,7 +184,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
-			this.fileKey = Buffer.from(decryptedFileJSON.fileKey);
+			this.fileKey = Buffer.from(decryptedFileJSON.fileKey, 'base64');
 
 			if (
 				!this.name ||
