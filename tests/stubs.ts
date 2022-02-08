@@ -299,7 +299,8 @@ export const stubPrivateFile = ({
 		dataTxId,
 		JSON_CONTENT_TYPE,
 		'stubCipher',
-		'stubIV'
+		'stubIV',
+		Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 	);
 
 const stubPublicRootFolder = stubPublicFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() });
