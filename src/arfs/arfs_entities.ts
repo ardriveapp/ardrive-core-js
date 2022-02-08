@@ -14,7 +14,8 @@ import {
 	ContentType,
 	DriveAuthMode,
 	DrivePrivacy,
-	EntityType
+	EntityType,
+	FileKey
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 
@@ -216,15 +217,12 @@ export class ArFSPrivateFileOrFolderWithPathsAndKeys extends ArFSPrivateFileOrFo
 	readonly driveKey: string;
 	readonly fileKey?: string;
 
-	constructor(
-		entity: ArFSPrivateFile | ArFSPrivateFolder,
-		hierarchy: FolderHierarchy,
-		driveKey: string,
-		fileKey?: string
-	) {
+	constructor(entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: string) {
 		super(entity, hierarchy);
 		this.driveKey = driveKey;
-		this.fileKey = fileKey;
+
+		const entityAsFile = entity as ArFSPrivateFile;
+		this.fileKey = entityAsFile.fileKey ? entityAsFile.fileKey.toString() : undefined;
 	}
 }
 
@@ -284,7 +282,8 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 		readonly dataTxId: TransactionID,
 		readonly dataContentType: DataContentType,
 		readonly cipher: string,
-		readonly cipherIV: CipherIV
+		readonly cipherIV: CipherIV,
+		private readonly _fileKey: FileKey
 	) {
 		super(
 			appName,
@@ -307,6 +306,10 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 
 	get encryptedDataSize(): ByteCount {
 		return encryptedDataSize(this.size);
+	}
+
+	get fileKey(): FileKey {
+		return this._fileKey;
 	}
 }
 
