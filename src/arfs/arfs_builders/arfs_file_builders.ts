@@ -25,6 +25,7 @@ interface FileMetaDataTransactionData {
 	lastModifiedDate: number;
 	dataTxId: string;
 	dataContentType: ContentType;
+	fileKey: string;
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
 	size?: ByteCount;
@@ -112,13 +113,13 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 	cipher?: string;
 	cipherIV?: CipherIV;
+	fileKey?: FileKey;
 
 	constructor(
 		readonly fileId: FileID,
 		readonly arweave: Arweave,
 		private readonly driveKey: DriveKey,
-		readonly owner?: ArweaveAddress,
-		readonly fileKey?: FileKey
+		readonly owner?: ArweaveAddress
 	) {
 		super({ entityId: fileId, arweave, owner });
 	}
@@ -145,6 +146,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 					break;
 				case 'Cipher':
 					this.cipher = value;
+					break;
+				case 'File-Key':
+					this.fileKey = Buffer.from(value);
 					break;
 				default:
 					unparsedTags.push(tag);
@@ -183,13 +187,15 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
+			this.fileKey = Buffer.from(decryptedFileJSON.fileKey);
 
 			if (
 				!this.name ||
 				this.size === undefined ||
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
-				!this.dataContentType
+				!this.dataContentType ||
+				!this.fileKey
 			) {
 				throw new Error('Invalid file state');
 			}
@@ -211,7 +217,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.dataTxId,
 				this.dataContentType,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				this.fileKey
 			);
 		}
 		throw new Error('Invalid file state');
