@@ -63,12 +63,12 @@ describe('ArLocal Integration Tests', () => {
 		const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
 		const communityOracle = new ArDriveCommunityOracle(arweave);
 		const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
-		const walletDao = new WalletDAO(arweave, 'Integration Test', '1.7');
+		const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
 		const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
-		const arfsDao = new ArFSDAO(wallet, arweave, false, 'ArLocal Integration Test', '1.7', arFSTagSettings);
+		const arfsDao = new ArFSDAO(wallet, arweave, false, undefined, undefined, arFSTagSettings);
 
 		const bundledUploadPlanner = new ArFSUploadPlanner({
-			arFSTagSettings: arFSTagSettings,
+			arFSTagSettings,
 			priceEstimator,
 			communityOracle
 		});
@@ -78,8 +78,8 @@ describe('ArLocal Integration Tests', () => {
 			walletDao,
 			arfsDao,
 			communityOracle,
-			'Integration Test',
-			'1.2',
+			undefined,
+			undefined,
 			priceEstimator,
 			new FeeMultiple(1.0),
 			false,
