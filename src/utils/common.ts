@@ -5,7 +5,7 @@ import * as types from '../types/base_Types';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import { authTagLength, stagingAppUrl } from './constants';
+import { authTagLength, defaultArweaveGateway, defaultHost, defaultProtocol, stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
@@ -542,15 +542,15 @@ export function readJWKFile(path: string): Wallet {
 	return wallet;
 }
 
-export async function fetchMempool(gateway = new URL('https://arweave.net/')): Promise<string[]> {
+export async function fetchMempool(gateway = new URL(defaultArweaveGateway)): Promise<string[]> {
 	const response = await axios.get(`${gateway.href}tx/pending`);
 	return response.data;
 }
 
 /** Derives gateway URL from provided Arweave instance */
 export function gatewayUrlForArweave(arweave: Arweave): URL {
-	const protocol = arweave.api.config.protocol ?? 'https';
-	const host = arweave.api.config.host ?? 'arweave.net';
+	const protocol = arweave.api.config.protocol ?? defaultProtocol;
+	const host = arweave.api.config.host ?? defaultHost;
 	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
 
 	return new URL(`${protocol}://${host}${portStr}/`);

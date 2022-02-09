@@ -5,7 +5,13 @@ import { ArFSDAO } from './arfs/arfsdao';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import { CommunityOracle } from './community/community_oracle';
 import { ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
+import {
+	defaultArweaveGateway,
+	defaultPort,
+	defaultProtocol,
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION
+} from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
@@ -43,10 +49,9 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 }
 
 const defaultArweave = Arweave.init({
-	host: 'arweave.net', // Arweave Gateway
-	//host: 'arweave.dev', // Arweave Dev Gateway
-	port: 443,
-	protocol: 'https',
+	host: defaultArweaveGateway,
+	port: defaultPort,
+	protocol: defaultProtocol,
 	timeout: 600000
 });
 

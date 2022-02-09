@@ -11,8 +11,11 @@ export { DEFAULT_APP_VERSION };
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 
-export const appName = 'ArDrive-Desktop';
-export const webAppName = 'ArDrive-Web';
+export const defaultHost = 'arweave.net';
+export const defaultProtocol = 'https';
+export const defaultPort = 443;
+export const defaultArweaveGateway = `${defaultProtocol}://${defaultHost}/`;
+export const gqlEndpoint = 'graphql';
 
 export const defaultCipher: CipherType = 'AES256-GCM';
 
