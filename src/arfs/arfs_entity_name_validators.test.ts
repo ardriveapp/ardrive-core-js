@@ -106,7 +106,7 @@ describe('entity name validators', () => {
 			});
 
 			it('throws when the name is too long', () => {
-				const expectedError = `The ${entity} name must contain between 1 and 255 characters`;
+				const expectedError = `The ${entity} name must not exceed 255 bytes`;
 
 				if (isFolderWithChildren(test)) {
 					const { validationMethod } = test;
@@ -120,8 +120,8 @@ describe('entity name validators', () => {
 				}
 			});
 
-			it('throws when the name is too short', () => {
-				const expectedError = `The ${entity} name must contain between 1 and 255 characters`;
+			it('throws when the name is empty', () => {
+				const expectedError = `The ${entity} name cannot be empty`;
 
 				if (isFolderWithChildren(test)) {
 					const { validationMethod } = test;

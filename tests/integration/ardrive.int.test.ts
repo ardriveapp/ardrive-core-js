@@ -4,44 +4,45 @@ import { stub } from 'sinon';
 import { statSync } from 'fs';
 import { ArDrive } from '../../src/ardrive';
 import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders';
-import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
+import { ArFSFileToUpload, ArFSFolderToUpload, wrapFileOrFolder } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
 import { deriveDriveKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
 import {
-	DriveKey,
-	FeeMultiple,
-	EID,
-	W,
-	UnixTime,
-	ArFSResult,
-	Winston,
-	DrivePrivacy,
-	FileID,
 	ArFSManifestResult,
-	FileConflictPrompts
+	ArFSResult,
+	DriveKey,
+	DrivePrivacy,
+	EID,
+	EntityType,
+	FeeMultiple,
+	FileConflictPrompts,
+	FileID,
+	UnixTime,
+	W,
+	Winston
 } from '../../src/types';
 import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
 import {
-	stubEntityID,
+	fakeArweave,
 	stubArweaveAddress,
+	stubEntitiesWithNoFilesWithPaths,
+	stubEntityID,
 	stubEntityIDAlt,
-	stubPublicDrive,
-	stubPrivateDrive,
-	stubPublicFolder,
-	stubEntityIDRoot,
-	stubEntityIDParent,
 	stubEntityIDChild,
 	stubEntityIDGrandchild,
-	stubPrivateFolder,
-	stubPublicFile,
+	stubEntityIDParent,
+	stubEntityIDRoot,
+	stubPrivateDrive,
 	stubPrivateFile,
+	stubPrivateFolder,
+	stubPublicDrive,
 	stubPublicEntitiesWithPaths,
-	stubSpecialCharEntitiesWithPaths,
-	stubEntitiesWithNoFilesWithPaths,
-	fakeArweave
+	stubPublicFile,
+	stubPublicFolder,
+	stubSpecialCharEntitiesWithPaths
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -53,6 +54,12 @@ import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
 const txIdRegex = /^(\w|-){43}$/;
 const fileKeyRegex = /^([a-zA-Z]|[0-9]|-|_|\/|\+){43}$/;
+
+enum EntityNameValidationErrorMessageType {
+	EMPTY,
+	LONG,
+	NULL_CHAR
+}
 
 describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -151,29 +158,38 @@ describe('ArDrive class - integrated', () => {
 		describe('createPublicDrive', () => {
 			describe('entity name validation', () => {
 				it('throws if the given name is empty', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicDrive({
-							driveName: invalidEntityNameShort
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPublicDrive({
+						driveName: invalidEntityNameShort
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicDrive({
-							driveName: invalidEntityNameLong
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPublicDrive({
+						driveName: invalidEntityNameLong
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicDrive({
-							driveName: invalidEntityNameNullChar
-						}),
-						errorMessage: `The drive name cannot contain null characters`
+					const promiseToError = arDrive.createPublicDrive({
+						driveName: invalidEntityNameNullChar
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -201,13 +217,15 @@ describe('ArDrive class - integrated', () => {
 						driveId: stubEntityID,
 						driveKey: stubDriveKey
 					};
+					const promiseToError = arDrive.createPrivateDrive({
+						driveName: invalidEntityNameShort,
+						newPrivateDriveData: stubPrivateDriveData
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateDrive({
-							driveName: invalidEntityNameShort,
-							newPrivateDriveData: stubPrivateDriveData
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -218,12 +236,15 @@ describe('ArDrive class - integrated', () => {
 						driveKey: stubDriveKey
 					};
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateDrive({
-							driveName: invalidEntityNameLong,
-							newPrivateDriveData: stubPrivateDriveData
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPrivateDrive({
+						driveName: invalidEntityNameLong,
+						newPrivateDriveData: stubPrivateDriveData
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
@@ -234,12 +255,15 @@ describe('ArDrive class - integrated', () => {
 						driveKey: stubDriveKey
 					};
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateDrive({
-							driveName: invalidEntityNameNullChar,
-							newPrivateDriveData: stubPrivateDriveData
-						}),
-						errorMessage: `The drive name cannot contain null characters`
+					const promiseToError = arDrive.createPrivateDrive({
+						driveName: invalidEntityNameNullChar,
+						newPrivateDriveData: stubPrivateDriveData
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -288,35 +312,44 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolder({
-							folderName: invalidEntityNameShort,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPublicFolder({
+						folderName: invalidEntityNameShort,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolder({
-							folderName: invalidEntityNameShort,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPublicFolder({
+						folderName: invalidEntityNameLong,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolder({
-							folderName: invalidEntityNameNullChar,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					const promiseToError = arDrive.createPublicFolder({
+						folderName: invalidEntityNameNullChar,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -371,38 +404,47 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolder({
-							folderName: invalidEntityNameShort,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPrivateFolder({
+						folderName: invalidEntityNameShort,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolder({
-							folderName: invalidEntityNameShort,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPrivateFolder({
+						folderName: invalidEntityNameLong,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolder({
-							folderName: invalidEntityNameNullChar,
-							driveId: stubEntityID,
-							parentFolderId: stubEntityID,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					const promiseToError = arDrive.createPrivateFolder({
+						folderName: invalidEntityNameNullChar,
+						driveId: stubEntityID,
+						parentFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -739,12 +781,15 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: stubEntityID,
-							wrappedFile: wrappedFileWithInvalidName
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile: wrappedFileWithInvalidName
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -752,12 +797,15 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: stubEntityID,
-							wrappedFile: wrappedFileWithInvalidName
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile: wrappedFileWithInvalidName
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
@@ -765,12 +813,15 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPublicFile({
-							parentFolderId: stubEntityID,
-							wrappedFile: wrappedFileWithInvalidName
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					const promiseToError = arDrive.uploadPublicFile({
+						parentFolderId: stubEntityID,
+						wrappedFile: wrappedFileWithInvalidName
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -968,13 +1019,16 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile: wrappedFileWithInvalidName,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile: wrappedFileWithInvalidName,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -982,13 +1036,16 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile: wrappedFileWithInvalidName,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile: wrappedFileWithInvalidName,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
@@ -996,13 +1053,16 @@ describe('ArDrive class - integrated', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.uploadPrivateFile({
-							parentFolderId: EID(stubEntityID.toString()),
-							wrappedFile: wrappedFileWithInvalidName,
-							driveKey: await getStubDriveKey()
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					const promiseToError = arDrive.uploadPrivateFile({
+						parentFolderId: EID(stubEntityID.toString()),
+						wrappedFile: wrappedFileWithInvalidName,
+						driveKey: await getStubDriveKey()
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1360,32 +1420,41 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: invalidEntityNameShort
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: invalidEntityNameShort
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: invalidEntityNameLong
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: invalidEntityNameLong
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFile({
-							fileId: stubEntityID,
-							newName: invalidEntityNameNullChar
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					const promiseToError = arDrive.renamePublicFile({
+						fileId: stubEntityID,
+						newName: invalidEntityNameNullChar
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1455,35 +1524,44 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: invalidEntityNameShort,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: invalidEntityNameShort,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: EID(stubEntityID.toString()),
-							newName: invalidEntityNameLong,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateFile({
+						fileId: EID(stubEntityID.toString()),
+						newName: invalidEntityNameLong,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFile({
-							fileId: stubEntityID,
-							newName: invalidEntityNameNullChar,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					const promiseToError = arDrive.renamePrivateFile({
+						fileId: stubEntityID,
+						newName: invalidEntityNameNullChar,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1551,32 +1629,41 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameShort
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameShort
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameLong
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameLong
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameNullChar
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					const promiseToError = arDrive.renamePublicFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameNullChar
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1646,35 +1733,44 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameShort,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameShort,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameLong,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameLong,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateFolder({
-							folderId: stubEntityID,
-							newName: invalidEntityNameNullChar,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					const promiseToError = arDrive.renamePrivateFolder({
+						folderId: stubEntityID,
+						newName: invalidEntityNameNullChar,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1742,32 +1838,41 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameShort
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameShort
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameLong
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePublicDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameLong
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePublicDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameNullChar
-						}),
-						errorMessage: `The drive name cannot contain null characters`
+					const promiseToError = arDrive.renamePublicDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameNullChar
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1826,35 +1931,44 @@ describe('ArDrive class - integrated', () => {
 				});
 
 				it('throws if the given name is empty', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameShort,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameShort,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if the given name is too long', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameLong,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The drive name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.renamePrivateDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameLong,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if the given name is a null character', async () => {
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.renamePrivateDrive({
-							driveId: stubEntityID,
-							newName: invalidEntityNameNullChar,
-							driveKey: await stubDriveKey
-						}),
-						errorMessage: `The drive name cannot contain null characters`
+					const promiseToError = arDrive.renamePrivateDrive({
+						driveId: stubEntityID,
+						newName: invalidEntityNameNullChar,
+						driveKey: await stubDriveKey
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'drive',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1888,37 +2002,45 @@ describe('ArDrive class - integrated', () => {
 			describe('entity name validation', () => {
 				it('throws if folder name is empty', () => {
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if folder name is too long', () => {
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if folder name is a null character', () => {
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
+
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 
@@ -1926,13 +2048,15 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameShort
 					);
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -1940,13 +2064,15 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameShort
 					);
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -1954,13 +2080,15 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameNullChar
 					);
+					const promiseToError = arDrive.createPublicFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPublicFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -1971,42 +2099,48 @@ describe('ArDrive class - integrated', () => {
 				it('throws if folder name is empty', async () => {
 					const stubDriveKey = await getStubDriveKey();
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameShort);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
 				it('throws if folder name is too long', async () => {
 					const stubDriveKey = await getStubDriveKey();
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameLong);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The folder name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.LONG
 					});
 				});
 
 				it('throws if folder name is a null character', async () => {
 					const stubDriveKey = await getStubDriveKey();
 					stub(wrappedFolderWithInvalidName, 'getBaseFileName').returns(invalidEntityNameNullChar);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The folder name cannot contain null characters`
+					return assertEntityNameExpectations({
+						entity: 'folder',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 
@@ -2015,14 +2149,16 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameShort
 					);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -2031,14 +2167,16 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameShort
 					);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The file name must contain between 1 and 255 characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.EMPTY
 					});
 				});
 
@@ -2047,14 +2185,16 @@ describe('ArDrive class - integrated', () => {
 					stub(wrappedFolderWithInvalidName.folders[0].files[0], 'getBaseFileName').returns(
 						invalidEntityNameNullChar
 					);
+					const promiseToError = arDrive.createPrivateFolderAndUploadChildren({
+						parentFolderId: stubEntityID,
+						wrappedFolder: wrappedFolderWithInvalidName,
+						driveKey: stubDriveKey
+					});
 
-					return expectAsyncErrorThrow({
-						promiseToError: arDrive.createPrivateFolderAndUploadChildren({
-							parentFolderId: stubEntityID,
-							wrappedFolder: wrappedFolderWithInvalidName,
-							driveKey: stubDriveKey
-						}),
-						errorMessage: `The file name cannot contain null characters`
+					return assertEntityNameExpectations({
+						entity: 'file',
+						promiseToError,
+						errorMessageFor: EntityNameValidationErrorMessageType.NULL_CHAR
 					});
 				});
 			});
@@ -2472,4 +2612,34 @@ function assertUploadManifestExpectations(
 			}
 		});
 	}
+}
+
+function assertEntityNameExpectations({
+	entity,
+	promiseToError,
+	errorMessageFor
+}: {
+	entity: EntityType;
+	promiseToError: Promise<ArFSResult>;
+	errorMessageFor: EntityNameValidationErrorMessageType;
+}): Promise<void> | undefined {
+	const expectError = (errorMessage: string) =>
+		expectAsyncErrorThrow({
+			promiseToError,
+			errorMessage
+		});
+
+	if (errorMessageFor === EntityNameValidationErrorMessageType.EMPTY) {
+		return expectError(`The ${entity} name cannot be empty`);
+	}
+
+	if (errorMessageFor === EntityNameValidationErrorMessageType.LONG) {
+		return expectError(`The ${entity} name must not exceed 255 bytes`);
+	}
+
+	if (errorMessageFor === EntityNameValidationErrorMessageType.NULL_CHAR) {
+		return expectError(`The ${entity} name cannot contain null characters`);
+	}
+
+	return;
 }
