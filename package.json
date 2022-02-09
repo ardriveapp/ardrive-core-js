@@ -69,7 +69,7 @@
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
 		"ci": "yarn arlocal-docker-test && yarn build",
 		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
-		"arlocal-docker-test": "docker run --init --rm -d -p 1984:1984 textury/arlocal:latest && yarn nyc mocha && docker stop $(docker ps -q)"
+		"arlocal-docker-test": "\"tests/arlocal-docker-test.sh\""
 	},
 	"directories": {
 		"test": "./"
