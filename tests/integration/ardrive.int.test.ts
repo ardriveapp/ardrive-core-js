@@ -2634,7 +2634,7 @@ function assertEntityNameExpectations({
 	}
 
 	if (errorMessageFor === EntityNameValidationErrorMessageType.LONG) {
-		return expectError(`The ${entity} name must be smaller than 255 bytes`);
+		return expectError(`The ${entity} name must not exceed 255 bytes`);
 	}
 
 	if (errorMessageFor === EntityNameValidationErrorMessageType.NULL_CHAR) {

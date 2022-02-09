@@ -10,7 +10,7 @@ export const assertValidArFSDriveName = assertValidArFSEntityNameFactory('drive'
 
 export function assertValidArFSEntityNameFactory(entityType: EntityType): (name: string) => void | Error {
 	return function (name: string): void {
-		// Check for empy names
+		// Check for empty names
 		if (name.length === 0) {
 			throw new Error(`The ${entityType} name cannot be empty`);
 		}
@@ -18,7 +18,7 @@ export function assertValidArFSEntityNameFactory(entityType: EntityType): (name:
 		// Check for max byte length
 		const nameByteLength = new TextEncoder().encode(name).length;
 		if (nameByteLength > MAX_VALID_NAME_BYTE_LENGTH) {
-			throw new Error(`The ${entityType} name must be smaller than ${MAX_VALID_NAME_BYTE_LENGTH} bytes`);
+			throw new Error(`The ${entityType} name must not exceed ${MAX_VALID_NAME_BYTE_LENGTH} bytes`);
 		}
 
 		// Check for null characters
