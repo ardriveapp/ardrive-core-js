@@ -1,10 +1,5 @@
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import {
-	ArFSPrivateDrive,
-	ArFSPrivateFolder,
-	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths
-} from './arfs/arfs_entities';
+import { ArFSPrivateDrive, ArFSPrivateFolder, ArFSPrivateFile } from './arfs/arfs_entities';
 import {
 	ArFSFolderToUpload,
 	ArFSPrivateFileToDownload,
@@ -113,7 +108,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { TipData } from './exports';
+import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1384,7 +1379,7 @@ export class ArDrive extends ArDriveAnonymous {
 		maxDepth = 0,
 		includeRoot = false,
 		owner
-	}: ListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}

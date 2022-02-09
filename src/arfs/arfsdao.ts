@@ -14,7 +14,6 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
-	ArFSPrivateFileOrFolderWithPaths,
 	ENCRYPTED_DATA_PLACEHOLDER
 } from './arfs_entities';
 import {
@@ -147,7 +146,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from '../exports';
+import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1319,7 +1318,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		maxDepth,
 		includeRoot,
 		owner
-	}: ArFSListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+	}: ArFSListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
 		}
@@ -1340,7 +1339,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const children = [...childFolders, ...childFiles];
 
-		const entitiesWithPath = children.map((entity) => new ArFSPrivateFileOrFolderWithPaths(entity, hierarchy));
+		const entitiesWithPath = children.map((entity) =>
+			privateEntityWithPathsKeylessFactory(entity, hierarchy, driveKey)
+		);
 		return entitiesWithPath;
 	}
 
@@ -1487,7 +1488,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			maxDepth
 		);
 		const folderWrapper = new ArFSFolderToDownload(
-			new ArFSPrivateFileOrFolderWithPaths(privateFolder, hierarchy),
+			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy, driveKey),
 			customFolderName
 		);
 
@@ -1499,7 +1500,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}, {});
 
 		const foldersWithPath = [privateFolder, ...childFolders]
-			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy, driveKey))
 			.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
 		// Iteratively download all child files in the hierarchy
@@ -1515,7 +1516,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
-					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy).path
+					privateEntityWithPathsKeylessFactory(file, hierarchy, driveKey).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
