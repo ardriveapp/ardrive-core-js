@@ -1822,15 +1822,15 @@ function assertUploadManifestExpectations(
 	if (specialCharacters) {
 		// Verify links are healthy
 		expect(result.links.length).to.equal(4);
-		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
+		expect(result.links[0]).to.equal(`https://localhost/${result.created[0].dataTxId}`);
 		expect(result.links[1]).to.equal(
-			`https://arweave.net/${result.created[0].dataTxId}/%25%26%40*(%25%26(%40*%3A%22%3E%3F%7B%7D%5B%5D`
+			`https://localhost/${result.created[0].dataTxId}/%25%26%40*(%25%26(%40*%3A%22%3E%3F%7B%7D%5B%5D`
 		);
 		expect(result.links[2]).to.equal(
-			`https://arweave.net/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/'/''_%5C___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!%40%23%24%25%5E%26*()_%2B%7B%7D%3A%22%3E%3F`
+			`https://localhost/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/'/''_%5C___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!%40%23%24%25%5E%26*()_%2B%7B%7D%3A%22%3E%3F`
 		);
 		expect(result.links[3]).to.equal(
-			`https://arweave.net/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
+			`https://localhost/${result.created[0].dataTxId}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
 		);
 
 		// Assert manifest shape
@@ -1851,13 +1851,13 @@ function assertUploadManifestExpectations(
 	} else {
 		// Verify links are healthy
 		expect(result.links.length).to.equal(4);
-		expect(result.links[0]).to.equal(`https://arweave.net/${result.created[0].dataTxId}`);
-		expect(result.links[1]).to.equal(`https://arweave.net/${result.created[0].dataTxId}/file-in-root`);
+		expect(result.links[0]).to.equal(`https://localhost/${result.created[0].dataTxId}`);
+		expect(result.links[1]).to.equal(`https://localhost/${result.created[0].dataTxId}/file-in-root`);
 		expect(result.links[2]).to.equal(
-			`https://arweave.net/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
+			`https://localhost/${result.created[0].dataTxId}/parent-folder/child-folder/file-in-child`
 		);
 		expect(result.links[3]).to.equal(
-			`https://arweave.net/${result.created[0].dataTxId}/parent-folder/file-in-parent`
+			`https://localhost/${result.created[0].dataTxId}/parent-folder/file-in-parent`
 		);
 
 		// Assert manifest shape

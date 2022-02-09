@@ -1030,6 +1030,7 @@ export class ArDrive extends ArDriveAnonymous {
 		});
 
 		const tipResult = { recipient: communityTipTarget, winston: communityWinstonTip };
+		const links = this.arFsDao.getManifestLinks(uploadFileResult.dataTxId, arweaveManifest);
 
 		const arFSResults: ArFSManifestResult = {
 			created: [
@@ -1043,7 +1044,7 @@ export class ArDrive extends ArDriveAnonymous {
 			tips: [],
 			fees: {},
 			manifest: arweaveManifest.manifest,
-			links: arweaveManifest.getLinksOutput(uploadFileResult.dataTxId)
+			links
 		};
 
 		if (isBundleResult(uploadFileResult)) {

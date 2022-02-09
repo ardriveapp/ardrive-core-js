@@ -43,7 +43,7 @@ import {
 	ArFSRenamePublicDriveResult,
 	ArFSRenamePrivateDriveResult
 } from './arfs_entity_result_factory';
-import { ArFSFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
+import { ArFSFolderToDownload, ArFSManifestToUpload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
 import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
@@ -1789,5 +1789,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 
 		return { hierarchy, childFiles, childFolders };
+	}
+
+	getManifestLinks(dataTxId: TransactionID, manifest: ArFSManifestToUpload): string[] {
+		return manifest.getLinksOutput(dataTxId, gatewayUrlForArweave(this.arweave));
 	}
 }
