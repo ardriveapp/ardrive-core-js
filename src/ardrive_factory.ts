@@ -6,7 +6,7 @@ import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import { CommunityOracle } from './community/community_oracle';
 import { ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
 import {
-	defaultArweaveGatewayPath,
+	defaultGatewayHost,
 	defaultGatewayPort,
 	defaultGatewayProtocol,
 	DEFAULT_APP_NAME,
@@ -49,7 +49,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 }
 
 const defaultArweave = Arweave.init({
-	host: defaultArweaveGatewayPath,
+	host: defaultGatewayHost,
 	port: defaultGatewayPort,
 	protocol: defaultGatewayProtocol,
 	timeout: 600000
