@@ -15,18 +15,19 @@ import {
 	DriveAuthMode,
 	DrivePrivacy,
 	EntityType,
-	FileKey
+	FileKey,
+	DriveKey
 } from '../types';
-import { encryptedDataSize } from '../utils/common';
+import { encryptedDataSize, urlEncodeHashKey } from '../utils/common';
 
 // The primary ArFS entity that all other entities inherit from.
 export class ArFSEntity {
 	appName: string; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
 	appVersion: string; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
 	arFS: string; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
-	contentType: string; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
+	contentType: ContentType; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
 	driveId: DriveID; // the unique drive identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
-	entityType: string; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
+	entityType: EntityType; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
 	name: string; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction
 	txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
 	unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
@@ -35,9 +36,9 @@ export class ArFSEntity {
 		appName: string,
 		appVersion: string,
 		arFS: string,
-		contentType: string,
+		contentType: ContentType,
 		driveId: DriveID,
-		entityType: string,
+		entityType: EntityType,
 		name: string,
 		txId: TransactionID,
 		unixTime: UnixTime
@@ -140,23 +141,53 @@ export class ArFSFileOrFolderEntity extends ArFSEntity implements ArFSFileFolder
 	}
 }
 
+export function publicEntityWithPathsFactory(
+	entity: ArFSPublicFolder | ArFSPublicFile,
+	hierarchy: FolderHierarchy
+): ArFSPublicFolderOrFileWithPaths {
+	return new ArFSPublicFolderOrFileWithPaths(entity, hierarchy);
+}
+
+export function privateEntityWithPathsFactory(
+	entity: ArFSPrivateFolder | ArFSPrivateFile,
+	hierarchy: FolderHierarchy,
+	driveKey: DriveKey
+): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
+	if (entity.entityType === 'folder') {
+		return new ArFSPrivateFolderWithPaths(entity, hierarchy, driveKey);
+	} else if (entity.entityType === 'file') {
+		const entityAsFile = entity as ArFSPrivateFile;
+		return new ArFSPrivateFileWithPaths(entityAsFile, hierarchy, driveKey);
+	}
+	throw new Error(`Cannot build an entity with paths for entity type: ${entity.entityType}`);
+}
+
+export function privateEntityWithPathsKeylessFactory(
+	entity: ArFSPrivateFolder | ArFSPrivateFile,
+	hierarchy: FolderHierarchy,
+	driveKey: DriveKey
+): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
+	if (entity.entityType === 'folder') {
+		return new ArFSPrivateFolderWithPathsKeyless(entity, hierarchy, driveKey);
+	} else if (entity.entityType === 'file') {
+		const entityAsFile = entity as ArFSPrivateFile;
+		return new ArFSPrivateFileWithPathsKeyless(entityAsFile, hierarchy, driveKey);
+	}
+	throw new Error(`Cannot build an entity with paths for entity type: ${entity.entityType}`);
+}
+
 export interface ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
 }
 
-export interface ArFSWithKeys {
-	readonly driveKey: string;
-	readonly fileKey?: string;
-}
-
-export class ArFSPublicFileOrFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
+export class ArFSPublicFolderOrFileWithPaths extends ArFSFileOrFolderEntity {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
 
-	constructor(entity: ArFSPublicFile | ArFSPublicFolder, hierarchy: FolderHierarchy) {
+	constructor(entity: ArFSPublicFolder | ArFSPublicFile, hierarchy: FolderHierarchy) {
 		super(
 			entity.appName,
 			entity.appVersion,
@@ -174,75 +205,72 @@ export class ArFSPublicFileOrFolderWithPaths extends ArFSFileOrFolderEntity impl
 			entity.parentFolderId,
 			entity.entityId
 		);
+
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
 		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.entityId}`;
 	}
 }
 
-export class ArFSPrivateFileOrFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
+export class ArFSPrivateFolderWithPaths extends ArFSPublicFolderOrFileWithPaths {
 	readonly cipher: string;
 	readonly cipherIV: CipherIV;
-	readonly path: string;
-	readonly txIdPath: string;
-	readonly entityIdPath: string;
+	readonly driveKey: string;
 
-	constructor(entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy) {
-		super(
-			entity.appName,
-			entity.appVersion,
-			entity.arFS,
-			entity.contentType,
-			entity.driveId,
-			entity.entityType,
-			entity.name,
-			entity.size,
-			entity.txId,
-			entity.unixTime,
-			entity.lastModifiedDate,
-			entity.dataTxId,
-			entity.dataContentType,
-			entity.parentFolderId,
-			entity.entityId
-		);
+	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: DriveKey) {
+		super(entity, hierarchy);
 		this.cipher = entity.cipher;
 		this.cipherIV = entity.cipherIV;
-		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.entityId}`;
+		this.driveKey = urlEncodeHashKey(driveKey);
 	}
 }
 
-export class ArFSPrivateFileOrFolderWithPathsAndKeys extends ArFSPrivateFileOrFolderWithPaths implements ArFSWithKeys {
-	readonly driveKey: string;
-	readonly fileKey?: string;
+export class ArFSPrivateFileWithPaths extends ArFSPrivateFolderWithPaths {
+	readonly fileKey: string;
 
-	constructor(entity: ArFSPrivateFile | ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: string) {
-		super(entity, hierarchy);
-		this.driveKey = driveKey;
+	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy, driveKey: DriveKey) {
+		super(entity, hierarchy, driveKey);
+		this.fileKey = urlEncodeHashKey(entity.fileKey);
+	}
+}
 
-		const entityAsFile = entity as ArFSPrivateFile;
-		this.fileKey = entityAsFile.fileKey ? entityAsFile.fileKey.toString() : undefined;
+export class ArFSPrivateFolderWithPathsKeyless extends ArFSPrivateFolderWithPaths {
+	driveKey: never;
+
+	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: DriveKey) {
+		super(entity, hierarchy, driveKey);
+		delete this.driveKey;
+	}
+}
+
+export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
+	driveKey: never;
+	fileKey: never;
+
+	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy, driveKey: DriveKey) {
+		super(entity, hierarchy, driveKey);
+		delete this.driveKey;
+		delete this.fileKey;
 	}
 }
 
 export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 	constructor(
-		readonly appName: string,
-		readonly appVersion: string,
-		readonly arFS: string,
-		readonly contentType: ContentType,
-		readonly driveId: DriveID,
-		readonly entityType: EntityType,
-		readonly name: string,
-		readonly txId: TransactionID,
-		readonly unixTime: UnixTime,
-		readonly parentFolderId: FolderID,
+		appName: string,
+		appVersion: string,
+		arFS: string,
+		contentType: ContentType,
+		driveId: DriveID,
+		entityType: EntityType,
+		name: string,
+		txId: TransactionID,
+		unixTime: UnixTime,
+		parentFolderId: FolderID,
 		readonly fileId: FileID,
-		readonly size: ByteCount,
-		readonly lastModifiedDate: UnixTime,
-		readonly dataTxId: TransactionID,
-		readonly dataContentType: DataContentType
+		size: ByteCount,
+		lastModifiedDate: UnixTime,
+		dataTxId: TransactionID,
+		dataContentType: DataContentType
 	) {
 		super(
 			appName,
@@ -266,24 +294,24 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 
 export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	constructor(
-		readonly appName: string,
-		readonly appVersion: string,
-		readonly arFS: string,
-		readonly contentType: ContentType,
-		readonly driveId: DriveID,
-		readonly entityType: EntityType,
-		readonly name: string,
-		readonly txId: TransactionID,
-		readonly unixTime: UnixTime,
-		readonly parentFolderId: FolderID,
+		appName: string,
+		appVersion: string,
+		arFS: string,
+		contentType: ContentType,
+		driveId: DriveID,
+		entityType: EntityType,
+		name: string,
+		txId: TransactionID,
+		unixTime: UnixTime,
+		parentFolderId: FolderID,
 		readonly fileId: FileID,
-		readonly size: ByteCount,
-		readonly lastModifiedDate: UnixTime,
-		readonly dataTxId: TransactionID,
-		readonly dataContentType: DataContentType,
+		size: ByteCount,
+		lastModifiedDate: UnixTime,
+		dataTxId: TransactionID,
+		dataContentType: DataContentType,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
-		private readonly _fileKey: FileKey
+		readonly fileKey: FileKey
 	) {
 		super(
 			appName,
@@ -307,9 +335,35 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	get encryptedDataSize(): ByteCount {
 		return encryptedDataSize(this.size);
 	}
+}
 
-	get fileKey(): FileKey {
-		return this._fileKey;
+export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
+	driveKey: never;
+	fileKey: never;
+
+	constructor(entity: ArFSPrivateFile) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.fileId,
+			entity.size,
+			entity.lastModifiedDate,
+			entity.dataTxId,
+			entity.dataContentType,
+			entity.cipher,
+			entity.cipherIV,
+			entity.fileKey
+		);
+		delete this.driveKey;
+		delete this.fileKey;
 	}
 }
 
@@ -348,17 +402,17 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity {
 }
 export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 	constructor(
-		readonly appName: string,
-		readonly appVersion: string,
-		readonly arFS: string,
-		readonly contentType: ContentType,
-		readonly driveId: DriveID,
-		readonly entityType: EntityType,
-		readonly name: string,
-		readonly txId: TransactionID,
-		readonly unixTime: UnixTime,
-		readonly parentFolderId: FolderID,
-		readonly entityId: FolderID,
+		appName: string,
+		appVersion: string,
+		arFS: string,
+		contentType: ContentType,
+		driveId: DriveID,
+		entityType: EntityType,
+		name: string,
+		txId: TransactionID,
+		unixTime: UnixTime,
+		parentFolderId: FolderID,
+		entityId: FolderID,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV
 	) {
