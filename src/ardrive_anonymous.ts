@@ -3,7 +3,7 @@ import {
 	ArFSPublicFolder,
 	ArFSPublicFile,
 	ArFSDriveEntity,
-	ArFSPublicFileOrFolderWithPaths
+	ArFSPublicFolderOrFileWithPaths
 } from './arfs/arfs_entities';
 import { ArFSDAOType, ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
 import {
@@ -79,7 +79,7 @@ export class ArDriveAnonymous extends ArDriveType {
 		maxDepth = 0,
 		includeRoot = false,
 		owner
-	}: ListPublicFolderParams): Promise<ArFSPublicFileOrFolderWithPaths[]> {
+	}: ListPublicFolderParams): Promise<ArFSPublicFolderOrFileWithPaths[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
