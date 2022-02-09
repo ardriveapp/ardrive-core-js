@@ -76,7 +76,7 @@ import {
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength, gqlEndpoint } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength, gatewayGqlEndpoint } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -1039,7 +1039,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlEndpoint, gqlQuery);
+			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1080,7 +1080,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gqlEndpoint, gqlQuery);
+			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1129,7 +1129,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner: filterOnOwner ? owner : undefined
 			});
 
-			const response = await this.arweave.api.post(gqlEndpoint, gqlQuery);
+			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
 			const { data } = response.data;
 			const { transactions } = data;
 			const { edges } = transactions;
@@ -1256,7 +1256,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(gqlEndpoint, gqlQuery);
+				const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
 				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
 
 				if (!edges.length) {
@@ -1365,7 +1365,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner: walletAddress,
 			sort: ASCENDING_ORDER
 		});
-		const response = await this.arweave.api.post(gqlEndpoint, query);
+		const response = await this.arweave.api.post(gatewayGqlEndpoint, query);
 		const { data } = response.data;
 		const { transactions } = data;
 		const { edges } = transactions;
@@ -1410,7 +1410,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				ids: txIDs,
 				cursor
 			});
-			const response = await this.arweave.api.post(gqlEndpoint, query);
+			const response = await this.arweave.api.post(gatewayGqlEndpoint, query);
 			const { data } = response.data;
 			const { errors } = response.data;
 			if (errors) {

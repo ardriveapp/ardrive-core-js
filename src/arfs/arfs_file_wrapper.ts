@@ -17,7 +17,7 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSPublicFileOrFolderWithPaths, ArFSWithPath } from './arfs_entities';
-import { defaultArweaveGateway } from '../utils/constants';
+import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -142,7 +142,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
 	}
 
-	public getLinksOutput(dataTxId: TransactionID, gateway = new URL(defaultArweaveGateway)): string[] {
+	public getLinksOutput(dataTxId: TransactionID, gateway = new URL(defaultArweaveGatewayPath)): string[] {
 		const allPaths = Object.keys(this.manifest.paths);
 
 		const encodedPaths = allPaths.map((path) =>

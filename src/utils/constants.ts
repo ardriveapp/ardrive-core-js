@@ -11,11 +11,11 @@ export { DEFAULT_APP_VERSION };
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 
-export const defaultHost = 'arweave.net';
-export const defaultProtocol = 'https';
-export const defaultPort = 443;
-export const defaultArweaveGateway = `${defaultProtocol}://${defaultHost}/`;
-export const gqlEndpoint = 'graphql';
+export const defaultGatewayHost = 'arweave.net';
+export const defaultGatewayProtocol = 'https';
+export const defaultGatewayPort = 443;
+export const defaultArweaveGatewayPath = `${defaultGatewayProtocol}://${defaultGatewayHost}/`;
+export const gatewayGqlEndpoint = 'graphql';
 
 export const defaultCipher: CipherType = 'AES256-GCM';
 
