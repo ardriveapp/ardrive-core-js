@@ -79,17 +79,23 @@ describe('FolderHierarchy class', () => {
 	it('rootNode attribute always returns a FolderTreeNode', () => {
 		const treeRoot = folderHierarchy.rootNode;
 		const subTreeRoot = folderHierarchyWithoutRoot.rootNode;
-		expect(treeRoot).to.be.instanceOf(FolderTreeNode);
-		expect(subTreeRoot).to.be.instanceOf(FolderTreeNode);
+		expect(`${treeRoot.folderId}`).to.equal(`${stubRootFolder.folderId}`);
+		expect(treeRoot.parent).to.be.undefined;
+		expect(treeRoot.children).to.be.instanceOf(Array);
+		expect(`${subTreeRoot.folderId}`).to.equal(`${stubParentFolder.folderId}`);
+		expect(subTreeRoot.parent).to.not.be.undefined;
+		expect(subTreeRoot.children).to.be.instanceOf(Array);
 	});
 
 	it('subTreeOf returns a new FolderHierarchy instance with the correct root node', () => {
 		const subTree = folderHierarchy.subTreeOf(stubEntityIDParent);
 		const subTreeAlt = folderHierarchyWithoutRoot.subTreeOf(stubEntityIDParent);
+		const subTreeRoot = subTree.rootNode;
+		const subTreeAltRoot = subTreeAlt.rootNode;
 		expect(subTree).to.be.instanceOf(FolderHierarchy);
 		expect(subTreeAlt).to.be.instanceOf(FolderHierarchy);
-		expect(subTree.rootNode).to.be.instanceOf(FolderTreeNode);
-		expect(subTreeAlt.rootNode).to.be.instanceOf(FolderTreeNode);
+		expect(`${subTreeRoot.folderId}`).to.equal(`${stubParentFolder.folderId}`);
+		expect(`${subTreeAltRoot.folderId}`).to.equal(`${stubParentFolder.folderId}`);
 	});
 
 	it('allFolderIDs returns an array of FolderIDs', () => {
