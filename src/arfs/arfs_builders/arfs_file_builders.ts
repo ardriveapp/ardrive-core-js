@@ -25,7 +25,6 @@ interface FileMetaDataTransactionData {
 	lastModifiedDate: number;
 	dataTxId: string;
 	dataContentType: ContentType;
-	fileKey: string;
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
 	size?: ByteCount;
@@ -184,7 +183,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
-			this.fileKey = Buffer.from(decryptedFileJSON.fileKey, 'base64');
+			this.fileKey = fileKey;
 
 			if (
 				!this.name ||

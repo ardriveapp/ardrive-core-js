@@ -1,10 +1,5 @@
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import {
-	ArFSPrivateDrive,
-	ArFSPrivateFolder,
-	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths
-} from './arfs/arfs_entities';
+import { ArFSPrivateDrive, ArFSPrivateFolder, ArFSPrivateFile } from './arfs/arfs_entities';
 import {
 	ArFSFolderToUpload,
 	ArFSPrivateFileToDownload,
@@ -113,7 +108,14 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { TipData } from './exports';
+import {
+	ArFSPrivateFileKeyless,
+	ArFSPrivateFileWithPaths,
+	ArFSPrivateFolderWithPaths,
+	privateEntityWithPathsFactory,
+	privateEntityWithPathsKeylessFactory,
+	TipData
+} from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -1364,6 +1366,15 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
 	}
 
+	public async getPrivateFileKeyless({
+		fileId,
+		driveKey,
+		owner
+	}: GetPrivateFileParams): Promise<ArFSPrivateFileKeyless> {
+		const file = await this.getPrivateFile({ fileId, driveKey, owner });
+		return new ArFSPrivateFileKeyless(file);
+	}
+
 	public async getPrivateFile({ fileId, driveKey, owner }: GetPrivateFileParams): Promise<ArFSPrivateFile> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
@@ -1385,15 +1396,17 @@ export class ArDrive extends ArDriveAnonymous {
 		includeRoot = false,
 		owner,
 		withKeys = false
-	}: ListPrivateFolderParams & { withKeys?: boolean }): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+	}: ListPrivateFolderParams & { withKeys?: boolean }): Promise<
+		(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]
+	> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		let entityWrapper = ArFSPrivateFileOrFolderWithPaths;
+		let withPathsFactory = privateEntityWithPathsKeylessFactory;
 		if (withKeys) {
-			entityWrapper = ArFSPrivateFileOrFolderWithPaths;
+			withPathsFactory = privateEntityWithPathsFactory;
 		}
 
 		const children = this.arFsDao.listPrivateFolder({
@@ -1402,7 +1415,7 @@ export class ArDrive extends ArDriveAnonymous {
 			maxDepth,
 			includeRoot,
 			owner,
-			entityWrapper
+			withPathsFactory
 		});
 		return children;
 	}
