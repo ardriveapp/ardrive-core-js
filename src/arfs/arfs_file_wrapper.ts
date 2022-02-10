@@ -17,7 +17,7 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { BulkFileBaseCosts, MetaDataBaseCosts, errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import { ArFSPublicFolderOrFileWithPaths } from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths } from '../exports';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -89,7 +89,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 	lastModifiedDateMS: UnixTime;
 
 	constructor(
-		public readonly folderToGenManifest: ArFSPublicFolderOrFileWithPaths[],
+		public readonly folderToGenManifest: (ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[],
 		public readonly destManifestName: string
 	) {
 		super();
@@ -98,7 +98,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 		const baseFolderPath = sortedChildren[0].path;
 
 		// TODO: Fix base types so deleting un-used values is not necessary; Tickets: PE-525 + PE-556
-		const castedChildren = sortedChildren as Partial<ArFSPublicFolderOrFileWithPaths>[];
+		const castedChildren = sortedChildren as Partial<ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths>[];
 		castedChildren.map((fileOrFolderMetaData) => {
 			if (fileOrFolderMetaData.entityType === 'folder') {
 				delete fileOrFolderMetaData.lastModifiedDate;
