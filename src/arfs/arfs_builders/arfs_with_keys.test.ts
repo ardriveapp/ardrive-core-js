@@ -10,12 +10,17 @@ import {
 	stubPrivateFile,
 	stubPrivateFolder
 } from '../../../tests/stubs';
-import { ArFSPrivateFileOrFolderWithPathsAndKeys, FolderHierarchy } from '../../exports';
+import {
+	ArFSPrivateFileWithPaths,
+	FolderHierarchy,
+	privateEntityWithPathsFactory,
+	privateEntityWithPathsKeylessFactory
+} from '../../exports';
 import { DriveKey, FileKey } from '../../types';
 import { urlEncodeHashKey } from '../../utils/common';
 import { RootFolderID } from './arfs_folder_builders';
 
-describe('ArFSPrivateFileOrFolderWithPathsAndKeys class', () => {
+describe('Entities with paths classes', () => {
 	/*
 	 * The stubbed folders describes the following tree
 	 * - The drive name/
@@ -73,14 +78,38 @@ describe('ArFSPrivateFileOrFolderWithPathsAndKeys class', () => {
 	});
 
 	it('Built folders will have the extra driveKey attribute set', async () => {
-		const folderWithKeys = new ArFSPrivateFileOrFolderWithPathsAndKeys(stubFolder_0, stubHierarchy, driveKey);
+		const folderWithKeys = privateEntityWithPathsFactory(stubFolder_0, stubHierarchy, driveKey);
 		expect(folderWithKeys.driveKey).to.equal(urlEncodeHashKey(driveKey));
-		expect(folderWithKeys.fileKey).to.be.undefined;
+		expect((folderWithKeys as ArFSPrivateFileWithPaths).fileKey).to.be.undefined;
 	});
 
 	it('Built files will have the driveKey and fileKey attributes set', async () => {
-		const fileWithKeys = new ArFSPrivateFileOrFolderWithPathsAndKeys(stubFile, stubHierarchy, driveKey);
+		const fileWithKeys = privateEntityWithPathsFactory(
+			stubFile,
+			stubHierarchy,
+			driveKey
+		) as ArFSPrivateFileWithPaths;
 		expect(fileWithKeys.driveKey).to.equal(urlEncodeHashKey(driveKey));
 		expect(fileWithKeys.fileKey).to.equal(urlEncodeHashKey(fileKey));
+	});
+
+	it('Folders built with the Keyless factory will not expose its keys', async () => {
+		const fileWithKeys = privateEntityWithPathsKeylessFactory(
+			stubFile,
+			stubHierarchy,
+			driveKey
+		) as ArFSPrivateFileWithPaths;
+		expect(fileWithKeys.driveKey).to.be.undefined;
+		expect(fileWithKeys.fileKey).to.be.undefined;
+	});
+
+	it('Files built with the Keyless factory will not expose its keys', async () => {
+		const fileWithKeys = privateEntityWithPathsKeylessFactory(
+			stubFile,
+			stubHierarchy,
+			driveKey
+		) as ArFSPrivateFileWithPaths;
+		expect(fileWithKeys.driveKey).to.be.undefined;
+		expect(fileWithKeys.fileKey).to.be.undefined;
 	});
 });
