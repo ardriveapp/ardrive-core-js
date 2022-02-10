@@ -29,13 +29,13 @@ describe('FolderHierarchy class', () => {
 		parentFolderId: new RootFolderID(),
 		folderName: 'The drive name'
 	});
-	// Depth 0
+	// Depth 1
 	const stubParentFolder = stubPublicFolder({
 		folderId: stubEntityIDParent,
 		parentFolderId: stubEntityIDRoot,
 		folderName: 'Funny stuff'
 	});
-	// Depth 1
+	// Depth 2
 	const stubFolder_0 = stubPublicFolder({
 		folderId: stubEntityID,
 		parentFolderId: stubEntityIDParent,
@@ -51,7 +51,7 @@ describe('FolderHierarchy class', () => {
 		parentFolderId: stubEntityIDParent,
 		folderName: 'Funny folder #3'
 	});
-	// Depth 2
+	// Depth 3
 	const stubFolder_3 = stubPublicFolder({
 		folderId: stubEntityIDGrandchild,
 		parentFolderId: stubEntityID,
@@ -173,6 +173,35 @@ describe('FolderHierarchy class', () => {
 		it('Can be constructed from a folderId', () => {
 			expect(() => new FolderTreeNode(stubEntityID)).to.not.throw();
 			expect(() => new FolderTreeNode(stubEntityID, folderHierarchy.rootNode)).to.not.throw();
+		});
+
+		describe('the maxDepth parameter', () => {
+			it('the sub-tree of maxDepht zero has only one node on it', () => {
+				const subTree = folderHierarchy.subTreeOf(stubRootFolder.folderId, 0);
+				const rootNode = subTree.rootNode;
+				const allNodesOfSubTree = subTree.nodeAndChildrenOf(rootNode, Number.MAX_SAFE_INTEGER);
+				debugger;
+				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(1);
+			});
+
+			it('maxDepth of zero', () => {
+				const rootNode = folderHierarchy.rootNode;
+				const allNodesOfSubTree = folderHierarchy.nodeAndChildrenOf(rootNode, 0);
+				const allFolderIDs = folderHierarchy.folderIdSubtreeFromFolderId(rootNode.folderId, 0);
+				debugger;
+				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(1);
+				expect(allFolderIDs.length, `Wrong folder ID length`).to.equal(1);
+			});
+
+			it('maxDepth of two', () => {
+				const subTree = folderHierarchy.subTreeOf(stubRootFolder.folderId, 2);
+				const rootNode = subTree.rootNode;
+				const allNodesOfSubTree = subTree.nodeAndChildrenOf(rootNode, 2);
+				const allFolderIDs = folderHierarchy.folderIdSubtreeFromFolderId(rootNode.folderId, 2);
+				debugger;
+				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(5);
+				expect(allFolderIDs.length, `Wrong folder ID length`).to.equal(5);
+			});
 		});
 	});
 });
