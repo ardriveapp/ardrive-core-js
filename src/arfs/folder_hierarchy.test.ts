@@ -102,9 +102,12 @@ describe('FolderHierarchy class', () => {
 		const allFolderIDs = folderHierarchy.allFolderIDs();
 		// Ensures the array deeply (but not strictly) has members
 		expect(allFolderIDs).to.have.deep.members(stubFolderIDs);
+		expect(allFolderIDs.length).to.equal(stubFolderIDs.length);
+
 		const allFolderIDsWithoutRoot = folderHierarchyWithoutRoot.allFolderIDs();
 		// Ensures the array deeply (but not strictly) has members
 		expect(allFolderIDsWithoutRoot).to.have.deep.members(stubFolderIDsWithoutRoot);
+		expect(allFolderIDsWithoutRoot.length).to.equal(stubFolderIDs.length - 1);
 	});
 
 	it('nodeAndChildrenOf returns a flattened array of FolderTreeNode including the given node', () => {
