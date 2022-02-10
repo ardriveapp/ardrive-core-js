@@ -76,7 +76,7 @@ describe('FolderHierarchy class', () => {
 		stubHierarchyWithoutRoot = stubHierarchy.subTreeOf(stubEntityIDParent, Number.MAX_SAFE_INTEGER);
 	});
 
-	it('rootNode attribute always return a FolderTreeNode', () => {
+	it('rootNode attribute always returns a FolderTreeNode', () => {
 		const treeRoot = stubHierarchy.rootNode;
 		const subTreeRoot = stubHierarchyWithoutRoot.rootNode;
 		expect(treeRoot).to.be.instanceOf(FolderTreeNode);
