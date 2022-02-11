@@ -135,6 +135,7 @@ export interface ArFSListPublicFolderParams {
 	maxDepth: number;
 	includeRoot: boolean;
 	owner: ArweaveAddress;
+	withKeys?: boolean;
 	withPathsFactory?: (
 		entity: ArFSPrivateFile | ArFSPrivateFolder,
 		hierarchy: FolderHierarchy,
