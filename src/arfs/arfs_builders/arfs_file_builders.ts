@@ -80,7 +80,8 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 				this.size === undefined ||
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
-				!this.dataContentType
+				!this.dataContentType ||
+				!(this.entityType === 'file')
 			) {
 				throw new Error('Invalid file state');
 			}
@@ -194,7 +195,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
 				!this.dataContentType ||
-				!this.fileKey
+				!this.fileKey ||
+				!(this.entityType === 'file')
 			) {
 				throw new Error('Invalid file state');
 			}
