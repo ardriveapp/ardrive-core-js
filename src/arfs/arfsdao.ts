@@ -1311,8 +1311,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 * @param {number} maxDepth a non-negative integer value indicating the depth of the folder tree to list where 0 = this folder's contents only
 	 * @param {boolean} includeRoot whether or not folderId's folder data should be included in the listing
 	 * @param {ArweaveAddress} owner the arweave address of the wallet which owns the drive
-	 * @param entityWrapper a wrapper used to map the returned entities into
-	 * @returns {ArFSPrivateFileOrFolderWithPaths[]} an array representation of the children and parent folder
+	 * @param withPathsFactory a factory function used to map the returned entities into
+	 * @returns {Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]>} an array representation of the children and parent folder
 	 */
 	async listPrivateFolder({
 		folderId,
