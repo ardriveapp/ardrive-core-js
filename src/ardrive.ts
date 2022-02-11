@@ -1396,18 +1396,13 @@ export class ArDrive extends ArDriveAnonymous {
 		includeRoot = false,
 		owner,
 		withKeys = false
-	}: ListPrivateFolderParams & { withKeys?: boolean }): Promise<
-		(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]
-	> {
+	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		let withPathsFactory = privateEntityWithPathsKeylessFactory;
-		if (withKeys) {
-			withPathsFactory = privateEntityWithPathsFactory;
-		}
+		const withPathsFactory = withKeys ? privateEntityWithPathsFactory : privateEntityWithPathsKeylessFactory;
 
 		const children = this.arFsDao.listPrivateFolder({
 			folderId,
