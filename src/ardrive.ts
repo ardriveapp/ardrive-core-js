@@ -1404,10 +1404,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		await this.assertOwnerAddress(owner);
 
-		let withPathsFactory = privateEntityWithPathsKeylessFactory;
-		if (withKeys) {
-			withPathsFactory = privateEntityWithPathsFactory;
-		}
+		const withPathsFactory = withKeys ? privateEntityWithPathsFactory : privateEntityWithPathsKeylessFactory;
 
 		const children = this.arFsDao.listPrivateFolder({
 			folderId,
