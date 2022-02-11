@@ -25,7 +25,7 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFolderOrFileWithPaths, publicEntityWithPathsFactory } from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -321,7 +321,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		maxDepth,
 		includeRoot,
 		owner
-	}: ArFSListPublicFolderParams): Promise<ArFSPublicFolderOrFileWithPaths[]> {
+	}: ArFSListPublicFolderParams): Promise<(ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
 		}
