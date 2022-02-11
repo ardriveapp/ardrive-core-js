@@ -189,7 +189,7 @@ export interface ArFSWithPath {
 	readonly entityIdPath: string;
 }
 
-export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
@@ -219,7 +219,7 @@ export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
@@ -249,7 +249,7 @@ export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly cipher: string;
 	readonly cipherIV: CipherIV;
 	readonly driveKey: string;
@@ -285,7 +285,7 @@ export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPrivateFileWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPrivateFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly cipher: string;
 	readonly cipherIV: CipherIV;
 	readonly driveKey: string;
