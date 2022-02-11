@@ -124,7 +124,7 @@ export class ArFSFileOrFolderEntity extends ArFSEntity implements ArFSFileFolder
 		arFS: string,
 		contentType: ContentType,
 		driveId: DriveID,
-		entityType: EntityType,
+		entityType: 'file' | 'folder',
 		name: string,
 		public size: ByteCount,
 		txId: TransactionID,
@@ -144,13 +144,9 @@ export function publicEntityWithPathsFactory(
 	hierarchy: FolderHierarchy
 ): ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths {
 	if (entity.entityType === 'folder') {
-		const entityAsFolder = entity as ArFSPublicFolder;
-		return new ArFSPublicFolderWithPaths(entityAsFolder, hierarchy);
-	} else if (entity.entityType === 'file') {
-		const entityAsFile = entity as ArFSPublicFile;
-		return new ArFSPublicFileWithPaths(entityAsFile, hierarchy);
+		return new ArFSPublicFolderWithPaths(entity, hierarchy);
 	}
-	throw new Error(`Cannot build an entity with paths for entity type: ${entity.entityType}`);
+	return new ArFSPublicFileWithPaths(entity, hierarchy);
 }
 
 export function privateEntityWithPathsFactory(
@@ -159,13 +155,9 @@ export function privateEntityWithPathsFactory(
 	driveKey: DriveKey
 ): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
 	if (entity.entityType === 'folder') {
-		const entityAsFolder = entity as ArFSPrivateFolder;
-		return new ArFSPrivateFolderWithPaths(entityAsFolder, hierarchy, driveKey);
-	} else if (entity.entityType === 'file') {
-		const entityAsFile = entity as ArFSPrivateFile;
-		return new ArFSPrivateFileWithPaths(entityAsFile, hierarchy, driveKey);
+		return new ArFSPrivateFolderWithPaths(entity, hierarchy, driveKey);
 	}
-	throw new Error(`Cannot build an entity with paths for entity type: ${entity.entityType}`);
+	return new ArFSPrivateFileWithPaths(entity, hierarchy, driveKey);
 }
 
 export function privateEntityWithPathsKeylessFactory(
@@ -174,13 +166,9 @@ export function privateEntityWithPathsKeylessFactory(
 	driveKey: DriveKey
 ): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
 	if (entity.entityType === 'folder') {
-		const entityAsFolder = entity as ArFSPrivateFolder;
-		return new ArFSPrivateFolderWithPathsKeyless(entityAsFolder, hierarchy, driveKey);
-	} else if (entity.entityType === 'file') {
-		const entityAsFile = entity as ArFSPrivateFile;
-		return new ArFSPrivateFileWithPathsKeyless(entityAsFile, hierarchy, driveKey);
+		return new ArFSPrivateFolderWithPathsKeyless(entity, hierarchy, driveKey);
 	}
-	throw new Error(`Cannot build an entity with paths for entity type: ${entity.entityType}`);
+	return new ArFSPrivateFileWithPathsKeyless(entity, hierarchy, driveKey);
 }
 
 export interface ArFSWithPath {
@@ -189,7 +177,7 @@ export interface ArFSWithPath {
 	readonly entityIdPath: string;
 }
 
-export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
@@ -219,7 +207,7 @@ export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
@@ -249,7 +237,7 @@ export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly cipher: string;
 	readonly cipherIV: CipherIV;
 	readonly driveKey: string;
@@ -285,7 +273,7 @@ export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity {
 	}
 }
 
-export class ArFSPrivateFileWithPaths extends ArFSFileOrFolderEntity {
+export class ArFSPrivateFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
 	readonly cipher: string;
 	readonly cipherIV: CipherIV;
 	readonly driveKey: string;
@@ -350,7 +338,7 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 		arFS: string,
 		contentType: ContentType,
 		driveId: DriveID,
-		entityType: EntityType,
+		readonly entityType: 'file',
 		name: string,
 		txId: TransactionID,
 		unixTime: UnixTime,
@@ -388,7 +376,7 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 		arFS: string,
 		contentType: ContentType,
 		driveId: DriveID,
-		entityType: EntityType,
+		readonly entityType: 'file',
 		name: string,
 		txId: TransactionID,
 		unixTime: UnixTime,
@@ -463,7 +451,7 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity {
 		readonly arFS: string,
 		readonly contentType: ContentType,
 		readonly driveId: DriveID,
-		readonly entityType: EntityType,
+		readonly entityType: 'folder',
 		readonly name: string,
 		readonly txId: TransactionID,
 		readonly unixTime: UnixTime,
@@ -496,7 +484,7 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 		arFS: string,
 		contentType: ContentType,
 		driveId: DriveID,
-		entityType: EntityType,
+		readonly entityType: 'folder',
 		name: string,
 		txId: TransactionID,
 		unixTime: UnixTime,
