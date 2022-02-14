@@ -7,7 +7,7 @@ import {
 	stubPublicEntitiesWithPaths,
 	stubSpecialCharEntitiesWithPaths
 } from '../../tests/stubs';
-import { stubTransactionID, W } from '../types';
+import { stubTransactionID } from '../types';
 import { ArFSFileToUpload, ArFSFolderToUpload, ArFSManifestToUpload, wrapFileOrFolder } from './arfs_file_wrapper';
 
 describe('ArFSManifestToUpload class', () => {
@@ -72,7 +72,7 @@ describe('ArFSManifestToUpload class', () => {
 	it('getBaseFileName function returns the provided name', () => {
 		const manifest = new ArFSManifestToUpload(stubPublicEntitiesWithPaths, 'NameTestManifest.json');
 
-		expect(manifest.getBaseFileName()).to.equal('NameTestManifest.json');
+		expect(manifest.getBaseName()).to.equal('NameTestManifest.json');
 	});
 
 	it('gatherFileInfo function returns the expected results', () => {
@@ -174,27 +174,22 @@ describe('ArFSFileToUpload class', () => {
 		expect(+lastModifiedDateMS).to.equal(+expectedLastModifiedDate);
 	});
 
+	it('contentType resolves to octet stream for a file with no extension', () => {
+		const wrappedFile = wrapFileOrFolder('tests/stub_files/file_with_no_extension') as ArFSFileToUpload;
+
+		expect(wrappedFile.contentType).to.equal('application/octet-stream');
+	});
+
 	it('getFileDataBuffer function returns a compatible Buffer we can use to upload', () => {
 		expect(fileToUpload.getFileDataBuffer() instanceof Buffer).to.be.true;
 	});
 
 	it('getBaseFileName function returns the correct name', () => {
-		expect(fileToUpload.getBaseFileName()).to.equal('test_wallet.json');
+		expect(fileToUpload.getBaseName()).to.equal('test_wallet.json');
 	});
 
 	it('encryptedDataSize function returns the expected size', () => {
 		expect(+fileToUpload.encryptedDataSize()).to.equal(3220);
-	});
-
-	it('getBaseCosts function throws an error if base costs are not set', () => {
-		expect(() => fileToUpload.getBaseCosts()).to.throw(Error, 'Base costs on file were never set!');
-	});
-
-	it('getBaseCosts function returns any assigned base costs', () => {
-		fileToUpload.baseCosts = { fileDataBaseReward: W(1), metaDataBaseReward: W(2) };
-
-		expect(+fileToUpload.getBaseCosts().fileDataBaseReward).to.equal(1);
-		expect(+fileToUpload.getBaseCosts().metaDataBaseReward).to.equal(2);
 	});
 });
 
@@ -215,16 +210,6 @@ describe('ArFSFolderToUpload class', () => {
 	});
 
 	it('getBaseFileName function returns the correct name', () => {
-		expect(folderToUpload.getBaseFileName()).to.equal('bulk_root_folder');
-	});
-
-	it('getBaseCosts function throws an error if base costs are not set', () => {
-		expect(() => folderToUpload.getBaseCosts()).to.throw(Error, 'Base costs on folder were never set!');
-	});
-
-	it('getBaseCosts function returns any assigned base costs', () => {
-		folderToUpload.baseCosts = { metaDataBaseReward: W(1) };
-
-		expect(+folderToUpload.getBaseCosts().metaDataBaseReward).to.equal(1);
+		expect(folderToUpload.getBaseName()).to.equal('bulk_root_folder');
 	});
 });

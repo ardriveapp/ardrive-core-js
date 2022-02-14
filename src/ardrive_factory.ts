@@ -16,13 +16,12 @@ import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
-import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
+import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -44,7 +43,8 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
-	uploadPlanner?: ArFSUploadPlanner;
+	uploadPlanner?: UploadPlanner;
+	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
 }
 
@@ -69,11 +69,9 @@ export function arDriveFactory({
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
-		feeMultiple,
-		priceEstimator,
-		arFSTagSettings,
-		communityOracle
+		arFSTagSettings
 	}),
+	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
 	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
@@ -87,7 +85,8 @@ export function arDriveFactory({
 		feeMultiple,
 		dryRun,
 		arFSTagSettings,
-		uploadPlanner
+		uploadPlanner,
+		costCalculator
 	);
 }
 

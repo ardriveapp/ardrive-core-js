@@ -1,224 +1,322 @@
 import { serializeTags } from 'arbundles/src/parser';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
-import { ArFSObjectMetadataPrototype } from '../arfs/arfs_prototypes';
-import { ArFSObjectTransactionData } from '../arfs/arfs_tx_data_types';
-import { ByteCount, FeeMultiple, GQLTagInterface, Winston } from '../types';
+import { ByteCount, EID, FeeMultiple, GQLTagInterface, UploadStats } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
-	BundleRewardSettings,
-	CreateDriveV2TxRewardSettings,
+	BundlePlan,
 	EstimateCreateDriveParams,
-	EstimateCreateDriveResult,
-	EstimateUploadFileParams,
-	EstimateUploadFileResult,
-	UploadFileV2TxRewardSettings
+	CreateDrivePlan,
+	PlanFileParams,
+	PlanFolderParams,
+	UploadPlan,
+	BundlePackerFactory
 } from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
+import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
+import { v4 } from 'uuid';
+import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
+import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 
-/** This limit is being chosen as a precaution due to potential gateway limitations */
-export const MAX_BUNDLE_SIZE = 524_288_000; // 500 MiB
+export interface UploadPlanner {
+	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
+	planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan;
+}
 
-/** A utility class for calculating the cost of an ArFS write action */
-export class ArFSUploadPlanner {
-	private readonly priceEstimator: ARDataPriceEstimator;
+/** Utility class for planning an upload into an UploadPlan */
+export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
-	private readonly feeMultiple: FeeMultiple;
 	private readonly arFSTagSettings: ArFSTagSettings;
-	private readonly communityOracle: CommunityOracle;
+	private readonly bundlePacker: BundlePackerFactory;
+
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
+	protected readonly feeMultiple?: FeeMultiple;
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
+	protected readonly priceEstimator?: ARDataPriceEstimator;
+	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
+	protected readonly communityOracle?: CommunityOracle;
 
 	constructor({
 		shouldBundle = true,
-		priceEstimator,
-		feeMultiple = new FeeMultiple(1),
 		arFSTagSettings,
-		communityOracle
+		bundlePacker = () => new LowestIndexBundlePacker(MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT)
 	}: ArFSUploadPlannerConstructorParams) {
-		this.priceEstimator = priceEstimator;
 		this.shouldBundle = shouldBundle;
-		this.feeMultiple = feeMultiple;
 		this.arFSTagSettings = arFSTagSettings;
-		this.communityOracle = communityOracle;
+		this.bundlePacker = bundlePacker;
 	}
 
-	/** Estimate the cost of uploading a single file*/
-	public async estimateUploadFile(estUploadFileParams: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const { contentTypeTag, fileDataSize, fileMetaDataPrototype } = estUploadFileParams;
+	/**
+	 * Plans a file as a bundle to upload or v2 transaction to upload
+	 *
+	 * @remarks Uses the presence of a driveKey to determine privacy
+	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
+	 * @remarks Files over the max bundle size limit will not be bundled, but their
+	 * 	meta data will be bundled if there will be multiple entities uploaded
+	 */
+	private async planFile(uploadStats: PlanFileParams, bundlePacker: BundlePacker): Promise<void> {
+		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = uploadStats;
+		const isPrivate = driveKey !== undefined;
+		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
-		if (this.shouldBundle) {
-			const metaDataItemByteCount = this.byteCountAsDataItem(
-				fileMetaDataPrototype.objectData.sizeOf(),
-				this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+		const fileDataItemByteCount = byteCountAsDataItem(
+			fileDataByteCount,
+			this.arFSTagSettings.getFileDataTags(isPrivate, wrappedFile.contentType)
+		);
+		const metaDataByteCountAsDataItem = byteCountAsDataItem(
+			fileMetaDataPrototype.objectData.sizeOf(),
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+		);
+		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
+
+		if (
+			!this.shouldBundle ||
+			!bundlePacker.canPackDataItemsWithByteCounts([fileDataItemByteCount, metaDataByteCountAsDataItem])
+		) {
+			if (isBulkUpload && this.shouldBundle) {
+				// This metadata can be packed with another bundle since other entities will be uploaded
+
+				// We will preserve the bundle index in this case because the metadata cannot be separated
+				// from the file data until ArFSDAO has generated a TxID from signing the transaction
+				const metaDataBundleIndex = bundlePacker.packIntoBundle({
+					byteCountAsDataItems: metaDataByteCountAsDataItem,
+					numberOfDataItems: 1
+				});
+
+				bundlePacker.addV2FileDataOnlyPlan({ fileDataByteCount, metaDataBundleIndex, uploadStats });
+			} else {
+				// Otherwise we must send the metadata as a v2 tx because there will be nothing to bundle it with
+				bundlePacker.addV2FileAndMetaDataPlan({
+					fileDataByteCount,
+					metaDataByteCount: fileMetaDataPrototype.objectData.sizeOf(),
+					uploadStats
+				});
+			}
+		} else {
+			// Otherwise we will always pack the metadata tx and data tx in the same bundle
+			bundlePacker.packIntoBundle({
+				byteCountAsDataItems: totalByteCountOfFileDataItems,
+				numberOfDataItems: 2,
+				uploadStats
+			});
+		}
+	}
+
+	/**
+	 * Flattens a recursive folder and packs all entities within the
+	 * folder them into bundles to upload or v2 transactions to upload
+	 *
+	 * @remarks Uses the presence of a driveKey to determine privacy
+	 * @remarks Uses the `shouldBundle` class setting to determine whether to bundle
+	 */
+	private async planFolder(uploadStats: PlanFolderParams, bundlePacker: BundlePacker): Promise<void> {
+		const { wrappedEntity: wrappedFolder, driveKey } = uploadStats;
+		const isPrivate = driveKey !== undefined;
+
+		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
+
+		if (!wrappedFolder.existingId) {
+			// We will only create a new folder here if there is no existing folder on chain
+			if (this.shouldBundle) {
+				const folderByteCountAsDataItem = byteCountAsDataItem(
+					folderMetaDataPrototype.objectData.sizeOf(),
+					this.arFSTagSettings.baseArFSTagsIncluding({ tags: folderMetaDataPrototype.gqlTags })
+				);
+
+				bundlePacker.packIntoBundle({
+					uploadStats,
+					byteCountAsDataItems: folderByteCountAsDataItem,
+					numberOfDataItems: 1
+				});
+			} else {
+				bundlePacker.addV2FolderMetaDataPlan({
+					uploadStats,
+					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
+				});
+			}
+
+			// Folder IDs must be established at this point so generate new ones for any folders
+			// that don't appear to exist on chain yet. This is to prevent the parent to child
+			// folder relationship from being lost during this flattening of the folder tree
+			wrappedFolder.existingId = EID(v4());
+		}
+
+		const partialPlanParams = {
+			...uploadStats,
+			destFolderId: wrappedFolder.existingId
+		};
+
+		// Plan each file within the folder
+		for (const file of wrappedFolder.files) {
+			await this.planFile(
+				{
+					...partialPlanParams,
+					wrappedEntity: file
+				},
+				bundlePacker
 			);
-			const fileDataItemByteCount = this.byteCountAsDataItem(
-				fileDataSize,
-				this.arFSTagSettings.baseAppTagsIncluding({ tags: [contentTypeTag] })
+		}
+
+		// Recurse into each folder, flattening each folder into plans
+		for (const folder of wrappedFolder.folders) {
+			await this.planFolder(
+				{
+					...partialPlanParams,
+					wrappedEntity: folder
+				},
+				bundlePacker
 			);
+		}
+	}
 
-			const totalByteCount = new ByteCount(+metaDataItemByteCount + +fileDataItemByteCount);
+	/**
+	 *  Plans an upload using the `uploadAllEntities` ArDrive method
+	 *  into bundles or v2 transactions and estimates the total winston cost
+	 */
+	public async planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan> {
+		if (uploadStats.length === 0) {
+			return {
+				bundlePlans: [],
+				v2TxPlans: { fileAndMetaDataPlans: [], fileDataOnlyPlans: [], folderMetaDataPlans: [] }
+			};
+		}
 
-			// Do not bundle if total byte count of data and meta data would exceed max bundle size limit
-			if (+totalByteCount <= MAX_BUNDLE_SIZE) {
-				return this.costOfUploadBundledFile({ metaDataItemByteCount, fileDataItemByteCount });
+		const isBulkUpload = (() => {
+			if (uploadStats.length > 1) {
+				return true;
+			}
+
+			const { wrappedEntity } = uploadStats[0];
+			if (wrappedEntity.entityType === 'folder') {
+				if (wrappedEntity.files.length > 0) {
+					return true;
+				}
+				if (wrappedEntity.folders.length > 0) {
+					return true;
+				}
+			}
+
+			return false;
+		})();
+
+		const bundlePacker = this.bundlePacker();
+
+		for (const uploadStat of uploadStats) {
+			const { wrappedEntity } = uploadStat;
+
+			if (wrappedEntity.entityType === 'folder') {
+				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
+			} else {
+				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
 			}
 		}
 
-		return this.costOfUploadFileV2Tx(estUploadFileParams);
+		const bundlePlans: BundlePlan[] = [];
+		for (const { uploadStats, totalDataItems, totalSize } of bundlePacker.bundles) {
+			if (totalDataItems === 1) {
+				// Edge case: Do not send up a bundle containing a single data item
+				const { wrappedEntity, driveKey } = uploadStats[0];
+
+				if (wrappedEntity.entityType === 'file') {
+					throw new Error('Invalid bundle plan, files cannot be separated from their metadata!');
+				}
+
+				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
+					wrappedEntity.destinationBaseName,
+					driveKey !== undefined
+				);
+
+				// Unpack this bundle into the v2TxsToUpload
+				bundlePacker.addV2FolderMetaDataPlan({
+					uploadStats: { ...uploadStats[0], wrappedEntity },
+					metaDataByteCount: folderMetaDataPrototype.objectData.sizeOf()
+				});
+
+				continue;
+			}
+
+			const bundledByteCount = bundledByteCountOfBundleToPack(totalSize, totalDataItems);
+
+			bundlePlans.push({
+				uploadStats: uploadStats,
+				totalByteCount: bundledByteCount
+			});
+		}
+
+		return { v2TxPlans: bundlePacker.v2TxPlans, bundlePlans };
 	}
 
-	/** Calculate the cost of uploading a file data tx and its metadata tx as v2 transactions */
-	private async costOfUploadFileV2Tx({
-		fileDataSize,
-		fileMetaDataPrototype
-	}: EstimateUploadFileParams): Promise<EstimateUploadFileResult> {
-		const fileDataReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataSize);
-		const metaDataReward = await this.costOfV2ObjectTx(fileMetaDataPrototype.objectData);
-
-		const rewardSettings: UploadFileV2TxRewardSettings = {
-			dataTxRewardSettings: { reward: fileDataReward, feeMultiple: this.feeMultiple },
-			metaDataRewardSettings: { reward: metaDataReward, feeMultiple: this.feeMultiple }
-		};
-
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(fileDataReward);
-
-		const totalWinstonPrice = this.feeMultiple
-			.boostedWinstonReward(fileDataReward)
-			.plus(this.feeMultiple.boostedWinstonReward(metaDataReward))
-			.plus(communityWinstonTip);
-
-		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
-	}
-
-	/** Calculate the cost of uploading a file data tx and its metadata tx together as a bundle */
-	private async costOfUploadBundledFile({
-		fileDataItemByteCount,
-		metaDataItemByteCount
-	}: {
-		fileDataItemByteCount: ByteCount;
-		metaDataItemByteCount: ByteCount;
-	}): Promise<EstimateUploadFileResult> {
-		const bundleSize = this.bundledByteCountOfDataItems([fileDataItemByteCount, metaDataItemByteCount]);
-		const bundleReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(bundleSize);
-
-		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: { reward: bundleReward, feeMultiple: this.feeMultiple }
-		};
-
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(
-			await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataItemByteCount)
+	private planBundledCreateDrive({
+		driveMetaDataPrototype,
+		rootFolderMetaDataPrototype
+	}: EstimateCreateDriveParams): CreateDrivePlan {
+		const driveDataItemByteCount = byteCountAsDataItem(
+			driveMetaDataPrototype.objectData.sizeOf(),
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: driveMetaDataPrototype.gqlTags })
 		);
+		const rootFolderDataItemByteCount = byteCountAsDataItem(
+			rootFolderMetaDataPrototype.objectData.sizeOf(),
+			this.arFSTagSettings.baseArFSTagsIncluding({ tags: rootFolderMetaDataPrototype.gqlTags })
+		);
+		const totalDataItemByteCount = driveDataItemByteCount.plus(rootFolderDataItemByteCount);
 
-		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward).plus(communityWinstonTip);
+		const totalBundledByteCount = bundledByteCountOfBundleToPack(totalDataItemByteCount, 2);
 
-		return { totalWinstonPrice, rewardSettings, communityWinstonTip };
+		return { totalBundledByteCount };
 	}
 
-	/** Estimate the cost of a create drive */
-	public async estimateCreateDrive(arFSPrototypes: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
+	private planV2CreateDrive({
+		driveMetaDataPrototype,
+		rootFolderMetaDataPrototype
+	}: EstimateCreateDriveParams): CreateDrivePlan {
+		const driveByteCount = driveMetaDataPrototype.objectData.sizeOf();
+		const rootFolderByteCount = rootFolderMetaDataPrototype.objectData.sizeOf();
+
+		return { driveByteCount, rootFolderByteCount };
+	}
+
+	/** Plan the strategy and determine byteCounts of a create drive */
+	public planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan {
 		if (this.shouldBundle) {
-			return this.costOfCreateBundledDrive(arFSPrototypes);
+			return this.planBundledCreateDrive(arFSPrototypes);
 		}
 
-		return this.costOfCreateDriveV2Tx(arFSPrototypes);
+		return this.planV2CreateDrive(arFSPrototypes);
 	}
+}
 
-	/** Calculate the cost of creating a drive and root folder as v2 transactions */
-	private async costOfCreateDriveV2Tx({
-		rootFolderMetaDataPrototype,
-		driveMetaDataPrototype
-	}: EstimateCreateDriveParams): Promise<EstimateCreateDriveResult> {
-		const driveReward = await this.costOfV2ObjectTx(driveMetaDataPrototype.objectData);
-		const rootFolderReward = await this.costOfV2ObjectTx(rootFolderMetaDataPrototype.objectData);
+/** Calculate the total size  of provided ByteCount and GQL Tags as a DataItem */
+function byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
+	// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
 
-		const totalWinstonPrice = this.feeMultiple
-			.boostedWinstonReward(driveReward)
-			.plus(this.feeMultiple.boostedWinstonReward(rootFolderReward));
+	// We're not using the optional target and anchor fields, they will always be 1 byte
+	const targetLength = 1;
+	const anchorLength = 1;
 
-		const rewardSettings: CreateDriveV2TxRewardSettings = {
-			driveRewardSettings: { reward: driveReward, feeMultiple: this.feeMultiple },
-			rootFolderRewardSettings: { reward: rootFolderReward, feeMultiple: this.feeMultiple }
-		};
+	// Get byte length of tags after being serialized for avro schema
+	const serializedTags = serializeTags(gqlTags);
+	const tagsLength = 16 + serializedTags.byteLength;
 
-		return { totalWinstonPrice, rewardSettings };
-	}
+	const arweaveSignerLength = 512;
+	const ownerLength = 512;
 
-	/** Calculate the cost of creating a drive and root folder together as a bundle */
-	private async costOfCreateBundledDrive(
-		arFSPrototypes: EstimateCreateDriveParams
-	): Promise<EstimateCreateDriveResult> {
-		const bundleReward = await this.winstonCostOfBundledPrototypes(Object.values(arFSPrototypes));
-		const totalWinstonPrice = this.feeMultiple.boostedWinstonReward(bundleReward);
+	const signatureTypeLength = 2;
 
-		const rewardSettings: BundleRewardSettings = {
-			bundleRewardSettings: { reward: bundleReward, feeMultiple: this.feeMultiple }
-		};
+	const dataLength = +dataSize;
 
-		return { totalWinstonPrice, rewardSettings };
-	}
+	const totalByteLength =
+		arweaveSignerLength + ownerLength + signatureTypeLength + targetLength + anchorLength + tagsLength + dataLength;
 
-	/** Calculate the cost uploading transaction data as a v2 transaction */
-	private async costOfV2ObjectTx(objectTransactionData: ArFSObjectTransactionData): Promise<Winston> {
-		const metaDataSize = objectTransactionData.sizeOf();
-		return this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataSize);
-	}
+	return new ByteCount(totalByteLength);
+}
 
-	/** Calculate the size of an ArFS Prototype as a DataItem */
-	private byteCountAsDataItem(dataSize: ByteCount, gqlTags: GQLTagInterface[]): ByteCount {
-		// referenced from https://github.com/Bundlr-Network/arbundles/blob/master/src/ar-data-create.ts
+/** Calculate the bundled size from the total dataItem byteCount and the number of dataItems */
+function bundledByteCountOfBundleToPack(totalDataItemByteCount: ByteCount, numberOfDataItems: number): ByteCount {
+	// 32 byte array for representing the number of data items in the bundle
+	const byteArraySize = 32;
 
-		// We're not using the optional target and anchor fields, they will always be 1 byte
-		const targetLength = 1;
-		const anchorLength = 1;
+	// Each data item gets a 64 byte header added to the bundle
+	const headersSize = numberOfDataItems * 64;
 
-		// Get byte length of tags after being serialized for avro schema
-		const serializedTags = serializeTags(gqlTags);
-		const tagsLength = 16 + serializedTags.byteLength;
-
-		const arweaveSignerLength = 512;
-		const ownerLength = 512;
-
-		const signatureTypeLength = 2;
-
-		const dataLength = +dataSize;
-
-		const totalByteLength =
-			arweaveSignerLength +
-			ownerLength +
-			signatureTypeLength +
-			targetLength +
-			anchorLength +
-			tagsLength +
-			dataLength;
-
-		return new ByteCount(totalByteLength);
-	}
-
-	/** Calculate the bundled size from an array of data item byte counts  */
-	private bundledByteCountOfDataItems(dataItemByteCounts: ByteCount[]): ByteCount {
-		// 32 byte array for representing the number of data items in the bundle
-		const byteArraySize = 32;
-
-		// Get total byte length of combined binaries
-		let totalDataItemsSize = 0;
-		for (const dataItemByteCount of dataItemByteCounts) {
-			totalDataItemsSize += +dataItemByteCount;
-		}
-
-		// Each data item gets a 64 byte header added to the bundle
-		const headersSize = dataItemByteCounts.length * 64;
-
-		return new ByteCount(byteArraySize + totalDataItemsSize + headersSize);
-	}
-
-	/** Calculate the cost of uploading an array of ArFS Prototypes together as a bundle */
-	private async winstonCostOfBundledPrototypes(arFSPrototypes: ArFSObjectMetadataPrototype[]): Promise<Winston> {
-		const dataItemSizes = arFSPrototypes.map((p) =>
-			this.byteCountAsDataItem(
-				p.objectData.sizeOf(),
-				this.arFSTagSettings.baseArFSTagsIncluding({ tags: p.gqlTags })
-			)
-		);
-		const bundledSize = this.bundledByteCountOfDataItems(dataItemSizes);
-		return this.priceEstimator.getBaseWinstonPriceForByteCount(bundledSize);
-	}
+	return new ByteCount(byteArraySize + +totalDataItemByteCount + headersSize);
 }
