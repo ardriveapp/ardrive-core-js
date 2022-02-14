@@ -113,13 +113,13 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 	cipher?: string;
 	cipherIV?: CipherIV;
-	fileKey?: FileKey;
 
 	constructor(
 		readonly fileId: FileID,
 		readonly arweave: Arweave,
 		private readonly driveKey: DriveKey,
-		readonly owner?: ArweaveAddress
+		readonly owner?: ArweaveAddress,
+		readonly fileKey?: FileKey
 	) {
 		super({ entityId: fileId, arweave, owner });
 	}
@@ -146,9 +146,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 					break;
 				case 'Cipher':
 					this.cipher = value;
-					break;
-				case 'File-Key':
-					this.fileKey = Buffer.from(value);
 					break;
 				default:
 					unparsedTags.push(tag);
@@ -187,7 +184,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
-			this.fileKey = fileKey;
 
 			if (
 				!this.name ||
@@ -195,7 +191,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
 				!this.dataContentType ||
-				!this.fileKey ||
+				!fileKey ||
 				!(this.entityType === 'file')
 			) {
 				throw new Error('Invalid file state');
@@ -219,7 +215,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.dataContentType,
 				this.cipher,
 				this.cipherIV,
-				this.fileKey
+				fileKey
 			);
 		}
 		throw new Error('Invalid file state');
