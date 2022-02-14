@@ -69,7 +69,7 @@
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
 		"ci": "yarn arlocal-docker-test && yarn build",
 		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
-		"arlocal-docker-test": "\"tests/arlocal-docker-test.sh\""
+		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\""
 	},
 	"directories": {
 		"test": "./"
