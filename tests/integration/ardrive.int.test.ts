@@ -988,15 +988,6 @@ describe('ArDrive class - integrated', () => {
 
 				assertUploadFileExpectations(result, W(3204), W(171), W('1'), 'public', existingFileId);
 			});
-		});
-
-		describe('uploadPrivateFile', () => {
-			beforeEach(() => {
-				wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
-				stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
-				stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
-				stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves(stubNameConflictInfo);
-			});
 
 			it('returns the correct bundled ArFSResult', async () => {
 				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
@@ -1016,6 +1007,15 @@ describe('ArDrive class - integrated', () => {
 					wrappedFile
 				});
 				assertUploadFileExpectations(result, W(3204), W(166), W(1), 'public');
+			});
+		});
+
+		describe('uploadPrivateFile', () => {
+			beforeEach(() => {
+				wrappedFile = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+				stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
+				stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+				stub(arfsDao, 'getPrivateNameConflictInfoInFolder').resolves(stubNameConflictInfo);
 			});
 
 			describe('entity name validation', () => {
