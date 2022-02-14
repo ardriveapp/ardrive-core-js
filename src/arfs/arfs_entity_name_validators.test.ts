@@ -1,154 +1,162 @@
 import { expect } from 'chai';
-import { assertValidArFSFileName, assertValidArFSFolderName } from './arfs_entity_name_validators';
+import { stub } from 'sinon';
+import { statSync } from 'fs';
+import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
+import {
+	assertArFSCompliantNamesWithinFolder,
+	assertValidArFSDriveName,
+	assertValidArFSFileName,
+	assertValidArFSFolderName
+} from './arfs_entity_name_validators';
 
 describe('entity name validators', () => {
-	describe('assertValidArFSFileName method', () => {
-		const validNames = [
-			'.bashrc',
-			'===============================================================================================================================================================================================================================================================',
-			'abcdefghijklmnopqrstuvwxyz',
-			'ñññññññññññññññññ.png',
-			'valid name with     spaces.txt',
-			'valid.name.with.....dots.txt'
-		];
-		const tooLongName =
-			'+===============================================================================================================================================================================================================================================================';
-		const namesWithReservedCharacters = [
-			'\\\\\\\\\\\\\\\\\\\\.png',
-			'//////////.png',
-			'::::::::::.png',
-			'**********.png',
-			'??????????.png',
-			'"""""""""".png',
-			'<<<<<<<<<<.png',
-			'>>>>>>>>>>.png',
-			'||||||||||.png'
-		];
-		const namesWithLeadingSpaces = [
-			'  thisIsAFileNameWithTwoLeadingSpaces.doc',
-			' thisFilenameHasOneSingleSpace.doc'
-		];
-		const namesWithTrailingSpacesOrDots = [
-			'soWeHaveAFileNameThatEndsWithADot.',
-			'thenAFileNameWithMultipleDots...',
-			'aFileNameWithATrailingSpace ',
-			'anotherFileNameWithSpaces   '
-		];
+	const validNames = [
+		'.bashrc',
+		'===============================================================================================================================================================================================================================================================',
+		'abcdefghijklmnopqrstuvwxyz',
+		'ñññññññññññññññññ.png',
+		'valid name with     spaces.txt',
+		'valid.name.with.....dots.txt',
+		'\\\\\\\\\\\\\\\\\\\\.png',
+		'//////////.png',
+		'::::::::::.png',
+		'**********.png',
+		'??????????.png',
+		'"""""""""".png',
+		'<<<<<<<<<<.png',
+		'>>>>>>>>>>.png',
+		'||||||||||.png',
+		'  thisIsAFileNameWithTwoLeadingSpaces.doc',
+		' thisFilenameHasOneSingleSpace.doc',
+		'soWeHaveAFileNameThatEndsWithADot.',
+		'thenAFileNameWithMultipleDots...',
+		'aFileNameWithATrailingSpace ',
+		'anotherFileNameWithSpaces   '
+	];
+	const tooLongName =
+		'+===============================================================================================================================================================================================================================================================';
 
-		it('returns true when fed with an ArFS compliant name', () => {
-			validNames.forEach((name) => {
-				expect(assertValidArFSFileName(name)).to.be.true;
+	const nullCharactersRepresentations = ['\0', '\x00'];
+
+	type Test = {
+		entity: string;
+		methodName: string;
+		isFolderWithChildren: boolean;
+	};
+
+	type EntityTest = {
+		validationMethod: typeof assertValidArFSFileName;
+	} & Test;
+
+	type FolderWithChildrenTest = {
+		validationMethod: typeof assertArFSCompliantNamesWithinFolder;
+	} & Test;
+
+	function isFolderWithChildren(test: EntityTest | FolderWithChildrenTest): test is FolderWithChildrenTest {
+		return (test as FolderWithChildrenTest).isFolderWithChildren;
+	}
+
+	const testsList: (EntityTest | FolderWithChildrenTest)[] = [
+		{
+			entity: 'file',
+			methodName: 'assertValidArFSFileName',
+			validationMethod: assertValidArFSFileName,
+			isFolderWithChildren: false
+		},
+		{
+			entity: 'folder',
+			methodName: 'assertValidArFSFolderName',
+			validationMethod: assertValidArFSFolderName,
+			isFolderWithChildren: false
+		},
+		{
+			entity: 'drive',
+			methodName: 'assertValidArFSDriveName',
+			validationMethod: assertValidArFSDriveName,
+			isFolderWithChildren: false
+		},
+		{
+			entity: 'folder',
+			methodName: 'assertArFSCompliantNamesWithinFolder',
+			validationMethod: assertArFSCompliantNamesWithinFolder,
+			isFolderWithChildren: true
+		}
+	];
+
+	const fileStats = statSync('tests/stub_files');
+	const wrappedFolderWithValidName = new ArFSFolderToUpload('tests/stub_files', fileStats);
+
+	testsList.forEach((test) => {
+		const { entity, methodName } = test;
+
+		describe(`${methodName} method`, () => {
+			it('does not throw an error when fed with an ArFS compliant name', () => {
+				validNames.forEach((name) => {
+					if (isFolderWithChildren(test)) {
+						const { validationMethod } = test;
+						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'destinationBaseName').get(
+							() => name
+						);
+
+						expect(validationMethod(wrappedFolderWithValidName)).to.not.throw;
+						wrappedFolderStub.restore();
+					} else {
+						const { validationMethod } = test;
+						expect(validationMethod(name)).to.not.throw;
+					}
+				});
 			});
-		});
 
-		it('throws when the name is too long', () => {
-			expect(() => assertValidArFSFileName(tooLongName)).to.throw(
-				'The file name must contain between 1 and 255 characters'
-			);
-		});
+			it('throws when the name is too long', () => {
+				const expectedError = `The ${entity} name must not exceed 255 bytes`;
 
-		it('throws when the name is too short', () => {
-			expect(() => assertValidArFSFileName('')).to.throw(
-				'The file name must contain between 1 and 255 characters'
-			);
-		});
+				if (isFolderWithChildren(test)) {
+					const { validationMethod } = test;
+					const wrappedFolderStub = stub(wrappedFolderWithValidName, 'destinationBaseName').get(
+						() => tooLongName
+					);
 
-		it('throws when the name contains reserved characters', () => {
-			namesWithReservedCharacters.forEach((invalidName) => {
-				expect(() => assertValidArFSFileName(invalidName)).to.throw(
-					"The file name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '\"', '<', '>', '|')"
-				);
+					expect(() => validationMethod(wrappedFolderWithValidName)).to.throw(expectedError);
+					wrappedFolderStub.restore();
+				} else {
+					const { validationMethod } = test;
+					expect(() => validationMethod(tooLongName)).to.throw(expectedError);
+				}
 			});
-		});
 
-		it('throws when the name contains leading spaces', () => {
-			namesWithLeadingSpaces.forEach((invalidName) =>
-				expect(() => assertValidArFSFileName(invalidName)).to.throw('The file name cannot start with spaces')
-			);
-		});
+			it('throws when the name is empty', () => {
+				const expectedError = `The ${entity} name cannot be empty`;
 
-		it('throws when the name contains trailing dots or spaces', () => {
-			namesWithTrailingSpacesOrDots.forEach((invalidName) =>
-				expect(() => assertValidArFSFileName(invalidName)).to.throw(
-					'The file name cannot have trailing dots or spaces'
-				)
-			);
-		});
-	});
+				if (isFolderWithChildren(test)) {
+					const { validationMethod } = test;
+					const wrappedFolderStub = stub(wrappedFolderWithValidName, 'destinationBaseName').get(() => '');
 
-	describe('assertValidArFSFolderName method', () => {
-		const validNames = [
-			'.bashrc',
-			'===============================================================================================================================================================================================================================================================',
-			'abcdefghijklmnopqrstuvwxyz',
-			'ñññññññññññññññññ.png',
-			'valid name with     spaces.txt',
-			'valid.name.with.....dots.txt'
-		];
-		const tooLongName =
-			'+===============================================================================================================================================================================================================================================================';
-		const namesWithReservedCharacters = [
-			'\\\\\\\\\\\\\\\\\\\\.png',
-			'//////////.png',
-			'::::::::::.png',
-			'**********.png',
-			'??????????.png',
-			'"""""""""".png',
-			'<<<<<<<<<<.png',
-			'>>>>>>>>>>.png',
-			'||||||||||.png'
-		];
-		const namesWithLeadingSpaces = [
-			'  thisIsAFileNameWithTwoLeadingSpaces.doc',
-			' thisFilenameHasOneSingleSpace.doc'
-		];
-		const namesWithTrailingSpacesOrDots = [
-			'soWeHaveAFileNameThatEndsWithADot.',
-			'thenAFileNameWithMultipleDots...',
-			'aFileNameWithATrailingSpace ',
-			'anotherFileNameWithSpaces   '
-		];
-
-		it('returns true when fed with an ArFS compliant name', () => {
-			validNames.forEach((name) => {
-				expect(assertValidArFSFolderName(name)).to.be.true;
+					expect(() => validationMethod(wrappedFolderWithValidName)).to.throw(expectedError);
+					wrappedFolderStub.restore();
+				} else {
+					const { validationMethod } = test;
+					expect(() => validationMethod('')).to.throw(expectedError);
+				}
 			});
-		});
 
-		it('throws when the name is too long', () => {
-			expect(() => assertValidArFSFolderName(tooLongName)).to.throw(
-				'The folder name must contain between 1 and 255 characters'
-			);
-		});
+			it('throws when the name contains null characters', () => {
+				const expectedError = `The ${entity} name cannot contain null characters`;
 
-		it('throws when the name is too short', () => {
-			expect(() => assertValidArFSFolderName('')).to.throw(
-				'The folder name must contain between 1 and 255 characters'
-			);
-		});
+				nullCharactersRepresentations.forEach((invalidName) => {
+					if (isFolderWithChildren(test)) {
+						const { validationMethod } = test;
+						const wrappedFolderStub = stub(wrappedFolderWithValidName, 'destinationBaseName').get(
+							() => invalidName
+						);
 
-		it('throws when the name contains reserved characters', () => {
-			namesWithReservedCharacters.forEach((invalidName) => {
-				expect(() => assertValidArFSFolderName(invalidName)).to.throw(
-					"The folder name cannot contain reserved characters (i.e. '\\\\', '/', ':', '*', '?', '\"', '<', '>', '|')"
-				);
+						expect(() => validationMethod(wrappedFolderWithValidName)).to.throw(expectedError);
+						wrappedFolderStub.restore();
+					} else {
+						const { validationMethod } = test;
+						expect(() => validationMethod(invalidName)).to.throw(expectedError);
+					}
+				});
 			});
-		});
-
-		it('throws when the name contains leading spaces', () => {
-			namesWithLeadingSpaces.forEach((invalidName) =>
-				expect(() => assertValidArFSFolderName(invalidName)).to.throw(
-					'The folder name cannot start with spaces'
-				)
-			);
-		});
-
-		it('throws when the name contains trailing dots or spaces', () => {
-			namesWithTrailingSpacesOrDots.forEach((invalidName) =>
-				expect(() => assertValidArFSFolderName(invalidName)).to.throw(
-					'The folder name cannot have trailing dots or spaces'
-				)
-			);
 		});
 	});
 });

@@ -100,7 +100,8 @@ import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator'
 import {
 	assertValidArFSDriveName,
 	assertValidArFSFileName,
-	assertValidArFSFolderName
+	assertValidArFSFolderName,
+	assertArFSCompliantNamesWithinFolder
 } from './arfs/arfs_entity_name_validators';
 import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 
@@ -453,16 +454,22 @@ export class ArDrive extends ArDriveAnonymous {
 				destFolderId
 			};
 
+			const destinationName = destName ?? wrappedEntity.destinationBaseName;
+
 			if (wrappedEntity.entityType === 'folder') {
+				assertArFSCompliantNamesWithinFolder(wrappedEntity, destinationName);
+
 				await resolveFolderNameConflicts({
 					wrappedFolder: wrappedEntity,
-					destinationFolderName: destName ?? wrappedEntity.destinationBaseName,
+					destinationFolderName: destinationName,
 					...resolveConflictParams
 				});
 			} else {
+				assertValidArFSFileName(destinationName);
+
 				await resolveFileNameConflicts({
 					wrappedFile: wrappedEntity,
-					destinationFileName: destName ?? wrappedEntity.destinationBaseName,
+					destinationFileName: destinationName,
 					...resolveConflictParams
 				});
 			}
@@ -717,6 +724,8 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {
+		assertValidArFSFolderName(folderName);
+
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId);
 		await this.assertOwnerAddress(owner);
@@ -765,6 +774,8 @@ export class ArDrive extends ArDriveAnonymous {
 		driveKey,
 		parentFolderId
 	}: CreatePrivateFolderParams): Promise<ArFSResult> {
+		assertValidArFSFolderName(folderName);
+
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.arFsDao.getOwnerAndAssertDrive(driveId, driveKey);
 		await this.assertOwnerAddress(owner);
@@ -868,13 +879,19 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	public async createPublicDrive(params: CreatePublicDriveParams): Promise<ArFSResult> {
+		const { driveName } = params;
+
+		assertValidArFSDriveName(driveName);
+
 		return this.createDrive(getPublicCreateDriveEstimationPrototypes(params), (rewardSettings) =>
-			this.arFsDao.createPublicDrive({ driveName: params.driveName, rewardSettings })
+			this.arFsDao.createPublicDrive({ driveName, rewardSettings })
 		);
 	}
 
 	public async createPrivateDrive(params: CreatePrivateDriveParams): Promise<ArFSResult> {
 		const { driveName, newPrivateDriveData: newDriveData } = params;
+
+		assertValidArFSDriveName(driveName);
 
 		const createDriveResult = await this.createDrive(
 			await getPrivateCreateDriveEstimationPrototypes(params),
