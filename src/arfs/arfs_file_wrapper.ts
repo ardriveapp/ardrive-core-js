@@ -11,7 +11,8 @@ import {
 	ManifestPathMap,
 	TransactionID,
 	EntityID,
-	EntityType
+	EntityType,
+	PRIVATE_CONTENT_TYPE
 } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
@@ -53,14 +54,17 @@ export interface FileInfo {
  * }
  *
  */
-export function wrapFileOrFolder(fileOrFolderPath: FilePath): ArFSFileToUpload | ArFSFolderToUpload {
+export function wrapFileOrFolder(
+	fileOrFolderPath: FilePath,
+	customContentType?: DataContentType
+): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
 
 	if (entityStats.isDirectory()) {
 		return new ArFSFolderToUpload(fileOrFolderPath, entityStats);
 	}
 
-	return new ArFSFileToUpload(fileOrFolderPath, entityStats);
+	return new ArFSFileToUpload(fileOrFolderPath, entityStats, customContentType);
 }
 
 /** Type-guard function to determine if returned class is a File or Folder */
@@ -84,11 +88,12 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 	abstract gatherFileInfo(): FileInfo;
 	abstract getFileDataBuffer(): Buffer;
 
-	abstract contentType: DataContentType;
-	abstract lastModifiedDate: UnixTime;
-	abstract size: ByteCount;
+	abstract readonly contentType: DataContentType;
+	abstract readonly lastModifiedDate: UnixTime;
+	abstract readonly size: ByteCount;
+
 	conflictResolution?: FileConflictResolution;
-	metaDataBundleIndex?: number;
+	readonly customContentType?: DataContentType;
 
 	readonly entityType = 'file';
 }
@@ -175,7 +180,7 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 	}
 
 	public get contentType(): DataContentType {
-		return MANIFEST_CONTENT_TYPE;
+		return this.customContentType ?? MANIFEST_CONTENT_TYPE;
 	}
 
 	public getBaseName(): BaseName {
@@ -199,7 +204,11 @@ export type FolderConflictResolution = typeof skipOnConflicts | typeof errorOnCo
 export type FileConflictResolution = FolderConflictResolution | typeof upsertOnConflicts;
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
-	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+	constructor(
+		public readonly filePath: FilePath,
+		public readonly fileStats: Stats,
+		public readonly customContentType?: DataContentType
+	) {
 		super();
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
@@ -227,7 +236,17 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 	}
 
 	public get contentType(): DataContentType {
-		return extToMime(this.filePath);
+		if (this.customContentType) {
+			return this.customContentType;
+		}
+
+		const mimeType = extToMime(this.filePath);
+
+		if (mimeType === 'unknown') {
+			// If mime type cannot be derived from the file extension, use octet stream content type
+			return PRIVATE_CONTENT_TYPE;
+		}
+		return mimeType;
 	}
 
 	public getBaseName(): BaseName {

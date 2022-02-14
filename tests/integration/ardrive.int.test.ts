@@ -2865,6 +2865,114 @@ describe('ArDrive class - integrated', () => {
 
 			assertCreateFolderExpectations(result, W(43), urlEncodeHashKey(await getStubDriveKey()));
 		});
+
+		it('returns the expected v2 ArFSResult with a single public .txt file', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+			);
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
+			});
+
+			assertUploadFileExpectations(result, W(14), W(159), W(1), 'public');
+		});
+
+		it('returns the expected v2 ArFSResult with a single public .txt file that has a custom content type', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
+			);
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
+			});
+
+			assertUploadFileExpectations(result, W(14), W(163), W(1), 'public');
+		});
+
+		it('returns the expected v2 ArFSResult with a single private .txt file', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+			);
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{ wrappedEntity: wrappedFile, destFolderId: stubEntityID, driveKey: await getStubDriveKey() }
+				]
+			});
+
+			assertUploadFileExpectations(result, W(30), W(175), W(1), 'private');
+		});
+
+		it('returns the expected v2 ArFSResult with a single private .txt file that has a custom content type', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
+			);
+			const result = await arDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						wrappedEntity: wrappedFile,
+						destFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					}
+				]
+			});
+
+			assertUploadFileExpectations(result, W(30), W(179), W(1), 'private');
+		});
+
+		it('returns the expected bundled ArFSResult with a single public .txt file', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+			);
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
+			});
+
+			assertUploadFileExpectations(result, W(2756), W(159), W(1), 'public', undefined, true);
+		});
+
+		it('returns the expected bundled ArFSResult with a single public .txt file that has a custom content type', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
+			);
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [{ wrappedEntity: wrappedFile, destFolderId: stubEntityID }]
+			});
+
+			assertUploadFileExpectations(result, W(2764), W(163), W(1), 'public', undefined, true);
+		});
+
+		it('returns the expected bundled ArFSResult with a single private .txt file', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+			);
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{ wrappedEntity: wrappedFile, destFolderId: stubEntityID, driveKey: await getStubDriveKey() }
+				]
+			});
+
+			assertUploadFileExpectations(result, W(2900), W(179), W(1), 'private', undefined, true);
+		});
+
+		it('returns the expected bundled ArFSResult with a single private .txt file that has a custom content type', async () => {
+			const wrappedFile = wrapFileOrFolder(
+				'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
+				'Custom-type-77'
+			);
+			const result = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						wrappedEntity: wrappedFile,
+						destFolderId: stubEntityID,
+						driveKey: await getStubDriveKey()
+					}
+				]
+			});
+
+			assertUploadFileExpectations(result, W(2904), W(179), W(1), 'private', undefined, true);
+		});
 	});
 });
 
