@@ -184,12 +184,12 @@ describe('ArLocal Integration Tests', function () {
 
 			const [
 				rootFolderResult,
-				fileInRootResult,
 				parentFolderResult,
-				fileInParentResult,
 				childFolderResult,
-				fileInChildResult,
 				grandChildFolderResult,
+				fileInRootResult,
+				fileInParentResult,
+				fileInChildResult,
 				fileInGrandChildResult
 			] = created;
 
@@ -430,12 +430,12 @@ describe('ArLocal Integration Tests', function () {
 
 			const [
 				rootFolderResult,
-				fileInRootResult,
 				parentFolderResult,
-				fileInParentResult,
 				childFolderResult,
-				fileInChildResult,
 				grandChildFolderResult,
+				fileInRootResult,
+				fileInParentResult,
+				fileInChildResult,
 				fileInGrandChildResult
 			] = created;
 
