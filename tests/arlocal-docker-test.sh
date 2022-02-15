@@ -12,4 +12,4 @@ else yarn nyc mocha -g "$1" || EXIT_CODE=$?;
 fi
 
 docker stop arlocal
-echo $EXIT_CODE
+exit $EXIT_CODE
