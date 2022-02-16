@@ -415,6 +415,7 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	}
 }
 
+// Remove me after PE-1027 is applied
 export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 	driveKey: never;
 	fileKey: never;
@@ -513,5 +514,30 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 			parentFolderId,
 			folderId
 		);
+	}
+}
+
+// Remove me after PE-1027 is applied
+export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
+	driveKey: never;
+
+	constructor(entity: ArFSPrivateFolder) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.folderId,
+			entity.cipher,
+			entity.cipherIV,
+			entity.driveKey
+		);
+		delete this.driveKey;
 	}
 }

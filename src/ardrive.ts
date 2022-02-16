@@ -111,6 +111,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import {
 	ArFSPrivateFileKeyless,
 	ArFSPrivateFileWithPaths,
+	ArFSPrivateFolderKeyless,
 	ArFSPrivateFolderWithPaths,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
@@ -1366,6 +1367,17 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
 	}
 
+	// Remove me after PE-1027 is applied
+	public async getPrivateFolderKeyless({
+		folderId,
+		driveKey,
+		owner
+	}: GetPrivateFolderParams): Promise<ArFSPrivateFolderKeyless> {
+		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		return new ArFSPrivateFolderKeyless(folder);
+	}
+
+	// Remove me after PE-1027 is applied
 	public async getPrivateFileKeyless({
 		fileId,
 		driveKey,
