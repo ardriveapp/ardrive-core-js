@@ -188,7 +188,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.parentFolderId,
 				this.entityId,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				this.driveKey
 			);
 		}
 		throw new Error('Invalid private folder state');
