@@ -20,6 +20,7 @@ import {
 	ArFSMetadataEntityBuilderParams,
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
+import { ArFSPrivateDriveKeyless } from '../../exports';
 
 interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
@@ -205,7 +206,8 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 				this.rootFolderId,
 				this.driveAuthMode,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				this.driveKey
 			);
 		}
 
@@ -336,7 +338,7 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			this.rootFolderId = dataJSON.rootFolderId;
 
 			if (isPrivate) {
-				return new ArFSPrivateDrive(
+				return new ArFSPrivateDriveKeyless(
 					this.appName,
 					this.appVersion,
 					this.arFS,

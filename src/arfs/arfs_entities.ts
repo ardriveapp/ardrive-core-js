@@ -99,9 +99,50 @@ export class ArFSPrivateDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly rootFolderId: FolderID,
 		readonly driveAuthMode: DriveAuthMode,
 		readonly cipher: string,
-		readonly cipherIV: CipherIV
+		readonly cipherIV: CipherIV,
+		readonly driveKey: DriveKey
 	) {
 		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime);
+	}
+}
+
+export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
+	driveKey: never;
+
+	constructor(
+		appName: string,
+		appVersion: string,
+		arFS: string,
+		contentType: ContentType,
+		driveId: DriveID,
+		entityType: EntityType,
+		name: string,
+		txId: TransactionID,
+		unixTime: UnixTime,
+		drivePrivacy: DrivePrivacy,
+		rootFolderId: FolderID,
+		driveAuthMode: DriveAuthMode,
+		cipher: string,
+		cipherIV: CipherIV
+	) {
+		super(
+			appName,
+			appVersion,
+			arFS,
+			contentType,
+			driveId,
+			entityType,
+			name,
+			txId,
+			unixTime,
+			drivePrivacy,
+			rootFolderId,
+			driveAuthMode,
+			cipher,
+			cipherIV,
+			Buffer.from([])
+		);
+		delete this.driveKey;
 	}
 }
 
@@ -287,6 +328,10 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	get encryptedDataSize(): ByteCount {
 		return encryptedDataSize(this.size);
 	}
+
+	// toJson(): string {
+
+	// }
 }
 
 export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWithPath {

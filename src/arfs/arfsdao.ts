@@ -1339,9 +1339,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const children = [...childFolders, ...childFiles];
 
-		const entitiesWithPath = children.map((entity) =>
-			privateEntityWithPathsKeylessFactory(entity, hierarchy, driveKey)
-		);
+		const entitiesWithPath = children.map((entity) => privateEntityWithPathsKeylessFactory(entity, hierarchy));
 		return entitiesWithPath;
 	}
 
@@ -1488,7 +1486,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			maxDepth
 		);
 		const folderWrapper = new ArFSFolderToDownload(
-			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy, driveKey),
+			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy),
 			customFolderName
 		);
 
@@ -1500,7 +1498,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}, {});
 
 		const foldersWithPath = [privateFolder, ...childFolders]
-			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy, driveKey))
+			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy))
 			.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
 		// Iteratively download all child files in the hierarchy
@@ -1516,7 +1514,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
-					privateEntityWithPathsKeylessFactory(file, hierarchy, driveKey).path
+					privateEntityWithPathsKeylessFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
