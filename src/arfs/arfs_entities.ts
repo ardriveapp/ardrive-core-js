@@ -22,15 +22,15 @@ import { encryptedDataSize, urlEncodeHashKey } from '../utils/common';
 
 // The primary ArFS entity that all other entities inherit from.
 export class ArFSEntity {
-	appName: string; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
-	appVersion: string; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
-	arFS: string; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
-	contentType: ContentType; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
-	driveId: DriveID; // the unique drive identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
-	entityType: EntityType; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
-	name: string; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction
-	txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
-	unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
+	readonly appName: string; // The app that has submitted this entity.  Should not be longer than 64 characters.  eg. ArDrive-Web
+	readonly appVersion: string; // The app version that has submitted this entity.  Must not be longer than 8 digits, numbers only. eg. 0.1.14
+	readonly arFS: string; // The version of Arweave File System that is used for this entity.  Must not be longer than 4 digits. eg 0.11
+	readonly contentType: ContentType; // the mime type of the file uploaded.  in the case of drives and folders, it is always a JSON file.  Public drive/folders must use "application/json" and priate drives use "application/octet-stream" since this data is encrypted.
+	readonly driveId: DriveID; // the unique drive identifier, created with uuidv4 https://www.npmjs.com/package/uuidv4 eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
+	readonly entityType: EntityType; // the type of ArFS entity this is.  this can only be set to "drive", "folder", "file"
+	readonly name: string; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction
+	readonly txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
+	readonly unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
 
 	constructor(
 		appName: string,
