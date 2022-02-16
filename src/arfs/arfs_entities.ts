@@ -388,7 +388,8 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 		dataContentType: DataContentType,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
-		readonly fileKey: FileKey
+		readonly fileKey: FileKey,
+		readonly driveKey: DriveKey
 	) {
 		super(
 			appName,
@@ -437,7 +438,8 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.dataContentType,
 			entity.cipher,
 			entity.cipherIV,
-			entity.fileKey
+			entity.fileKey,
+			entity.driveKey
 		);
 		delete this.driveKey;
 		delete this.fileKey;
@@ -491,7 +493,8 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 		parentFolderId: FolderID,
 		readonly folderId: FolderID,
 		readonly cipher: string,
-		readonly cipherIV: CipherIV
+		readonly cipherIV: CipherIV,
+		readonly driveKey: DriveKey
 	) {
 		super(
 			appName,

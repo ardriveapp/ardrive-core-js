@@ -215,7 +215,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.dataContentType,
 				this.cipher,
 				this.cipherIV,
-				fileKey
+				fileKey,
+				this.driveKey
 			);
 		}
 		throw new Error('Invalid file state');
