@@ -18,7 +18,7 @@ import {
 	FileKey,
 	DriveKey
 } from '../types';
-import { encryptedDataSize, urlEncodeHashKey } from '../utils/common';
+import { encryptedDataSize } from '../utils/common';
 
 // The primary ArFS entity that all other entities inherit from.
 export class ArFSEntity {
@@ -151,184 +151,28 @@ export function publicEntityWithPathsFactory(
 
 export function privateEntityWithPathsFactory(
 	entity: ArFSPrivateFolder | ArFSPrivateFile,
-	hierarchy: FolderHierarchy,
-	driveKey: DriveKey
+	hierarchy: FolderHierarchy
 ): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
 	if (entity.entityType === 'folder') {
-		return new ArFSPrivateFolderWithPaths(entity, hierarchy, driveKey);
+		return new ArFSPrivateFolderWithPaths(entity, hierarchy);
 	}
-	return new ArFSPrivateFileWithPaths(entity, hierarchy, driveKey);
+	return new ArFSPrivateFileWithPaths(entity, hierarchy);
 }
 
 export function privateEntityWithPathsKeylessFactory(
 	entity: ArFSPrivateFolder | ArFSPrivateFile,
-	hierarchy: FolderHierarchy,
-	driveKey: DriveKey
+	hierarchy: FolderHierarchy
 ): ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths {
 	if (entity.entityType === 'folder') {
-		return new ArFSPrivateFolderWithPathsKeyless(entity, hierarchy, driveKey);
+		return new ArFSPrivateFolderWithPathsKeyless(entity, hierarchy);
 	}
-	return new ArFSPrivateFileWithPathsKeyless(entity, hierarchy, driveKey);
+	return new ArFSPrivateFileWithPathsKeyless(entity, hierarchy);
 }
 
 export interface ArFSWithPath {
 	readonly path: string;
 	readonly txIdPath: string;
 	readonly entityIdPath: string;
-}
-
-export class ArFSPublicFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
-	readonly path: string;
-	readonly txIdPath: string;
-	readonly entityIdPath: string;
-
-	constructor(entity: ArFSPublicFolder, hierarchy: FolderHierarchy) {
-		super(
-			entity.appName,
-			entity.appVersion,
-			entity.arFS,
-			entity.contentType,
-			entity.driveId,
-			entity.entityType,
-			entity.name,
-			entity.size,
-			entity.txId,
-			entity.unixTime,
-			entity.lastModifiedDate,
-			entity.dataTxId,
-			entity.dataContentType,
-			entity.parentFolderId,
-			entity.folderId
-		);
-
-		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.folderId}`;
-	}
-}
-
-export class ArFSPublicFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
-	readonly path: string;
-	readonly txIdPath: string;
-	readonly entityIdPath: string;
-
-	constructor(entity: ArFSPublicFile, hierarchy: FolderHierarchy) {
-		super(
-			entity.appName,
-			entity.appVersion,
-			entity.arFS,
-			entity.contentType,
-			entity.driveId,
-			entity.entityType,
-			entity.name,
-			entity.size,
-			entity.txId,
-			entity.unixTime,
-			entity.lastModifiedDate,
-			entity.dataTxId,
-			entity.dataContentType,
-			entity.parentFolderId,
-			entity.fileId
-		);
-
-		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.fileId}`;
-	}
-}
-
-export class ArFSPrivateFolderWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
-	readonly cipher: string;
-	readonly cipherIV: CipherIV;
-	readonly driveKey: string;
-	readonly path: string;
-	readonly txIdPath: string;
-	readonly entityIdPath: string;
-
-	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: DriveKey) {
-		super(
-			entity.appName,
-			entity.appVersion,
-			entity.arFS,
-			entity.contentType,
-			entity.driveId,
-			entity.entityType,
-			entity.name,
-			entity.size,
-			entity.txId,
-			entity.unixTime,
-			entity.lastModifiedDate,
-			entity.dataTxId,
-			entity.dataContentType,
-			entity.parentFolderId,
-			entity.folderId
-		);
-		this.cipher = entity.cipher;
-		this.cipherIV = entity.cipherIV;
-		this.driveKey = urlEncodeHashKey(driveKey);
-
-		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.folderId}`;
-	}
-}
-
-export class ArFSPrivateFileWithPaths extends ArFSFileOrFolderEntity implements ArFSWithPath {
-	readonly cipher: string;
-	readonly cipherIV: CipherIV;
-	readonly driveKey: string;
-	readonly fileKey: string;
-	readonly path: string;
-	readonly txIdPath: string;
-	readonly entityIdPath: string;
-
-	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy, driveKey: DriveKey) {
-		super(
-			entity.appName,
-			entity.appVersion,
-			entity.arFS,
-			entity.contentType,
-			entity.driveId,
-			entity.entityType,
-			entity.name,
-			entity.size,
-			entity.txId,
-			entity.unixTime,
-			entity.lastModifiedDate,
-			entity.dataTxId,
-			entity.dataContentType,
-			entity.parentFolderId,
-			entity.fileId
-		);
-		this.cipher = entity.cipher;
-		this.cipherIV = entity.cipherIV;
-		this.driveKey = urlEncodeHashKey(driveKey);
-		this.fileKey = urlEncodeHashKey(entity.fileKey);
-
-		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
-		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
-		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.fileId}`;
-	}
-}
-
-export class ArFSPrivateFolderWithPathsKeyless extends ArFSPrivateFolderWithPaths {
-	driveKey: never;
-
-	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy, driveKey: DriveKey) {
-		super(entity, hierarchy, driveKey);
-		delete this.driveKey;
-	}
-}
-
-export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
-	driveKey: never;
-	fileKey: never;
-
-	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy, driveKey: DriveKey) {
-		super(entity, hierarchy, driveKey);
-		delete this.driveKey;
-		delete this.fileKey;
-	}
 }
 
 export class ArFSPublicFile extends ArFSFileOrFolderEntity {
@@ -366,6 +210,36 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity {
 			parentFolderId,
 			fileId
 		);
+	}
+}
+
+export class ArFSPublicFileWithPaths extends ArFSPublicFile implements ArFSWithPath {
+	readonly path: string;
+	readonly txIdPath: string;
+	readonly entityIdPath: string;
+
+	constructor(entity: ArFSPublicFile, hierarchy: FolderHierarchy) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.fileId,
+			entity.size,
+			entity.lastModifiedDate,
+			entity.dataTxId,
+			entity.dataContentType
+		);
+
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.fileId}`;
 	}
 }
 
@@ -415,6 +289,54 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	}
 }
 
+export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWithPath {
+	readonly path: string;
+	readonly txIdPath: string;
+	readonly entityIdPath: string;
+
+	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.fileId,
+			entity.size,
+			entity.lastModifiedDate,
+			entity.dataTxId,
+			entity.dataContentType,
+			entity.cipher,
+			entity.cipherIV,
+			entity.fileKey,
+			entity.driveKey
+		);
+
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.fileId}`;
+	}
+
+	// toJson(): string {}
+}
+
+export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
+	driveKey: never;
+	fileKey: never;
+
+	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy) {
+		super(entity, hierarchy);
+		delete this.driveKey;
+		delete this.fileKey;
+	}
+}
+
+// Remove me after PE-1027 is applied
 export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 	driveKey: never;
 	fileKey: never;
@@ -479,6 +401,33 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity {
 		);
 	}
 }
+
+export class ArFSPublicFolderWithPaths extends ArFSPublicFolder implements ArFSWithPath {
+	readonly path: string;
+	readonly txIdPath: string;
+	readonly entityIdPath: string;
+
+	constructor(entity: ArFSPublicFolder, hierarchy: FolderHierarchy) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.folderId
+		);
+
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.folderId}`;
+	}
+}
+
 export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 	constructor(
 		appName: string,
@@ -513,5 +462,68 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity {
 			parentFolderId,
 			folderId
 		);
+	}
+}
+
+export class ArFSPrivateFolderWithPaths extends ArFSPrivateFolder implements ArFSWithPath {
+	readonly path: string;
+	readonly txIdPath: string;
+	readonly entityIdPath: string;
+
+	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.folderId,
+			entity.cipher,
+			entity.cipherIV,
+			entity.driveKey
+		);
+
+		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
+		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
+		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.folderId}`;
+	}
+}
+
+export class ArFSPrivateFolderWithPathsKeyless extends ArFSPrivateFolderWithPaths {
+	driveKey: never;
+
+	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
+		super(entity, hierarchy);
+		delete this.driveKey;
+	}
+}
+
+// Remove me after PE-1027 is applied
+export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
+	driveKey: never;
+
+	constructor(entity: ArFSPrivateFolder) {
+		super(
+			entity.appName,
+			entity.appVersion,
+			entity.arFS,
+			entity.contentType,
+			entity.driveId,
+			entity.entityType,
+			entity.name,
+			entity.txId,
+			entity.unixTime,
+			entity.parentFolderId,
+			entity.folderId,
+			entity.cipher,
+			entity.cipherIV,
+			entity.driveKey
+		);
+		delete this.driveKey;
 	}
 }
