@@ -89,7 +89,7 @@ export class ArFSManifestToUpload extends ArFSEntityToUpload {
 	lastModifiedDateMS: UnixTime;
 
 	constructor(
-		public readonly folderToGenManifest: (ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[],
+		public readonly folderToGenManifest: ArFSPublicFolderWithPaths[],
 		public readonly destManifestName: string
 	) {
 		super();
