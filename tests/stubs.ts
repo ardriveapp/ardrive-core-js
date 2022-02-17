@@ -26,6 +26,7 @@ import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
 	deriveDriveKey,
+	EntityKey,
 	FolderHierarchy,
 	JWKWallet,
 	publicEntityWithPathsFactory,
@@ -62,11 +63,12 @@ export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz12345678
 };
 
 export const getStubDriveKey = async (): Promise<DriveKey> => {
-	return deriveDriveKey(
+	const keyAsBuffer = await deriveDriveKey(
 		'stubPassword',
 		`${stubEntityID}`,
 		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
 	);
+	return new EntityKey(keyAsBuffer);
 };
 
 export const stubTxID = TxID('0000000000000000000000000000000000000000001');
