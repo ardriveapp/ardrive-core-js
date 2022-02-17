@@ -18,7 +18,7 @@ import {
 	stubPrivateFile,
 	stubPrivateFolder
 } from '../../tests/stubs';
-import { DriveKey, FeeMultiple, FileKey, W } from '../types';
+import { DriveKey, EntityKey, FeeMultiple, FileKey, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
@@ -139,10 +139,11 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
+			const stubbedKey = await getStubDriveKey();
 			const decryptedBuffer: Buffer = await driveDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				await getStubDriveKey(),
+				stubbedKey.keyData,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -202,10 +203,11 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
+			const stubbedKey = await getStubDriveKey();
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				await getStubDriveKey(),
+				stubbedKey.keyData,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -281,11 +283,12 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
-			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, await getStubDriveKey());
+			const stubbedKey = await getStubDriveKey();
+			const fileKey: FileKey = new EntityKey(await deriveFileKey(`${stubEntityID}`, stubbedKey.keyData));
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				fileKey,
+				fileKey.keyData,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);

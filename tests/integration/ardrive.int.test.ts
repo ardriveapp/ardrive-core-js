@@ -22,7 +22,7 @@ import {
 	ArFSManifestResult,
 	FileConflictPrompts
 } from '../../src/types';
-import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
+import { readJWKFile } from '../../src/utils/common';
 import {
 	stubEntityID,
 	stubArweaveAddress,
@@ -47,7 +47,7 @@ import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
-import { ArFSPrivateFolder } from '../../src/exports';
+import { ArFSPrivateFolder, EntityKey } from '../../src/exports';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -58,7 +58,12 @@ describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const getStubDriveKey = async (): Promise<DriveKey> => {
-		return deriveDriveKey('stubPassword', `${stubEntityID}`, JSON.stringify((wallet as JWKWallet).getPrivateKey()));
+		const key = await deriveDriveKey(
+			'stubPassword',
+			`${stubEntityID}`,
+			JSON.stringify((wallet as JWKWallet).getPrivateKey())
+		);
+		return new EntityKey(key);
 	};
 
 	const arweaveOracle = new GatewayOracle();
@@ -169,7 +174,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE',
 					newPrivateDriveData: stubPrivateDriveData
 				});
-				assertCreateDriveExpectations(result, W(91), W(37), urlEncodeHashKey(stubDriveKey));
+				assertCreateDriveExpectations(result, W(91), W(37), stubDriveKey.toJSON());
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
@@ -183,7 +188,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE',
 					newPrivateDriveData: stubPrivateDriveData
 				});
-				assertCreateDriveExpectations(result, W(2915), W(37), urlEncodeHashKey(stubDriveKey), true);
+				assertCreateDriveExpectations(result, W(2915), W(37), stubDriveKey.toJSON(), true);
 			});
 		});
 	});
@@ -277,7 +282,7 @@ describe('ArDrive class - integrated', () => {
 					parentFolderId: stubEntityID,
 					driveKey: stubDriveKey
 				});
-				assertCreateFolderExpectations(result, W(38), urlEncodeHashKey(stubDriveKey));
+				assertCreateFolderExpectations(result, W(38), stubDriveKey.toJSON());
 			});
 		});
 
@@ -539,7 +544,8 @@ describe('ArDrive class - integrated', () => {
 					newParentFolderId: folderHierarchy.parentFolder.entityId,
 					driveKey: await getStubDriveKey()
 				});
-				assertCreateFolderExpectations(result, W(36), urlEncodeHashKey(await getStubDriveKey()));
+				const stubbedKey = await getStubDriveKey();
+				assertCreateFolderExpectations(result, W(36), stubbedKey.toJSON());
 			});
 		});
 
