@@ -338,6 +338,31 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			this.rootFolderId = dataJSON.rootFolderId;
 
 			if (isPrivate) {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				const driveKey = this.privateKeyData.driveKeyForDriveId(this.driveId!);
+				if (driveKey) {
+					return new ArFSPrivateDrive(
+						this.appName,
+						this.appVersion,
+						this.arFS,
+						this.contentType,
+						this.driveId,
+						this.entityType,
+						this.name,
+						this.txId,
+						this.unixTime,
+						this.drivePrivacy,
+						this.rootFolderId,
+						// These private fields are type-checked these within the dataJSON closure
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.driveAuthMode!,
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.cipher!,
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.cipherIV!,
+						driveKey
+					);
+				}
 				return new ArFSPrivateDriveKeyless(
 					this.appName,
 					this.appVersion,
