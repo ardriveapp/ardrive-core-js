@@ -87,7 +87,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	EntityKey
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -154,7 +155,7 @@ export class PrivateDriveKeyData {
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
-		const driveKey = await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey));
+		const driveKey = new EntityKey(await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey)));
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
 }
@@ -993,7 +994,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
-		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const fileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
 		const cacheKey = { fileId, owner, fileKey };
 		const cachedFile = this.caches.privateFileCache.get(cacheKey);
 		if (cachedFile) {
@@ -1077,10 +1078,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
 				// Build the file so that we don't add something invalid to the cache
 				const file = await fileBuilder.build(node);
+				const fileKey: DriveKey = new EntityKey(await deriveFileKey(`${file.fileId}`, driveKey.keyData));
 				const cacheKey = {
 					fileId: file.fileId,
 					owner,
-					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
+					fileKey
 				};
 				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
@@ -1293,7 +1295,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					try {
 						// Attempt to decrypt drive to assert drive key is correct
-						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
+						await driveDecrypt(cipherIVFromTag.value, driveKey.keyData, driveDataBuffer);
 					} catch {
 						throw new Error('Provided drive key or password could not decrypt target private drive!');
 					}
@@ -1524,7 +1526,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				 * Doing it sequentially for now
 				 */
 				const dataStream = await this.getPrivateDataStream(file);
-				const fileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+				const fileKey = new EntityKey(await deriveFileKey(`${file.fileId}`, driveKey.keyData));
 				const fileCipherIVResult = cipherIVMap[`${file.dataTxId}`];
 				if (!fileCipherIVResult) {
 					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);

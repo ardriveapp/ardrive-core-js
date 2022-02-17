@@ -1,4 +1,5 @@
 import { EntityID, Winston, FeeMultiple } from '.';
+import { EntityKey } from './entity_key';
 
 export const JSON_CONTENT_TYPE = 'application/json';
 export const PRIVATE_CONTENT_TYPE = 'application/octet-stream';
@@ -14,7 +15,6 @@ export type DriveID = EntityID;
 export type AnyEntityID = DriveID | FolderID | FileID;
 
 export type CipherIV = string;
-export type EntityKey = Buffer;
 export type DriveKey = EntityKey;
 export type FileKey = EntityKey;
 

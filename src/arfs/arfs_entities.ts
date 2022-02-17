@@ -16,7 +16,8 @@ import {
 	DrivePrivacy,
 	EntityType,
 	FileKey,
-	DriveKey
+	DriveKey,
+	EntityKey
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 
@@ -140,7 +141,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			driveAuthMode,
 			cipher,
 			cipherIV,
-			Buffer.from([])
+			new EntityKey(Buffer.from([]))
 		);
 		delete this.driveKey;
 	}
@@ -328,10 +329,6 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity {
 	get encryptedDataSize(): ByteCount {
 		return encryptedDataSize(this.size);
 	}
-
-	// toJson(): string {
-
-	// }
 }
 
 export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWithPath {
