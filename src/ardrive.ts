@@ -67,7 +67,7 @@ import {
 	ListPrivateFolderParams,
 	MetaDataBaseCosts
 } from './types';
-import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { WalletDAO } from './wallet_dao';
@@ -1213,8 +1213,8 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		// Add drive keys to drive and folder entity results
-		createDriveResult.created[0].key = urlEncodeHashKey(newDriveData.driveKey.keyData);
-		createDriveResult.created[1].key = urlEncodeHashKey(newDriveData.driveKey.keyData);
+		createDriveResult.created[0].key = newDriveData.driveKey.toJSON();
+		createDriveResult.created[1].key = newDriveData.driveKey.toJSON();
 
 		return createDriveResult;
 	}
