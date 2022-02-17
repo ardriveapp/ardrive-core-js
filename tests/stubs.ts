@@ -2,13 +2,13 @@ import Arweave from 'arweave';
 import { readFileSync } from 'fs';
 import {
 	ArFSPublicDrive,
-	ArFSPrivateDrive,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
 	ArFSPublicFile,
 	ArFSPrivateFile
 } from '../src/arfs/arfs_entities';
 import {
+	ArFSPrivateDriveKeyless,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
 	ArFSPrivateFileDataPrototype,
@@ -96,8 +96,8 @@ export const stubPublicFileMetaDataTx = new ArFSPublicFileMetaDataPrototype(
 	stubEntityIDAltTwo
 );
 
-export const stubPrivateFileMetaDataTx = (async () =>
-	new ArFSPrivateFileMetaDataPrototype(
+export const stubPrivateFileMetaDataTx = (async () => {
+	return new ArFSPrivateFileMetaDataPrototype(
 		await ArFSPrivateFileMetadataTransactionData.from(
 			'Test Private File Metadata',
 			new ByteCount(10),
@@ -110,7 +110,8 @@ export const stubPrivateFileMetaDataTx = (async () =>
 		stubEntityID,
 		stubEntityIDAlt,
 		stubEntityIDAltTwo
-	))();
+	);
+})();
 
 export const stubPublicDriveMetaDataTx = new ArFSPublicDriveMetaDataPrototype(
 	new ArFSPublicDriveTransactionData('Test Public Drive Metadata', stubEntityID),
@@ -173,7 +174,7 @@ export const stubPublicDrive = (): ArFSPublicDrive =>
 		stubEntityID
 	);
 
-export const stubPrivateDrive = new ArFSPrivateDrive(
+export const stubPrivateDrive = new ArFSPrivateDriveKeyless(
 	'Integration Test',
 	'1.0',
 	ArFS_O_11,
@@ -217,12 +218,12 @@ export const stubPublicFolder = ({
 		folderId
 	);
 
-export const stubPrivateFolder = ({
+export const stubPrivateFolder = async ({
 	folderId = stubEntityID,
 	parentFolderId = stubEntityID,
 	folderName = 'STUB NAME',
 	driveId = stubEntityID
-}: StubFolderParams): ArFSPrivateFolder =>
+}: StubFolderParams): Promise<ArFSPrivateFolder> =>
 	new ArFSPrivateFolder(
 		'Integration Test',
 		'1.0',
@@ -236,7 +237,8 @@ export const stubPrivateFolder = ({
 		parentFolderId,
 		folderId,
 		'stubCipher',
-		'stubIV'
+		'stubIV',
+		await getStubDriveKey()
 	);
 
 interface StubFileParams {
@@ -274,14 +276,14 @@ export const stubPublicFile = ({
 		JSON_CONTENT_TYPE
 	);
 
-export const stubPrivateFile = ({
+export const stubPrivateFile = async ({
 	driveId = stubEntityID,
 	fileName = 'STUB NAME',
 	txId = stubTransactionID,
 	parentFolderId = stubEntityID,
 	fileId = stubEntityID,
 	dataTxId = stubTransactionID
-}: StubFileParams): ArFSPrivateFile =>
+}: StubFileParams): Promise<ArFSPrivateFile> =>
 	new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
@@ -300,7 +302,8 @@ export const stubPrivateFile = ({
 		JSON_CONTENT_TYPE,
 		'stubCipher',
 		'stubIV',
-		Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+		await getStubDriveKey(),
+		await getStubDriveKey()
 	);
 
 const stubPublicRootFolder = stubPublicFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() });

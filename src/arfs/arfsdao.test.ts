@@ -554,7 +554,7 @@ describe('The ArFSDAO class', () => {
 
 		describe('getPrivateFolder function', () => {
 			it('returns a drive ID for a specified folder ID from cache when cached entry is available', async () => {
-				const cachedFolder = stubPrivateFolder({});
+				const cachedFolder = await stubPrivateFolder({});
 				const promise = Promise.resolve(cachedFolder);
 				stub(privateFolderCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateFolder(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
@@ -575,7 +575,7 @@ describe('The ArFSDAO class', () => {
 
 		describe('getPrivateFile function', () => {
 			it('returns a file for a specified file ID from cache when cached entry is available', async () => {
-				const cachedFile = stubPrivateFile({});
+				const cachedFile = await stubPrivateFile({});
 				const promise = Promise.resolve(cachedFile);
 				stub(privateFileCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateFile(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
