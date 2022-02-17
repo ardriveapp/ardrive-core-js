@@ -363,8 +363,6 @@ export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWit
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
 		this.entityIdPath = `${hierarchy.entityPathToFolderId(entity.parentFolderId)}${entity.fileId}`;
 	}
-
-	// toJson(): string {}
 }
 
 export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
