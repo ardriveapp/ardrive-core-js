@@ -167,6 +167,7 @@ export type GetPrivateFolderParams = GetPublicFolderParams & WithDriveKey;
 
 export interface GetPublicFileParams extends GetEntityParams {
 	fileId: FileID;
+	withKeys?: boolean;
 }
 export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
 

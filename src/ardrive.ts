@@ -1376,23 +1376,19 @@ export class ArDrive extends ArDriveAnonymous {
 		return new ArFSPrivateFolderKeyless(folder);
 	}
 
-	// Remove me after PE-1027 is applied
-	public async getPrivateFileKeyless({
+	public async getPrivateFile({
 		fileId,
 		driveKey,
-		owner
-	}: GetPrivateFileParams): Promise<ArFSPrivateFileKeyless> {
-		const file = await this.getPrivateFile({ fileId, driveKey, owner });
-		return new ArFSPrivateFileKeyless(file);
-	}
-
-	public async getPrivateFile({ fileId, driveKey, owner }: GetPrivateFileParams): Promise<ArFSPrivateFile> {
+		owner,
+		withKeys = false
+	}: GetPrivateFileParams): Promise<ArFSPrivateFile> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		const file = await this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		return withKeys ? new ArFSPrivateFileKeyless(file) : file;
 	}
 
 	/**
