@@ -42,7 +42,6 @@ import {
 	emptyManifestResult,
 	CommunityTipSettings,
 	ArFSDownloadPrivateFolderParams,
-	EntityKey,
 	CommunityTipParams,
 	TipResult,
 	MovePublicFileParams,
@@ -1460,7 +1459,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const outputFileName = defaultFileName ?? privateFile.name;
 		const fullPath = joinPath(destFolderPath, outputFileName);
 		const data = await this.arFsDao.getPrivateDataStream(privateFile);
-		const fileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
+		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
 		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
 		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);

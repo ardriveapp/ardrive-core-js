@@ -10,7 +10,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount } from '../types';
+import { ByteCount, DriveKey } from '../types';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -377,17 +377,17 @@ export async function createPrivateFileSharingLink(
 ): Promise<string> {
 	let fileSharingUrl = '';
 	try {
-		const driveKey: Buffer = await deriveDriveKey(
+		const driveKey: DriveKey = await deriveDriveKey(
 			user.dataProtectionKey,
 			fileToShare.driveId,
 			user.walletPrivateKey
 		);
-		const fileKey: Buffer = await deriveFileKey(fileToShare.fileId, driveKey);
+		const fileKey: DriveKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',
 			fileToShare.fileId,
 			'/view?fileKey=',
-			fileKey.toString('base64')
+			fileKey.keyData.toString('base64')
 		);
 	} catch (err) {
 		console.log(err);
@@ -520,7 +520,7 @@ export function winstonToAr(winston: number): number {
 // Returns encrypted data using driveKey for folders, and fileKey for files
 export async function encryptFileOrFolderData(
 	itemToUpload: types.ArFSFileMetaData,
-	driveKey: Buffer,
+	driveKey: DriveKey,
 	secondaryFileMetaDataJSON: string
 ): Promise<types.ArFSEncryptedData> {
 	const encryptionKey =
