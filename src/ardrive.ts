@@ -41,9 +41,8 @@ import {
 	upsertOnConflicts,
 	emptyManifestResult,
 	CommunityTipSettings,
-	ArFSDownloadPrivateFolderParams
-} from './types';
-import {
+	ArFSDownloadPrivateFolderParams,
+	EntityKey,
 	CommunityTipParams,
 	TipResult,
 	MovePublicFileParams,
@@ -68,7 +67,7 @@ import {
 	ListPrivateFolderParams,
 	MetaDataBaseCosts
 } from './types';
-import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { WalletDAO } from './wallet_dao';
@@ -111,6 +110,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import {
 	ArFSPrivateFileKeyless,
 	ArFSPrivateFileWithPaths,
+	ArFSPrivateFolderKeyless,
 	ArFSPrivateFolderWithPaths,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
@@ -271,7 +271,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
-					key: urlEncodeHashKey(moveFileResult.fileKey)
+					key: moveFileResult.fileKey.toJSON()
 				}
 			],
 			tips: [],
@@ -414,7 +414,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(moveFolderResult.driveKey)
+					key: moveFolderResult.driveKey.toJSON()
 				}
 			],
 			tips: [],
@@ -487,7 +487,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: isPrivateResult(uploadFileResult) ? urlEncodeHashKey(uploadFileResult.fileKey) : undefined
+					key: isPrivateResult(uploadFileResult) ? uploadFileResult.fileKey.toJSON() : undefined
 				}
 			],
 			tips: [],
@@ -880,7 +880,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: newFolderId,
-					key: urlEncodeHashKey(driveKey)
+					key: driveKey.toJSON()
 				}
 			];
 
@@ -928,7 +928,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: urlEncodeHashKey(uploadFileResult.fileKey)
+					key: uploadFileResult.fileKey.toJSON()
 				}
 			];
 		}
@@ -1144,7 +1144,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(driveKey)
+					key: driveKey.toJSON()
 				}
 			],
 			tips: [],
@@ -1221,8 +1221,8 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		// Add drive keys to drive and folder entity results
-		createDriveResult.created[0].key = urlEncodeHashKey(newDriveData.driveKey);
-		createDriveResult.created[1].key = urlEncodeHashKey(newDriveData.driveKey);
+		createDriveResult.created[0].key = newDriveData.driveKey.toJSON();
+		createDriveResult.created[1].key = newDriveData.driveKey.toJSON();
 
 		return createDriveResult;
 	}
@@ -1366,22 +1366,29 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
 	}
 
-	public async getPrivateFileKeyless({
-		fileId,
+	// Remove me after PE-1027 is applied
+	public async getPrivateFolderKeyless({
+		folderId,
 		driveKey,
 		owner
-	}: GetPrivateFileParams): Promise<ArFSPrivateFileKeyless> {
-		const file = await this.getPrivateFile({ fileId, driveKey, owner });
-		return new ArFSPrivateFileKeyless(file);
+	}: GetPrivateFolderParams): Promise<ArFSPrivateFolderKeyless> {
+		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		return new ArFSPrivateFolderKeyless(folder);
 	}
 
-	public async getPrivateFile({ fileId, driveKey, owner }: GetPrivateFileParams): Promise<ArFSPrivateFile> {
+	public async getPrivateFile({
+		fileId,
+		driveKey,
+		owner,
+		withKeys = false
+	}: GetPrivateFileParams): Promise<ArFSPrivateFile> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		const file = await this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		return withKeys ? new ArFSPrivateFileKeyless(file) : file;
 	}
 
 	/**
@@ -1487,7 +1494,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const outputFileName = defaultFileName ?? privateFile.name;
 		const fullPath = joinPath(destFolderPath, outputFileName);
 		const data = await this.arFsDao.getPrivateDataStream(privateFile);
-		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const fileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
 		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
 		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
 		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);

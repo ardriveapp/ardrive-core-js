@@ -9,7 +9,7 @@ export class FolderTreeNode {
 		public children: FolderTreeNode[] = []
 	) {}
 
-	public static fromEntity(folderEntity: ArFSFileOrFolderEntity): FolderTreeNode {
+	public static fromEntity(folderEntity: ArFSFileOrFolderEntity<'folder'>): FolderTreeNode {
 		const node = new FolderTreeNode(folderEntity.entityId);
 		return node;
 	}
@@ -19,11 +19,11 @@ export class FolderHierarchy {
 	private _rootNode?: FolderTreeNode;
 
 	constructor(
-		private readonly folderIdToEntityMap: { [k: string]: ArFSFileOrFolderEntity },
+		private readonly folderIdToEntityMap: { [k: string]: ArFSFileOrFolderEntity<'folder'> },
 		private readonly folderIdToNodeMap: { [k: string]: FolderTreeNode }
 	) {}
 
-	static newFromEntities(entities: ArFSFileOrFolderEntity[]): FolderHierarchy {
+	static newFromEntities(entities: ArFSFileOrFolderEntity<'folder'>[]): FolderHierarchy {
 		const folderIdToEntityMap = entities.reduce((accumulator, entity) => {
 			return Object.assign(accumulator, { [`${entity.entityId}`]: entity });
 		}, {});
@@ -37,8 +37,8 @@ export class FolderHierarchy {
 	}
 
 	private static setupNodesWithEntity(
-		entity: ArFSFileOrFolderEntity,
-		folderIdToEntityMap: { [k: string]: ArFSFileOrFolderEntity },
+		entity: ArFSFileOrFolderEntity<'folder'>,
+		folderIdToEntityMap: { [k: string]: ArFSFileOrFolderEntity<'folder'> },
 		folderIdToNodeMap: { [k: string]: FolderTreeNode }
 	): void {
 		const folderIdKeyIsPresent = Object.keys(folderIdToNodeMap).includes(`${entity.entityId}`);

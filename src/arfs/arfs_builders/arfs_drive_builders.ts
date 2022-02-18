@@ -20,6 +20,7 @@ import {
 	ArFSMetadataEntityBuilderParams,
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
+import { ArFSPrivateDriveKeyless } from '../../exports';
 
 interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
@@ -184,7 +185,7 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 		) {
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
-			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey, dataBuffer);
+			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey.keyData, dataBuffer);
 			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 
@@ -205,7 +206,8 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 				this.rootFolderId,
 				this.driveAuthMode,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				this.driveKey
 			);
 		}
 
@@ -336,7 +338,32 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			this.rootFolderId = dataJSON.rootFolderId;
 
 			if (isPrivate) {
-				return new ArFSPrivateDrive(
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				const driveKey = this.privateKeyData.driveKeyForDriveId(this.driveId!);
+				if (driveKey) {
+					return new ArFSPrivateDrive(
+						this.appName,
+						this.appVersion,
+						this.arFS,
+						this.contentType,
+						this.driveId,
+						this.entityType,
+						this.name,
+						this.txId,
+						this.unixTime,
+						this.drivePrivacy,
+						this.rootFolderId,
+						// These private fields are type-checked these within the dataJSON closure
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.driveAuthMode!,
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.cipher!,
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						this.cipherIV!,
+						driveKey
+					);
+				}
+				return new ArFSPrivateDriveKeyless(
 					this.appName,
 					this.appVersion,
 					this.arFS,

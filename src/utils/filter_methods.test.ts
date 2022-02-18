@@ -55,16 +55,16 @@ describe('The fileFilter function', () => {
 		expect(fileFilter(stubPublicFile({}))).to.be.true;
 	});
 
-	it('returns true for an ArFSPrivateFile', () => {
-		expect(fileFilter(stubPrivateFile({}))).to.be.true;
+	it('returns true for an ArFSPrivateFile', async () => {
+		expect(fileFilter(await stubPrivateFile({}))).to.be.true;
 	});
 
-	it('returns false for an ArFSPublicFolder', () => {
+	it('returns false for an ArFSPublicFolder', async () => {
 		expect(fileFilter(stubPublicFolder({}))).to.be.false;
 	});
 
-	it('returns false for an ArFSPrivateFolder', () => {
-		expect(fileFilter(stubPrivateFolder({}))).to.be.false;
+	it('returns false for an ArFSPrivateFolder', async () => {
+		expect(fileFilter(await stubPrivateFolder({}))).to.be.false;
 	});
 });
 
@@ -73,15 +73,15 @@ describe('The folderFilter function', () => {
 		expect(folderFilter(stubPublicFile({}))).to.be.false;
 	});
 
-	it('returns false for an ArFSPrivateFile', () => {
-		expect(folderFilter(stubPrivateFile({}))).to.be.false;
+	it('returns false for an ArFSPrivateFile', async () => {
+		expect(folderFilter(await stubPrivateFile({}))).to.be.false;
 	});
 
 	it('returns false for an ArFSPublicFolder', () => {
 		expect(folderFilter(stubPublicFolder({}))).to.be.true;
 	});
 
-	it('returns false for an ArFSPrivateFolder', () => {
-		expect(folderFilter(stubPrivateFolder({}))).to.be.true;
+	it('returns false for an ArFSPrivateFolder', async () => {
+		expect(folderFilter(await stubPrivateFolder({}))).to.be.true;
 	});
 });

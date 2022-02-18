@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
+import { EntityKey } from '../types';
 import { StreamDecrypt } from './stream_decrypt';
 
 const pipelinePromise = promisify(pipeline);
@@ -8,7 +9,7 @@ const pipelinePromise = promisify(pipeline);
 describe('the StreamDecrypt class', () => {
 	const healthyCipherIV = '44PEY4EvVXq6TuBp';
 	const badCipherIV = 'xxxxxxxxxxxxxxxx';
-	const healthyFileKey = Buffer.from('Zzaf6YeMb0chjYXjGkluCnLdufiu7/SxbuEbyPzR+1g=', 'base64');
+	const healthyFileKey = new EntityKey(Buffer.from('Zzaf6YeMb0chjYXjGkluCnLdufiu7/SxbuEbyPzR+1g=', 'base64'));
 	const data = ':)\n\n';
 	const rawEncryptedData = Buffer.from('boFKovaNPFrbNHt0mftHjmQexP4=', 'base64');
 	const encryptedData = rawEncryptedData.slice(0, rawEncryptedData.length - 16);
