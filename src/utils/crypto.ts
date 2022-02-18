@@ -100,12 +100,12 @@ export async function driveDecrypt(cipherIV: string, driveKey: DriveKey, data: B
 }
 
 // New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
-export async function fileDecrypt(cipherIV: string, fileKey: Buffer, data: Buffer): Promise<Buffer> {
+export async function fileDecrypt(cipherIV: string, fileKey: FileKey, data: Buffer): Promise<Buffer> {
 	try {
 		const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
 		const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
 		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		const decipher = crypto.createDecipheriv(algo, fileKey, iv, { authTagLength });
+		const decipher = crypto.createDecipheriv(algo, fileKey.keyData, iv, { authTagLength });
 		decipher.setAuthTag(authTag);
 		const decryptedFile: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
 		return decryptedFile;

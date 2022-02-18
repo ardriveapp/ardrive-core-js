@@ -176,7 +176,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			const dataBuffer = Buffer.from(txData);
 			const fileKey = this.fileKey ?? (await deriveFileKey(`${this.fileId}`, this.driveKey));
 
-			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey.keyData, dataBuffer);
+			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer);
 			const decryptedFileString: string = await Utf8ArrayToStr(decryptedFileBuffer);
 			const decryptedFileJSON: FileMetaDataTransactionData = await JSON.parse(decryptedFileString);
 
