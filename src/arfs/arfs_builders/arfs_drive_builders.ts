@@ -185,7 +185,7 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 		) {
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
-			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey.keyData, dataBuffer);
+			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey, dataBuffer);
 			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 

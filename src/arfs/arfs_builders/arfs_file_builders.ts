@@ -12,8 +12,7 @@ import {
 	EID,
 	ContentType,
 	GQLNodeInterface,
-	GQLTagInterface,
-	EntityKey
+	GQLTagInterface
 } from '../../types';
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
@@ -175,9 +174,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 		) {
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
-			const fileKey = this.fileKey ?? new EntityKey(await deriveFileKey(`${this.fileId}`, this.driveKey.keyData));
+			const fileKey = this.fileKey ?? (await deriveFileKey(`${this.fileId}`, this.driveKey));
 
-			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey.keyData, dataBuffer);
+			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer);
 			const decryptedFileString: string = await Utf8ArrayToStr(decryptedFileBuffer);
 			const decryptedFileJSON: FileMetaDataTransactionData = await JSON.parse(decryptedFileString);
 

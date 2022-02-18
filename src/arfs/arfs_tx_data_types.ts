@@ -11,8 +11,7 @@ import {
 	UnixTime,
 	ArFSEncryptedData,
 	CipherType,
-	DriveAuthMode,
-	EntityKey
+	DriveAuthMode
 } from '../types';
 
 export interface ArFSObjectTransactionData {
@@ -57,7 +56,7 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 		driveKey: DriveKey
 	): Promise<ArFSPrivateDriveTransactionData> {
 		const { cipher, cipherIV, data } = await driveEncrypt(
-			driveKey.keyData,
+			driveKey,
 			Buffer.from(
 				JSON.stringify({
 					name: name,
@@ -104,7 +103,7 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 
 	static async from(name: string, driveKey: DriveKey): Promise<ArFSPrivateFolderTransactionData> {
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
-			driveKey.keyData,
+			driveKey,
 			Buffer.from(
 				JSON.stringify({
 					name: name
@@ -168,9 +167,9 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		fileId: FileID,
 		driveKey: DriveKey
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
-		const fileKey: FileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
+		const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
-			fileKey.keyData,
+			fileKey,
 			Buffer.from(
 				JSON.stringify({
 					name: name,
@@ -220,8 +219,8 @@ export class ArFSPrivateFileDataTransactionData extends ArFSFileDataTransactionD
 		fileId: FileID,
 		driveKey: DriveKey
 	): Promise<ArFSPrivateFileDataTransactionData> {
-		const fileKey: FileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
-		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(fileKey.keyData, fileData);
+		const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(fileKey, fileData);
 		return new ArFSPrivateFileDataTransactionData(cipher, cipherIV, data);
 	}
 
