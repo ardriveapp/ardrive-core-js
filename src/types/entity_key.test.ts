@@ -9,6 +9,12 @@ describe('EntityKey class', () => {
 		key = await getStubDriveKey();
 	});
 
+	it('throws if a non-buffer is given', () => {
+		// eslint-disable-next-line prettier/prettier
+		const nonBuffer: Buffer = 'non buffer type' as unknown as Buffer;
+		expect(() => new EntityKey(nonBuffer)).to.throw('The argument must be of type Buffer, got string');
+	});
+
 	it('the original buffer contains the correct data', async () => {
 		expect(key.keyData).to.deep.equal(
 			Buffer.from([
