@@ -1091,18 +1091,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
 
-	async getEntitiesInFolder(
+	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
 		parentFolderId: FolderID,
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
-		) => ArFSFileOrFolderBuilder<ArFSFileOrFolderEntity>,
+		) =>
+			| ArFSFileOrFolderBuilder<'file', ArFSFileOrFolderEntity<'file'>>
+			| ArFSFileOrFolderBuilder<'folder', ArFSFileOrFolderEntity<'folder'>>,
 		latestRevisionsOnly = true,
 		filterOnOwner = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<T[]> {
 		let cursor = '';
 		let hasNextPage = true;
-		const allEntities: ArFSFileOrFolderEntity[] = [];
+		const allEntities: T[] = [];
 
 		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
 		const owner = await this.wallet.getAddress();
@@ -1123,7 +1125,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<ArFSFileOrFolderEntity>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			const folders: Promise<T>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const { tags } = node;
@@ -1146,7 +1148,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		parentFolderId: FolderID,
 		driveKey: DriveKey,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPrivateFile | ArFSPrivateFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1160,7 +1162,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1173,7 +1175,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getChildrenFolderIds(
 		folderId: FolderID,
-		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity[]
+		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity<'folder'>[]
 	): Promise<FolderID[]> {
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
 		return hierarchy.folderIdSubtreeFromFolderId(folderId, Number.MAX_SAFE_INTEGER);
@@ -1191,17 +1193,25 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicNameConflictInfoInFolder(folderId: FolderID): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPublicFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPublicFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 
 	async getPrivateNameConflictInfoInFolder(folderId: FolderID, driveKey: DriveKey): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 

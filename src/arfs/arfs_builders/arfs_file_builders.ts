@@ -27,7 +27,10 @@ interface FileMetaDataTransactionData {
 	dataTxId: string;
 	dataContentType: ContentType;
 }
-export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
+export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
+	'file',
+	T
+> {
 	size?: ByteCount;
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;

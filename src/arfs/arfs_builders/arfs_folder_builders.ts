@@ -26,9 +26,10 @@ export class RootFolderID extends EntityID {
 	}
 }
 
-export abstract class ArFSFolderBuilder<
-	T extends ArFSPublicFolder | ArFSPrivateFolder
-> extends ArFSFileOrFolderBuilder<T> {
+export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivateFolder> extends ArFSFileOrFolderBuilder<
+	'folder',
+	T
+> {
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
 			{ name: 'Folder-Id', value: `${this.entityId}` },

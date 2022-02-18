@@ -159,10 +159,11 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 	lastModifiedDate: UnixTime; // the last modified date of the file or folder as seconds since unix epoch
 }
 
-export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder' = 'file' | 'folder'>
+export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	extends ArFSEntity
 	// eslint-disable-next-line prettier/prettier
-	implements ArFSFileFolderEntity {
+	implements ArFSFileFolderEntity
+{
 	constructor(
 		appName: string,
 		appVersion: string,
