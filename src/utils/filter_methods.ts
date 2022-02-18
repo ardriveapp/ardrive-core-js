@@ -1,4 +1,11 @@
-import { ArFSDriveEntity, ArFSFileOrFolderEntity } from '../arfs/arfs_entities';
+import {
+	ArFSDriveEntity,
+	ArFSFileOrFolderEntity,
+	ArFSPrivateFile,
+	ArFSPrivateFolder,
+	ArFSPublicFile,
+	ArFSPublicFolder
+} from '../arfs/arfs_entities';
 
 /**
  * @name lastRevisionFilter is a standard JS find/filter function intended to
@@ -10,9 +17,9 @@ import { ArFSDriveEntity, ArFSFileOrFolderEntity } from '../arfs/arfs_entities';
  * @returns {boolean}
  */
 export function latestRevisionFilter(
-	entity: ArFSFileOrFolderEntity,
+	entity: ArFSFileOrFolderEntity<'file' | 'folder'>,
 	_index: number,
-	allEntities: ArFSFileOrFolderEntity[]
+	allEntities: ArFSFileOrFolderEntity<'file' | 'folder'>[]
 ): boolean {
 	const allRevisions = allEntities.filter((e) => e.entityId.equals(entity.entityId));
 	const latestRevision = allRevisions[0];
@@ -38,10 +45,14 @@ export function latestRevisionFilterForDrives(
 	return entity.txId.equals(latestRevision.txId);
 }
 
-export function fileFilter(entity: ArFSFileOrFolderEntity): boolean {
+export function fileFilter<T extends ArFSPrivateFile | ArFSPublicFile>(
+	entity: ArFSFileOrFolderEntity<'file' | 'folder'>
+): entity is T {
 	return entity.entityType === 'file';
 }
 
-export function folderFilter(entity: ArFSFileOrFolderEntity): boolean {
+export function folderFilter<T extends ArFSPublicFolder | ArFSPrivateFolder>(
+	entity: ArFSFileOrFolderEntity<'file' | 'folder'>
+): entity is T {
 	return entity.entityType === 'folder';
 }

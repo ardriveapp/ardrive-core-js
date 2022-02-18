@@ -87,7 +87,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	EntityKey
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -154,7 +155,7 @@ export class PrivateDriveKeyData {
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
-		const driveKey = await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey));
+		const driveKey = new EntityKey(await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey)));
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
 }
@@ -993,7 +994,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
-		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+		const fileKey = new EntityKey(await deriveFileKey(`${fileId}`, driveKey.keyData));
 		const cacheKey = { fileId, owner, fileKey };
 		const cachedFile = this.caches.privateFileCache.get(cacheKey);
 		if (cachedFile) {
@@ -1077,10 +1078,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
 				// Build the file so that we don't add something invalid to the cache
 				const file = await fileBuilder.build(node);
+				const fileKey: DriveKey = new EntityKey(await deriveFileKey(`${file.fileId}`, driveKey.keyData));
 				const cacheKey = {
 					fileId: file.fileId,
 					owner,
-					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
+					fileKey
 				};
 				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
@@ -1089,18 +1091,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
 
-	async getEntitiesInFolder(
+	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
 		parentFolderId: FolderID,
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
-		) => ArFSFileOrFolderBuilder<ArFSFileOrFolderEntity>,
+		) =>
+			| ArFSFileOrFolderBuilder<'file', ArFSFileOrFolderEntity<'file'>>
+			| ArFSFileOrFolderBuilder<'folder', ArFSFileOrFolderEntity<'folder'>>,
 		latestRevisionsOnly = true,
 		filterOnOwner = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<T[]> {
 		let cursor = '';
 		let hasNextPage = true;
-		const allEntities: ArFSFileOrFolderEntity[] = [];
+		const allEntities: T[] = [];
 
 		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
 		const owner = await this.wallet.getAddress();
@@ -1121,7 +1125,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<ArFSFileOrFolderEntity>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			const folders: Promise<T>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const { tags } = node;
@@ -1144,7 +1148,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		parentFolderId: FolderID,
 		driveKey: DriveKey,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPrivateFile | ArFSPrivateFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1158,7 +1162,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1171,7 +1175,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getChildrenFolderIds(
 		folderId: FolderID,
-		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity[]
+		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity<'folder'>[]
 	): Promise<FolderID[]> {
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
 		return hierarchy.folderIdSubtreeFromFolderId(folderId, Number.MAX_SAFE_INTEGER);
@@ -1189,17 +1193,25 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicNameConflictInfoInFolder(folderId: FolderID): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPublicFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPublicFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 
 	async getPrivateNameConflictInfoInFolder(folderId: FolderID, driveKey: DriveKey): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 
@@ -1293,7 +1305,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					try {
 						// Attempt to decrypt drive to assert drive key is correct
-						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
+						await driveDecrypt(cipherIVFromTag.value, driveKey.keyData, driveDataBuffer);
 					} catch {
 						throw new Error('Provided drive key or password could not decrypt target private drive!');
 					}
@@ -1489,7 +1501,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			maxDepth
 		);
 		const folderWrapper = new ArFSFolderToDownload(
-			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy, driveKey),
+			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy),
 			customFolderName
 		);
 
@@ -1501,7 +1513,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}, {});
 
 		const foldersWithPath = [privateFolder, ...childFolders]
-			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy, driveKey))
+			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy))
 			.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
 		// Iteratively download all child files in the hierarchy
@@ -1517,7 +1529,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
-					privateEntityWithPathsKeylessFactory(file, hierarchy, driveKey).path
+					privateEntityWithPathsKeylessFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
@@ -1527,7 +1539,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				 * Doing it sequentially for now
 				 */
 				const dataStream = await this.getPrivateDataStream(file);
-				const fileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+				const fileKey = new EntityKey(await deriveFileKey(`${file.fileId}`, driveKey.keyData));
 				const fileCipherIVResult = cipherIVMap[`${file.dataTxId}`];
 				if (!fileCipherIVResult) {
 					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);

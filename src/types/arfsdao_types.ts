@@ -97,7 +97,10 @@ export type ArFSTxResult<R> = {
 };
 
 /** Generic parameters for move file and move folder ArFSDAO methods */
-export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
+export interface ArFSMoveParams<
+	O extends ArFSFileOrFolderEntity<'file' | 'folder'>,
+	T extends ArFSObjectTransactionData
+> {
 	originalMetaData: O;
 	newParentFolderId: FolderID;
 	metaDataBaseReward: RewardSettings;

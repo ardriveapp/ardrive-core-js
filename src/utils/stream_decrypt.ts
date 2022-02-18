@@ -11,7 +11,7 @@ export class StreamDecrypt extends Transform {
 	constructor(cipherIV: CipherIV, fileKey: FileKey, authTag: Buffer) {
 		super();
 		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		this.decipher = createDecipheriv(algo, fileKey, iv, { authTagLength });
+		this.decipher = createDecipheriv(algo, fileKey.keyData, iv, { authTagLength });
 		this.decipher.setAuthTag(authTag);
 	}
 
