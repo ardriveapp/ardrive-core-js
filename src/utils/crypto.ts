@@ -7,6 +7,7 @@ import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
 import jwkToPem, { JWK } from 'jwk-to-pem';
 import { authTagLength } from './constants';
+import { DriveKey, EntityKey, FileKey } from '../types';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
@@ -30,21 +31,21 @@ export async function deriveDriveKey(
 	dataEncryptionKey: crypto.BinaryLike,
 	driveId: string,
 	walletPrivateKey: string
-): Promise<Buffer> {
+): Promise<DriveKey> {
 	const driveIdBytes: Buffer = Buffer.from(parse(driveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
 	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'));
 	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
 	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey);
 	const info: string = utf8.encode(dataEncryptionKey as string);
 	const driveKey: Buffer = hkdf(Buffer.from(walletSignature), keyByteLength, { info, hash: keyHash });
-	return driveKey;
+	return new EntityKey(driveKey);
 }
 
 // Derive a key from the user's Drive Key and the File Id
-export async function deriveFileKey(fileId: string, driveKey: Buffer): Promise<Buffer> {
+export async function deriveFileKey(fileId: string, driveKey: DriveKey): Promise<FileKey> {
 	const info: Buffer = Buffer.from(parse(fileId) as Uint8Array);
-	const fileKey: Buffer = hkdf(driveKey, keyByteLength, { info, hash: keyHash });
-	return fileKey;
+	const fileKey: Buffer = hkdf(driveKey.keyData, keyByteLength, { info, hash: keyHash });
+	return new EntityKey(fileKey);
 }
 
 // New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
@@ -61,9 +62,9 @@ export async function driveEncrypt(driveKey: Buffer, data: Buffer): Promise<ArFS
 }
 
 // New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
-export async function fileEncrypt(fileKey: Buffer, data: Buffer): Promise<ArFSEncryptedData> {
+export async function fileEncrypt(fileKey: DriveKey, data: Buffer): Promise<ArFSEncryptedData> {
 	const iv: Buffer = crypto.randomBytes(12);
-	const cipher = crypto.createCipheriv(algo, fileKey, iv, { authTagLength });
+	const cipher = crypto.createCipheriv(algo, fileKey.keyData, iv, { authTagLength });
 	const encryptedBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()]);
 	const encryptedFile: ArFSEncryptedData = {
 		cipher: 'AES256-GCM',

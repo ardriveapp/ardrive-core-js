@@ -1,5 +1,5 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
-import { CipherIV, DriveID, DriveKey, EntityID, EntityKey } from '../types';
+import { CipherIV, DriveID, DriveKey, EntityID } from '../types';
 import { Utf8ArrayToStr } from '../utils/common';
 import { JWKWallet } from '../jwk_wallet';
 
@@ -75,10 +75,11 @@ export class PrivateKeyData {
 
 		// Finally, if we have a password and a wallet, we can derive a drive key and try it
 		if (this.password && this.wallet) {
-			const derivedDriveKey: DriveKey = new EntityKey(
-				await deriveDriveKey(this.password, `${driveId}`, JSON.stringify(this.wallet.getPrivateKey()))
+			const derivedDriveKey: DriveKey = await deriveDriveKey(
+				this.password,
+				`${driveId}`,
+				JSON.stringify(this.wallet.getPrivateKey())
 			);
-
 			try {
 				const decryptedDriveJSON = await this.decryptToJson<T>(cipherIV, dataBuffer, derivedDriveKey);
 
