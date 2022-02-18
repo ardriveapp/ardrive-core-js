@@ -47,7 +47,7 @@ import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
-import { ArFSPrivateFolder, EntityKey } from '../../src/exports';
+import { ArFSPrivateFolder } from '../../src/exports';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -63,7 +63,7 @@ describe('ArDrive class - integrated', () => {
 			`${stubEntityID}`,
 			JSON.stringify((wallet as JWKWallet).getPrivateKey())
 		);
-		return new EntityKey(key);
+		return key;
 	};
 
 	const arweaveOracle = new GatewayOracle();

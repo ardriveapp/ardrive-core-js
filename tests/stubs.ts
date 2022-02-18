@@ -26,7 +26,6 @@ import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
 	deriveDriveKey,
-	EntityKey,
 	FolderHierarchy,
 	JWKWallet,
 	publicEntityWithPathsFactory,
@@ -63,12 +62,11 @@ export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz12345678
 };
 
 export const getStubDriveKey = async (): Promise<DriveKey> => {
-	const keyAsBuffer = await deriveDriveKey(
+	return await deriveDriveKey(
 		'stubPassword',
 		`${stubEntityID}`,
 		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
 	);
-	return new EntityKey(keyAsBuffer);
 };
 
 export const stubTxID = TxID('0000000000000000000000000000000000000000001');
@@ -343,7 +341,9 @@ export const stubPublicEntities = [
 	stubPublicFileInChild
 ];
 
-export const stubPublicHierarchy = FolderHierarchy.newFromEntities(stubPublicEntities);
+export const stubPublicFolders = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
+
+export const stubPublicHierarchy = FolderHierarchy.newFromEntities(stubPublicFolders);
 
 export const stubPublicEntitiesWithPaths = stubPublicEntities.map((entity) =>
 	publicEntityWithPathsFactory(entity, stubPublicHierarchy)
@@ -358,7 +358,7 @@ const stubIndexFileInRoot = stubPublicFile({
 
 export const stubEntitiesWithIndexInRoot = [...stubPublicEntities, stubIndexFileInRoot];
 
-export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stubEntitiesWithIndexInRoot);
+export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stubPublicFolders);
 
 export const stubEntitiesWithPathsAndIndexInRoot = stubEntitiesWithIndexInRoot.map((entity) =>
 	publicEntityWithPathsFactory(entity, stubHierarchyWithIndexInRoot)
@@ -393,16 +393,20 @@ const stubSpecialCharFileInChild = stubPublicFile({
 	dataTxId: stubTxIDAltTwo
 });
 
-export const stubSpecialCharEntities = [
+export const stubSpecialCharacterFolders = [
 	stubPublicRootFolder,
 	stubSpecialCharParentFolder,
-	stubSpecialCharChildFolder,
+	stubSpecialCharChildFolder
+];
+
+export const stubSpecialCharEntities = [
+	...stubSpecialCharacterFolders,
 	stubSpecialCharFileInRoot,
 	stubSpecialCharFileInParent,
 	stubSpecialCharFileInChild
 ];
 
-export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpecialCharEntities);
+export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpecialCharacterFolders);
 
 export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map((entity) =>
 	publicEntityWithPathsFactory(entity, stubSpecialCharHierarchy)
@@ -410,7 +414,7 @@ export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map((ent
 
 export const stubEntitiesWithOneFile = [stubPublicRootFolder, stubPublicFileInRoot];
 
-export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities(stubEntitiesWithOneFile);
+export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities([stubPublicRootFolder]);
 
 export const stubEntitiesWithOneFileWithPaths = stubEntitiesWithOneFile.map((entity) =>
 	publicEntityWithPathsFactory(entity, stubHierarchyWithOneFile)
@@ -423,7 +427,7 @@ export const stubEntitiesWithNestedFile = [
 	stubPublicFileInChild
 ];
 
-export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubEntitiesWithNestedFile);
+export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubPublicFolders);
 
 export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map((entity) =>
 	publicEntityWithPathsFactory(entity, stubHierarchyWithNestedFile)
