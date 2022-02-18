@@ -18,7 +18,7 @@ import {
 	stubPrivateFile,
 	stubPrivateFolder
 } from '../../tests/stubs';
-import { DriveKey, EntityKey, FeeMultiple, FileKey, W } from '../types';
+import { DriveKey, FeeMultiple, FileKey, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
@@ -143,7 +143,7 @@ describe('The ArFSDAO class', () => {
 			const decryptedBuffer: Buffer = await driveDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				stubbedKey.keyData,
+				stubbedKey,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -207,7 +207,7 @@ describe('The ArFSDAO class', () => {
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				stubbedKey.keyData,
+				stubbedKey,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -284,11 +284,11 @@ describe('The ArFSDAO class', () => {
 
 			const dataBuffer = Buffer.from(transaction.data);
 			const stubbedKey = await getStubDriveKey();
-			const fileKey: FileKey = new EntityKey(await deriveFileKey(`${stubEntityID}`, stubbedKey.keyData));
+			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, stubbedKey);
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				fileKey.keyData,
+				fileKey,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
