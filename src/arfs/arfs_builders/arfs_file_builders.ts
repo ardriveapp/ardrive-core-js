@@ -27,7 +27,10 @@ interface FileMetaDataTransactionData {
 	dataTxId: string;
 	dataContentType: ContentType;
 }
-export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
+export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
+	'file',
+	T
+> {
 	size?: ByteCount;
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;
@@ -94,7 +97,6 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 					this.arFS,
 					this.contentType,
 					this.driveId,
-					this.entityType,
 					this.name,
 					this.txId,
 					this.unixTime,
@@ -204,7 +206,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.arFS,
 				this.contentType,
 				this.driveId,
-				this.entityType,
 				this.name,
 				this.txId,
 				this.unixTime,
