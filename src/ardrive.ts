@@ -270,7 +270,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
-					key: moveFileResult.fileKey.toJSON()
+					key: moveFileResult.fileKey
 				}
 			],
 			tips: [],
@@ -413,7 +413,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
-					key: moveFolderResult.driveKey.toJSON()
+					key: moveFolderResult.driveKey
 				}
 			],
 			tips: [],
@@ -486,7 +486,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: isPrivateResult(uploadFileResult) ? uploadFileResult.fileKey.toJSON() : undefined
+					key: isPrivateResult(uploadFileResult) ? uploadFileResult.fileKey : undefined
 				}
 			],
 			tips: [],
@@ -879,7 +879,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: newFolderId,
-					key: driveKey.toJSON()
+					key: driveKey
 				}
 			];
 
@@ -927,7 +927,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: uploadFileResult.fileKey.toJSON()
+					key: uploadFileResult.fileKey
 				}
 			];
 		}
@@ -1143,7 +1143,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: driveKey.toJSON()
+					key: driveKey
 				}
 			],
 			tips: [],
@@ -1220,8 +1220,8 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		// Add drive keys to drive and folder entity results
-		createDriveResult.created[0].key = newDriveData.driveKey.toJSON();
-		createDriveResult.created[1].key = newDriveData.driveKey.toJSON();
+		createDriveResult.created[0].key = newDriveData.driveKey;
+		createDriveResult.created[1].key = newDriveData.driveKey;
 
 		return createDriveResult;
 	}
