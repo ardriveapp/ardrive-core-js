@@ -57,7 +57,7 @@ describe('EntityKey class', () => {
 	});
 
 	it('toJSON returns the urlEncodedHash string', () => {
-		expect(key.toJSON()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+		expect(`${key}`).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	});
 
 	it('toString returns the urlEncodedHash string', () => {
