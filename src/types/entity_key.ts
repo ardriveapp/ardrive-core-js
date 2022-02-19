@@ -7,7 +7,11 @@ export class EntityKey {
 		}
 	}
 
-	toJSON(): string {
+	toString(): string {
 		return urlEncodeHashKey(this.keyData);
+	}
+
+	toJSON(): string {
+		return this.toString();
 	}
 }

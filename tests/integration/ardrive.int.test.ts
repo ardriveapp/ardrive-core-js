@@ -174,7 +174,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE',
 					newPrivateDriveData: stubPrivateDriveData
 				});
-				assertCreateDriveExpectations(result, W(91), W(37), stubDriveKey.toJSON());
+				assertCreateDriveExpectations(result, W(91), W(37), `${stubDriveKey}`);
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
@@ -188,7 +188,7 @@ describe('ArDrive class - integrated', () => {
 					driveName: 'TEST_DRIVE',
 					newPrivateDriveData: stubPrivateDriveData
 				});
-				assertCreateDriveExpectations(result, W(2915), W(37), stubDriveKey.toJSON(), true);
+				assertCreateDriveExpectations(result, W(2915), W(37), `${stubDriveKey}`, true);
 			});
 		});
 	});
@@ -282,7 +282,7 @@ describe('ArDrive class - integrated', () => {
 					parentFolderId: stubEntityID,
 					driveKey: stubDriveKey
 				});
-				assertCreateFolderExpectations(result, W(38), stubDriveKey.toJSON());
+				assertCreateFolderExpectations(result, W(38), `${stubDriveKey}`);
 			});
 		});
 
@@ -545,7 +545,7 @@ describe('ArDrive class - integrated', () => {
 					driveKey: await getStubDriveKey()
 				});
 				const stubbedKey = await getStubDriveKey();
-				assertCreateFolderExpectations(result, W(36), stubbedKey.toJSON());
+				assertCreateFolderExpectations(result, W(36), `${stubbedKey}`);
 			});
 		});
 
