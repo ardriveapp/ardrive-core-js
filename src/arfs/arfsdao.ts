@@ -1077,7 +1077,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
 				// Build the file so that we don't add something invalid to the cache
 				const file = await fileBuilder.build(node);
-				const fileKey: DriveKey = await deriveFileKey(`${file.fileId}`, driveKey);
+				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
 				const cacheKey = {
 					fileId: file.fileId,
 					owner,

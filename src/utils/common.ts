@@ -10,7 +10,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey } from '../types';
+import { ByteCount, DriveKey, FileKey } from '../types';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -382,7 +382,7 @@ export async function createPrivateFileSharingLink(
 			fileToShare.driveId,
 			user.walletPrivateKey
 		);
-		const fileKey: DriveKey = await deriveFileKey(fileToShare.fileId, driveKey);
+		const fileKey: FileKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',
 			fileToShare.fileId,
