@@ -21,13 +21,13 @@ export async function sleep(ms: number): Promise<number> {
 }
 
 // Asyncronous ForEach function
-export async function asyncForEach(array: any[], callback: any): Promise<string> {
+/*export async function asyncForEach(array: any[], callback: any): Promise<string> {
 	for (let index = 0; index < array.length; index += 1) {
 		// eslint-disable-next-line no-await-in-loop
 		await callback(array[index], index, array);
 	}
 	return 'Done';
-}
+}*/
 
 // Format byte size to something nicer.  This is minified...
 export function formatBytes(bytes: number): string {
