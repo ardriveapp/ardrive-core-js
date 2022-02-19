@@ -338,6 +338,10 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			this.rootFolderId = dataJSON.rootFolderId;
 
 			if (isPrivate) {
+				if (!this.driveAuthMode || !this.cipher || !this.cipherIV) {
+					throw new Error(`Unexpectedly null privacy data for private drive with ID ${this.driveId}!`);
+				}
+
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				const driveKey = this.privateKeyData.driveKeyForDriveId(this.driveId);
 				if (driveKey) {
@@ -353,17 +357,11 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 						this.unixTime,
 						this.drivePrivacy,
 						this.rootFolderId,
-						// These private fields are type-checked these within the dataJSON closure
-						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-						this.driveAuthMode!,
-						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-						this.cipher!,
-						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-						this.cipherIV!,
+						this.driveAuthMode,
+						this.cipher,
+						this.cipherIV,
 						driveKey
 					);
-				} else if (!this.driveAuthMode || !this.cipher || !this.cipherIV) {
-					throw new Error(`Unexpectedly null privacy data for private drive with ID ${this.driveId}!`);
 				}
 
 				return new ArFSPrivateDriveKeyless(
