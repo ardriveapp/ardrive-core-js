@@ -229,16 +229,16 @@ describe('ArDrive class - integrated', () => {
 
 			describe('maxDepth parameter', () => {
 				it('throws if provided a negative value', () => {
-					expectAsyncErrorThrow({
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.listPublicFolder({ folderId: stubEntityIDRoot, maxDepth: -1 }),
-						errorMessage: 'Me gustan las empanadas'
+						errorMessage: 'maxDepth should be a non-negative integer!'
 					});
 				});
 
 				it('throws if provided a non integer value', () => {
-					expectAsyncErrorThrow({
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.listPublicFolder({ folderId: stubEntityIDRoot, maxDepth: 0.5 }),
-						errorMessage: 'Me gustan las empanadas'
+						errorMessage: 'maxDepth should be a non-negative integer!'
 					});
 				});
 
@@ -374,25 +374,25 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			describe('maxDepth parameter', () => {
-				it('throws if provided a negative value', async () => {
-					expectAsyncErrorThrow({
+				it('throws if provided a negative value', () => {
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.listPrivateFolder({
 							folderId: stubEntityIDRoot,
 							maxDepth: -1,
 							driveKey: stubDriveKey
 						}),
-						errorMessage: 'Me gustan las empanadas'
+						errorMessage: 'maxDepth should be a non-negative integer!'
 					});
 				});
 
-				it('throws if provided a non integer value', async () => {
-					expectAsyncErrorThrow({
+				it('throws if provided a non integer value', () => {
+					return expectAsyncErrorThrow({
 						promiseToError: arDrive.listPrivateFolder({
 							folderId: stubEntityIDRoot,
 							maxDepth: 0.5,
 							driveKey: stubDriveKey
 						}),
-						errorMessage: 'Me gustan las empanadas'
+						errorMessage: 'maxDepth should be a non-negative integer!'
 					});
 				});
 
