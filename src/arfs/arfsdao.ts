@@ -59,7 +59,7 @@ import {
 	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
-import { FolderHierarchy } from './folderHierarchy';
+import { FolderHierarchy } from './folder_hierarchy';
 
 import {
 	ArFSAnonymousCache,
@@ -1321,14 +1321,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	 * @param {DriveKey} driveKey the drive key used for drive and folder data decryption and file key derivation
 	 * @param {number} maxDepth a non-negative integer value indicating the depth of the folder tree to list where 0 = this folder's contents only
 	 * @param {boolean} includeRoot whether or not folderId's folder data should be included in the listing
-	 * @returns {ArFSPrivateFileOrFolderWithPaths[]} an array representation of the children and parent folder
+	 * @param {ArweaveAddress} owner the arweave address of the wallet which owns the drive
+	 * @param withPathsFactory a factory function used to map the returned entities into
+	 * @returns {Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]>} an array representation of the children and parent folder
 	 */
 	async listPrivateFolder({
 		folderId,
 		driveKey,
 		maxDepth,
 		includeRoot,
-		owner
+		owner,
+		withPathsFactory = privateEntityWithPathsKeylessFactory
 	}: ArFSListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
@@ -1350,7 +1353,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const children = [...childFolders, ...childFiles];
 
-		const entitiesWithPath = children.map((entity) => privateEntityWithPathsKeylessFactory(entity, hierarchy));
+		const entitiesWithPath = children.map((entity) => withPathsFactory(entity, hierarchy, driveKey));
 		return entitiesWithPath;
 	}
 
