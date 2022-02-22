@@ -10,7 +10,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey } from '../types';
+import { ByteCount, DriveKey, FileKey } from '../types';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -21,13 +21,13 @@ export async function sleep(ms: number): Promise<number> {
 }
 
 // Asyncronous ForEach function
-export async function asyncForEach(array: any[], callback: any): Promise<string> {
+/*export async function asyncForEach(array: any[], callback: any): Promise<string> {
 	for (let index = 0; index < array.length; index += 1) {
 		// eslint-disable-next-line no-await-in-loop
 		await callback(array[index], index, array);
 	}
 	return 'Done';
-}
+}*/
 
 // Format byte size to something nicer.  This is minified...
 export function formatBytes(bytes: number): string {
@@ -382,7 +382,7 @@ export async function createPrivateFileSharingLink(
 			fileToShare.driveId,
 			user.walletPrivateKey
 		);
-		const fileKey: DriveKey = await deriveFileKey(fileToShare.fileId, driveKey);
+		const fileKey: FileKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',
 			fileToShare.fileId,
