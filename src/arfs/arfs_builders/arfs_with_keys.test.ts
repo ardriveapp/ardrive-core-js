@@ -24,15 +24,14 @@ import { RootFolderID } from './arfs_folder_builders';
 describe('Entities with paths classes', () => {
 	/*
 	 * The stubbed folders describes the following tree
-	 * - The drive name/
-	 * - The drive name/Funny stuff/
-	 * - The drive name/Funny stuff/Funny folder #1/
-	 * - The drive name/Funny stuff/Funny folder #2/
-	 * - The drive name/Funny stuff/Funny folder #1/The funniest folder/
-	 * - The drive name/Funny stuff/Funny folder #1/jokes.pdf
+	 * - Root Folder/
+	 * - Root Folder/Parent Folder/
+	 * - Root Folder/Parent Folder/Child folder #1/
+	 * - Root Folder/Parent Folder/Child folder #2/
+	 * - Root Folder/Parent Folder/Child folder #1/Grand child folder/
+	 * - Root Folder/Parent Folder/Child folder #1/Child file.pdf
 	 */
 
-	// Root folder (Depth 0)
 	let stubRootFolder: ArFSPrivateFolder;
 	let stubParentFolder: ArFSPrivateFolder;
 	let stubFolder_0: ArFSPrivateFolder;
@@ -47,38 +46,39 @@ describe('Entities with paths classes', () => {
 	let fileKey: FileKey;
 
 	before(async () => {
-		// Root folder
+		// Root folder (Depth 0)
 		stubRootFolder = await stubPrivateFolder({
 			folderId: stubEntityIDRoot,
 			parentFolderId: new RootFolderID(),
-			folderName: 'The drive name'
+			folderName: 'Root Folder'
 		});
 		// Depth 1
 		stubParentFolder = await stubPrivateFolder({
 			folderId: stubEntityIDParent,
 			parentFolderId: stubEntityIDRoot,
-			folderName: 'Funny stuff'
+			folderName: 'Parent folder'
 		});
 		// Depth 2
 		stubFolder_0 = await stubPrivateFolder({
 			folderId: stubEntityID,
 			parentFolderId: stubEntityIDParent,
-			folderName: 'Funny folder #1'
+			folderName: 'Child folder #1'
 		});
 		stubFolder_1 = await stubPrivateFolder({
 			folderId: stubEntityIDAlt,
 			parentFolderId: stubEntityIDParent,
-			folderName: 'Funny folder #2'
+			folderName: 'Child folder #2'
 		});
 		// Depth 3
 		stubFolder_3 = await stubPrivateFolder({
 			folderId: stubEntityIDGrandchild,
 			parentFolderId: stubEntityID,
-			folderName: 'The funniest folder'
+			folderName: 'Grand child folder'
 		});
 		stubFile = await stubPrivateFile({
 			fileId: stubEntityIDAltTwo,
-			fileName: 'jokes.pdf'
+			fileName: 'Child file.pdf',
+			parentFolderId: stubEntityID
 		});
 		allFolders = [stubRootFolder, stubParentFolder, stubFolder_0, stubFolder_1, stubFolder_3];
 
