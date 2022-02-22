@@ -14,7 +14,6 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
-	ArFSPrivateFileOrFolderWithPaths,
 	ENCRYPTED_DATA_PLACEHOLDER
 } from './arfs_entities';
 import {
@@ -147,7 +146,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileOrFolderWithPaths } from '../exports';
+import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1078,10 +1077,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
 				// Build the file so that we don't add something invalid to the cache
 				const file = await fileBuilder.build(node);
+				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
 				const cacheKey = {
 					fileId: file.fileId,
 					owner,
-					fileKey: await deriveFileKey(`${file.fileId}`, driveKey)
+					fileKey
 				};
 				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 			});
@@ -1090,18 +1090,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
 
-	async getEntitiesInFolder(
+	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
 		parentFolderId: FolderID,
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
-		) => ArFSFileOrFolderBuilder<ArFSFileOrFolderEntity>,
+		) =>
+			| ArFSFileOrFolderBuilder<'file', ArFSFileOrFolderEntity<'file'>>
+			| ArFSFileOrFolderBuilder<'folder', ArFSFileOrFolderEntity<'folder'>>,
 		latestRevisionsOnly = true,
 		filterOnOwner = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<T[]> {
 		let cursor = '';
 		let hasNextPage = true;
-		const allEntities: ArFSFileOrFolderEntity[] = [];
+		const allEntities: T[] = [];
 
 		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
 		const owner = await this.wallet.getAddress();
@@ -1122,7 +1124,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<ArFSFileOrFolderEntity>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			const folders: Promise<T>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const { tags } = node;
@@ -1145,7 +1147,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		parentFolderId: FolderID,
 		driveKey: DriveKey,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPrivateFile | ArFSPrivateFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1159,7 +1161,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
 		latestRevisionsOnly = true
-	): Promise<ArFSFileOrFolderEntity[]> {
+	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
 			(node, entityType) =>
@@ -1172,7 +1174,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getChildrenFolderIds(
 		folderId: FolderID,
-		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity[]
+		allFolderEntitiesOfDrive: ArFSFileOrFolderEntity<'folder'>[]
 	): Promise<FolderID[]> {
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
 		return hierarchy.folderIdSubtreeFromFolderId(folderId, Number.MAX_SAFE_INTEGER);
@@ -1190,17 +1192,25 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicNameConflictInfoInFolder(folderId: FolderID): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPublicFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPublicFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 
 	async getPrivateNameConflictInfoInFolder(folderId: FolderID, driveKey: DriveKey): Promise<NameConflictInfo> {
 		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+
+		// Hack to deal with potential typescript bug
+		const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
+		const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
 		return {
-			files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
-			folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+			files: files.map(fileConflictInfoMap),
+			folders: folders.map(folderToNameAndIdMap)
 		};
 	}
 
@@ -1319,7 +1329,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		maxDepth,
 		includeRoot,
 		owner
-	}: ArFSListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+	}: ArFSListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
 		}
@@ -1340,7 +1350,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const children = [...childFolders, ...childFiles];
 
-		const entitiesWithPath = children.map((entity) => new ArFSPrivateFileOrFolderWithPaths(entity, hierarchy));
+		const entitiesWithPath = children.map((entity) => privateEntityWithPathsKeylessFactory(entity, hierarchy));
 		return entitiesWithPath;
 	}
 
@@ -1487,7 +1497,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			maxDepth
 		);
 		const folderWrapper = new ArFSFolderToDownload(
-			new ArFSPrivateFileOrFolderWithPaths(privateFolder, hierarchy),
+			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy),
 			customFolderName
 		);
 
@@ -1499,7 +1509,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}, {});
 
 		const foldersWithPath = [privateFolder, ...childFolders]
-			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.map((folder) => privateEntityWithPathsKeylessFactory(folder, hierarchy))
 			.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
 		// Iteratively download all child files in the hierarchy
@@ -1515,7 +1525,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
-					new ArFSPrivateFileOrFolderWithPaths(file, hierarchy).path
+					privateEntityWithPathsKeylessFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 

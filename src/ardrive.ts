@@ -1,10 +1,5 @@
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import {
-	ArFSPrivateDrive,
-	ArFSPrivateFolder,
-	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths
-} from './arfs/arfs_entities';
+import { ArFSPrivateDrive, ArFSPrivateFolder, ArFSPrivateFile } from './arfs/arfs_entities';
 import {
 	ArFSFolderToUpload,
 	ArFSPrivateFileToDownload,
@@ -46,9 +41,7 @@ import {
 	upsertOnConflicts,
 	emptyManifestResult,
 	CommunityTipSettings,
-	ArFSDownloadPrivateFolderParams
-} from './types';
-import {
+	ArFSDownloadPrivateFolderParams,
 	CommunityTipParams,
 	TipResult,
 	MovePublicFileParams,
@@ -73,7 +66,7 @@ import {
 	ListPrivateFolderParams,
 	MetaDataBaseCosts
 } from './types';
-import { encryptedDataSize, urlEncodeHashKey } from './utils/common';
+import { encryptedDataSize } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { WalletDAO } from './wallet_dao';
@@ -113,7 +106,7 @@ import {
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { NameConflictInfo } from './utils/mapper_functions';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
-import { TipData } from './exports';
+import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, TipData } from './exports';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -269,7 +262,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
-					key: urlEncodeHashKey(moveFileResult.fileKey)
+					key: moveFileResult.fileKey
 				}
 			],
 			tips: [],
@@ -412,7 +405,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(moveFolderResult.driveKey)
+					key: moveFolderResult.driveKey
 				}
 			],
 			tips: [],
@@ -485,7 +478,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: isPrivateResult(uploadFileResult) ? urlEncodeHashKey(uploadFileResult.fileKey) : undefined
+					key: isPrivateResult(uploadFileResult) ? uploadFileResult.fileKey : undefined
 				}
 			],
 			tips: [],
@@ -878,7 +871,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: newFolderId,
-					key: urlEncodeHashKey(driveKey)
+					key: driveKey
 				}
 			];
 
@@ -926,7 +919,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: uploadFileResult.metaDataTxId,
 					dataTxId: uploadFileResult.dataTxId,
 					entityId: uploadFileResult.fileId,
-					key: urlEncodeHashKey(uploadFileResult.fileKey)
+					key: uploadFileResult.fileKey
 				}
 			];
 		}
@@ -1142,7 +1135,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(driveKey)
+					key: driveKey
 				}
 			],
 			tips: [],
@@ -1219,8 +1212,8 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		// Add drive keys to drive and folder entity results
-		createDriveResult.created[0].key = urlEncodeHashKey(newDriveData.driveKey);
-		createDriveResult.created[1].key = urlEncodeHashKey(newDriveData.driveKey);
+		createDriveResult.created[0].key = newDriveData.driveKey;
+		createDriveResult.created[1].key = newDriveData.driveKey;
 
 		return createDriveResult;
 	}
@@ -1384,7 +1377,7 @@ export class ArDrive extends ArDriveAnonymous {
 		maxDepth = 0,
 		includeRoot = false,
 		owner
-	}: ListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}

@@ -17,14 +17,14 @@ export interface FileConflictInfo {
 	lastModifiedDate: UnixTime;
 }
 
-export function entityToNameMap(entity: ArFSFileOrFolderEntity): string {
+export function entityToNameMap(entity: ArFSFileOrFolderEntity<'file' | 'folder'>): string {
 	return entity.name;
 }
 
-export function folderToNameAndIdMap(entity: ArFSFileOrFolderEntity): FolderNameAndId {
+export function folderToNameAndIdMap(entity: ArFSFileOrFolderEntity<'folder'>): FolderNameAndId {
 	return { folderId: entity.entityId, folderName: entity.name };
 }
 
-export function fileConflictInfoMap(entity: ArFSFileOrFolderEntity): FileConflictInfo {
+export function fileConflictInfoMap(entity: ArFSFileOrFolderEntity<'file'>): FileConflictInfo {
 	return { fileId: entity.entityId, fileName: entity.name, lastModifiedDate: entity.lastModifiedDate };
 }

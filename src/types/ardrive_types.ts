@@ -16,6 +16,7 @@ import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper'
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
+import { EntityKey } from './entity_key';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -25,7 +26,7 @@ export interface ArFSEntityData {
 	metadataTxId?: TransactionID;
 	dataTxId?: TransactionID;
 	entityId?: AnyEntityID;
-	key?: string;
+	key?: EntityKey;
 }
 
 export type ListPublicFolderParams = MakeOptional<ArFSListPublicFolderParams, 'maxDepth' | 'includeRoot' | 'owner'>;

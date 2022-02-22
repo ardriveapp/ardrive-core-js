@@ -26,7 +26,10 @@ interface FileMetaDataTransactionData {
 	dataTxId: string;
 	dataContentType: ContentType;
 }
-export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<T> {
+export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
+	'file',
+	T
+> {
 	size?: ByteCount;
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;
@@ -80,7 +83,8 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 				this.size === undefined ||
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
-				!this.dataContentType
+				!this.dataContentType ||
+				!(this.entityType === 'file')
 			) {
 				throw new Error('Invalid file state');
 			}
@@ -92,7 +96,6 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 					this.arFS,
 					this.contentType,
 					this.driveId,
-					this.entityType,
 					this.name,
 					this.txId,
 					this.unixTime,
@@ -189,7 +192,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.size === undefined ||
 				!this.lastModifiedDate ||
 				!this.dataTxId ||
-				!this.dataContentType
+				!this.dataContentType ||
+				!fileKey ||
+				!(this.entityType === 'file')
 			) {
 				throw new Error('Invalid file state');
 			}
@@ -200,7 +205,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.arFS,
 				this.contentType,
 				this.driveId,
-				this.entityType,
 				this.name,
 				this.txId,
 				this.unixTime,
@@ -211,7 +215,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.dataTxId,
 				this.dataContentType,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				fileKey,
+				this.driveKey
 			);
 		}
 		throw new Error('Invalid file state');
