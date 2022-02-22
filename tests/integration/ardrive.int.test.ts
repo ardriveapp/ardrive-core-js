@@ -1445,7 +1445,7 @@ describe('ArDrive class - integrated', () => {
 				const stubDriveKey = getStubDriveKey();
 
 				beforeEach(() => {
-					stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: stubFileName }));
+					stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileName: stubFileName }));
 					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 				});
 
@@ -1510,6 +1510,7 @@ describe('ArDrive class - integrated', () => {
 					expect(Object.keys(fees)[0]).to.equal(`${created[0].metadataTxId}`);
 				});
 			});
+
 			describe('renamePublicFolder', () => {
 				const stubFileName = 'Test Public File Metadata';
 				const invalidFileName = '*\\/:*?:<>|_invalidName.png';
@@ -1517,7 +1518,7 @@ describe('ArDrive class - integrated', () => {
 				const conflictingName = 'CONFLICTING_NAME';
 
 				beforeEach(() => {
-					stub(arfsDao, 'getPublicFolder').resolves(stubPublicFile({ fileName: stubFileName }));
+					stub(arfsDao, 'getPublicFolder').resolves(stubPublicFolder({ folderName: stubFileName }));
 					stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 				});
 
@@ -1587,7 +1588,7 @@ describe('ArDrive class - integrated', () => {
 				const stubDriveKey = getStubDriveKey();
 
 				beforeEach(() => {
-					stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFile({ fileName: stubFileName }));
+					stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderName: stubFileName }));
 					stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 				});
 
