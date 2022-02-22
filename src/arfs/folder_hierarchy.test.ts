@@ -176,11 +176,10 @@ describe('FolderHierarchy class', () => {
 		});
 
 		describe('the maxDepth parameter', () => {
-			it('the sub-tree of maxDepht zero has only one node on it', () => {
+			it('the sub-tree of maxDepth zero has only one node on it', () => {
 				const subTree = folderHierarchy.subTreeOf(stubRootFolder.folderId, 0);
 				const rootNode = subTree.rootNode;
 				const allNodesOfSubTree = subTree.nodeAndChildrenOf(rootNode, Number.MAX_SAFE_INTEGER);
-				debugger;
 				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(1);
 			});
 
@@ -188,7 +187,6 @@ describe('FolderHierarchy class', () => {
 				const rootNode = folderHierarchy.rootNode;
 				const allNodesOfSubTree = folderHierarchy.nodeAndChildrenOf(rootNode, 0);
 				const allFolderIDs = folderHierarchy.folderIdSubtreeFromFolderId(rootNode.folderId, 0);
-				debugger;
 				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(1);
 				expect(allFolderIDs.length, `Wrong folder ID length`).to.equal(1);
 			});
@@ -198,7 +196,6 @@ describe('FolderHierarchy class', () => {
 				const rootNode = subTree.rootNode;
 				const allNodesOfSubTree = subTree.nodeAndChildrenOf(rootNode, 2);
 				const allFolderIDs = folderHierarchy.folderIdSubtreeFromFolderId(rootNode.folderId, 2);
-				debugger;
 				expect(allNodesOfSubTree.length, `Wrong sub-tree length!`).to.equal(5);
 				expect(allFolderIDs.length, `Wrong folder ID length`).to.equal(5);
 			});
