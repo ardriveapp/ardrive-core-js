@@ -1387,7 +1387,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		const file = await this.arFsDao.getPrivateFile(fileId, driveKey, owner);
-		return withKeys ? new ArFSPrivateFileKeyless(file) : file;
+		return withKeys ? file : new ArFSPrivateFileKeyless(file);
 	}
 
 	/**
