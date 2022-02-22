@@ -471,22 +471,19 @@ describe('ArDrive class - integrated', () => {
 						folderId: stubEntityIDRoot,
 						driveKey: stubDriveKey
 					});
-					expect(entities).to.deep.equal(
-						[stubPrivateParentFolder].map((entity) =>
-							privateEntityWithPathsKeylessFactory(entity, stubPrivateHierarchy)
-						)
+					expect(entities[0]).to.deep.equal(
+						privateEntityWithPathsKeylessFactory(stubPrivateParentFolder, stubPrivateHierarchy)
 					);
 				});
 
 				it('when specified, returns the entities with keys', async () => {
 					const entities = await arDrive.listPrivateFolder({
 						folderId: stubEntityIDRoot,
-						driveKey: stubDriveKey
+						driveKey: stubDriveKey,
+						withKeys: true
 					});
-					expect(`${entities[0]}`).to.deep.equal(
-						`${[stubPrivateParentFolder].map((entity) =>
-							privateEntityWithPathsFactory(entity, stubPrivateHierarchy)
-						)}`
+					expect(entities[0]).to.deep.equal(
+						privateEntityWithPathsFactory(stubPrivateParentFolder, stubPrivateHierarchy)
 					);
 				});
 			});
