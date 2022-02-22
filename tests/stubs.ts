@@ -339,7 +339,7 @@ export const stubPublicEntities = [
 	stubPublicFileInRoot,
 	stubPublicFileInParent,
 	stubPublicFileInChild
-];
+] as const;
 
 export const stubPublicFolders = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
 
