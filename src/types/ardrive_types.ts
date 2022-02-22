@@ -168,9 +168,10 @@ export type GetPrivateFolderParams = GetPublicFolderParams & WithDriveKey;
 
 export interface GetPublicFileParams extends GetEntityParams {
 	fileId: FileID;
-	withKeys?: boolean;
 }
-export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
+export type GetPrivateFileParams = GetPublicFileParams & {
+	withKeys?: boolean;
+} & WithDriveKey;
 
 export interface GetAllDrivesForAddressParams {
 	address: ArweaveAddress;
