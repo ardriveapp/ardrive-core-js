@@ -110,7 +110,7 @@ export class FolderHierarchy {
 		const rootNode = this.folderIdToNodeMap[`${folderId}`];
 		const subTree: FolderID[] = [rootNode.folderId];
 		switch (maxDepth) {
-			case -1:
+			case 0:
 				// Recursion stopping condition - hit the max allowable depth
 				break;
 			default: {
