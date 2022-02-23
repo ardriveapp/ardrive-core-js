@@ -15,47 +15,47 @@ import { RootFolderID } from './arfs_builders/arfs_folder_builders';
 describe('FolderHierarchy class', () => {
 	/*
 	 * The stubbed folders describes the following tree
-	 * - The drive name/
-	 * - The drive name/Funny stuff/
-	 * - The drive name/Funny stuff/Funny folder #1/
-	 * - The drive name/Funny stuff/Funny folder #2/
-	 * - The drive name/Funny stuff/Funny folder #3/
-	 * - The drive name/Funny stuff/Funny folder #1/The funniest folder/
+	 * - Root Folder/
+	 * - Root Folder/Parent Folder/
+	 * - Root Folder/Parent Folder/Child Folder #1/
+	 * - Root Folder/Parent Folder/Child Folder #2/
+	 * - Root Folder/Parent Folder/Child Folder #3/
+	 * - Root Folder/Parent Folder/Child Folder #1/Grand child folder/
 	 */
 
 	// Root folder
 	const stubRootFolder = stubPublicFolder({
 		folderId: stubEntityIDRoot,
 		parentFolderId: new RootFolderID(),
-		folderName: 'The drive name'
+		folderName: 'Root Folder'
 	});
 	// Depth 1
 	const stubParentFolder = stubPublicFolder({
 		folderId: stubEntityIDParent,
 		parentFolderId: stubEntityIDRoot,
-		folderName: 'Funny stuff'
+		folderName: 'Parent Folder'
 	});
 	// Depth 2
 	const stubFolder_0 = stubPublicFolder({
 		folderId: stubEntityID,
 		parentFolderId: stubEntityIDParent,
-		folderName: 'Funny folder #1'
+		folderName: 'Child Folder #1'
 	});
 	const stubFolder_1 = stubPublicFolder({
 		folderId: stubEntityIDAlt,
 		parentFolderId: stubEntityIDParent,
-		folderName: 'Funny folder #2'
+		folderName: 'Child Folder #2'
 	});
 	const stubFolder_2 = stubPublicFolder({
 		folderId: stubEntityIDAltTwo,
 		parentFolderId: stubEntityIDParent,
-		folderName: 'Funny folder #3'
+		folderName: 'Child Folder #3'
 	});
 	// Depth 3
 	const stubFolder_3 = stubPublicFolder({
 		folderId: stubEntityIDGrandchild,
 		parentFolderId: stubEntityID,
-		folderName: 'The funniest folder'
+		folderName: 'Grand child folder'
 	});
 	const allFolders = [stubRootFolder, stubParentFolder, stubFolder_0, stubFolder_1, stubFolder_2, stubFolder_3];
 	const stubFolderIDs = [
@@ -136,7 +136,7 @@ describe('FolderHierarchy class', () => {
 
 	it('pathToFolderId returns a path-like string', () => {
 		const namesPath = folderHierarchy.pathToFolderId(stubEntityIDGrandchild);
-		expect(namesPath).to.equal('/The drive name/Funny stuff/Funny folder #1/The funniest folder/');
+		expect(namesPath).to.equal('/Root Folder/Parent Folder/Child Folder #1/Grand child folder/');
 	});
 
 	it('entityPathToFolderId throws if the rootNode of the whole HierarchyTree is not the root of the drive', () => {
