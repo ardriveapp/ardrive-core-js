@@ -1,3 +1,4 @@
+import { ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
 	askOnConflicts,
 	errorOnConflict,
@@ -6,19 +7,71 @@ import {
 	ResolveFileNameConflictsParams,
 	ResolveFolderNameConflictsParams,
 	skipOnConflicts,
+	UploadStats,
 	upsertOnConflicts,
 	useExistingFolder
 } from '../types';
+import { errorMessage } from './error_message';
 import { NameConflictInfo, FolderNameAndId, FileConflictInfo } from './mapper_functions';
+
+/** Throws an error if the entitiesToUpload contain conflicting file names being sent to the same destination folder */
+export function assertLocalNameConflicts(entitiesToUpload: UploadStats[]): void {
+	const namesWithinUpload: { [destFolderId: string /* FolderID */]: string[] } = {};
+
+	for (const { destFolderId, wrappedEntity, destName } of entitiesToUpload) {
+		const destinationName = destName ?? wrappedEntity.destinationBaseName;
+
+		const existingName = namesWithinUpload[`${destFolderId}`]?.find((n) => n === destinationName);
+		if (existingName) {
+			throw new Error('Upload cannot contain multiple destination names to the same destination folder!');
+		}
+
+		if (wrappedEntity.entityType === 'folder') {
+			assertConflictsWithinFolder(wrappedEntity);
+		}
+
+		// Add local upload info to check for name conflicts within the upload itself
+		if (!namesWithinUpload[`${destFolderId}`]) {
+			namesWithinUpload[`${destFolderId}`] = [];
+		}
+		namesWithinUpload[`${destFolderId}`].push(destinationName);
+	}
+}
+
+/** Recursive function to assert any name conflicts between entities within each folder */
+export function assertConflictsWithinFolder(wrappedFolder: ArFSFolderToUpload): void {
+	const namesWithinFolder: string[] = [];
+	for (const folder of wrappedFolder.folders) {
+		if (namesWithinFolder.includes(folder.destinationBaseName)) {
+			throw new Error('Folders cannot contain identical destination names!');
+		}
+		namesWithinFolder.push(folder.destinationBaseName);
+
+		// Recurse into each folder to check for  local conflicts
+		assertConflictsWithinFolder(folder);
+	}
+
+	for (const file of wrappedFolder.files) {
+		if (namesWithinFolder.includes(file.destinationBaseName)) {
+			throw new Error('Folders cannot contain identical destination names!');
+		}
+		namesWithinFolder.push(file.destinationBaseName);
+	}
+}
 
 export async function resolveFileNameConflicts({
 	wrappedFile,
 	conflictResolution,
 	destinationFileName: destFileName,
-	nameConflictInfo,
-	prompts
+	prompts,
+	getConflictInfoFn,
+	destFolderId
 }: ResolveFileNameConflictsParams): Promise<void> {
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFileName, nameConflictInfo);
+
+	// Assign and preserve destination name
+	wrappedFile.destName = destFileName;
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
 		// There are no conflicts, continue file upload
@@ -102,7 +155,7 @@ export async function resolveFileNameConflicts({
 			}
 
 			// Use specified new file name
-			wrappedFile.newFileName = userInput.newFileName;
+			wrappedFile.destName = userInput.newFileName;
 			return;
 
 		case replaceOnConflicts:
@@ -114,13 +167,17 @@ export async function resolveFileNameConflicts({
 
 export async function resolveFolderNameConflicts({
 	wrappedFolder,
-	nameConflictInfo,
 	destinationFolderName: destFolderName,
 	prompts,
 	conflictResolution,
-	getConflictInfoFn
+	getConflictInfoFn,
+	destFolderId
 }: ResolveFolderNameConflictsParams): Promise<void> {
+	const nameConflictInfo = await getConflictInfoFn(destFolderId);
 	const existingNameAtDestConflict = checkNameInfoForConflicts(destFolderName, nameConflictInfo);
+
+	// Assign and preserve destination name
+	wrappedFolder.destName = destFolderName;
 
 	if (!existingNameAtDestConflict.existingFileConflict && !existingNameAtDestConflict.existingFolderConflict) {
 		// There are no conflicts, continue folder upload
@@ -130,8 +187,7 @@ export async function resolveFolderNameConflicts({
 	if (conflictResolution !== askOnConflicts) {
 		if (existingNameAtDestConflict.existingFileConflict) {
 			// Folders cannot overwrite files
-			// Skip this folder and all its contents
-			wrappedFolder.conflictResolution = skipOnConflicts;
+			wrappedFolder.conflictResolution = errorOnConflict;
 			return;
 		}
 		// Re-use this folder, upload its contents within the existing folder
@@ -192,7 +248,7 @@ export async function resolveFolderNameConflicts({
 				}
 
 				// Use new folder name and upload all contents within new folder
-				wrappedFolder.newFolderName = userInput.newFolderName;
+				wrappedFolder.destName = userInput.newFolderName;
 
 				// Conflict resolved by rename -- return early, do NOT recurse into this folder
 				return;
@@ -201,29 +257,62 @@ export async function resolveFolderNameConflicts({
 
 	if (wrappedFolder.existingId) {
 		// Re-using existing folder id, check for name conflicts inside the folder
-		const childConflictInfo = await getConflictInfoFn(wrappedFolder.existingId);
+		const destinationFolderId = wrappedFolder.existingId;
 
-		for await (const file of wrappedFolder.files) {
+		for (const file of wrappedFolder.files) {
 			// Check each file upload within the folder for name conflicts
 			await resolveFileNameConflicts({
 				wrappedFile: file,
 				conflictResolution,
-				destinationFileName: file.getBaseFileName(),
-				nameConflictInfo: childConflictInfo,
-				prompts
+				destinationFileName: file.destinationBaseName,
+				prompts,
+				destFolderId: destinationFolderId,
+				getConflictInfoFn
 			});
 		}
 
-		for await (const folder of wrappedFolder.folders) {
+		for (const folder of wrappedFolder.folders) {
 			// Recurse into each folder to check for more name conflicts
 			await resolveFolderNameConflicts({
 				wrappedFolder: folder,
 				conflictResolution,
 				getConflictInfoFn,
-				destinationFolderName: folder.getBaseFileName(),
-				nameConflictInfo: childConflictInfo,
+				destinationFolderName: folder.destinationBaseName,
+				destFolderId: destinationFolderId,
 				prompts
 			});
+		}
+
+		assertAndRemoveConflictingEntities(wrappedFolder);
+	}
+}
+
+/** Uses conflictResolution on each file and folder to recursively remove skipped entities or error on conflicts */
+export function assertAndRemoveConflictingEntities(folder: ArFSFolderToUpload): void {
+	let index = folder.files.length;
+	while (index--) {
+		const childFile = folder.files[index];
+
+		if (childFile.conflictResolution === 'skip' || childFile.conflictResolution === 'upsert') {
+			// Remove from intended files if file will be skipped
+			folder.files.splice(index, 1);
+		} else if (childFile.conflictResolution === 'error') {
+			throw Error(errorMessage.entityNameExists);
+		}
+	}
+
+	index = folder.folders.length;
+	while (index--) {
+		const childFolder = folder.folders[index];
+
+		if (childFolder.conflictResolution === 'skip') {
+			// Remove from intended folders if folder will be skipped
+			folder.folders.splice(index, 1);
+		} else if (childFolder.conflictResolution === 'error') {
+			throw Error(errorMessage.entityNameExists);
+		} else {
+			// Recurse into folder
+			assertAndRemoveConflictingEntities(childFolder);
 		}
 	}
 }
