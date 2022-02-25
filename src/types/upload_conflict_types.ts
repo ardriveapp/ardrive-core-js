@@ -1,5 +1,5 @@
 import { FileID, FolderID } from '.';
-import { ArFSEntityToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
+import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import { FileConflictInfo, NameConflictInfo } from '../utils/mapper_functions';
 
 export const skipOnConflicts = 'skip';
@@ -80,18 +80,18 @@ export type FileConflictResolutionFn = (params: {
 
 export interface ResolveNameConflictsParams {
 	conflictResolution: FileNameConflictResolution;
-	nameConflictInfo: NameConflictInfo;
+	getConflictInfoFn: (parentFolderId: FolderID) => Promise<NameConflictInfo>;
+	destFolderId: FolderID;
 }
 
 export interface ResolveFileNameConflictsParams extends ResolveNameConflictsParams {
 	destinationFileName: string;
-	wrappedFile: ArFSEntityToUpload;
+	wrappedFile: ArFSDataToUpload;
 	prompts?: FileConflictPrompts;
 }
 
 export interface ResolveFolderNameConflictsParams extends ResolveNameConflictsParams {
 	destinationFolderName: string;
 	wrappedFolder: ArFSFolderToUpload;
-	getConflictInfoFn: (parentFolderId: FolderID) => Promise<NameConflictInfo>;
 	prompts?: FolderConflictPrompts;
 }

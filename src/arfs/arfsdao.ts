@@ -26,31 +26,27 @@ import {
 	ArFSMovePrivateFileResult,
 	ArFSMovePublicFolderResult,
 	ArFSMovePrivateFolderResult,
-	ArFSUploadFileResult,
-	ArFSUploadPrivateFileResult,
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
 	ArFSCreatePublicBundledDriveResult,
+	ArFSUploadEntitiesResult,
+	FileResult,
 	ArFSRenamePrivateFileResult,
 	ArFSRenamePublicFileResult,
-	ArFSUploadBundledFileResult,
-	ArFSUploadFileV2TxResult,
 	ArFSRenamePublicFolderResult,
 	ArFSRenamePrivateFolderResult,
 	ArFSRenamePublicDriveResult,
 	ArFSRenamePrivateDriveResult
 } from './arfs_entity_result_factory';
 import { ArFSFolderToDownload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
-import { MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
+import { getPrepFileParams, getPrepFolderFactoryParams, MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
-	ArFSPublicFileDataPrototype,
-	ArFSPrivateFileDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
 	ArFSPublicDriveMetaDataPrototype
@@ -61,8 +57,6 @@ import {
 	ArFSPrivateDriveTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
-	ArFSPublicFileDataTransactionData,
-	ArFSPrivateFileDataTransactionData,
 	ArFSPublicDriveTransactionData
 } from './arfs_tx_data_types';
 import { FolderHierarchy } from './folder_hierarchy';
@@ -71,6 +65,7 @@ import {
 	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
 	ArFSPublicDriveCacheKey,
+	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
@@ -134,17 +129,17 @@ import {
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
 	CommunityTipSettings,
-	PartialPrepareFileParams,
 	PartialPrepareDriveParams,
+	PartialPrepareFileParams,
 	ArFSDownloadPrivateFolderParams,
 	SeparatedFolderHierarchy
 } from '../types/arfsdao_types';
 import {
+	CalculatedUploadPlan,
 	CreateDriveRewardSettings,
 	CreateDriveV2TxRewardSettings,
-	isBundleRewardSetting,
-	UploadFileRewardSettings,
-	UploadFileV2TxRewardSettings
+	emptyV2TxPlans,
+	isBundleRewardSetting
 } from '../types/upload_planner_types';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -175,68 +170,6 @@ export class PrivateDriveKeyData {
 	}
 }
 
-// export interface PrepareObjectTransactionParams {
-// 	objectMetaData: ArFSObjectMetadataPrototype;
-// 	rewardSettings?: RewardSettings;
-// 	excludedTagNames?: string[];
-// 	otherTags?: GQLTagInterface[];
-// }
-
-// export interface ArFSMoveParams<O extends ArFSFileOrFolderEntity, T extends ArFSObjectTransactionData> {
-// 	originalMetaData: O;
-// 	newParentFolderId: FolderID;
-// 	metaDataBaseReward: RewardSettings;
-// 	transactionData: T;
-// }
-
-// export type GetDriveFunction = () => Promise<ArFSPublicDrive | ArFSPrivateDrive>;
-// export type CreateFolderFunction = (driveId: DriveID) => Promise<ArFSCreateFolderResult>;
-// export type GenerateDriveIdFn = () => DriveID;
-
-// export type ArFSListPrivateFolderParams = Required<ListPrivateFolderParams>;
-
-// export interface ArFSUploadPublicFileParams {
-// 	parentFolderId: FolderID;
-// 	wrappedFile: ArFSEntityToUpload;
-// 	driveId: DriveID;
-// 	fileDataRewardSettings: RewardSettings;
-// 	metadataRewardSettings: RewardSettings;
-// 	destFileName?: string;
-// 	existingFileId?: FileID;
-// }
-
-// export interface ArFSUploadPrivateFileParams extends ArFSUploadPublicFileParams {
-// 	driveKey: DriveKey;
-// }
-
-// export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
-
-// export interface CreateFolderSettings {
-// 	driveId: DriveID;
-// 	rewardSettings: RewardSettings;
-// 	parentFolderId?: FolderID;
-// 	syncParentFolderId?: boolean;
-// 	owner: ArweaveAddress;
-// }
-
-// export interface CreatePublicFolderSettings extends CreateFolderSettings {
-// 	folderData: ArFSPublicFolderTransactionData;
-// }
-
-// export interface CreatePrivateFolderSettings extends CreateFolderSettings {
-// 	folderData: ArFSPrivateFolderTransactionData;
-// 	driveKey: DriveKey;
-// }
-
-// interface getPublicChildrenFolderIdsParams {
-// 	folderId: FolderID;
-// 	driveId: DriveID;
-// 	owner: ArweaveAddress;
-// }
-// interface getPrivateChildrenFolderIdsParams extends getPublicChildrenFolderIdsParams {
-// 	driveKey: DriveKey;
-// }
-
 export interface ArFSPrivateDriveCacheKey extends ArFSPublicDriveCacheKey {
 	driveKey: DriveKey;
 }
@@ -257,6 +190,8 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
 	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
 	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+	publicConflictCache: ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>;
+	privateConflictCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
 export class ArFSDAO extends ArFSDAOAnonymous {
@@ -274,7 +209,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			...defaultArFSAnonymousCache,
 			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
 			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
-			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10)
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
+			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
+			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
 		}
 	) {
 		super(arweave, undefined, undefined, caches);
@@ -294,7 +231,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Prepare the ArFS folder transaction or dataItem
 		const arFSObjects = [await prepareArFSObject(folderMetadata)];
 
-		return { arFSObjects, folderId };
+		return { arFSObjects, folderId: folderMetadata.folderId };
 	}
 
 	/** Create a single folder as a V2 transaction */
@@ -640,13 +577,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async prepareFile<T extends DataItem | Transaction>({
+	async prepareFile<T extends DataItem | Transaction, U extends DataItem | Transaction>({
 		wrappedFile,
 		dataPrototypeFactoryFn,
 		metadataTxDataFactoryFn,
 		prepareArFSObject,
 		prepareMetaDataArFSObject
-	}: ArFSPrepareFileParams<T>): Promise<ArFSPrepareFileResult<T>> {
+	}: ArFSPrepareFileParams<T, U>): Promise<ArFSPrepareFileResult<T, U>> {
 		// Use existing file ID (create a revision) or generate new file ID
 		const fileId = wrappedFile.existingId ?? EID(uuidv4());
 
@@ -660,21 +597,135 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const metaDataPrototype = await metadataTxDataFactoryFn(fileId, TxID(dataArFSObject.id));
 		const metaDataArFSObject = await prepareMetaDataArFSObject(metaDataPrototype);
 
-		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId };
+		// Always preserve file key here for private files
+		let fileKey: FileKey | undefined = undefined;
+		if (metaDataPrototype instanceof ArFSPrivateFileMetaDataPrototype) {
+			fileKey = metaDataPrototype.objectData.fileKey;
+		}
+
+		return { arFSObjects: [dataArFSObject, metaDataArFSObject], fileId, fileKey };
 	}
 
-	private async uploadFileV2Tx(
+	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
+	async uploadPublicFile({
+		parentFolderId: destFolderId,
+		wrappedFile: wrappedEntity,
+		driveId: destDriveId,
+		rewardSettings,
+		communityTipSettings
+	}: ArFSUploadPublicFileParams): Promise<ArFSUploadEntitiesResult> {
+		const owner = await this.getDriveOwnerForFolderId(destDriveId);
+
+		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
+			if (isBundleRewardSetting(rewardSettings)) {
+				return {
+					bundlePlans: [
+						{
+							bundleRewardSettings: rewardSettings.bundleRewardSettings,
+							uploadStats: [
+								{
+									wrappedEntity,
+									destDriveId,
+									destFolderId,
+									owner
+								}
+							],
+							communityTipSettings,
+							metaDataDataItems: []
+						}
+					],
+					v2TxPlans: emptyV2TxPlans
+				};
+			}
+
+			return {
+				bundlePlans: [],
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
+			};
+		})();
+
+		return this.uploadAllEntities(uploadPlan);
+	}
+
+	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */
+	async uploadPrivateFile({
+		parentFolderId: destFolderId,
+		wrappedFile: wrappedEntity,
+		driveId: destDriveId,
+		driveKey,
+		rewardSettings,
+		communityTipSettings
+	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadEntitiesResult> {
+		const owner = await this.getDriveOwnerForFolderId(destDriveId);
+
+		const uploadPlan: CalculatedUploadPlan = ((): CalculatedUploadPlan => {
+			if (isBundleRewardSetting(rewardSettings)) {
+				return {
+					bundlePlans: [
+						{
+							bundleRewardSettings: rewardSettings.bundleRewardSettings,
+							uploadStats: [
+								{
+									wrappedEntity,
+									destDriveId,
+									destFolderId,
+									driveKey,
+									owner
+								}
+							],
+							communityTipSettings,
+							metaDataDataItems: []
+						}
+					],
+					v2TxPlans: emptyV2TxPlans
+				};
+			}
+
+			return {
+				bundlePlans: [],
+				v2TxPlans: {
+					...emptyV2TxPlans,
+					fileAndMetaDataPlans: [
+						{
+							uploadStats: { destDriveId, destFolderId, wrappedEntity, owner, driveKey },
+							dataTxRewardSettings: rewardSettings.dataTxRewardSettings,
+							metaDataRewardSettings: rewardSettings.metaDataRewardSettings,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							communityTipSettings: communityTipSettings!
+						}
+					]
+				}
+			};
+		})();
+
+		return this.uploadAllEntities(uploadPlan);
+	}
+
+	private async uploadFileAndMetaDataAsV2(
 		prepFileParams: PartialPrepareFileParams,
-		{ dataTxRewardSettings, metaDataRewardSettings }: UploadFileV2TxRewardSettings,
+		dataTxRewardSettings: RewardSettings,
+		metaDataRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSTxResult<ArFSUploadFileV2TxResult>> {
-		const { arFSObjects, fileId } = await this.prepareFile({
+	): Promise<FileResult> {
+		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
 					rewardSettings: dataTxRewardSettings,
-					communityTipSettings
+					communityTipSettings,
+					excludedTagNames: ['ArFS']
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
@@ -683,29 +734,34 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
+		// Send both v2 transactions
+		await this.sendTransactionsAsChunks(arFSObjects);
+
 		const [dataTx, metaDataTx] = arFSObjects;
 		return {
-			transactions: arFSObjects,
-			result: {
-				dataTxId: TxID(dataTx.id),
-				dataTxReward: W(dataTx.reward),
-				fileId,
-				metaDataTxId: TxID(metaDataTx.id),
-				metaDataTxReward: W(metaDataTx.reward)
-			}
+			fileDataTxId: TxID(dataTx.id),
+			fileDataReward: W(dataTx.reward),
+			fileId,
+			metaDataTxId: TxID(metaDataTx.id),
+			fileMetaDataReward: W(metaDataTx.reward),
+			fileKey,
+			communityTipSettings
 		};
 	}
 
-	private async uploadBundledFile(
+	private async uploadOnlyFileAsV2(
 		prepFileParams: PartialPrepareFileParams,
-		rewardSettings: RewardSettings,
+		dataTxRewardSettings: RewardSettings,
 		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSTxResult<ArFSUploadBundledFileResult>> {
-		const { arFSObjects, fileId } = await this.prepareFile({
+	): Promise<{ fileResult: FileResult; metaDataDataItem: DataItem }> {
+		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSDataItem({
-					objectMetaData
+				this.prepareArFSObjectTransaction({
+					objectMetaData,
+					rewardSettings: dataTxRewardSettings,
+					communityTipSettings,
+					excludedTagNames: ['ArFS']
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSDataItem({
@@ -713,114 +769,153 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
-		// Pack data items into a bundle
-		const bundledTx = await this.prepareArFSObjectBundle({
-			dataItems: arFSObjects,
-			rewardSettings,
-			communityTipSettings
-		});
+		const [dataTx, metaDataDataItem] = arFSObjects;
 
-		const [dataTxDataItem, metaDataDataItem] = arFSObjects;
+		// Send only file data as v2 transaction
+		await this.sendTransactionsAsChunks([dataTx]);
+
 		return {
-			transactions: [bundledTx],
-			result: {
-				dataTxId: TxID(dataTxDataItem.id),
+			fileResult: {
+				fileDataTxId: TxID(dataTx.id),
+				fileDataReward: W(dataTx.reward),
 				fileId,
-				bundleTxId: TxID(bundledTx.id),
-				bundleTxReward: W(bundledTx.reward),
-				metaDataTxId: TxID(metaDataDataItem.id)
-			}
+				metaDataTxId: TxID(metaDataDataItem.id),
+				fileKey,
+				communityTipSettings
+			},
+			// Return the meta data data item
+			metaDataDataItem
 		};
 	}
 
-	async uploadFile(
-		prepFileParams: PartialPrepareFileParams,
-		rewardSettings: UploadFileRewardSettings,
-		communityTipSettings?: CommunityTipSettings
-	): Promise<ArFSUploadBundledFileResult | ArFSUploadFileV2TxResult> {
-		const { transactions, result } = isBundleRewardSetting(rewardSettings)
-			? await this.uploadBundledFile(prepFileParams, rewardSettings.bundleRewardSettings, communityTipSettings)
-			: await this.uploadFileV2Tx(prepFileParams, rewardSettings, communityTipSettings);
+	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
+		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+		const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans: folderMetaDataPlan } = v2TxPlans;
 
-		// Upload all v2 transactions or direct to network bundles
-		await this.sendTransactionsAsChunks(transactions);
-		return result;
-	}
+		// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
+		for (const {
+			dataTxRewardSettings,
+			uploadStats,
+			communityTipSettings,
+			metaDataBundleIndex
+		} of fileDataOnlyPlans) {
+			const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
 
-	async uploadPublicFile({
-		parentFolderId,
-		wrappedFile,
-		driveId,
-		rewardSettings,
-		communityTipSettings
-	}: ArFSUploadPublicFileParams): Promise<ArFSUploadFileResult> {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+			// Add data item to its intended bundle plan
+			bundlePlans[metaDataBundleIndex].metaDataDataItems.push(metaDataDataItem);
+		}
+		v2TxPlans.fileDataOnlyPlans = [];
 
-		const prepFileParams: PartialPrepareFileParams = {
-			wrappedFile,
-			dataPrototypeFactoryFn: (fileData) =>
-				Promise.resolve(
-					new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
-				),
-			metadataTxDataFactoryFn: (fileId, dataTxId) =>
-				Promise.resolve(
-					new ArFSPublicFileMetaDataPrototype(
-						new ArFSPublicFileMetadataTransactionData(
-							wrappedFile.destinationBaseName,
-							fileSize,
-							lastModifiedDateMS,
-							dataTxId,
-							dataContentType
-						),
-						driveId,
+		for (const {
+			dataTxRewardSettings,
+			metaDataRewardSettings,
+			uploadStats,
+			communityTipSettings
+		} of fileAndMetaDataPlans) {
+			const fileResult = await this.uploadFileAndMetaDataAsV2(
+				getPrepFileParams(uploadStats),
+				dataTxRewardSettings,
+				metaDataRewardSettings,
+				communityTipSettings
+			);
+			results.fileResults.push(fileResult);
+		}
+		v2TxPlans.fileAndMetaDataPlans = [];
+
+		for (const { metaDataRewardSettings, uploadStats } of folderMetaDataPlan) {
+			// Send this folder metadata up as a v2 tx
+			const { folderId, metaDataTxId, metaDataTxReward } = await this.createFolder(
+				await getPrepFolderFactoryParams(uploadStats),
+				metaDataRewardSettings
+			);
+
+			results.folderResults.push({
+				folderId,
+				folderTxId: metaDataTxId,
+				folderMetaDataReward: metaDataTxReward,
+				driveKey: uploadStats.driveKey
+			});
+		}
+		v2TxPlans.folderMetaDataPlans = [];
+
+		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
+			// The upload planner has planned to upload bundles, proceed with bundling
+			let dataItems: DataItem[] = [];
+
+			for (const uploadStat of uploadStats) {
+				const { wrappedEntity, driveKey } = uploadStat;
+
+				if (wrappedEntity.entityType === 'folder') {
+					if (uploadStats.length === 1 && metaDataDataItems.length < 1) {
+						throw new Error('Invalid bundle plan, a single metadata transaction can not be bundled alone!');
+					}
+
+					// Prepare folder data item and results
+					const { arFSObjects, folderId } = await this.prepareFolder({
+						folderPrototypeFactory: await getPrepFolderFactoryParams({
+							...uploadStat,
+							wrappedEntity
+						}),
+						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+					});
+					const folderDataItem = arFSObjects[0];
+
+					dataItems.push(folderDataItem);
+					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
+				} else {
+					if (!communityTipSettings) {
+						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
+					}
+
+					// Prepare file data item and results
+					const prepFileParams = getPrepFileParams({ ...uploadStat, wrappedEntity });
+					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
+						...prepFileParams,
+						prepareArFSObject: (objectMetaData) =>
+							this.prepareArFSDataItem({ objectMetaData, excludedTagNames: ['ArFS'] }),
+						prepareMetaDataArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+					});
+
+					const [fileDataItem, metaDataItem] = arFSObjects;
+
+					dataItems.push(...arFSObjects);
+					results.fileResults.push({
 						fileId,
-						parentFolderId
-					)
-				)
-		};
-
-		return this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
-	}
-
-	async uploadPrivateFile({
-		parentFolderId,
-		wrappedFile,
-		driveId,
-		driveKey,
-		rewardSettings,
-		communityTipSettings
-	}: ArFSUploadPrivateFileParams): Promise<ArFSUploadPrivateFileResult> {
-		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-		let fileKey: FileKey;
-
-		const prepFileParams: PartialPrepareFileParams = {
-			wrappedFile,
-			dataPrototypeFactoryFn: async (fileData, fileId) =>
-				new ArFSPrivateFileDataPrototype(
-					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
-				),
-			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
-				const metaDataTxData = await ArFSPrivateFileMetadataTransactionData.from(
-					wrappedFile.destinationBaseName,
-					fileSize,
-					lastModifiedDateMS,
-					dataTxId,
-					dataContentType,
-					fileId,
-					driveKey
-				);
-
-				// Preserve file key on private metadata for return
-				fileKey = metaDataTxData.fileKey;
-
-				return new ArFSPrivateFileMetaDataPrototype(metaDataTxData, driveId, fileId, parentFolderId);
+						fileDataTxId: TxID(fileDataItem.id),
+						metaDataTxId: TxID(metaDataItem.id),
+						fileKey
+					});
+				}
 			}
-		};
 
-		const uploadFileResult = await this.uploadFile(prepFileParams, rewardSettings, communityTipSettings);
+			// Add any metaData data items from over-sized files sent as v2
+			dataItems.push(...metaDataDataItems);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		return { ...uploadFileResult, fileKey: fileKey! };
+			const bundleTx = await this.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: bundleRewardSettings,
+				communityTipSettings
+			});
+
+			// Drop data items from memory immediately after the bundle has been assembled
+			dataItems = [];
+
+			// This bundle is now complete, send it off before starting a new one
+			await this.sendTransactionsAsChunks([bundleTx]);
+
+			results.bundleResults.push({
+				bundleTxId: TxID(bundleTx.id),
+				communityTipSettings,
+				bundleReward: W(bundleTx.reward)
+			});
+		}
+
+		return results;
 	}
 
 	async prepareArFSDataItem({
@@ -856,6 +951,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const signer = new ArweaveSigner(wallet.getPrivateKey());
 
 		const bundle = await bundleAndSignData(dataItems, signer);
+		dataItems = [];
 
 		// Verify the bundle and dataItems
 		if (!(await bundle.verify())) {
@@ -1108,6 +1204,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
@@ -1120,9 +1217,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		let cursor = '';
 		let hasNextPage = true;
 		const allEntities: T[] = [];
-
-		// TODO: Derive the owner of a wallet from earliest transaction of a drive by default
-		const owner = await this.wallet.getAddress();
 
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
@@ -1161,11 +1255,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateEntitiesInFolder(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		driveKey: DriveKey,
 		latestRevisionsOnly = true
 	): Promise<(ArFSPrivateFile | ArFSPrivateFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
+			owner,
 			(node, entityType) =>
 				entityType === 'folder'
 					? ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey)
@@ -1176,10 +1272,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
+		owner: ArweaveAddress,
 		latestRevisionsOnly = true
 	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
 		return this.getEntitiesInFolder(
 			parentFolderId,
+			owner,
 			(node, entityType) =>
 				entityType === 'folder'
 					? ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave)
@@ -1196,38 +1294,63 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return hierarchy.folderIdSubtreeFromFolderId(folderId, Number.MAX_SAFE_INTEGER);
 	}
 
-	async getPrivateEntityNamesInFolder(folderId: FolderID, driveKey: DriveKey): Promise<string[]> {
-		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+	async getPrivateEntityNamesInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveKey: DriveKey
+	): Promise<string[]> {
+		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicEntityNamesInFolder(folderId: FolderID): Promise<string[]> {
-		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+	async getPublicEntityNamesInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<string[]> {
+		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicNameConflictInfoInFolder(folderId: FolderID): Promise<NameConflictInfo> {
-		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, true);
+	async getPublicNameConflictInfoInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<NameConflictInfo> {
+		const cacheKey = { folderId, owner };
+		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
+		if (cachedConflictInfo) {
+			return cachedConflictInfo;
+		}
 
-		// Hack to deal with potential typescript bug
-		const files = childrenOfFolder.filter(fileFilter) as ArFSPublicFile[];
-		const folders = childrenOfFolder.filter(folderFilter) as ArFSPublicFolder[];
-		return {
-			files: files.map(fileConflictInfoMap),
-			folders: folders.map(folderToNameAndIdMap)
-		};
+		return this.caches.publicConflictCache.put(
+			cacheKey,
+			(async () => {
+				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+				return {
+					files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
+					folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
+				};
+			})()
+		);
 	}
 
-	async getPrivateNameConflictInfoInFolder(folderId: FolderID, driveKey: DriveKey): Promise<NameConflictInfo> {
-		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, driveKey, true);
+	async getPrivateNameConflictInfoInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveKey: DriveKey
+	): Promise<NameConflictInfo> {
+		const cacheKey = { folderId, owner, driveKey };
+		const cachedConflictInfo = this.caches.privateConflictCache.get(cacheKey);
+		if (cachedConflictInfo) {
+			return cachedConflictInfo;
+		}
 
-		// Hack to deal with potential typescript bug
-		const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
-		const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
-		return {
-			files: files.map(fileConflictInfoMap),
-			folders: folders.map(folderToNameAndIdMap)
-		};
+		return this.caches.privateConflictCache.put(
+			cacheKey,
+			(async () => {
+				const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
+				// Hack to deal with potential typescript bug
+				const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
+				const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
+				return {
+					files: files.map(fileConflictInfoMap),
+					folders: folders.map(folderToNameAndIdMap)
+				};
+			})()
+		);
 	}
 
 	async getPrivateChildrenFolderIds({

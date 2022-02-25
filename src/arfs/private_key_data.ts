@@ -59,7 +59,7 @@ export class PrivateKeyData {
 		}
 
 		// Next, try any unverified drive keys provided by the user
-		for await (const driveKey of this.unverifiedDriveKeys) {
+		for (const driveKey of this.unverifiedDriveKeys) {
 			try {
 				const decryptedDriveJSON = await this.decryptToJson<T>(cipherIV, dataBuffer, driveKey);
 

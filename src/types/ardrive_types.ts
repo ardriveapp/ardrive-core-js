@@ -9,10 +9,11 @@ import {
 	FileID,
 	FileConflictPrompts,
 	FileNameConflictResolution,
-	FolderConflictPrompts
+	FolderConflictPrompts,
+	DriveKey
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
-import { ArFSFolderToUpload, ArFSFileToUpload } from '../arfs/arfs_file_wrapper';
+import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
@@ -71,13 +72,6 @@ export interface MetaDataBaseCosts {
 	metaDataBaseReward: Winston;
 }
 
-export interface BulkFileBaseCosts extends MetaDataBaseCosts {
-	fileDataBaseReward: Winston;
-}
-export interface FileUploadBaseCosts extends BulkFileBaseCosts {
-	communityWinstonTip: Winston;
-}
-
 export interface RecursivePublicBulkUploadParams {
 	parentFolderId: FolderID;
 	wrappedFolder: ArFSFolderToUpload;
@@ -110,6 +104,34 @@ export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 export interface UploadParams {
 	parentFolderId: FolderID;
 	conflictResolution?: FileNameConflictResolution;
+}
+
+/** Upload stats required for uploading entities with the ArDrive class */
+export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
+	wrappedEntity: T;
+	destFolderId: FolderID;
+	destName?: string;
+	driveKey?: DriveKey;
+}
+
+/** Upload stats as determined by the ArDrive class */
+export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends ArDriveUploadStats<T> {
+	destDriveId: DriveID;
+	owner: ArweaveAddress;
+}
+
+export type FileUploadStats = UploadStats<ArFSDataToUpload>;
+export type FolderUploadStats = UploadStats<ArFSFolderToUpload>;
+
+export interface UploadAllEntitiesParams {
+	entitiesToUpload: ArDriveUploadStats[];
+	conflictResolution?: FileNameConflictResolution;
+	prompts?: FolderConflictPrompts;
+}
+
+export interface ResolveBulkConflictsParams extends UploadAllEntitiesParams {
+	entitiesToUpload: UploadStats[];
+	conflictResolution: FileNameConflictResolution;
 }
 
 export interface BulkPublicUploadParams extends UploadParams {

@@ -1,5 +1,4 @@
-import { ArFSFileMetadataTransactionData } from './arfs_tx_data_types';
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston } from '../types';
+import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, CommunityTipSettings } from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -16,6 +15,35 @@ export function isBundleResult(
 export interface ArFSWriteResult {
 	metaDataTxId: TransactionID;
 	metaDataTxReward: Winston;
+}
+
+export interface ArFSUploadEntitiesResult {
+	fileResults: FileResult[];
+	folderResults: FolderResult[];
+	bundleResults: BundleResult[];
+}
+
+export interface FolderResult {
+	folderTxId: TransactionID;
+	folderId: FolderID;
+	folderMetaDataReward?: Winston;
+	driveKey?: DriveKey;
+}
+
+export interface FileResult {
+	fileDataTxId: TransactionID;
+	metaDataTxId: TransactionID;
+	fileId: FileID;
+	fileDataReward?: Winston;
+	fileMetaDataReward?: Winston;
+	communityTipSettings?: CommunityTipSettings;
+	fileKey?: FileKey;
+}
+
+export interface BundleResult {
+	bundleTxId: TransactionID;
+	bundleReward: Winston;
+	communityTipSettings?: CommunityTipSettings;
 }
 
 export interface ArFSDriveResult {
@@ -77,12 +105,6 @@ export type ArFSCreatePrivateFolderResult = ArFSCreateFolderResult & WithDriveKe
 export type ArFSUploadPublicFileResult = ArFSUploadFileResult;
 export type ArFSUploadPrivateFileResult = ArFSUploadFileResult & WithFileKey;
 
-export function isPrivateResult(
-	result: ArFSUploadPublicFileResult | ArFSUploadPrivateFileResult
-): result is ArFSUploadPrivateFileResult {
-	return Object.keys(result as ArFSUploadPrivateFileResult).includes('fileKey');
-}
-
 export type ArFSMovePublicFolderResult = ArFSMoveEntityResult;
 export type ArFSMovePrivateFolderResult = ArFSMoveEntityResult & WithDriveKey;
 
@@ -100,9 +122,3 @@ export type ArFSRenamePrivateDriveResult = ArFSRenameDriveResult & WithDriveKey;
 
 // Result factory function types
 export type ArFSMoveEntityResultFactory<R extends ArFSMoveEntityResult> = (result: ArFSMoveEntityResult) => R;
-export type ArFSCreateDriveResultFactory<R extends ArFSCreateDriveResult> = (result: ArFSCreateDriveResult) => R;
-export type ArFSCreateFolderResultFactory<R extends ArFSCreateFolderResult> = (result: ArFSCreateFolderResult) => R;
-export type ArFSUploadFileResultFactory<R extends ArFSUploadFileResult, D extends ArFSFileMetadataTransactionData> = (
-	result: ArFSUploadFileResult,
-	txData: D
-) => R;
