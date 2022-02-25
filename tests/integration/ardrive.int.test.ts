@@ -3304,7 +3304,7 @@ function assertCreateDriveExpectations(
 	const driveEntity = result.created[0];
 	expect(driveEntity.dataTxId).to.be.undefined;
 	expect(driveEntity.entityId).to.match(entityIdRegex);
-	expect(driveEntity.key?.toString()).to.equal(expectedDriveKey);
+	expect(driveEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(driveEntity.metadataTxId).to.match(txIdRegex);
 	expect(driveEntity.type).to.equal('drive');
 
@@ -3312,7 +3312,7 @@ function assertCreateDriveExpectations(
 	const rootFolderEntity = result.created[1];
 	expect(rootFolderEntity.dataTxId).to.be.undefined;
 	expect(rootFolderEntity.entityId).to.match(entityIdRegex);
-	expect(rootFolderEntity.key?.toString()).to.equal(expectedDriveKey);
+	expect(rootFolderEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(rootFolderEntity.metadataTxId).to.match(txIdRegex);
 	expect(rootFolderEntity.type).to.equal('folder');
 
@@ -3356,7 +3356,7 @@ function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, 
 	const folderEntity = result.created[0];
 	expect(folderEntity.dataTxId).to.be.undefined;
 	expect(folderEntity.entityId).to.match(entityIdRegex);
-	expect(folderEntity.key?.toString()).to.equal(expectedDriveKey);
+	expect(folderEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(folderEntity.metadataTxId).to.match(txIdRegex);
 	expect(folderEntity.type).to.equal('folder');
 
@@ -3630,7 +3630,7 @@ function assertFolderCreatedResult(
 
 	if (expectDriveKey) {
 		// Output of stubDriveKey
-		expect(key).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+		expect(key?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	} else {
 		expect(key).to.be.undefined;
 	}
