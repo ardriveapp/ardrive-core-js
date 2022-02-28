@@ -23,7 +23,7 @@ import {
 	stubCommunityTipSettings
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
-import { readJWKFile, urlEncodeHashKey, Utf8ArrayToStr } from '../utils/common';
+import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
 	ArFSDAO,
@@ -526,7 +526,7 @@ describe('The ArFSDAO class', () => {
 	describe('caching behaviors of', () => {
 		describe('getPrivateDrive function', () => {
 			it('returns a drive for a specified drive ID and owner from cache when cached entry is available', async () => {
-				const cachedDrive = stubPrivateDrive;
+				const cachedDrive = await stubPrivateDrive();
 				const promise = Promise.resolve(cachedDrive);
 				stub(privateDriveCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateDrive(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
@@ -1029,7 +1029,7 @@ function assertFileResult(
 
 	if (expectFileKey) {
 		// Expected file key of stubDriveKey + stubEntityId
-		expect(urlEncodeHashKey(fileKey!)).to.equal('UYCAFLlG4DuYgfOIh+qtEReZdQxWiznwekDa2ulSRd4');
+		expect(fileKey?.toString()).to.equal('UYCAFLlG4DuYgfOIh+qtEReZdQxWiznwekDa2ulSRd4');
 	} else {
 		expect(fileKey).to.be.undefined;
 	}
@@ -1056,7 +1056,7 @@ function assertFolderResult(
 
 	if (expectDriveKey) {
 		// Output of stubDriveKey
-		expect(urlEncodeHashKey(driveKey!)).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+		expect(driveKey?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	} else {
 		expect(driveKey).to.be.undefined;
 	}
