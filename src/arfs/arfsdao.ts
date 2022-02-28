@@ -206,11 +206,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 		protected caches: ArFSCache = {
 			...defaultArFSAnonymousCache,
-			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
-			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
-			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
-			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
-			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
+			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>('privateDriveCache'),
+			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>('privateFolderCache'),
+			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>('privateFileCache'),
+			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>('publicConflictCache'),
+			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(
+				'privateConflictCache'
+			)
 		}
 	) {
 		super(arweave, undefined, undefined, caches);

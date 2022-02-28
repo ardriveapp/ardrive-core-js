@@ -37,12 +37,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         [null, {
           "packageLocation": "./",
           "packageDependencies": [
-            ["@alexsasharegan/simple-cache", "npm:3.3.3"],
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],
             ["@types/chai", "npm:4.2.21"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/lodash", "npm:4.14.176"],
+            ["@types/lokijs", "npm:1.5.7"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.17.5"],
@@ -71,6 +71,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["jwk-to-pem", "npm:2.0.4"],
             ["lint-staged", "npm:11.0.0"],
             ["lodash", "npm:4.17.21"],
+            ["lokijs", "npm:1.5.12"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
             ["nyc", "npm:15.1.0"],
@@ -95,16 +96,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@akiroz-size-chunker-stream-npm-0.0.1-9f99cfc30c-1609e171c3.zip/node_modules/@akiroz/size-chunker-stream/",
           "packageDependencies": [
             ["@akiroz/size-chunker-stream", "npm:0.0.1"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["@alexsasharegan/simple-cache", [
-        ["npm:3.3.3", {
-          "packageLocation": "./.yarn/cache/@alexsasharegan-simple-cache-npm-3.3.3-79599548bf-e36ce8368f.zip/node_modules/@alexsasharegan/simple-cache/",
-          "packageDependencies": [
-            ["@alexsasharegan/simple-cache", "npm:3.3.3"],
-            ["safe-types", "npm:4.27.0"]
           ],
           "linkType": "HARD",
         }]
@@ -1295,6 +1286,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["@types/lokijs", [
+        ["npm:1.5.7", {
+          "packageLocation": "./.yarn/cache/@types-lokijs-npm-1.5.7-6e55f16cdf-4e92c76a5f.zip/node_modules/@types/lokijs/",
+          "packageDependencies": [
+            ["@types/lokijs", "npm:1.5.7"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["@types/long", [
         ["npm:4.0.1", {
           "packageLocation": "./.yarn/cache/@types-long-npm-4.0.1-022c8b6e77-ed2a125330.zip/node_modules/@types/long/",
@@ -1949,12 +1949,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",
           "packageDependencies": [
             ["ardrive-core-js", "workspace:."],
-            ["@alexsasharegan/simple-cache", "npm:3.3.3"],
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],
             ["@types/chai", "npm:4.2.21"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
             ["@types/lodash", "npm:4.14.176"],
+            ["@types/lokijs", "npm:1.5.7"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
             ["@types/node", "npm:14.17.5"],
@@ -1983,6 +1983,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["jwk-to-pem", "npm:2.0.4"],
             ["lint-staged", "npm:11.0.0"],
             ["lodash", "npm:4.17.21"],
+            ["lokijs", "npm:1.5.12"],
             ["mime-types", "npm:2.1.29"],
             ["mocha", "npm:8.3.2"],
             ["nyc", "npm:15.1.0"],
@@ -5551,6 +5552,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["lokijs", [
+        ["npm:1.5.12", {
+          "packageLocation": "./.yarn/cache/lokijs-npm-1.5.12-739e26e476-460bf1d36f.zip/node_modules/lokijs/",
+          "packageDependencies": [
+            ["lokijs", "npm:1.5.12"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["long", [
         ["npm:4.0.0", {
           "packageLocation": "./.yarn/cache/long-npm-4.0.0-ecd96a31ed-9cebc1ee8b.zip/node_modules/long/",
@@ -6983,15 +6993,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/safe-buffer-npm-5.2.1-3481c8aa9b-0bb57f0d8f.zip/node_modules/safe-buffer/",
           "packageDependencies": [
             ["safe-buffer", "npm:5.2.1"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["safe-types", [
-        ["npm:4.27.0", {
-          "packageLocation": "./.yarn/cache/safe-types-npm-4.27.0-a1be85b591-182ce7d1d4.zip/node_modules/safe-types/",
-          "packageDependencies": [
-            ["safe-types", "npm:4.27.0"]
           ],
           "linkType": "HARD",
         }]

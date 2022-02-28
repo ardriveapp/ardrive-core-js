@@ -62,11 +62,11 @@ export interface ArFSAnonymousCache {
 }
 
 export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
-	ownerCache: new ArFSEntityCache<DriveID, ArweaveAddress>(10),
-	driveIdCache: new ArFSEntityCache<EntityID, DriveID>(10),
-	publicDriveCache: new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10),
-	publicFolderCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10),
-	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10)
+	ownerCache: new ArFSEntityCache<DriveID, ArweaveAddress>('ownerCache'),
+	driveIdCache: new ArFSEntityCache<EntityID, DriveID>('driveIdCache'),
+	publicDriveCache: new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>('publicDriveCache'),
+	publicFolderCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>('publicFolderCache'),
+	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>('publicFileCache')
 };
 
 /**

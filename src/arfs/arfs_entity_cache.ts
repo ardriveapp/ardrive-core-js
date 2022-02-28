@@ -1,10 +1,30 @@
-import { Cache, SimpleCache } from '@alexsasharegan/simple-cache';
+import os from 'os';
+import { join as joinPath } from 'path';
+import Loki from 'lokijs';
+
+const CACHE_DB_NAME = process.env.NODE_ENV === 'test' ? 'testMetadata' : 'metadata';
+const CACHE_DB_DIRECTORY = joinPath(os.homedir(), '.ardrive/caches', CACHE_DB_NAME);
+
+interface CacheEntry<V> {
+	key: string;
+	value: V;
+}
 
 export class ArFSEntityCache<K, V> {
-	private cache: Cache<string, Promise<V>>;
+	// private cache: Cache<string, Promise<V>>;
+	private static db: Loki = new Loki(CACHE_DB_DIRECTORY);
+	private readonly collection: Collection<CacheEntry<V>>;
 
-	constructor(capacity: number) {
-		this.cache = SimpleCache<string, Promise<V>>(capacity);
+	constructor(private readonly collectionName: string) {
+		this.collection = this.setupCollection();
+	}
+
+	private setupCollection(): Collection<CacheEntry<V>> {
+		const existingCollection = ArFSEntityCache.db.getCollection<CacheEntry<V>>(this.collectionName);
+		return (
+			existingCollection ??
+			ArFSEntityCache.db.addCollection<CacheEntry<V>>(this.collectionName, { unique: ['key'] })
+		);
 	}
 
 	cacheKeyString(key: K): string {
@@ -13,24 +33,42 @@ export class ArFSEntityCache<K, V> {
 		return typeof key === 'string' ? key : JSON.stringify(key);
 	}
 
-	put(key: K, value: Promise<V>): Promise<V> {
-		this.cache.write(this.cacheKeyString(key), value);
+	async put(key: K, value: Promise<V>): Promise<V> {
+		const stringifiedKey = this.cacheKeyString(key);
+		const doc = this.collection.by('key', this.getIndexForKey(key));
+		const awaitedValue = await value;
+		if (doc) {
+			doc.value = awaitedValue;
+			this.collection.update(doc);
+		} else {
+			const entry: CacheEntry<V> = { key: stringifiedKey, value: awaitedValue };
+			this.collection.insert(entry);
+		}
 		return value;
 	}
 
 	get(key: K): Promise<V> | undefined {
-		return this.cache.read(this.cacheKeyString(key));
+		const entry = this.collection.findOne({ key: this.cacheKeyString(key) });
+		const result = entry?.value;
+		return result ? Promise.resolve(result) : undefined;
 	}
 
 	remove(key: K): void {
-		this.cache.remove(this.cacheKeyString(key));
+		const entryIndex = this.getIndexForKey(key);
+		this.collection.remove(entryIndex);
 	}
 
 	clear(): void {
-		this.cache.clear();
+		this.collection.clear();
 	}
 
 	size(): number {
-		return this.cache.size();
+		return this.collection.count();
+	}
+
+	private getIndexForKey(key: K): number {
+		const entry = this.collection.findOne({ key: this.cacheKeyString(key) });
+		const index = entry?.$loki;
+		return index || -1;
 	}
 }
