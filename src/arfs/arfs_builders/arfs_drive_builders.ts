@@ -342,27 +342,27 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 					throw new Error(`Unexpectedly null privacy data for private drive with ID ${this.driveId}!`);
 				}
 
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				const driveKey = this.privateKeyData.driveKeyForDriveId(this.driveId);
-				if (driveKey) {
-					return new ArFSPrivateDrive(
-						this.appName,
-						this.appVersion,
-						this.arFS,
-						this.contentType,
-						this.driveId,
-						this.entityType,
-						this.name,
-						this.txId,
-						this.unixTime,
-						this.drivePrivacy,
-						this.rootFolderId,
-						this.driveAuthMode,
-						this.cipher,
-						this.cipherIV,
-						driveKey
-					);
-				}
+				// // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				// const driveKey = this.privateKeyData.driveKeyForDriveId(this.driveId);
+				// if (driveKey) {
+				// 	return new ArFSPrivateDrive(
+				// 		this.appName,
+				// 		this.appVersion,
+				// 		this.arFS,
+				// 		this.contentType,
+				// 		this.driveId,
+				// 		this.entityType,
+				// 		this.name,
+				// 		this.txId,
+				// 		this.unixTime,
+				// 		this.drivePrivacy,
+				// 		this.rootFolderId,
+				// 		this.driveAuthMode,
+				// 		this.cipher,
+				// 		this.cipherIV,
+				// 		driveKey
+				// 	);
+				// }
 
 				return new ArFSPrivateDriveKeyless(
 					this.appName,
