@@ -5,7 +5,13 @@ import { ArFSDAO } from './arfs/arfsdao';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import { CommunityOracle } from './community/community_oracle';
 import { ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
+import {
+	defaultGatewayHost,
+	defaultGatewayPort,
+	defaultGatewayProtocol,
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION
+} from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import { FeeMultiple } from './types';
@@ -13,9 +19,9 @@ import { WalletDAO } from './wallet_dao';
 import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { GatewayOracle } from './pricing/gateway_oracle';
+import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -43,17 +49,16 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 }
 
 const defaultArweave = Arweave.init({
-	host: 'arweave.net', // Arweave Gateway
-	//host: 'arweave.dev', // Arweave Dev Gateway
-	port: 443,
-	protocol: 'https',
+	host: defaultGatewayHost,
+	port: defaultGatewayPort,
+	protocol: defaultGatewayProtocol,
 	timeout: 600000
 });
 
 export function arDriveFactory({
 	wallet,
 	arweave = defaultArweave,
-	priceEstimator = new ARDataPriceNetworkEstimator(),
+	priceEstimator = new ARDataPriceNetworkEstimator(new GatewayOracle(gatewayUrlForArweave(arweave))),
 	communityOracle = new ArDriveCommunityOracle(arweave),
 	dryRun = false,
 	feeMultiple = new FeeMultiple(1.0),

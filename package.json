@@ -1,6 +1,6 @@
 {
 	"name": "ardrive-core-js",
-	"version": "1.8.0",
+	"version": "1.9.0",
 	"description": "ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.",
 	"main": "./lib/exports.js",
 	"types": "./lib/exports.d.ts",
@@ -67,8 +67,9 @@
 		"power-assert": "mocha --parallel false --r espower-typescript/guess ./**/*test.ts",
 		"typecheck": "tsc --noemit",
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
-		"ci": "yarn test && yarn build",
-		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w"
+		"ci": "yarn arlocal-docker-test && yarn build",
+		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
+		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\""
 	},
 	"directories": {
 		"test": "./"
