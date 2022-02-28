@@ -20,8 +20,7 @@ export class ArFSMetadataCache {
 
 		const homeDir = os.homedir();
 		const metadataCacheDir = `${homeDir}/.ardrive/caches/metadata/`;
-		const stats = await fs.promises.stat(metadataCacheDir);
-		if (stats.isDirectory()) {
+		if (fs.existsSync(metadataCacheDir)) {
 			this.cacheFolderPromise = Promise.resolve(metadataCacheDir);
 			return this.cacheFolderPromise;
 		}
