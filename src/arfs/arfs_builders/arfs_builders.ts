@@ -1,5 +1,4 @@
 import Arweave from 'arweave';
-import { graphQLURL } from '../../utils/constants';
 import { ArFSEntity, ArFSFileOrFolderEntity } from '../arfs_entities';
 import { buildQuery } from '../../utils/query';
 import {
@@ -20,6 +19,8 @@ import {
 } from '../../types';
 import axios from 'axios';
 import axiosRetry, { exponentialDelay } from 'axios-retry';
+import { gatewayUrlForArweave } from '../../utils/common';
+import { gatewayGqlEndpoint } from '../../utils/constants';
 
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
@@ -74,7 +75,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		if (!node) {
 			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
 
-			const response = await this.arweave.api.post(graphQLURL, gqlQuery);
+			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
 
 			const { data } = response.data;
 			const transactions: GQLTransactionsResultInterface = data.transactions;
@@ -128,10 +129,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	async getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		const protocol = this.arweave.api.config.protocol ?? 'https';
-		const host = this.arweave.api.config.host ?? 'arweave.net';
-		const portStr = this.arweave.api.config.port ? `:${this.arweave.api.config.port}` : '';
-		const reqURL = `${protocol}://${host}${portStr}/${txId}`;
+		const reqURL = `${gatewayUrlForArweave(this.arweave).href}${txId}`;
 		const axiosInstance = axios.create();
 		const maxRetries = 5;
 		axiosRetry(axiosInstance, {

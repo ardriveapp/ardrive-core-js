@@ -67,8 +67,9 @@
 		"power-assert": "mocha --parallel false --r espower-typescript/guess ./**/*test.ts",
 		"typecheck": "tsc --noemit",
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
-		"ci": "yarn test && yarn build",
-		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w"
+		"ci": "yarn arlocal-docker-test && yarn build",
+		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
+		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\""
 	},
 	"directories": {
 		"test": "./"

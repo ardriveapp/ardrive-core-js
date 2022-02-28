@@ -696,7 +696,6 @@ export class ArDrive extends ArDriveAnonymous {
 			owner
 		});
 		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
-
 		const uploadManifestResults = await this.uploadAllEntities({
 			entitiesToUpload: [
 				{
@@ -712,10 +711,12 @@ export class ArDrive extends ArDriveAnonymous {
 		const manifestTxId = uploadManifestResults.created[0]?.dataTxId;
 
 		if (manifestTxId) {
+			const links = this.arFsDao.getManifestLinks(manifestTxId, arweaveManifest);
+
 			return {
 				...uploadManifestResults,
 				manifest: arweaveManifest.manifest,
-				links: arweaveManifest.getLinksOutput(manifestTxId)
+				links
 			};
 		}
 
