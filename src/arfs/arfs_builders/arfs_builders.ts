@@ -17,11 +17,8 @@ import {
 	GQLTagInterface,
 	GQLTransactionsResultInterface
 } from '../../types';
-import axios from 'axios';
-import axiosRetry, { exponentialDelay } from 'axios-retry';
-import { gatewayUrlForArweave } from '../../utils/common';
 import { gatewayGqlEndpoint } from '../../utils/constants';
-import { ArFSMetadataCache } from '../arfs_metadata_cache';
+import { getDataForTxID } from '../../utils/get_tx_data';
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
 	arweave: Arweave;
@@ -129,32 +126,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	async getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		const cachedData = await ArFSMetadataCache.get(txId);
-		if (cachedData) {
-			return cachedData;
-		}
-
-		const reqURL = `${gatewayUrlForArweave(this.arweave).href}${txId}`;
-
-		const axiosInstance = axios.create();
-		const maxRetries = 5;
-		axiosRetry(axiosInstance, {
-			retries: maxRetries,
-			retryDelay: (retryNumber) => {
-				console.error(`Retry attempt ${retryNumber}/${maxRetries} of request to ${reqURL}`);
-				return exponentialDelay(retryNumber);
-			}
-		});
-		const {
-			data: txData
-		}: {
-			data: Buffer;
-		} = await axiosInstance.get(reqURL, {
-			responseType: 'arraybuffer'
-		});
-
-		await ArFSMetadataCache.put(txId, txData);
-		return txData;
+		return getDataForTxID(txId, this.arweave);
 	}
 }
 

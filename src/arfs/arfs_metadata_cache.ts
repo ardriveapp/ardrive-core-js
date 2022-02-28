@@ -5,21 +5,16 @@ import { TransactionID } from '../types';
 
 export class ArFSMetadataCache {
 	private static cacheFolderPromise?: Promise<string>;
-	private static cacheFolder?: string;
 	private static shouldCacheLog = process.env['ARDRIVE_CACHE_LOG'] === '1';
 
 	static async getCacheFolder(): Promise<string> {
-		if (this.cacheFolder) {
-			return Promise.resolve(this.cacheFolder);
-		}
-
 		// Don't kick off another setup while setup is in progress
 		if (this.cacheFolderPromise) {
 			return this.cacheFolderPromise;
 		}
 
 		const homeDir = os.homedir();
-		const metadataCacheDir = `${homeDir}/.ardrive/caches/metadata/`;
+		const metadataCacheDir = path.join(homeDir, '.ardrive', 'caches', 'metadata');
 		if (fs.existsSync(metadataCacheDir)) {
 			this.cacheFolderPromise = Promise.resolve(metadataCacheDir);
 			return this.cacheFolderPromise;
@@ -28,7 +23,6 @@ export class ArFSMetadataCache {
 			if (!result) {
 				throw new Error('Could not create persistent ArFS entity cache!');
 			}
-			this.cacheFolder = result;
 			return result;
 		});
 		return this.cacheFolderPromise;
