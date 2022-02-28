@@ -19,6 +19,7 @@ import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths } from '../exports';
+import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -157,7 +158,7 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
 	}
 
-	public getLinksOutput(dataTxId: TransactionID): string[] {
+	public getLinksOutput(dataTxId: TransactionID, gateway = new URL(defaultArweaveGatewayPath)): string[] {
 		const allPaths = Object.keys(this.manifest.paths);
 
 		const encodedPaths = allPaths.map((path) =>
@@ -170,8 +171,8 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 				.join('/')
 		);
 
-		const pathsToFiles = encodedPaths.map((encodedPath) => `https://arweave.net/${dataTxId}/${encodedPath}`);
-		const pathToManifestTx = `https://arweave.net/${dataTxId}`;
+		const pathsToFiles = encodedPaths.map((encodedPath) => `${gateway.href}${dataTxId}/${encodedPath}`);
+		const pathToManifestTx = `${gateway.href}${dataTxId}`;
 
 		return [pathToManifestTx, ...pathsToFiles];
 	}

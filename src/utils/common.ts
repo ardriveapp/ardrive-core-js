@@ -5,12 +5,19 @@ import * as types from '../types/base_Types';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import { authTagLength, stagingAppUrl } from './constants';
+import {
+	authTagLength,
+	defaultArweaveGatewayPath,
+	defaultGatewayHost,
+	defaultGatewayProtocol,
+	stagingAppUrl
+} from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
 import { ByteCount, DriveKey, FileKey } from '../types';
+import Arweave from 'arweave';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -541,9 +548,18 @@ export function readJWKFile(path: string): Wallet {
 	return wallet;
 }
 
-export async function fetchMempool(): Promise<string[]> {
-	const response = await axios.get('https://arweave.net/tx/pending');
+export async function fetchMempool(gateway = new URL(defaultArweaveGatewayPath)): Promise<string[]> {
+	const response = await axios.get(`${gateway.href}tx/pending`);
 	return response.data;
+}
+
+/** Derives gateway URL from provided Arweave instance */
+export function gatewayUrlForArweave(arweave: Arweave): URL {
+	const protocol = arweave.api.config.protocol ?? defaultGatewayProtocol;
+	const host = arweave.api.config.host ?? defaultGatewayHost;
+	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
+
+	return new URL(`${protocol}://${host}${portStr}/`);
 }
 
 export function urlEncodeHashKey(keyBuffer: Buffer): string {
