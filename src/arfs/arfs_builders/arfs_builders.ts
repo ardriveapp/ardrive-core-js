@@ -126,7 +126,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		return this.buildEntity();
 	}
 
-	async getDataForTxID(txId: TransactionID): Promise<Buffer> {
+	getDataForTxID(txId: TransactionID): Promise<Buffer> {
 		return getDataForTxID(txId, this.arweave);
 	}
 }
