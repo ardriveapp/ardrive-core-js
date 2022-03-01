@@ -36,7 +36,8 @@ import {
 	UploadStats,
 	W,
 	wrapFileOrFolder,
-	ArFSPrivateDrive
+	ArFSPrivateDrive,
+	deriveFileKey
 } from '../src/exports';
 import {
 	ADDR,
@@ -293,8 +294,10 @@ export const stubPrivateFile = async ({
 	parentFolderId = stubEntityID,
 	fileId = stubEntityID,
 	dataTxId = stubTransactionID
-}: StubFileParams): Promise<ArFSPrivateFile> =>
-	new ArFSPrivateFile(
+}: StubFileParams): Promise<ArFSPrivateFile> => {
+	const driveKey = await getStubDriveKey();
+	const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+	return new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
 		ArFS_O_11,
@@ -311,9 +314,10 @@ export const stubPrivateFile = async ({
 		JSON_CONTENT_TYPE,
 		'stubCipher',
 		'stubIV',
-		await getStubDriveKey(),
-		await getStubDriveKey()
+		fileKey,
+		driveKey
 	);
+};
 
 const stubPublicRootFolder = stubPublicFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() });
 const stubPublicParentFolder = stubPublicFolder({

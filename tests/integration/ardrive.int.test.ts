@@ -7,7 +7,7 @@ import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders'
 import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
-import { deriveDriveKey } from '../../src/utils/crypto';
+import { deriveDriveKey, deriveFileKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
 import {
@@ -216,13 +216,14 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
 				const drive = await arDrive.getPrivateDrive({
 					driveId: stubEntityID,
 					owner: walletOwner,
-					driveKey: await getStubDriveKey(),
+					driveKey: expectedKey,
 					withKeys: true
 				});
-				expect(drive.driveKey).to.not.be.undefined;
+				expect(`${drive.driveKey}`).to.equal(`${expectedKey}`);
 			});
 		});
 
@@ -671,13 +672,14 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
 				const folder = await arDrive.getPrivateFolder({
 					folderId: stubEntityID,
 					owner: walletOwner,
-					driveKey: await getStubDriveKey(),
+					driveKey: expectedKey,
 					withKeys: true
 				});
-				expect(folder.driveKey).to.not.be.undefined;
+				expect(`${folder.driveKey}`).to.equal(`${expectedKey}`);
 			});
 		});
 
@@ -1160,14 +1162,16 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedDriveKey = await getStubDriveKey();
+				const expectedFileKey = await deriveFileKey(`${stubEntityID}`, expectedDriveKey);
 				const file = await arDrive.getPrivateFile({
 					fileId: stubEntityID,
 					owner: walletOwner,
-					driveKey: await getStubDriveKey(),
+					driveKey: expectedDriveKey,
 					withKeys: true
 				});
-				expect(file.driveKey).to.not.be.undefined;
-				expect(file.fileKey).to.not.be.undefined;
+				expect(`${file.driveKey}`).to.equal(`${expectedDriveKey}`);
+				expect(`${file.fileKey}`).to.equal(`${expectedFileKey}`);
 			});
 		});
 
