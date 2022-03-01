@@ -19,11 +19,18 @@ export class ArFSMetadataCache {
 			this.cacheFolderPromise = Promise.resolve(metadataCacheDir);
 			return this.cacheFolderPromise;
 		}
+
+		if (this.shouldCacheLog) {
+			console.error(`Creating ArDrive cache folder at ${metadataCacheDir}...`);
+		}
 		this.cacheFolderPromise = fs.promises.mkdir(`${metadataCacheDir}`, { recursive: true }).then((result) => {
 			if (!result) {
 				throw new Error('Could not create persistent ArFS entity cache!');
 			}
-			return result;
+			if (this.shouldCacheLog) {
+				console.error(`Created ArDrive cache folder at ${metadataCacheDir}.`);
+			}
+			return metadataCacheDir;
 		});
 		return this.cacheFolderPromise;
 	}
