@@ -150,12 +150,14 @@ import {
 import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import axiosRetry, { exponentialDelay } from 'axios-retry';
-import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
+import { createTransactionAsync, uploadTransactionAsync } from 'arweave-stream-tx';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -903,8 +905,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Drop data items from memory immediately after the bundle has been assembled
 			dataItems = [];
 
+			const bundleStream = new Readable({
+				read() {
+					this.push(bundleTx.data);
+					this.push(null);
+				}
+			});
+
 			// This bundle is now complete, send it off before starting a new one
-			await this.sendTransactionsAsChunks([bundleTx]);
+			await pipeline(bundleStream, uploadTransactionAsync(bundleTx, this.arweave));
 
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
@@ -956,9 +965,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			throw new Error('Bundle format could not be verified!');
 		}
 
-		const txAttributes: Partial<CreateTransactionInterface> = {
-			data: bundle.getRaw()
-		};
+		const bundleRawData = bundle.getRaw();
+
+		const txAttributes: Partial<CreateTransactionInterface> = {};
 
 		if (rewardSettings.reward) {
 			// If we provided our own reward setting, use it now
@@ -979,8 +988,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
 		}
 
+		const bundleStream = new Readable({
+			read() {
+				this.push(bundleRawData);
+				this.push(null);
+			}
+		});
+
 		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
-		const bundledDataTx = await this.arweave.createTransaction(txAttributes);
+		const bundledDataTx = await pipeline(
+			bundleStream,
+			createTransactionAsync(txAttributes, this.arweave, wallet.getPrivateKey())
+		);
+
+		bundledDataTx.data = bundleRawData;
 
 		// If we've opted to boost the transaction, do so now
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
