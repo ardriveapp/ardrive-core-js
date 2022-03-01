@@ -19,6 +19,7 @@ import {
 } from '../../types';
 import { gatewayGqlEndpoint } from '../../utils/constants';
 import { getDataForTxID } from '../../utils/get_tx_data';
+
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
 	arweave: Arweave;
