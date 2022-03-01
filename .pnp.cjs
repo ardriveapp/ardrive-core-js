@@ -45,6 +45,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/regression", "npm:2.0.2"],\
             ["@types/sinon", "npm:10.0.2"],\
             ["@types/source-map-support", "npm:0.5.3"],\
+            ["@types/stream-buffers", "npm:3.0.4"],\
             ["@types/utf8", "npm:2.1.6"],\
             ["@types/uuid", "npm:8.3.0"],\
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],\
@@ -77,6 +78,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["sinon", "npm:11.1.1"],\
             ["smartweave", "npm:0.4.45"],\
             ["source-map-support", "npm:0.5.19"],\
+            ["stream-buffers", "npm:3.0.2"],\
             ["ts-node", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.1.0"],\
             ["ts-sinon", "npm:2.0.1"],\
             ["typescript", "patch:typescript@npm%3A4.2.3#~builtin<compat/typescript>::version=4.2.3&hash=bda367"],\
@@ -1444,6 +1446,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["@types/stream-buffers", [\
+        ["npm:3.0.4", {\
+          "packageLocation": "./.yarn/cache/@types-stream-buffers-npm-3.0.4-e672c88cb5-5b432b2bf9.zip/node_modules/@types/stream-buffers/",\
+          "packageDependencies": [\
+            ["@types/stream-buffers", "npm:3.0.4"],\
+            ["@types/node", "npm:16.11.7"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["@types/through", [\
         ["npm:0.0.30", {\
           "packageLocation": "./.yarn/cache/@types-through-npm-0.0.30-59be01cca3-9578470db0.zip/node_modules/@types/through/",\
@@ -1962,6 +1974,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/regression", "npm:2.0.2"],\
             ["@types/sinon", "npm:10.0.2"],\
             ["@types/source-map-support", "npm:0.5.3"],\
+            ["@types/stream-buffers", "npm:3.0.4"],\
             ["@types/utf8", "npm:2.1.6"],\
             ["@types/uuid", "npm:8.3.0"],\
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],\
@@ -1994,6 +2007,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["sinon", "npm:11.1.1"],\
             ["smartweave", "npm:0.4.45"],\
             ["source-map-support", "npm:0.5.19"],\
+            ["stream-buffers", "npm:3.0.2"],\
             ["ts-node", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.1.0"],\
             ["ts-sinon", "npm:2.0.1"],\
             ["typescript", "patch:typescript@npm%3A4.2.3#~builtin<compat/typescript>::version=4.2.3&hash=bda367"],\
@@ -7348,6 +7362,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["starkbank-ecdsa", "npm:1.1.4"],\
             ["big-integer", "npm:1.6.51"],\
             ["js-sha256", "npm:0.9.0"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["stream-buffers", [\
+        ["npm:3.0.2", {\
+          "packageLocation": "./.yarn/cache/stream-buffers-npm-3.0.2-81e4221c31-b09fdeea60.zip/node_modules/stream-buffers/",\
+          "packageDependencies": [\
+            ["stream-buffers", "npm:3.0.2"]\
           ],\
           "linkType": "HARD"\
         }]\

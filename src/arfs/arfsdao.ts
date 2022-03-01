@@ -157,7 +157,9 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
 import { createTransactionAsync, uploadTransactionAsync } from 'arweave-stream-tx';
 import { Readable } from 'stream';
+import { ReadableStreamBuffer } from 'stream-buffers';
 import { pipeline } from 'stream/promises';
+import { MIN_CHUNK_SIZE } from 'arweave/node/lib/merkle';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -905,15 +907,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Drop data items from memory immediately after the bundle has been assembled
 			dataItems = [];
 
-			const bundleStream = new Readable({
-				read() {
-					this.push(bundleTx.data);
-					this.push(null);
-				}
+			console.time('stream - upload');
+			const bundleStream = new ReadableStreamBuffer({
+				frequency: 10,
+				chunkSize: MIN_CHUNK_SIZE
 			});
+			bundleStream.put(bundleTx.data as Buffer);
+			bundleStream.stop();
+			console.timeEnd('stream - upload');
 
+			console.time('upload transaction');
 			// This bundle is now complete, send it off before starting a new one
 			await pipeline(bundleStream, uploadTransactionAsync(bundleTx, this.arweave));
+			console.timeEnd('upload transaction');
 
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
@@ -988,18 +994,22 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
 		}
 
-		const bundleStream = new Readable({
-			read() {
-				this.push(bundleRawData);
-				this.push(null);
-			}
+		console.time('stream - prepare');
+		const bundleStream = new ReadableStreamBuffer({
+			frequency: 10,
+			chunkSize: MIN_CHUNK_SIZE
 		});
+		bundleStream.put(bundleRawData);
+		bundleStream.stop();
+		console.timeEnd('stream - prepare');
 
+		console.time('create transaction');
 		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
 		const bundledDataTx = await pipeline(
 			bundleStream,
 			createTransactionAsync(txAttributes, this.arweave, wallet.getPrivateKey())
 		);
+		console.timeEnd('create transaction');
 
 		bundledDataTx.data = bundleRawData;
 

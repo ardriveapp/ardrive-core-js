@@ -1195,6 +1195,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/stream-buffers@npm:^3":
+  version: 3.0.4
+  resolution: "@types/stream-buffers@npm:3.0.4"
+  dependencies:
+    "@types/node": "*"
+  checksum: 5b432b2bf963d612747b79ac317562888236d6a9ea14414fb055c24e7be9643b5e3c7b7470841fa82802aa1c1c0d752a4ba935bbc0cfb12de6b89f7e1dadee92
+  languageName: node
+  linkType: hard
+
 "@types/through@npm:*":
   version: 0.0.30
   resolution: "@types/through@npm:0.0.30"
@@ -1593,6 +1602,7 @@ __metadata:
     "@types/regression": ^2
     "@types/sinon": ^10.0.2
     "@types/source-map-support": ^0.5.3
+    "@types/stream-buffers": ^3
     "@types/utf8": ^2.1.6
     "@types/uuid": ^8.3.0
     "@typescript-eslint/eslint-plugin": ^4.18.0
@@ -1625,6 +1635,7 @@ __metadata:
     sinon: ^11.1.1
     smartweave: ^0.4.45
     source-map-support: ^0.5.19
+    stream-buffers: ^3.0.2
     ts-node: ^10.1.0
     ts-sinon: ^2.0.1
     typescript: ^4.2.3
@@ -6344,6 +6355,13 @@ fsevents@~2.3.1:
     big-integer: ^1.6.48
     js-sha256: ^0.9.0
   checksum: 9e8e4115a33e8febfc55f3faf2044f7c3ecbd22856d7fbcd5108bb36a1f064ecc70d83207b0cede99c3e912d6a1dccee3385f9f72928436e12b7db6374995b5c
+  languageName: node
+  linkType: hard
+
+"stream-buffers@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "stream-buffers@npm:3.0.2"
+  checksum: b09fdeea606e3113ebd0e07010ed0cf038608fa396130add9e45deaff5cc3ba845dc25c31ad24f8341f85907846344cb7c85f75ea52c6572e2ac646e9b6072d0
   languageName: node
   linkType: hard
 
