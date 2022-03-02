@@ -14,7 +14,10 @@ export class ArFSMetadataCache {
 		}
 
 		const homeDir = os.homedir();
-		const metadataCacheDir = path.join(homeDir, '.ardrive', 'caches', 'metadata');
+		const metadataCacheDir =
+			os.platform() === 'win32'
+				? path.join(homeDir, 'ardrive-caches', 'metadata')
+				: path.join(homeDir, '.ardrive', 'caches', 'metadata');
 		if (fs.existsSync(metadataCacheDir)) {
 			this.cacheFolderPromise = Promise.resolve(metadataCacheDir);
 			return this.cacheFolderPromise;

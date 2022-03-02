@@ -12,7 +12,10 @@ import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 
 describe('getDataForTxID function -- integrated', () => {
 	const homeDir = os.homedir();
-	const metadataCacheDir = path.join(homeDir, '.ardrive', 'caches', 'metadata');
+	const metadataCacheDir =
+		os.platform() === 'win32'
+			? path.join(homeDir, 'ardrive-caches', 'metadata')
+			: path.join(homeDir, '.ardrive', 'caches', 'metadata');
 	const cachedTxId = TxID('ThisIsAFakeTransactionIDThatsDefinitelyFake');
 	const cachedTxFilePath = path.join(metadataCacheDir, `${cachedTxId}`);
 
