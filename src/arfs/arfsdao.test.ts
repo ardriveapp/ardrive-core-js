@@ -526,7 +526,7 @@ describe('The ArFSDAO class', () => {
 	describe('caching behaviors of', () => {
 		describe('getPrivateDrive function', () => {
 			it('returns a drive for a specified drive ID and owner from cache when cached entry is available', async () => {
-				const cachedDrive = stubPrivateDrive;
+				const cachedDrive = await stubPrivateDrive();
 				const promise = Promise.resolve(cachedDrive);
 				stub(privateDriveCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateDrive(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(

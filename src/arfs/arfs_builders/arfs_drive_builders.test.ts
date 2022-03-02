@@ -289,6 +289,9 @@ describe('SafeArFSDriveBuilder', () => {
 		// Verify that the data JSON field were successfully decrypted
 		expect(driveMetaData.name).to.equal('drive-1');
 		expect(`${driveMetaData.rootFolderId}`).to.equal('dde0a0ef-6cd2-45d1-a9b0-97350d9fec21');
+
+		// Assert no keys are displayed with the safe builder
+		expect(driveMetaData.driveKey).to.be.undefined;
 	});
 
 	it('gracefully fails decrypting private drives, replacing values with "ENCRYPTED"', async () => {

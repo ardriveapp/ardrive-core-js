@@ -8,7 +8,8 @@ import {
 	ArFSPrivateFolderWithPaths,
 	ArFSPrivateFileWithPaths,
 	privateEntityWithPathsFactory,
-	privateEntityWithPathsKeylessFactory
+	privateEntityWithPathsKeylessFactory,
+	ArFSPrivateDriveKeyless
 } from './arfs/arfs_entities';
 import { ArFSPrivateFileToDownload, ArFSManifestToUpload } from './arfs/arfs_file_wrapper';
 import {
@@ -914,22 +915,51 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	public async getPrivateDrive({ driveId, driveKey, owner }: GetPrivateDriveParams): Promise<ArFSPrivateDrive> {
+	public async getPrivateDrive({
+		driveId,
+		driveKey,
+		owner,
+		withKeys
+	}: GetPrivateDriveParams): Promise<ArFSPrivateDrive> {
 		if (!owner) {
 			owner = await this.getOwnerForDriveId(driveId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateDrive(driveId, driveKey, owner);
+		const drive = await this.arFsDao.getPrivateDrive(driveId, driveKey, owner);
+		return withKeys
+			? drive
+			: new ArFSPrivateDriveKeyless(
+					drive.appName,
+					drive.appVersion,
+					drive.arFS,
+					drive.contentType,
+					drive.driveId,
+					drive.entityType,
+					drive.name,
+					drive.txId,
+					drive.unixTime,
+					drive.drivePrivacy,
+					drive.rootFolderId,
+					drive.driveAuthMode,
+					drive.cipher,
+					drive.cipherIV
+			  );
 	}
 
-	public async getPrivateFolder({ folderId, driveKey, owner }: GetPrivateFolderParams): Promise<ArFSPrivateFolder> {
+	public async getPrivateFolder({
+		folderId,
+		driveKey,
+		owner,
+		withKeys
+	}: GetPrivateFolderParams): Promise<ArFSPrivateFolder> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
+		const folder = await this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
+		return withKeys ? folder : new ArFSPrivateFolderKeyless(folder);
 	}
 
 	// Remove me after PE-1027 is applied

@@ -8,7 +8,6 @@ import {
 	ArFSPrivateFile
 } from '../src/arfs/arfs_entities';
 import {
-	ArFSPrivateDriveKeyless,
 	ArFSFileToUpload,
 	ArFSFolderToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
@@ -36,7 +35,9 @@ import {
 	RootFolderID,
 	UploadStats,
 	W,
-	wrapFileOrFolder
+	wrapFileOrFolder,
+	ArFSPrivateDrive,
+	deriveFileKey
 } from '../src/exports';
 import {
 	ADDR,
@@ -185,22 +186,24 @@ export const stubPublicDrive = (): ArFSPublicDrive =>
 		stubEntityID
 	);
 
-export const stubPrivateDrive = new ArFSPrivateDriveKeyless(
-	'Integration Test',
-	'1.0',
-	ArFS_O_11,
-	PRIVATE_CONTENT_TYPE,
-	stubEntityID,
-	'drive',
-	'STUB DRIVE',
-	stubTransactionID,
-	new UnixTime(0),
-	'private',
-	stubEntityID,
-	'password',
-	'stubCipher',
-	'stubIV'
-);
+export const stubPrivateDrive = async (): Promise<ArFSPrivateDrive> =>
+	new ArFSPrivateDrive(
+		'Integration Test',
+		'1.0',
+		ArFS_O_11,
+		PRIVATE_CONTENT_TYPE,
+		stubEntityID,
+		'drive',
+		'STUB DRIVE',
+		stubTransactionID,
+		new UnixTime(0),
+		'private',
+		stubEntityID,
+		'password',
+		'stubCipher',
+		'stubIV',
+		await getStubDriveKey()
+	);
 
 interface StubFolderParams {
 	folderId?: FolderID;
@@ -291,8 +294,10 @@ export const stubPrivateFile = async ({
 	parentFolderId = stubEntityID,
 	fileId = stubEntityID,
 	dataTxId = stubTransactionID
-}: StubFileParams): Promise<ArFSPrivateFile> =>
-	new ArFSPrivateFile(
+}: StubFileParams): Promise<ArFSPrivateFile> => {
+	const driveKey = await getStubDriveKey();
+	const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+	return new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
 		ArFS_O_11,
@@ -309,9 +314,10 @@ export const stubPrivateFile = async ({
 		JSON_CONTENT_TYPE,
 		'stubCipher',
 		'stubIV',
-		await getStubDriveKey(),
-		await getStubDriveKey()
+		fileKey,
+		driveKey
 	);
+};
 
 const stubPublicRootFolder = stubPublicFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() });
 const stubPublicParentFolder = stubPublicFolder({

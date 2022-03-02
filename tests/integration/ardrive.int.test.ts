@@ -7,7 +7,7 @@ import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders'
 import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
-import { deriveDriveKey } from '../../src/utils/crypto';
+import { deriveDriveKey, deriveFileKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
 import {
@@ -201,6 +201,32 @@ describe('ArDrive class - integrated', () => {
 	});
 
 	describe('drive function', () => {
+		describe('getPrivateDrive', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const drive = await arDrive.getPrivateDrive({
+					driveId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(drive.driveKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
+				const drive = await arDrive.getPrivateDrive({
+					driveId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedKey,
+					withKeys: true
+				});
+				expect(`${drive.driveKey}`).to.equal(`${expectedKey}`);
+			});
+		});
+
 		describe('createPublicDrive', () => {
 			describe('entity name validation', () => {
 				it('throws if the given name is empty', () => {
@@ -631,6 +657,32 @@ describe('ArDrive class - integrated', () => {
 			});
 		});
 
+		describe('getPrivateFolder', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderId: stubEntityID }));
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const folder = await arDrive.getPrivateFolder({
+					folderId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(folder.driveKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
+				const folder = await arDrive.getPrivateFolder({
+					folderId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedKey,
+					withKeys: true
+				});
+				expect(`${folder.driveKey}`).to.equal(`${expectedKey}`);
+			});
+		});
+
 		describe('createPublicFolder', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
@@ -808,7 +860,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getPrivateDrive').resolves(stubPrivateDrive);
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
 				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
 				const stubDriveKey = await getStubDriveKey();
@@ -1093,6 +1145,35 @@ describe('ArDrive class - integrated', () => {
 		};
 		let wrappedFile: ArFSFileToUpload;
 		const fileStats = statSync('test_wallet.json');
+
+		describe('getPrivateFile', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileId: stubEntityID }));
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const file = await arDrive.getPrivateFile({
+					fileId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(file.driveKey).to.be.undefined;
+				expect(file.fileKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedDriveKey = await getStubDriveKey();
+				const expectedFileKey = await deriveFileKey(`${stubEntityID}`, expectedDriveKey);
+				const file = await arDrive.getPrivateFile({
+					fileId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedDriveKey,
+					withKeys: true
+				});
+				expect(`${file.driveKey}`).to.equal(`${expectedDriveKey}`);
+				expect(`${file.fileKey}`).to.equal(`${expectedFileKey}`);
+			});
+		});
 
 		describe('uploadPublicFile', () => {
 			beforeEach(() => {
@@ -2242,7 +2323,7 @@ describe('ArDrive class - integrated', () => {
 			const stubDriveKey = getStubDriveKey();
 
 			beforeEach(() => {
-				stub(arfsDao, 'getPrivateDrive').resolves(stubPrivateDrive);
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubDriveName, conflictingName]);
 			});
 
