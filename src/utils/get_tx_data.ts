@@ -7,7 +7,7 @@ import { gatewayUrlForArweave, TransactionID } from '../exports';
 export async function getDataForTxID(
 	txId: TransactionID,
 	arweave: Arweave,
-	axiosInstance?: AxiosInstance // Provided for test mocking :(
+	axiosInstance: AxiosInstance = axios.create() // Provided for test mocking :(
 ): Promise<Buffer> {
 	const cachedData = await ArFSMetadataCache.get(txId);
 	if (cachedData) {
@@ -16,7 +16,6 @@ export async function getDataForTxID(
 
 	const reqURL = `${gatewayUrlForArweave(arweave).href}${txId}`;
 
-	axiosInstance ??= axios.create();
 	const maxRetries = 5;
 	axiosRetry(axiosInstance, {
 		retries: maxRetries,
