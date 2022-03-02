@@ -80,7 +80,6 @@ export class PrivateKeyData {
 				`${driveId}`,
 				JSON.stringify(this.wallet.getPrivateKey())
 			);
-
 			try {
 				const decryptedDriveJSON = await this.decryptToJson<T>(cipherIV, dataBuffer, derivedDriveKey);
 

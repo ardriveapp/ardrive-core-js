@@ -164,7 +164,7 @@ describe('ArFSEntityCache class', () => {
 			const id1 = { driveId: stubEntityID, owner: stubArweaveAddress() };
 			const id2 = { driveId: stubEntityIDAlt, owner: stubArweaveAddress() };
 			const drive1 = stubPublicDrive();
-			const drive2 = stubPrivateDrive; // borrow this stub since it extends ArFSPublicDrive
+			const drive2 = await stubPrivateDrive(); // borrow this stub since it extends ArFSPublicDrive
 			cache.put(id1, Promise.resolve(drive1));
 			cache.put(id2, Promise.resolve(drive2));
 			expect(cache.get(id1)).to.not.be.undefined;

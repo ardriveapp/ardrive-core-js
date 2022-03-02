@@ -7,7 +7,7 @@ import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders'
 import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
-import { deriveDriveKey } from '../../src/utils/crypto';
+import { deriveDriveKey, deriveFileKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
 import {
@@ -30,7 +30,7 @@ import {
 	W,
 	Winston
 } from '../../src/types';
-import { readJWKFile, urlEncodeHashKey } from '../../src/utils/common';
+import { readJWKFile } from '../../src/utils/common';
 import {
 	fakeArweave,
 	stubArweaveAddress,
@@ -47,12 +47,15 @@ import {
 	stubPublicDrive,
 	stubPublicEntitiesWithPaths,
 	stubSpecialCharEntitiesWithPaths,
+	stubPublicEntities,
+	stubPublicFolders,
+	stubPublicHierarchy,
+	stubEntityIDAltTwo,
 	stubFileUploadStats,
 	stubEmptyFolderStats,
 	stubFolderUploadStats,
 	stubEmptyFolderToUpload,
 	stubFileToUpload,
-	stubEntityIDAltTwo,
 	stubPublicFile,
 	stubPublicFolder
 } from '../stubs';
@@ -61,6 +64,14 @@ import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
+import {
+	ArFSPrivateFile,
+	ArFSPrivateFolder,
+	FolderHierarchy,
+	privateEntityWithPathsFactory,
+	privateEntityWithPathsKeylessFactory,
+	publicEntityWithPathsFactory
+} from '../../src/exports';
 import { MAX_BUNDLE_SIZE } from '../../src/utils/constants';
 
 // Don't use the existing constants just to make sure our expectations don't change
@@ -78,7 +89,12 @@ describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const getStubDriveKey = async (): Promise<DriveKey> => {
-		return deriveDriveKey('stubPassword', `${stubEntityID}`, JSON.stringify((wallet as JWKWallet).getPrivateKey()));
+		const key = await deriveDriveKey(
+			'stubPassword',
+			`${stubEntityID}`,
+			JSON.stringify((wallet as JWKWallet).getPrivateKey())
+		);
+		return key;
 	};
 
 	const arweaveOracle = new GatewayOracle();
@@ -185,6 +201,32 @@ describe('ArDrive class - integrated', () => {
 	});
 
 	describe('drive function', () => {
+		describe('getPrivateDrive', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const drive = await arDrive.getPrivateDrive({
+					driveId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(drive.driveKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
+				const drive = await arDrive.getPrivateDrive({
+					driveId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedKey,
+					withKeys: true
+				});
+				expect(`${drive.driveKey}`).to.equal(`${expectedKey}`);
+			});
+		});
+
 		describe('createPublicDrive', () => {
 			describe('entity name validation', () => {
 				it('throws if the given name is empty', () => {
@@ -310,7 +352,7 @@ describe('ArDrive class - integrated', () => {
 					newPrivateDriveData: stubPrivateDriveData
 				});
 
-				assertCreateDriveExpectations(result, W(120), W(66), urlEncodeHashKey(stubDriveKey));
+				assertCreateDriveExpectations(result, W(120), W(66), stubDriveKey);
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
@@ -325,12 +367,322 @@ describe('ArDrive class - integrated', () => {
 					newPrivateDriveData: stubPrivateDriveData
 				});
 
-				assertCreateDriveExpectations(result, W(2973), W(37), urlEncodeHashKey(stubDriveKey), true);
+				assertCreateDriveExpectations(result, W(2973), W(37), stubDriveKey, true);
 			});
 		});
 	});
 
 	describe('folder function', () => {
+		describe('listPublicFolder', () => {
+			const [
+				stubPublicRootFolder,
+				stubPublicParentFolder,
+				stubPublicChildFolder,
+				stubPublicFileInRoot,
+				stubPublicFileInParent,
+				stubPublicFileInChild
+			] = stubPublicEntities;
+			const stubFileEntities = [stubPublicFileInRoot, stubPublicFileInParent, stubPublicFileInChild];
+
+			beforeEach(() => {
+				stub(arfsDao, 'getAllFoldersOfPublicDrive').resolves(stubPublicFolders);
+				stub(arfsDao, 'getPublicFilesWithParentFolderIds').callsFake(async (searchFolderIDs) =>
+					stubFileEntities.filter((entity) =>
+						searchFolderIDs.some((folderID) => folderID.equals(entity.parentFolderId))
+					)
+				);
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				stub(arfsDao, 'getPublicFolder').resolves(stubPublicRootFolder);
+			});
+
+			describe('maxDepth parameter', () => {
+				it('throws if provided a negative value', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.listPublicFolder({ folderId: stubEntityIDRoot, maxDepth: -1 }),
+						errorMessage: 'maxDepth should be a non-negative integer!'
+					});
+				});
+
+				it('throws if provided a non integer value', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.listPublicFolder({ folderId: stubEntityIDRoot, maxDepth: 0.5 }),
+						errorMessage: 'maxDepth should be a non-negative integer!'
+					});
+				});
+
+				it('lists with depth zero by default', async () => {
+					const entities = await arDrive.listPublicFolder({ folderId: stubEntityIDRoot });
+					expect(entities.length).to.equal(2);
+					expect(entities).to.deep.equal(
+						[stubPublicParentFolder, stubPublicFileInRoot].map((entity) =>
+							publicEntityWithPathsFactory(entity, stubPublicHierarchy)
+						)
+					);
+				});
+
+				it('maxDepth of one', async () => {
+					const entities = await arDrive.listPublicFolder({ folderId: stubEntityIDRoot, maxDepth: 1 });
+					expect(entities.length).to.equal(4);
+					expect(entities).to.deep.equal(
+						[
+							stubPublicParentFolder,
+							stubPublicChildFolder,
+							stubPublicFileInRoot,
+							stubPublicFileInParent
+						].map((entity) => publicEntityWithPathsFactory(entity, stubPublicHierarchy))
+					);
+				});
+
+				it('maxDepth to maximum', async () => {
+					const entities = await arDrive.listPublicFolder({
+						folderId: stubEntityIDRoot,
+						maxDepth: Number.MAX_SAFE_INTEGER
+					});
+					expect(entities.length).to.equal(5);
+					expect(entities).to.deep.equal(
+						[
+							stubPublicParentFolder,
+							stubPublicChildFolder,
+							stubPublicFileInRoot,
+							stubPublicFileInParent,
+							stubPublicFileInChild
+						].map((entity) => publicEntityWithPathsFactory(entity, stubPublicHierarchy))
+					);
+				});
+			});
+
+			describe('includeRoot flag', () => {
+				it('does include root if set as true', async () => {
+					const entities = await arDrive.listPublicFolder({ folderId: stubEntityIDRoot, includeRoot: true });
+					expect(entities.length).to.equal(3);
+					expect(entities[0]).to.deep.equal(
+						publicEntityWithPathsFactory(stubPublicRootFolder, stubPublicHierarchy)
+					);
+				});
+
+				it('does not include root if omitted', async () => {
+					const entities = await arDrive.listPublicFolder({ folderId: stubEntityIDRoot });
+					expect(entities.length).to.equal(2);
+					expect(entities).to.not.include(stubPublicRootFolder);
+				});
+			});
+		});
+
+		describe('listPrivateFolder', () => {
+			let stubPrivateRootFolder: ArFSPrivateFolder;
+			let stubPrivateParentFolder: ArFSPrivateFolder;
+			let stubPrivateFolder_0: ArFSPrivateFolder;
+			let stubPrivateFolder_1: ArFSPrivateFolder;
+			let stubPrivateFolder_3: ArFSPrivateFolder;
+			let stubPrivateGrandChildFile: ArFSPrivateFile;
+
+			let stubFileEntities: ArFSPrivateFile[];
+			let stubFolderEntities: ArFSPrivateFolder[];
+
+			let stubPrivateHierarchy: FolderHierarchy;
+
+			let stubDriveKey: DriveKey;
+
+			beforeEach(async () => {
+				// Root folder (Depth 0)
+				stubPrivateRootFolder = await stubPrivateFolder({
+					folderId: stubEntityIDRoot,
+					parentFolderId: new RootFolderID(),
+					folderName: 'Root Folder'
+				});
+				// Depth 1
+				stubPrivateParentFolder = await stubPrivateFolder({
+					folderId: stubEntityIDParent,
+					parentFolderId: stubEntityIDRoot,
+					folderName: 'Parent folder'
+				});
+				// Depth 2
+				stubPrivateFolder_0 = await stubPrivateFolder({
+					folderId: stubEntityID,
+					parentFolderId: stubEntityIDParent,
+					folderName: 'Child folder #1'
+				});
+				stubPrivateFolder_1 = await stubPrivateFolder({
+					folderId: stubEntityIDAlt,
+					parentFolderId: stubEntityIDParent,
+					folderName: 'Child folder #2'
+				});
+				// Depth 3
+				stubPrivateFolder_3 = await stubPrivateFolder({
+					folderId: stubEntityIDGrandchild,
+					parentFolderId: stubEntityID,
+					folderName: 'Grand child folder'
+				});
+				stubPrivateGrandChildFile = await stubPrivateFile({
+					fileId: stubEntityIDAltTwo,
+					fileName: 'Child file.pdf',
+					parentFolderId: stubEntityID
+				});
+
+				stubFileEntities = [stubPrivateGrandChildFile];
+				stubFolderEntities = [
+					stubPrivateRootFolder,
+					stubPrivateParentFolder,
+					stubPrivateFolder_0,
+					stubPrivateFolder_1,
+					stubPrivateFolder_3
+				];
+
+				stub(arfsDao, 'getAllFoldersOfPrivateDrive').resolves(stubFolderEntities);
+				stub(arfsDao, 'getPrivateFilesWithParentFolderIds').callsFake(async (searchFolderIDs) =>
+					stubFileEntities.filter((entity) =>
+						searchFolderIDs.some((folderID) => folderID.equals(entity.parentFolderId))
+					)
+				);
+				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+				stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateRootFolder);
+
+				stubPrivateHierarchy = FolderHierarchy.newFromEntities(stubFolderEntities);
+				stubDriveKey = await getStubDriveKey();
+			});
+
+			describe('maxDepth parameter', () => {
+				it('throws if provided a negative value', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.listPrivateFolder({
+							folderId: stubEntityIDRoot,
+							maxDepth: -1,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: 'maxDepth should be a non-negative integer!'
+					});
+				});
+
+				it('throws if provided a non integer value', () => {
+					return expectAsyncErrorThrow({
+						promiseToError: arDrive.listPrivateFolder({
+							folderId: stubEntityIDRoot,
+							maxDepth: 0.5,
+							driveKey: stubDriveKey
+						}),
+						errorMessage: 'maxDepth should be a non-negative integer!'
+					});
+				});
+
+				it('lists with depth zero by default', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						driveKey: stubDriveKey
+					});
+					expect(entities.length).to.equal(1);
+					expect(entities).to.deep.equal(
+						[stubPrivateParentFolder].map((entity) =>
+							privateEntityWithPathsKeylessFactory(entity, stubPrivateHierarchy)
+						)
+					);
+				});
+
+				it('maxDepth of one', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						maxDepth: 1,
+						driveKey: stubDriveKey
+					});
+					expect(entities.length).to.equal(3);
+					expect(entities).to.deep.equal(
+						[stubPrivateParentFolder, stubPrivateFolder_0, stubPrivateFolder_1].map((entity) =>
+							privateEntityWithPathsKeylessFactory(entity, stubPrivateHierarchy)
+						)
+					);
+				});
+
+				it('maxDepth to maximum', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						maxDepth: Number.MAX_SAFE_INTEGER,
+						driveKey: stubDriveKey
+					});
+					expect(entities.length).to.equal(5);
+					expect(entities).to.deep.equal(
+						[
+							stubPrivateParentFolder,
+							stubPrivateFolder_0,
+							stubPrivateFolder_1,
+							stubPrivateFolder_3,
+							stubPrivateGrandChildFile
+						].map((entity) => privateEntityWithPathsKeylessFactory(entity, stubPrivateHierarchy))
+					);
+				});
+			});
+
+			describe('includeRoot flag', () => {
+				it('does include root if set as true', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						includeRoot: true,
+						driveKey: stubDriveKey
+					});
+					expect(entities.length).to.equal(2);
+					expect(entities[0]).to.deep.equal(
+						privateEntityWithPathsKeylessFactory(stubPrivateRootFolder, stubPrivateHierarchy)
+					);
+				});
+
+				it('does not include root if omitted', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						driveKey: stubDriveKey
+					});
+					expect(entities.length).to.equal(1);
+					expect(entities).to.not.include(stubPrivateRootFolder);
+				});
+			});
+
+			describe('withKeys flag', () => {
+				it('returns the keyless by default', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						driveKey: stubDriveKey
+					});
+					expect(entities[0]).to.deep.equal(
+						privateEntityWithPathsKeylessFactory(stubPrivateParentFolder, stubPrivateHierarchy)
+					);
+				});
+
+				it('when specified, returns the entities with keys', async () => {
+					const entities = await arDrive.listPrivateFolder({
+						folderId: stubEntityIDRoot,
+						driveKey: stubDriveKey,
+						withKeys: true
+					});
+					expect(entities[0]).to.deep.equal(
+						privateEntityWithPathsFactory(stubPrivateParentFolder, stubPrivateHierarchy)
+					);
+				});
+			});
+		});
+
+		describe('getPrivateFolder', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderId: stubEntityID }));
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const folder = await arDrive.getPrivateFolder({
+					folderId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(folder.driveKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedKey = await getStubDriveKey();
+				const folder = await arDrive.getPrivateFolder({
+					folderId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedKey,
+					withKeys: true
+				});
+				expect(`${folder.driveKey}`).to.equal(`${expectedKey}`);
+			});
+		});
+
 		describe('createPublicFolder', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
@@ -508,7 +860,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getPrivateDrive').resolves(stubPrivateDrive);
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
 				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
 				const stubDriveKey = await getStubDriveKey();
@@ -518,7 +870,7 @@ describe('ArDrive class - integrated', () => {
 					parentFolderId: stubEntityID,
 					driveKey: stubDriveKey
 				});
-				assertCreateFolderExpectations(result, W(66), urlEncodeHashKey(stubDriveKey));
+				assertCreateFolderExpectations(result, W(66), stubDriveKey);
 			});
 		});
 
@@ -645,21 +997,33 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		describe('movePrivateFolder', () => {
-			const folderHierarchy = {
-				rootFolder: stubPrivateFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() }),
-				parentFolder: stubPrivateFolder({
-					folderId: stubEntityIDParent,
-					parentFolderId: EID(stubEntityIDRoot.toString())
-				}),
-				childFolder: stubPrivateFolder({
-					folderId: stubEntityIDChild,
-					parentFolderId: EID(stubEntityIDParent.toString())
-				}),
-				grandChildFolder: stubPrivateFolder({
-					folderId: stubEntityIDGrandchild,
-					parentFolderId: EID(stubEntityIDChild.toString())
-				})
+			let folderHierarchy: {
+				rootFolder: ArFSPrivateFolder;
+				parentFolder: ArFSPrivateFolder;
+				childFolder: ArFSPrivateFolder;
+				grandChildFolder: ArFSPrivateFolder;
 			};
+
+			before(async () => {
+				folderHierarchy = {
+					rootFolder: await stubPrivateFolder({
+						folderId: stubEntityIDRoot,
+						parentFolderId: new RootFolderID()
+					}),
+					parentFolder: await stubPrivateFolder({
+						folderId: stubEntityIDParent,
+						parentFolderId: EID(stubEntityIDRoot.toString())
+					}),
+					childFolder: await stubPrivateFolder({
+						folderId: stubEntityIDChild,
+						parentFolderId: EID(stubEntityIDParent.toString())
+					}),
+					grandChildFolder: await stubPrivateFolder({
+						folderId: stubEntityIDGrandchild,
+						parentFolderId: EID(stubEntityIDChild.toString())
+					})
+				};
+			});
 
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
@@ -680,7 +1044,7 @@ describe('ArDrive class - integrated', () => {
 
 			it('throws an error if the folder name conflicts with another ENTITY name in the destination folder', async () => {
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-				stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFolder({ folderName: 'CONFLICTING_NAME' }));
+				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderName: 'CONFLICTING_NAME' }));
 
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.movePrivateFolder({
@@ -746,7 +1110,7 @@ describe('ArDrive class - integrated', () => {
 
 			it('throws an error if the folder is being moved to a different drive', async () => {
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-				stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFolder({ driveId: unexpectedDriveId }));
+				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ driveId: unexpectedDriveId }));
 
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.movePrivateFolder({
@@ -768,7 +1132,8 @@ describe('ArDrive class - integrated', () => {
 					newParentFolderId: folderHierarchy.parentFolder.entityId,
 					driveKey: await getStubDriveKey()
 				});
-				assertCreateFolderExpectations(result, W(36), urlEncodeHashKey(await getStubDriveKey()));
+				const stubbedKey = await getStubDriveKey();
+				assertCreateFolderExpectations(result, W(36), stubbedKey);
 			});
 		});
 	});
@@ -780,6 +1145,35 @@ describe('ArDrive class - integrated', () => {
 		};
 		let wrappedFile: ArFSFileToUpload;
 		const fileStats = statSync('test_wallet.json');
+
+		describe('getPrivateFile', () => {
+			beforeEach(() => {
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileId: stubEntityID }));
+			});
+
+			it('returns the key-less version of the entitites by default', async () => {
+				const file = await arDrive.getPrivateFile({
+					fileId: stubEntityID,
+					owner: walletOwner,
+					driveKey: await getStubDriveKey()
+				});
+				expect(file.driveKey).to.be.undefined;
+				expect(file.fileKey).to.be.undefined;
+			});
+
+			it('returns the with-keys version of the entitites if withKeys is true', async () => {
+				const expectedDriveKey = await getStubDriveKey();
+				const expectedFileKey = await deriveFileKey(`${stubEntityID}`, expectedDriveKey);
+				const file = await arDrive.getPrivateFile({
+					fileId: stubEntityID,
+					owner: walletOwner,
+					driveKey: expectedDriveKey,
+					withKeys: true
+				});
+				expect(`${file.driveKey}`).to.equal(`${expectedDriveKey}`);
+				expect(`${file.fileKey}`).to.equal(`${expectedFileKey}`);
+			});
+		});
 
 		describe('uploadPublicFile', () => {
 			beforeEach(() => {
@@ -1361,7 +1755,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('throws an error if the destination folder has a conflicting entity name', async () => {
-				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: 'CONFLICTING_NAME' }));
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileName: 'CONFLICTING_NAME' }));
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
 				await expectAsyncErrorThrow({
@@ -1375,7 +1769,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('throws an error if the new parent folder id matches its current parent folder id', async () => {
-				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({}));
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
 				await expectAsyncErrorThrow({
@@ -1389,7 +1783,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('throws an error if the file is being moved to a different drive', async () => {
-				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ driveId: unexpectedDriveId }));
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ driveId: unexpectedDriveId }));
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
 				await expectAsyncErrorThrow({
@@ -1403,7 +1797,7 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({}));
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({}));
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
 				const result = await arDrive.movePrivateFile({
@@ -1522,7 +1916,7 @@ describe('ArDrive class - integrated', () => {
 			const stubDriveKey = getStubDriveKey();
 
 			beforeEach(() => {
-				stub(arfsDao, 'getPrivateFile').resolves(stubPrivateFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileName: stubFileName }));
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 			});
 
@@ -1629,7 +2023,7 @@ describe('ArDrive class - integrated', () => {
 			const conflictingName = 'CONFLICTING_NAME';
 
 			beforeEach(() => {
-				stub(arfsDao, 'getPublicFolder').resolves(stubPublicFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPublicFolder').resolves(stubPublicFolder({ folderName: stubFileName }));
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 			});
 
@@ -1731,7 +2125,7 @@ describe('ArDrive class - integrated', () => {
 			const stubDriveKey = getStubDriveKey();
 
 			beforeEach(() => {
-				stub(arfsDao, 'getPrivateFolder').resolves(stubPrivateFile({ fileName: stubFileName }));
+				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderName: stubFileName }));
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 			});
 
@@ -1929,7 +2323,7 @@ describe('ArDrive class - integrated', () => {
 			const stubDriveKey = getStubDriveKey();
 
 			beforeEach(() => {
-				stub(arfsDao, 'getPrivateDrive').resolves(stubPrivateDrive);
+				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubDriveName, conflictingName]);
 			});
 
@@ -2863,7 +3257,7 @@ describe('ArDrive class - integrated', () => {
 				entitiesToUpload: [{ ...stubEmptyFolderStats(), driveKey: await getStubDriveKey() }]
 			});
 
-			assertCreateFolderExpectations(result, W(43), urlEncodeHashKey(await getStubDriveKey()));
+			assertCreateFolderExpectations(result, W(43), await getStubDriveKey());
 		});
 
 		it('returns the expected v2 ArFSResult with a single public .txt file', async () => {
@@ -2980,7 +3374,7 @@ function assertCreateDriveExpectations(
 	result: ArFSResult,
 	driveFee: Winston,
 	folderFee?: Winston,
-	expectedDriveKey?: string,
+	expectedDriveKey?: DriveKey,
 	isBundled = false
 ) {
 	// Ensure that 3 arfs entities are created with a bundled transaction,
@@ -2991,7 +3385,7 @@ function assertCreateDriveExpectations(
 	const driveEntity = result.created[0];
 	expect(driveEntity.dataTxId).to.be.undefined;
 	expect(driveEntity.entityId).to.match(entityIdRegex);
-	expect(driveEntity.key).to.equal(expectedDriveKey);
+	expect(driveEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(driveEntity.metadataTxId).to.match(txIdRegex);
 	expect(driveEntity.type).to.equal('drive');
 
@@ -2999,7 +3393,7 @@ function assertCreateDriveExpectations(
 	const rootFolderEntity = result.created[1];
 	expect(rootFolderEntity.dataTxId).to.be.undefined;
 	expect(rootFolderEntity.entityId).to.match(entityIdRegex);
-	expect(rootFolderEntity.key).to.equal(expectedDriveKey);
+	expect(rootFolderEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(rootFolderEntity.metadataTxId).to.match(txIdRegex);
 	expect(rootFolderEntity.type).to.equal('folder');
 
@@ -3013,7 +3407,7 @@ function assertCreateDriveExpectations(
 		const bundleEntity = result.created[2];
 		expect(bundleEntity.dataTxId).to.be.undefined;
 		expect(bundleEntity.entityId).to.be.undefined;
-		expect(bundleEntity.key).to.be.undefined;
+		expect(bundleEntity.key?.toString()).to.be.undefined;
 		expect(bundleEntity.metadataTxId).to.be.undefined;
 		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
 		expect(bundleEntity.type).to.equal('bundle');
@@ -3035,7 +3429,7 @@ function assertCreateDriveExpectations(
 	}
 }
 
-function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, expectedDriveKey?: string) {
+function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, expectedDriveKey?: DriveKey) {
 	// Ensure that 1 arfs entity was created
 	expect(result.created.length).to.equal(1);
 
@@ -3043,7 +3437,7 @@ function assertCreateFolderExpectations(result: ArFSResult, folderFee: Winston, 
 	const folderEntity = result.created[0];
 	expect(folderEntity.dataTxId).to.be.undefined;
 	expect(folderEntity.entityId).to.match(entityIdRegex);
-	expect(folderEntity.key).to.equal(expectedDriveKey);
+	expect(folderEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(folderEntity.metadataTxId).to.match(txIdRegex);
 	expect(folderEntity.type).to.equal('folder');
 
@@ -3317,7 +3711,7 @@ function assertFolderCreatedResult(
 
 	if (expectDriveKey) {
 		// Output of stubDriveKey
-		expect(key).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+		expect(key?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	} else {
 		expect(key).to.be.undefined;
 	}

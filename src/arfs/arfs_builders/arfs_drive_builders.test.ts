@@ -4,7 +4,7 @@ import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { ArFSPrivateDrive } from '../../exports';
-import { EID, GQLNodeInterface } from '../../types';
+import { EID, EntityKey, GQLNodeInterface } from '../../types';
 import { PrivateKeyData } from '../private_key_data';
 import { ArFSPrivateDriveBuilder, ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_drive_builders';
 
@@ -144,7 +144,7 @@ const stubPrivateDriveGQLNode: Partial<GQLNodeInterface> = {
 	]
 };
 
-const driveKeyForStubPrivateDrive = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
+const driveKeyForStubPrivateDrive = new EntityKey(Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'));
 
 // prettier-ignore
 const stubPrivateDriveGetDataResult = Buffer.from(Uint8Array.from([
@@ -289,6 +289,9 @@ describe('SafeArFSDriveBuilder', () => {
 		// Verify that the data JSON field were successfully decrypted
 		expect(driveMetaData.name).to.equal('drive-1');
 		expect(`${driveMetaData.rootFolderId}`).to.equal('dde0a0ef-6cd2-45d1-a9b0-97350d9fec21');
+
+		// Assert no keys are displayed with the safe builder
+		expect(driveMetaData.driveKey).to.be.undefined;
 	});
 
 	it('gracefully fails decrypting private drives, replacing values with "ENCRYPTED"', async () => {

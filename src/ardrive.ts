@@ -3,7 +3,13 @@ import {
 	ArFSPrivateDrive,
 	ArFSPrivateFolder,
 	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths
+	ArFSPrivateFolderKeyless,
+	ArFSPrivateFileKeyless,
+	ArFSPrivateFolderWithPaths,
+	ArFSPrivateFileWithPaths,
+	privateEntityWithPathsFactory,
+	privateEntityWithPathsKeylessFactory,
+	ArFSPrivateDriveKeyless
 } from './arfs/arfs_entities';
 import { ArFSPrivateFileToDownload, ArFSManifestToUpload } from './arfs/arfs_file_wrapper';
 import {
@@ -49,10 +55,6 @@ import {
 	RenamePrivateFileParams,
 	RenamePublicFolderParams,
 	RenamePrivateFolderParams,
-	DriveKey,
-	W
-} from './types';
-import {
 	CommunityTipParams,
 	TipResult,
 	MovePublicFileParams,
@@ -72,9 +74,10 @@ import {
 	ListPrivateFolderParams,
 	MetaDataBaseCosts,
 	RenamePublicDriveParams,
-	RenamePrivateDriveParams
+	RenamePrivateDriveParams,
+	DriveKey,
+	W
 } from './types';
-import { urlEncodeHashKey } from './utils/common';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { WalletDAO } from './wallet_dao';
@@ -96,6 +99,7 @@ import {
 } from './pricing/estimation_prototypes';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
+import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
 import {
 	assertValidArFSDriveName,
@@ -103,7 +107,6 @@ import {
 	assertValidArFSFolderName,
 	assertArFSCompliantNamesWithinFolder
 } from './arfs/arfs_entity_name_validators';
-import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 
 export class ArDrive extends ArDriveAnonymous {
 	constructor(
@@ -268,7 +271,7 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
-					key: urlEncodeHashKey(moveFileResult.fileKey)
+					key: moveFileResult.fileKey
 				}
 			],
 			tips: [],
@@ -415,7 +418,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(moveFolderResult.driveKey)
+					key: moveFolderResult.driveKey
 				}
 			],
 			tips: [],
@@ -547,7 +550,7 @@ export class ArDrive extends ArDriveAnonymous {
 				type: 'folder',
 				entityId: folderId,
 				metadataTxId: folderTxId,
-				key: driveKey ? urlEncodeHashKey(driveKey) : undefined
+				key: driveKey
 			});
 
 			if (folderMetaDataReward) {
@@ -571,7 +574,7 @@ export class ArDrive extends ArDriveAnonymous {
 				dataTxId: fileDataTxId,
 				// TODO: Add bundledIn field here?
 				metadataTxId: metaDataTxId,
-				key: fileKey ? urlEncodeHashKey(fileKey) : undefined
+				key: fileKey ? fileKey : undefined
 			});
 
 			if (communityTipSettings) {
@@ -815,7 +818,7 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: urlEncodeHashKey(driveKey)
+					key: driveKey
 				}
 			],
 			tips: [],
@@ -900,8 +903,8 @@ export class ArDrive extends ArDriveAnonymous {
 		);
 
 		// Add drive keys to drive and folder entity results
-		createDriveResult.created[0].key = urlEncodeHashKey(newDriveData.driveKey);
-		createDriveResult.created[1].key = urlEncodeHashKey(newDriveData.driveKey);
+		createDriveResult.created[0].key = newDriveData.driveKey;
+		createDriveResult.created[1].key = newDriveData.driveKey;
 
 		return createDriveResult;
 	}
@@ -912,30 +915,75 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	public async getPrivateDrive({ driveId, driveKey, owner }: GetPrivateDriveParams): Promise<ArFSPrivateDrive> {
+	public async getPrivateDrive({
+		driveId,
+		driveKey,
+		owner,
+		withKeys
+	}: GetPrivateDriveParams): Promise<ArFSPrivateDrive> {
 		if (!owner) {
 			owner = await this.getOwnerForDriveId(driveId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateDrive(driveId, driveKey, owner);
+		const drive = await this.arFsDao.getPrivateDrive(driveId, driveKey, owner);
+		return withKeys
+			? drive
+			: new ArFSPrivateDriveKeyless(
+					drive.appName,
+					drive.appVersion,
+					drive.arFS,
+					drive.contentType,
+					drive.driveId,
+					drive.entityType,
+					drive.name,
+					drive.txId,
+					drive.unixTime,
+					drive.drivePrivacy,
+					drive.rootFolderId,
+					drive.driveAuthMode,
+					drive.cipher,
+					drive.cipherIV
+			  );
 	}
 
-	public async getPrivateFolder({ folderId, driveKey, owner }: GetPrivateFolderParams): Promise<ArFSPrivateFolder> {
+	public async getPrivateFolder({
+		folderId,
+		driveKey,
+		owner,
+		withKeys
+	}: GetPrivateFolderParams): Promise<ArFSPrivateFolder> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		return this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
+		const folder = await this.arFsDao.getPrivateFolder(folderId, driveKey, owner);
+		return withKeys ? folder : new ArFSPrivateFolderKeyless(folder);
 	}
 
-	public async getPrivateFile({ fileId, driveKey, owner }: GetPrivateFileParams): Promise<ArFSPrivateFile> {
+	// Remove me after PE-1027 is applied
+	public async getPrivateFolderKeyless({
+		folderId,
+		driveKey,
+		owner
+	}: GetPrivateFolderParams): Promise<ArFSPrivateFolderKeyless> {
+		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		return new ArFSPrivateFolderKeyless(folder);
+	}
+
+	public async getPrivateFile({
+		fileId,
+		driveKey,
+		owner,
+		withKeys = false
+	}: GetPrivateFileParams): Promise<ArFSPrivateFile> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		}
 
-		return this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		const file = await this.arFsDao.getPrivateFile(fileId, driveKey, owner);
+		return withKeys ? file : new ArFSPrivateFileKeyless(file);
 	}
 
 	/**
@@ -948,14 +996,24 @@ export class ArDrive extends ArDriveAnonymous {
 		driveKey,
 		maxDepth = 0,
 		includeRoot = false,
-		owner
-	}: ListPrivateFolderParams): Promise<ArFSPrivateFileOrFolderWithPaths[]> {
+		owner,
+		withKeys = false
+	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 		await this.assertOwnerAddress(owner);
 
-		const children = this.arFsDao.listPrivateFolder({ folderId, driveKey, maxDepth, includeRoot, owner });
+		const withPathsFactory = withKeys ? privateEntityWithPathsFactory : privateEntityWithPathsKeylessFactory;
+
+		const children = this.arFsDao.listPrivateFolder({
+			folderId,
+			driveKey,
+			maxDepth,
+			includeRoot,
+			owner,
+			withPathsFactory
+		});
 		return children;
 	}
 
@@ -1136,7 +1194,7 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'file',
 					entityId: result.entityId,
-					key: urlEncodeHashKey(result.fileKey),
+					key: result.fileKey,
 					metadataTxId: result.metaDataTxId
 				}
 			],
@@ -1275,7 +1333,7 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'drive',
 					entityId: result.entityId,
-					key: urlEncodeHashKey(driveKey),
+					key: driveKey,
 					metadataTxId: result.metaDataTxId
 				}
 			],
