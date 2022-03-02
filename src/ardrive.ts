@@ -550,7 +550,7 @@ export class ArDrive extends ArDriveAnonymous {
 				type: 'folder',
 				entityId: folderId,
 				metadataTxId: folderTxId,
-				key: driveKey ? driveKey : undefined
+				key: driveKey
 			});
 
 			if (folderMetaDataReward) {
