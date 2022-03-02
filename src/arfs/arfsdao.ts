@@ -157,7 +157,6 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
 import { createTransactionAsync, uploadTransactionAsync } from 'arweave-stream-tx';
 import { Readable } from 'stream';
-import { ReadableStreamBuffer } from 'stream-buffers';
 import { pipeline } from 'stream/promises';
 import { MIN_CHUNK_SIZE } from 'arweave/node/lib/merkle';
 
@@ -907,19 +906,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Drop data items from memory immediately after the bundle has been assembled
 			dataItems = [];
 
-			console.time('stream - upload');
-			const bundleStream = new ReadableStreamBuffer({
-				frequency: 10,
-				chunkSize: MIN_CHUNK_SIZE
-			});
-			bundleStream.put(bundleTx.data as Buffer);
-			bundleStream.stop();
-			console.timeEnd('stream - upload');
+			const dataStream = this.streamFromBuffer(bundleTx.data as Buffer);
 
-			console.time('upload transaction');
-			// This bundle is now complete, send it off before starting a new one
-			await pipeline(bundleStream, uploadTransactionAsync(bundleTx, this.arweave));
-			console.timeEnd('upload transaction');
+			await pipeline(dataStream, uploadTransactionAsync(bundleTx, this.arweave));
 
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
@@ -951,6 +940,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await dataItem.sign(signer);
 
 		return dataItem;
+	}
+
+	streamFromBuffer(buffer: Buffer, chunkSize: number = MIN_CHUNK_SIZE): Readable {
+		const reader = new Readable();
+
+		let start = 0;
+		reader._read = function () {
+			while (reader.push(buffer.slice(start, (start += chunkSize)))) {
+				// Close the stream and break the loop
+				if (start >= buffer.length) {
+					reader.push(null);
+					break;
+				}
+			}
+		};
+
+		return reader;
 	}
 
 	async prepareArFSObjectBundle({
@@ -994,22 +1000,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
 		}
 
-		console.time('stream - prepare');
-		const bundleStream = new ReadableStreamBuffer({
-			frequency: 10,
-			chunkSize: MIN_CHUNK_SIZE
-		});
-		bundleStream.put(bundleRawData);
-		bundleStream.stop();
-		console.timeEnd('stream - prepare');
+		const dataStream = this.streamFromBuffer(bundleRawData);
 
-		console.time('create transaction');
-		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
 		const bundledDataTx = await pipeline(
-			bundleStream,
+			dataStream,
 			createTransactionAsync(txAttributes, this.arweave, wallet.getPrivateKey())
 		);
-		console.timeEnd('create transaction');
 
 		bundledDataTx.data = bundleRawData;
 

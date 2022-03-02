@@ -78,7 +78,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["sinon", "npm:11.1.1"],\
             ["smartweave", "npm:0.4.45"],\
             ["source-map-support", "npm:0.5.19"],\
-            ["stream-buffers", "npm:3.0.2"],\
             ["ts-node", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.1.0"],\
             ["ts-sinon", "npm:2.0.1"],\
             ["typescript", "patch:typescript@npm%3A4.2.3#~builtin<compat/typescript>::version=4.2.3&hash=bda367"],\
@@ -2007,7 +2006,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["sinon", "npm:11.1.1"],\
             ["smartweave", "npm:0.4.45"],\
             ["source-map-support", "npm:0.5.19"],\
-            ["stream-buffers", "npm:3.0.2"],\
             ["ts-node", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.1.0"],\
             ["ts-sinon", "npm:2.0.1"],\
             ["typescript", "patch:typescript@npm%3A4.2.3#~builtin<compat/typescript>::version=4.2.3&hash=bda367"],\
@@ -7362,15 +7360,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["starkbank-ecdsa", "npm:1.1.4"],\
             ["big-integer", "npm:1.6.51"],\
             ["js-sha256", "npm:0.9.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["stream-buffers", [\
-        ["npm:3.0.2", {\
-          "packageLocation": "./.yarn/cache/stream-buffers-npm-3.0.2-81e4221c31-b09fdeea60.zip/node_modules/stream-buffers/",\
-          "packageDependencies": [\
-            ["stream-buffers", "npm:3.0.2"]\
           ],\
           "linkType": "HARD"\
         }]\

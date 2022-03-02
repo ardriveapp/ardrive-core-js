@@ -1635,7 +1635,6 @@ __metadata:
     sinon: ^11.1.1
     smartweave: ^0.4.45
     source-map-support: ^0.5.19
-    stream-buffers: ^3.0.2
     ts-node: ^10.1.0
     ts-sinon: ^2.0.1
     typescript: ^4.2.3
@@ -6355,13 +6354,6 @@ fsevents@~2.3.1:
     big-integer: ^1.6.48
     js-sha256: ^0.9.0
   checksum: 9e8e4115a33e8febfc55f3faf2044f7c3ecbd22856d7fbcd5108bb36a1f064ecc70d83207b0cede99c3e912d6a1dccee3385f9f72928436e12b7db6374995b5c
-  languageName: node
-  linkType: hard
-
-"stream-buffers@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "stream-buffers@npm:3.0.2"
-  checksum: b09fdeea606e3113ebd0e07010ed0cf038608fa396130add9e45deaff5cc3ba845dc25c31ad24f8341f85907846344cb7c85f75ea52c6572e2ac646e9b6072d0
   languageName: node
   linkType: hard
 

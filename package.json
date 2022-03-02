@@ -20,7 +20,6 @@
 		"mime-types": "^2.1.29",
 		"regression": "^2.0.1",
 		"smartweave": "^0.4.45",
-		"stream-buffers": "^3.0.2",
 		"utf8": "^3.0.0",
 		"uuid": "^8.3.2"
 	},
