@@ -39,6 +39,7 @@ import {
 } from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', function () {
+	this.timeout(900000);
 	const wallet = readJWKFile('./test_wallet.json');
 
 	let arDrive: ArDrive;
@@ -313,6 +314,30 @@ describe('ArLocal Integration Tests', function () {
 					'/arlocal_test_drive/bulk_root_folder/parent_folder/child_folder/grandchild_folder/file_in_grandchild.txt',
 				expectedEntityIdPath: `/${rootFolderId}/${rootFolder.entityId}/${parentFolder.entityId}/${childFolder.entityId}/${grandChildFolder.entityId}/${fileInGrandChildResult.entityId}`,
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${grandChildFolder.txId}/${fileInGrandChildResult.metadataTxId}`
+			});
+		});
+
+		it('we can upload a large multi-chunk file and fetch that file', async function () {
+			this.timeout(600000);
+			const { created } = await arDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{ destFolderId: rootFolderId, wrappedEntity: wrapFileOrFolder('tests/stub_files/490MiB.txt') }
+				]
+			});
+			await arweave.api.get(`mine`);
+
+			const file = await arDrive.getPublicFile({ fileId: created[0].entityId! });
+
+			assertPublicFileExpectations({
+				entity: file,
+				driveId,
+				parentFolderId: rootFolderId,
+				metaDataTxId: created[0].metadataTxId!,
+				dataTxId: created[0].dataTxId!,
+				fileId: created[0].entityId!,
+				dataContentType: 'text/plain',
+				entityName: 'file_in_parent.txt',
+				size: new ByteCount(12)
 			});
 		});
 	});
