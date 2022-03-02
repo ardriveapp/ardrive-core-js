@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { GQLNodeInterface } from '../../types';
+import { EntityKey, GQLNodeInterface } from '../../types';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
 
 describe('ArFSPublicFileBuilder', () => {
@@ -114,7 +114,9 @@ describe('ArFSPrivateFileBuilder', () => {
 		]
 	};
 
-	const driveKeyForStubPrivateFile = Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64');
+	const driveKeyForStubPrivateFile = new EntityKey(
+		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64')
+	);
 
 	// prettier-ignore
 	const stubPrivateFileGetDataResult = Buffer.from(Uint8Array.from([

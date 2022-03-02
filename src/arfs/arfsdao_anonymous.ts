@@ -11,17 +11,11 @@ import {
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
-import { FolderHierarchy } from './folderHierarchy';
+import { FolderHierarchy } from './folder_hierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
-import {
-	ArFSDriveEntity,
-	ArFSPublicDrive,
-	ArFSPublicFile,
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSPublicFolder
-} from './arfs_entities';
+import { ArFSDriveEntity, ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gatewayGqlEndpoint } from '../utils/constants';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -30,6 +24,7 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
 
 export abstract class ArFSDAOType {
@@ -326,7 +321,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		maxDepth,
 		includeRoot,
 		owner
-	}: ArFSListPublicFolderParams): Promise<ArFSPublicFileOrFolderWithPaths[]> {
+	}: ArFSListPublicFolderParams): Promise<(ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
 		}
@@ -343,8 +338,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
-		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth - 1);
-		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth);
+		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth);
+		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folderId, maxDepth + 1);
 
 		const childrenFolderEntities = allFolderEntitiesOfDrive.filter((folder) =>
 			subFolderIDs.some((fid) => fid.equals(folder.entityId))
@@ -359,7 +354,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		const children = [...childrenFolderEntities, ...childrenFileEntities];
 
-		const entitiesWithPath = children.map((entity) => new ArFSPublicFileOrFolderWithPaths(entity, hierarchy));
+		const entitiesWithPath = children.map((entity) => publicEntityWithPathsFactory(entity, hierarchy));
 		return entitiesWithPath;
 	}
 
@@ -406,12 +401,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		// Fetch all file entities within all Folders of the drive
 		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
 		const folderWrapper = new ArFSFolderToDownload(
-			new ArFSPublicFileOrFolderWithPaths(publicFolder, hierarchy),
+			publicEntityWithPathsFactory(publicFolder, hierarchy),
 			customFolderName
 		);
 
 		const foldersWithPath = [publicFolder, ...childrenFolderEntities]
-			.map((folder) => new ArFSPublicFileOrFolderWithPaths(folder, hierarchy))
+			.map((folder) => publicEntityWithPathsFactory(folder, hierarchy))
 			.sort((a, b) => alphabeticalOrder(a.path, b.path));
 
 		for (const folder of foldersWithPath) {
@@ -426,7 +421,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			);
 			for (const file of childrenFiles) {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
-					new ArFSPublicFileOrFolderWithPaths(file, hierarchy).path
+					publicEntityWithPathsFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
