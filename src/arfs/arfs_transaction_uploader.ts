@@ -84,9 +84,11 @@ export class ArFSTransactionUploader {
 	}
 
 	/**
+	 * TODO: Update this docblock, and add docs to other methods
+	 *
 	 * Uploads the next part of the transaction.
 	 * On the first call this posts the transaction
-	 * itself and on any subsequent calls uploads the
+	 * itself and on unknown subsequent calls uploads the
 	 * next chunk until it completes.
 	 */
 	public async batchUploadChunks(): Promise<void> {
@@ -95,7 +97,7 @@ export class ArFSTransactionUploader {
 		}
 
 		if (!this.txPosted) {
-			await this.postTransactionHeader();
+			await this.postTransactionHeaders();
 			return;
 		}
 
@@ -119,10 +121,55 @@ export class ArFSTransactionUploader {
 	}
 
 	private async uploadChunk(chunk: Chunk) {
-		let resp: AxiosResponse<any> | string;
+		try {
+			console.log('sending chunk');
+			await this.retryRequestUntilMaxErrors(this.arweave.api.post(`chunk`, chunk));
+		} catch (err) {
+			throw new Error(`Too many errors encountered while posting chunks: ${err}`);
+		}
+
+		this.uploadedChunks++;
+
+		if (this.chunkOffset < this.totalChunks) {
+			console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
+			// Start next chunk when this one finishes
+			console.log('getting new chunk at offset:', this.chunkOffset);
+			await this.uploadChunk(this.transaction.getChunk(this.chunkOffset++, this.transaction.data));
+		}
+		return;
+	}
+
+	// POST to /tx
+	private async postTransactionHeaders(): Promise<void> {
+		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
+
+		// We will send the data with the headers if chunks will fit into transaction header body
+		// Otherwise we send the headers with no data
+		const transactionToUpload = uploadInBody
+			? this.transaction
+			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 
 		try {
-			resp = await this.arweave.api.post(`chunk`, chunk);
+			console.log('posting tx');
+			await this.retryRequestUntilMaxErrors(this.arweave.api.post(`tx`, transactionToUpload));
+		} catch (err) {
+			throw new Error(`Too many errors encountered while posting transaction headers:  ${err}`);
+		}
+
+		this.txPosted = true;
+
+		if (uploadInBody) {
+			this.chunkOffset += MAX_CHUNKS_IN_BODY;
+			this.uploadedChunks += MAX_CHUNKS_IN_BODY;
+		}
+		return;
+	}
+
+	private async retryRequestUntilMaxErrors(request: Promise<AxiosResponse<unknown>>) {
+		let resp: AxiosResponse<unknown> | string;
+
+		try {
+			resp = await request;
 		} catch (err) {
 			resp = err.message;
 		}
@@ -136,82 +183,28 @@ export class ArFSTransactionUploader {
 				this.totalErrors++;
 				console.log('this.totalErrors', this.totalErrors);
 				if (this.totalErrors >= MAX_ERRORS) {
-					throw new Error(`Unable to complete chunk upload: ${error}`);
+					throw new Error(`Unable to complete request: ${error}`);
 				} else {
 					console.log('delaying');
-					// Jitter delay after failed chunk uploads -- subtract up to 30% from 40 seconds
+					// Jitter delay after failed requests -- subtract up to 30% from ERROR_DELAY
 					await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
 
-					// Retry the chunk
+					// Retry the request
 					console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
-					console.log('retrying a chunk');
-					await this.uploadChunk(chunk);
+					console.log('retrying request');
+					await request;
 				}
-			}
-		} else {
-			this.uploadedChunks++;
-
-			if (this.chunkOffset < this.totalChunks) {
-				console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
-				// Start next chunk when this one finishes
-				console.log('getting new chunk at offset:', this.chunkOffset);
-				await this.uploadChunk(this.transaction.getChunk(this.chunkOffset++, this.transaction.data));
-			}
-		}
-		return;
-	}
-
-	// POST to /tx
-	private async postTransactionHeader(): Promise<void> {
-		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
-
-		// We will send the data with the headers if chunks will fit into transaction header body
-		// Otherwise we send the headers with no data
-		const transactionToUpload = uploadInBody
-			? this.transaction
-			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
-
-		let resp: AxiosResponse<any> | string;
-
-		try {
-			console.log('posting');
-			resp = await this.arweave.api.post(`tx`, transactionToUpload);
-		} catch (err) {
-			resp = err.message;
-		}
-
-		if (respIsError(resp) || resp.status !== 200) {
-			const error = respIsError(resp) ? resp : getError(resp);
-
-			if (this.totalErrors >= MAX_ERRORS) {
-				throw new Error(`Unable to complete transaction post: ${error}`);
-			} else {
-				console.log('delaying');
-				// Jitter delay after failed chunk uploads -- subtract up to 30% from 40 seconds
-				await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
-
-				// Retry the chunk
-				console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
-				console.log('retrying post');
-				await this.postTransactionHeader();
-			}
-		} else {
-			this.txPosted = true;
-
-			if (uploadInBody) {
-				this.chunkOffset = MAX_CHUNKS_IN_BODY;
-				this.uploadedChunks += MAX_CHUNKS_IN_BODY;
 			}
 		}
 	}
 }
 
-function respIsError(resp: AxiosResponse<any> | string): resp is string {
+function respIsError(resp: AxiosResponse<unknown> | string): resp is string {
 	return resp === typeof 'string';
 }
 
 // Temp copy pasted from arweave-js for debugging
-export function getError(resp: AxiosResponse<any>) {
+export function getError(resp: AxiosResponse<unknown>) {
 	let data = resp.data;
 
 	if (typeof resp.data === 'string') {
@@ -225,7 +218,7 @@ export function getError(resp: AxiosResponse<any>) {
 	if (resp.data instanceof ArrayBuffer || resp.data instanceof Uint8Array) {
 		console.log('is buffer or such');
 		try {
-			data = JSON.parse(data.toString());
+			data = JSON.parse((data as ArrayBuffer).toString());
 			// eslint-disable-next-line no-empty
 		} catch (e) {}
 	}
@@ -238,5 +231,7 @@ export function getError(resp: AxiosResponse<any>) {
 		writeFileSync(`${Math.random()}.txt`, JSON.stringify(resp, null, 4));
 	}
 
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore
 	return data ? data.error || data : resp.statusText || 'unknown';
 }
