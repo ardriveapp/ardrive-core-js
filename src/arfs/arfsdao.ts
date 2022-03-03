@@ -155,7 +155,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave } from '../utils/common';
+import { formatBytes, gatewayUrlForArweave } from '../utils/common';
 import { ArFSTransactionUploader } from './arfs_transaction_uploader';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -1069,18 +1069,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
 				const transactionUploader = new ArFSTransactionUploader({ transaction, arweave: this.arweave });
-				// await transactionUploader.batchUploadChunks();
 
-				// if (!transactionUploader.isComplete) {
-				// 	await transactionUploader.batchUploadChunks();
-				// }
+				console.time('chunk upload time');
+				console.log('rss memory before chunk upload:', formatBytes(process.memoryUsage().rss));
 
-				// if (!transactionUploader.isComplete) {
-				// 	await transactionUploader.batchUploadChunks();
-				// }
 				while (!transactionUploader.isComplete) {
 					await transactionUploader.batchUploadChunks();
 				}
+				console.timeEnd('chunk upload time');
+				console.log('rss memory after chunk upload:', formatBytes(process.memoryUsage().rss));
 			}
 		}
 	}

@@ -1,7 +1,9 @@
 import Transaction from 'arweave/node/lib/transaction';
-import { getError } from 'arweave/node/lib/error';
+// import { getError } from 'arweave/node/lib/error';
 import Arweave from 'arweave';
 import { AxiosResponse } from 'axios';
+import { formatBytes } from '../utils/common';
+import { writeFileSync } from 'fs';
 
 interface Chunk {
 	data_root: string;
@@ -13,9 +15,9 @@ interface Chunk {
 
 // Maximum amount of chunks we will upload in the body.
 const MAX_CHUNKS_IN_BODY = 1;
-const MAX_CHUNKS_BATCH_SIZE = 128;
+const MAX_CHUNKS_BATCH_SIZE = 32;
 
-const MAX_ERRORS = 2;
+const MAX_ERRORS = 100;
 
 // We assume these errors are intermittent and we can try again after a delay:
 // - not_joined
@@ -36,17 +38,13 @@ const FATAL_CHUNK_UPLOAD_ERRORS = [
 ];
 
 // Amount we will delay on receiving an error response but do want to continue.
-const ERROR_DELAY = 1000 * 40;
+const ERROR_DELAY = 1000 * 20;
 
 export class ArFSTransactionUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
-	private lastRequestTimeEnd = 0;
 	private totalErrors = 0;
-
-	// public data: Uint8Array;
-	// public lastResponseStatus = 0;
-	public lastResponseError = '';
+	private uploadedChunks = 0;
 
 	public get isComplete(): boolean {
 		return this.txPosted && this.uploadedChunks === this.totalChunks;
@@ -56,9 +54,6 @@ export class ArFSTransactionUploader {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return this.transaction.chunks!.chunks.length;
 	}
-
-	private uploadedChunks = 0;
-	private chunksInFlight = 0;
 
 	public get pctComplete(): number {
 		return Math.trunc((this.uploadedChunks / this.totalChunks) * 100);
@@ -77,7 +72,7 @@ export class ArFSTransactionUploader {
 
 		// Make a copy of transaction, zeroing the data so we can serialize.
 		// this.data = transaction.data;
-		this.arweave = this.arweave = arweave;
+		this.arweave = arweave;
 		this.transaction = transaction;
 	}
 
@@ -91,9 +86,6 @@ export class ArFSTransactionUploader {
 		if (this.isComplete) {
 			throw new Error(`Upload is already complete`);
 		}
-		if (this.chunksInFlight >= MAX_CHUNKS_BATCH_SIZE) {
-			return;
-		}
 
 		if (!this.txPosted) {
 			await this.postTransaction();
@@ -102,64 +94,64 @@ export class ArFSTransactionUploader {
 
 		console.log('this.totalChunks', this.totalChunks);
 		console.log('this.chunkOffset', this.chunkOffset);
-		const numOfChunksToGet = Math.min(
-			this.totalChunks - this.chunkOffset,
-			MAX_CHUNKS_BATCH_SIZE - this.chunksInFlight
-		);
-		console.log('getting this many chunks', numOfChunksToGet);
+		const initialChunksToGet = Math.min(this.totalChunks - this.chunkOffset, MAX_CHUNKS_BATCH_SIZE);
+		console.log('getting this many chunks', initialChunksToGet);
 
-		const chunks = (() => {
+		const initialChunks = (() => {
 			const chunksToSend: Chunk[] = [];
-			for (let index = this.chunkOffset; index < this.chunkOffset + numOfChunksToGet; index++) {
+			for (let index = this.chunkOffset; index < this.chunkOffset + initialChunksToGet; index++) {
 				chunksToSend.push(this.transaction.getChunk(index, this.transaction.data));
 			}
 			return chunksToSend;
 		})();
-		console.log('chunks.length', chunks.length);
-		this.chunkOffset += chunks.length;
-		console.log('new this.chunkOffset after getting chunks', this.chunkOffset);
 
-		await Promise.all(chunks.map((chunk) => this.uploadChunk(chunk)));
+		console.log('chunks.length', initialChunks.length);
+		this.chunkOffset += initialChunks.length;
+		console.log('new this.chunkOffset after getting chunks', this.chunkOffset);
+		await Promise.all(initialChunks.map((chunk) => this.uploadChunk(chunk)));
 	}
 
 	private async uploadChunk(chunk: Chunk) {
-		this.chunksInFlight++;
-
 		let resp: AxiosResponse<any> | string;
 
 		try {
 			resp = await this.arweave.api.post(`chunk`, chunk);
 		} catch (err) {
-			resp = err;
+			resp = err.message;
 		}
-		this.lastRequestTimeEnd = Date.now();
 
 		if (respIsError(resp) || resp.status !== 200) {
-			this.lastResponseError = respIsError(resp) ? resp : getError(resp);
-			// console.log('getError(resp)', getError(resp))
-			console.error('error:', this.lastResponseError);
+			const error = respIsError(resp) ? resp : getError(resp);
 
-			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(this.lastResponseError)) {
-				throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${this.lastResponseError}`);
+			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
+				throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
 			} else {
 				this.totalErrors++;
+				console.log('this.totalErrors', this.totalErrors);
 				if (this.totalErrors >= MAX_ERRORS) {
-					throw new Error(`Unable to complete chunk upload: ${this.lastResponseError}`);
+					throw new Error(`Unable to complete chunk upload: ${error}`);
 				} else {
 					console.log('delaying');
 					// Jitter delay after failed chunk uploads -- subtract up to 30% from 40 seconds
-					const delay = Math.max(this.lastRequestTimeEnd + ERROR_DELAY - Date.now(), ERROR_DELAY);
-					await new Promise((res) => setTimeout(res, delay - delay * Math.random() * 0.3));
+					await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
 
 					// Retry the chunk
+					console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
 					console.log('retrying a chunk');
 					await this.uploadChunk(chunk);
 				}
 			}
 		} else {
 			this.uploadedChunks++;
+
+			if (this.chunkOffset < this.totalChunks) {
+				console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
+				// Start next chunk when this one finishes
+				console.log('getting new chunk at offset:', this.chunkOffset);
+				await this.uploadChunk(this.transaction.getChunk(this.chunkOffset++, this.transaction.data));
+			}
 		}
-		this.chunksInFlight--;
+		return;
 	}
 
 	// POST to /tx
@@ -167,6 +159,7 @@ export class ArFSTransactionUploader {
 		console.log('posting');
 		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
 
+		// TODO: Add retries on post
 		if (uploadInBody) {
 			console.log('upload in body');
 			// Post the transaction with data.
@@ -175,7 +168,6 @@ export class ArFSTransactionUploader {
 				return { status: -1, data: { error: e.message } };
 			});
 
-			this.lastRequestTimeEnd = Date.now();
 			this.transaction.data = new Uint8Array(0);
 
 			if (resp.status >= 200 && resp.status < 300) {
@@ -185,18 +177,15 @@ export class ArFSTransactionUploader {
 				this.uploadedChunks++;
 				return;
 			}
-			this.lastResponseError = getError(resp);
-			throw new Error(`Unable to upload transaction: ${resp.status}, ${this.lastResponseError}`);
+			throw new Error(`Unable to upload transaction: ${resp.status}, ${getError(resp as AxiosResponse<any>)}`);
 		}
 
 		// Post the transaction with no data.
 		const txWithoutData = new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 		const resp = await this.arweave.api.post(`tx`, txWithoutData);
-		this.lastRequestTimeEnd = Date.now();
 
 		if (!(resp.status >= 200 && resp.status < 300)) {
-			this.lastResponseError = getError(resp);
-			throw new Error(`Unable to upload transaction: ${resp.status}, ${this.lastResponseError}`);
+			throw new Error(`Unable to upload transaction: ${resp.status}, ${getError(resp)}`);
 		}
 		this.txPosted = true;
 	}
@@ -204,4 +193,35 @@ export class ArFSTransactionUploader {
 
 function respIsError(resp: AxiosResponse<any> | string): resp is string {
 	return resp === typeof 'string';
+}
+
+// Temp copy pasted from arweave-js for debugging
+export function getError(resp: AxiosResponse<any>) {
+	let data = resp.data;
+
+	if (typeof resp.data === 'string') {
+		console.log('is string');
+		try {
+			data = JSON.parse(resp.data);
+			// eslint-disable-next-line no-empty
+		} catch (e) {}
+	}
+
+	if (resp.data instanceof ArrayBuffer || resp.data instanceof Uint8Array) {
+		console.log('is buffer or such');
+		try {
+			data = JSON.parse(data.toString());
+			// eslint-disable-next-line no-empty
+		} catch (e) {}
+	}
+
+	console.log(resp.status);
+	console.log(resp.statusText);
+
+	if (resp.status === undefined) {
+		// Write this obscure failure to file to analyze further
+		writeFileSync(`${Math.random()}.txt`, JSON.stringify(resp, null, 4));
+	}
+
+	return data ? data.error || data : resp.statusText || 'unknown';
 }
