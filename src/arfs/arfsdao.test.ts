@@ -23,7 +23,7 @@ import {
 	stubCommunityTipSettings
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
-import { readJWKFile, urlEncodeHashKey, Utf8ArrayToStr } from '../utils/common';
+import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
 	ArFSDAO,
@@ -129,10 +129,11 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
+			const stubbedKey = await getStubDriveKey();
 			const decryptedBuffer: Buffer = await driveDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				await getStubDriveKey(),
+				stubbedKey,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -192,10 +193,11 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
+			const stubbedKey = await getStubDriveKey();
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
-				await getStubDriveKey(),
+				stubbedKey,
 				dataBuffer
 			);
 			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
@@ -271,7 +273,8 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(11);
 
 			const dataBuffer = Buffer.from(transaction.data);
-			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, await getStubDriveKey());
+			const stubbedKey = await getStubDriveKey();
+			const fileKey: FileKey = await deriveFileKey(`${stubEntityID}`, stubbedKey);
 			const decryptedBuffer: Buffer = await fileDecrypt(
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				tags.find((t) => t.name === 'Cipher-IV')!.value,
@@ -523,7 +526,7 @@ describe('The ArFSDAO class', () => {
 	describe('caching behaviors of', () => {
 		describe('getPrivateDrive function', () => {
 			it('returns a drive for a specified drive ID and owner from cache when cached entry is available', async () => {
-				const cachedDrive = stubPrivateDrive;
+				const cachedDrive = await stubPrivateDrive();
 				const promise = Promise.resolve(cachedDrive);
 				stub(privateDriveCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateDrive(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
@@ -544,7 +547,7 @@ describe('The ArFSDAO class', () => {
 
 		describe('getPrivateFolder function', () => {
 			it('returns a drive ID for a specified folder ID from cache when cached entry is available', async () => {
-				const cachedFolder = stubPrivateFolder({});
+				const cachedFolder = await stubPrivateFolder({});
 				const promise = Promise.resolve(cachedFolder);
 				stub(privateFolderCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateFolder(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
@@ -565,7 +568,7 @@ describe('The ArFSDAO class', () => {
 
 		describe('getPrivateFile function', () => {
 			it('returns a file for a specified file ID from cache when cached entry is available', async () => {
-				const cachedFile = stubPrivateFile({});
+				const cachedFile = await stubPrivateFile({});
 				const promise = Promise.resolve(cachedFile);
 				stub(privateFileCache, 'get').returns(promise);
 				expect(await arfsDao.getPrivateFile(stubEntityID, stubDriveKey, stubArweaveAddress())).to.equal(
@@ -1026,7 +1029,7 @@ function assertFileResult(
 
 	if (expectFileKey) {
 		// Expected file key of stubDriveKey + stubEntityId
-		expect(urlEncodeHashKey(fileKey!)).to.equal('UYCAFLlG4DuYgfOIh+qtEReZdQxWiznwekDa2ulSRd4');
+		expect(fileKey?.toString()).to.equal('UYCAFLlG4DuYgfOIh+qtEReZdQxWiznwekDa2ulSRd4');
 	} else {
 		expect(fileKey).to.be.undefined;
 	}
@@ -1053,7 +1056,7 @@ function assertFolderResult(
 
 	if (expectDriveKey) {
 		// Output of stubDriveKey
-		expect(urlEncodeHashKey(driveKey!)).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+		expect(driveKey?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	} else {
 		expect(driveKey).to.be.undefined;
 	}

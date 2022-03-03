@@ -30,12 +30,14 @@ import {
 	ArFSEntity,
 	ArFSPrivateDrive,
 	ArFSPrivateFile,
-	ArFSPrivateFileOrFolderWithPaths,
+	ArFSPrivateFileWithPaths,
 	ArFSPrivateFolder,
+	ArFSPrivateFolderWithPaths,
 	ArFSPublicDrive,
 	ArFSPublicFile,
-	ArFSPublicFileOrFolderWithPaths,
-	ArFSPublicFolder
+	ArFSPublicFileWithPaths,
+	ArFSPublicFolder,
+	ArFSPublicFolderWithPaths
 } from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', function () {
@@ -230,7 +232,7 @@ describe('ArLocal Integration Tests', function () {
 			] = entities;
 
 			assertPublicFolderWithPathsExpectations({
-				entity: rootFolder,
+				entity: rootFolder as ArFSPublicFolderWithPaths,
 				driveId,
 				parentFolderId: rootFolderId,
 				entityName: 'bulk_root_folder',
@@ -241,7 +243,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}`
 			});
 			assertPublicFolderWithPathsExpectations({
-				entity: parentFolder,
+				entity: parentFolder as ArFSPublicFolderWithPaths,
 				driveId,
 				parentFolderId: rootFolder.entityId,
 				entityName: 'parent_folder',
@@ -252,7 +254,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}`
 			});
 			assertPublicFolderWithPathsExpectations({
-				entity: childFolder,
+				entity: childFolder as ArFSPublicFolderWithPaths,
 				driveId,
 				parentFolderId: parentFolder.entityId,
 				entityName: 'child_folder',
@@ -263,7 +265,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}`
 			});
 			assertPublicFolderWithPathsExpectations({
-				entity: grandChildFolder,
+				entity: grandChildFolder as ArFSPublicFolderWithPaths,
 				driveId,
 				parentFolderId: childFolder.entityId,
 				entityName: 'grandchild_folder',
@@ -275,7 +277,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 
 			assertPublicFileWithPathsExpectations({
-				entity: fileInRoot,
+				entity: fileInRoot as ArFSPublicFileWithPaths,
 				driveId,
 				parentFolderId: rootFolder.entityId,
 				metaDataTxId: fileInRootResult.metadataTxId!,
@@ -289,7 +291,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${fileInRootResult.metadataTxId}`
 			});
 			assertPublicFileWithPathsExpectations({
-				entity: fileInParent,
+				entity: fileInParent as ArFSPublicFileWithPaths,
 				driveId,
 				parentFolderId: parentFolder.entityId,
 				metaDataTxId: fileInParentResult.metadataTxId!,
@@ -303,7 +305,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${fileInParentResult.metadataTxId}`
 			});
 			assertPublicFileWithPathsExpectations({
-				entity: fileInChild,
+				entity: fileInChild as ArFSPublicFileWithPaths,
 				driveId,
 				parentFolderId: childFolder.entityId,
 				metaDataTxId: fileInChildResult.metadataTxId!,
@@ -317,7 +319,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${fileInChildResult.metadataTxId}`
 			});
 			assertPublicFileWithPathsExpectations({
-				entity: fileInGrandChild,
+				entity: fileInGrandChild as ArFSPublicFileWithPaths,
 				driveId,
 				parentFolderId: grandChildFolder.entityId,
 				metaDataTxId: fileInGrandChildResult.metadataTxId!,
@@ -377,7 +379,7 @@ describe('ArLocal Integration Tests', function () {
 			rootFolderTxId = created[1].metadataTxId!;
 			driveId = created[0].entityId!;
 			driveTxID = created[0].metadataTxId!;
-			driveKey = Buffer.from(created[0].key!, 'base64');
+			driveKey = created[0].key!;
 
 			await arweave.api.get(`mine`);
 		});
@@ -503,7 +505,7 @@ describe('ArLocal Integration Tests', function () {
 			] = entities;
 
 			assertPrivateFolderWithPathsExpectations({
-				entity: rootFolder,
+				entity: rootFolder as ArFSPrivateFolderWithPaths,
 				driveId,
 				parentFolderId: rootFolderId,
 				entityName: 'bulk_root_folder',
@@ -514,7 +516,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}`
 			});
 			assertPrivateFolderWithPathsExpectations({
-				entity: parentFolder,
+				entity: parentFolder as ArFSPrivateFolderWithPaths,
 				driveId,
 				parentFolderId: rootFolder.entityId,
 				entityName: 'parent_folder',
@@ -525,7 +527,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}`
 			});
 			assertPrivateFolderWithPathsExpectations({
-				entity: childFolder,
+				entity: childFolder as ArFSPrivateFolderWithPaths,
 				driveId,
 				parentFolderId: parentFolder.entityId,
 				entityName: 'child_folder',
@@ -536,7 +538,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}`
 			});
 			assertPrivateFolderWithPathsExpectations({
-				entity: grandChildFolder,
+				entity: grandChildFolder as ArFSPrivateFolderWithPaths,
 				driveId,
 				parentFolderId: childFolder.entityId,
 				entityName: 'grandchild_folder',
@@ -548,7 +550,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 
 			assertPrivateFileWithPathsExpectations({
-				entity: fileInRoot,
+				entity: fileInRoot as ArFSPrivateFileWithPaths,
 				driveId,
 				parentFolderId: rootFolder.entityId,
 				metaDataTxId: fileInRootResult.metadataTxId!,
@@ -562,7 +564,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${fileInRootResult.metadataTxId}`
 			});
 			assertPrivateFileWithPathsExpectations({
-				entity: fileInParent,
+				entity: fileInParent as ArFSPrivateFileWithPaths,
 				driveId,
 				parentFolderId: parentFolder.entityId,
 				metaDataTxId: fileInParentResult.metadataTxId!,
@@ -576,7 +578,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${fileInParentResult.metadataTxId}`
 			});
 			assertPrivateFileWithPathsExpectations({
-				entity: fileInChild,
+				entity: fileInChild as ArFSPrivateFileWithPaths,
 				driveId,
 				parentFolderId: childFolder.entityId,
 				metaDataTxId: fileInChildResult.metadataTxId!,
@@ -590,7 +592,7 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${fileInChildResult.metadataTxId}`
 			});
 			assertPrivateFileWithPathsExpectations({
-				entity: fileInGrandChild,
+				entity: fileInGrandChild as ArFSPrivateFileWithPaths,
 				driveId,
 				parentFolderId: grandChildFolder.entityId,
 				metaDataTxId: fileInGrandChildResult.metadataTxId!,
@@ -772,7 +774,7 @@ interface AssertEntityWithPathsParams {
 	expectedPath: string;
 	expectedTxIdPath: string;
 	expectedEntityIdPath: string;
-	entity: ArFSPublicFileOrFolderWithPaths | ArFSPrivateFileOrFolderWithPaths;
+	entity: ArFSPublicFileWithPaths | ArFSPrivateFileWithPaths | ArFSPublicFolderWithPaths | ArFSPrivateFolderWithPaths;
 }
 
 function assertPathExpectations({
@@ -787,21 +789,21 @@ function assertPathExpectations({
 }
 
 function assertPublicFolderWithPathsExpectations(
-	params: AssertFolderExpectationsParams<ArFSPublicFileOrFolderWithPaths> & AssertEntityWithPathsParams
+	params: AssertFolderExpectationsParams<ArFSPublicFolderWithPaths> & AssertEntityWithPathsParams
 ): void {
 	assertPathExpectations(params);
 	assertPublicFolderExpectations({ ...params, entity: params.entity as ArFSPublicFolder });
 }
 
 function assertPrivateFolderWithPathsExpectations(
-	params: AssertFolderExpectationsParams<ArFSPrivateFileOrFolderWithPaths> & AssertEntityWithPathsParams
+	params: AssertFolderExpectationsParams<ArFSPrivateFolderWithPaths> & AssertEntityWithPathsParams
 ): void {
 	assertPathExpectations(params);
 	assertPrivateFolderExpectations({ ...params, entity: params.entity as ArFSPrivateFolder });
 }
 
 function assertPublicFileWithPathsExpectations(
-	params: AssertFileExpectationsParams<ArFSPublicFileOrFolderWithPaths> & AssertEntityWithPathsParams
+	params: AssertFileExpectationsParams<ArFSPublicFileWithPaths> & AssertEntityWithPathsParams
 ): void {
 	assertPathExpectations(params);
 	// eslint-disable-next-line prettier/prettier
@@ -809,7 +811,7 @@ function assertPublicFileWithPathsExpectations(
 }
 
 function assertPrivateFileWithPathsExpectations(
-	params: AssertFileExpectationsParams<ArFSPrivateFileOrFolderWithPaths> & AssertEntityWithPathsParams
+	params: AssertFileExpectationsParams<ArFSPrivateFileWithPaths> & AssertEntityWithPathsParams
 ): void {
 	assertPathExpectations(params);
 	// eslint-disable-next-line prettier/prettier

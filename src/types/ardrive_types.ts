@@ -17,6 +17,7 @@ import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
+import { EntityKey } from './entity_key';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -26,7 +27,7 @@ export interface ArFSEntityData {
 	metadataTxId?: TransactionID;
 	dataTxId?: TransactionID;
 	entityId?: AnyEntityID;
-	key?: string;
+	key?: EntityKey;
 }
 
 export type ListPublicFolderParams = MakeOptional<ArFSListPublicFolderParams, 'maxDepth' | 'includeRoot' | 'owner'>;
@@ -180,17 +181,23 @@ interface GetEntityParams {
 export interface GetPublicDriveParams extends GetEntityParams {
 	driveId: DriveID;
 }
-export type GetPrivateDriveParams = GetPublicDriveParams & WithDriveKey;
+export type GetPrivateDriveParams = GetPublicDriveParams & {
+	withKeys?: boolean;
+} & WithDriveKey;
 
 export interface GetPublicFolderParams extends GetEntityParams {
 	folderId: FolderID;
 }
-export type GetPrivateFolderParams = GetPublicFolderParams & WithDriveKey;
+export type GetPrivateFolderParams = GetPublicFolderParams & {
+	withKeys?: boolean;
+} & WithDriveKey;
 
 export interface GetPublicFileParams extends GetEntityParams {
 	fileId: FileID;
 }
-export type GetPrivateFileParams = GetPublicFileParams & WithDriveKey;
+export type GetPrivateFileParams = GetPublicFileParams & {
+	withKeys?: boolean;
+} & WithDriveKey;
 
 export interface GetAllDrivesForAddressParams {
 	address: ArweaveAddress;
