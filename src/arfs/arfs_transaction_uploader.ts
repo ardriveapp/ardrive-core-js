@@ -15,7 +15,6 @@ interface Chunk {
 
 // Maximum amount of chunks we will upload in the body.
 const MAX_CHUNKS_IN_BODY = 1;
-const MAX_CHUNKS_BATCH_SIZE = 32;
 
 const MAX_ERRORS = 100;
 
@@ -61,8 +60,17 @@ export class ArFSTransactionUploader {
 
 	private arweave: Arweave;
 	private transaction: Transaction;
+	private maxConcurrentChunks: number;
 
-	constructor({ transaction, arweave }: { transaction: Transaction; arweave: Arweave }) {
+	constructor({
+		transaction,
+		arweave,
+		maxConcurrentChunks = 32
+	}: {
+		transaction: Transaction;
+		arweave: Arweave;
+		maxConcurrentChunks?: number;
+	}) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
 		}
@@ -70,10 +78,9 @@ export class ArFSTransactionUploader {
 			throw new Error(`Transaction chunks not prepared`);
 		}
 
-		// Make a copy of transaction, zeroing the data so we can serialize.
-		// this.data = transaction.data;
 		this.arweave = arweave;
 		this.transaction = transaction;
+		this.maxConcurrentChunks = maxConcurrentChunks;
 	}
 
 	/**
@@ -88,13 +95,13 @@ export class ArFSTransactionUploader {
 		}
 
 		if (!this.txPosted) {
-			await this.postTransaction();
+			await this.postTransactionHeader();
 			return;
 		}
 
 		console.log('this.totalChunks', this.totalChunks);
 		console.log('this.chunkOffset', this.chunkOffset);
-		const initialChunksToGet = Math.min(this.totalChunks - this.chunkOffset, MAX_CHUNKS_BATCH_SIZE);
+		const initialChunksToGet = Math.min(this.totalChunks - this.chunkOffset, this.maxConcurrentChunks);
 		console.log('getting this many chunks', initialChunksToGet);
 
 		const initialChunks = (() => {
@@ -155,39 +162,47 @@ export class ArFSTransactionUploader {
 	}
 
 	// POST to /tx
-	private async postTransaction(): Promise<void> {
-		console.log('posting');
+	private async postTransactionHeader(): Promise<void> {
 		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
 
-		// TODO: Add retries on post
-		if (uploadInBody) {
-			console.log('upload in body');
-			// Post the transaction with data.
-			const resp = await this.arweave.api.post(`tx`, this.transaction).catch((e) => {
-				console.error(e);
-				return { status: -1, data: { error: e.message } };
-			});
+		// We will send the data with the headers if chunks will fit into transaction header body
+		// Otherwise we send the headers with no data
+		const transactionToUpload = uploadInBody
+			? this.transaction
+			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 
-			this.transaction.data = new Uint8Array(0);
+		let resp: AxiosResponse<any> | string;
 
-			if (resp.status >= 200 && resp.status < 300) {
-				// We are complete.
-				this.txPosted = true;
-				this.chunkOffset = MAX_CHUNKS_IN_BODY;
-				this.uploadedChunks++;
-				return;
+		try {
+			console.log('posting');
+			resp = await this.arweave.api.post(`tx`, transactionToUpload);
+		} catch (err) {
+			resp = err.message;
+		}
+
+		if (respIsError(resp) || resp.status !== 200) {
+			const error = respIsError(resp) ? resp : getError(resp);
+
+			if (this.totalErrors >= MAX_ERRORS) {
+				throw new Error(`Unable to complete transaction post: ${error}`);
+			} else {
+				console.log('delaying');
+				// Jitter delay after failed chunk uploads -- subtract up to 30% from 40 seconds
+				await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
+
+				// Retry the chunk
+				console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
+				console.log('retrying post');
+				await this.postTransactionHeader();
 			}
-			throw new Error(`Unable to upload transaction: ${resp.status}, ${getError(resp as AxiosResponse<any>)}`);
-		}
+		} else {
+			this.txPosted = true;
 
-		// Post the transaction with no data.
-		const txWithoutData = new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
-		const resp = await this.arweave.api.post(`tx`, txWithoutData);
-
-		if (!(resp.status >= 200 && resp.status < 300)) {
-			throw new Error(`Unable to upload transaction: ${resp.status}, ${getError(resp)}`);
+			if (uploadInBody) {
+				this.chunkOffset = MAX_CHUNKS_IN_BODY;
+				this.uploadedChunks += MAX_CHUNKS_IN_BODY;
+			}
 		}
-		this.txPosted = true;
 	}
 }
 
