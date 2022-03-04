@@ -120,6 +120,23 @@ And finally, to view the detailed error messages in your terminal:
 yarn power-assert -g 'My test case'
 ```
 
+### Persistent Caching of ArFS Entity Metadata
+
+To avoid redundant requests to the Arweave network for immutable ArFS entity metadata, a persistent file cache is created and maintained at:
+
+```
+Windows: <os.homedir()>/ardrive-caches/metadata
+Non-Windows: <os.homedir()>/.ardrive/caches/metadata
+```
+
+The `XDG_CACHE_HOME` environment variable is honored, where applicable, and will be used in place of `os.homedir()` in the scenarios described above.
+
+Metadata cache logging to stderr can be enabled by setting the `ARDRIVE_CACHE_LOG` environment variable to `1`.
+
+Cache performance is UNDEFINED for multi-process scenarios, but is presumed to be generally usable.
+
+The cache can be manually cleared safely at any time that any integrating app is not in operation.
+
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
 [wsl-install]: https://code.visualstudio.com/docs/remote/wsl
