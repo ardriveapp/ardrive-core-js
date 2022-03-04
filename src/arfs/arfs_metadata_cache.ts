@@ -6,6 +6,15 @@ import { TransactionID } from '../types';
 export class ArFSMetadataCache {
 	private static cacheFolderPromise?: Promise<string>;
 	private static shouldCacheLog = process.env['ARDRIVE_CACHE_LOG'] === '1';
+	private static metadataCacheFolder = ArFSMetadataCache.platformCacheFolder();
+	private static logTag = '[Metadata Cache] ';
+
+	private static platformCacheFolder(): string {
+		const cacheBaseFolder = process.env['XDG_CACHE_HOME'] ?? os.homedir();
+		return os.platform() === 'win32'
+			? path.join(cacheBaseFolder, 'ardrive-caches', 'metadata')
+			: path.join(cacheBaseFolder, '.ardrive', 'caches', 'metadata');
+	}
 
 	static async getCacheFolder(): Promise<string> {
 		// Don't kick off another setup while setup is in progress
@@ -13,28 +22,25 @@ export class ArFSMetadataCache {
 			return this.cacheFolderPromise;
 		}
 
-		const homeDir = os.homedir();
-		const metadataCacheDir =
-			os.platform() === 'win32'
-				? path.join(homeDir, 'ardrive-caches', 'metadata')
-				: path.join(homeDir, '.ardrive', 'caches', 'metadata');
-		if (fs.existsSync(metadataCacheDir)) {
-			this.cacheFolderPromise = Promise.resolve(metadataCacheDir);
+		if (fs.existsSync(this.metadataCacheFolder)) {
+			this.cacheFolderPromise = Promise.resolve(this.metadataCacheFolder);
 			return this.cacheFolderPromise;
 		}
 
 		if (this.shouldCacheLog) {
-			console.error(`Creating ArDrive cache folder at ${metadataCacheDir}...`);
+			console.error(this.logTag, `Creating ArDrive metadata cache folder at ${this.metadataCacheFolder}...`);
 		}
-		this.cacheFolderPromise = fs.promises.mkdir(`${metadataCacheDir}`, { recursive: true }).then((result) => {
-			if (!result) {
-				throw new Error('Could not create persistent ArFS entity cache!');
-			}
-			if (this.shouldCacheLog) {
-				console.error(`Created ArDrive cache folder at ${metadataCacheDir}.`);
-			}
-			return metadataCacheDir;
-		});
+		this.cacheFolderPromise = fs.promises
+			.mkdir(`${this.metadataCacheFolder}`, { recursive: true })
+			.then((result) => {
+				if (!result) {
+					throw new Error('Could not create persistent ArFS entity metadata cache!');
+				}
+				if (this.shouldCacheLog) {
+					console.error(this.logTag, `Created ArDrive metadata cache folder at ${this.metadataCacheFolder}.`);
+				}
+				return this.metadataCacheFolder;
+			});
 		return this.cacheFolderPromise;
 	}
 
@@ -42,7 +48,7 @@ export class ArFSMetadataCache {
 		return ArFSMetadataCache.getCacheFolder().then((cacheFolder) => {
 			const cacheFilePath = path.join(cacheFolder, `${txId}`);
 			if (this.shouldCacheLog) {
-				console.error(`Caching to file ${cacheFilePath}`);
+				console.error(this.logTag, `Caching metadata to file ${cacheFilePath}`);
 			}
 			return fs.promises.writeFile(cacheFilePath, buffer);
 		});
@@ -59,12 +65,15 @@ export class ArFSMetadataCache {
 				.readFile(cachedFilePath)
 				.then((cachedData) => {
 					if (this.shouldCacheLog) {
-						console.error(`file cache hit for ${txId}`);
+						console.error(this.logTag, `Metadata cache hit for ${txId}`);
 					}
 					return cachedData;
 				})
 				.catch((err) => {
-					console.error(`failed to load cache file at path ${cachedFilePath}! Err: ${err}`);
+					console.error(
+						this.logTag,
+						`Failed to load metadata cache file at path ${cachedFilePath}! Err: ${err}`
+					);
 					fs.rmSync(cachedFilePath); // TODO: robustness needed
 					return undefined;
 				});

@@ -16,7 +16,9 @@ describe('getDataForTxID function -- integrated', () => {
 		os.platform() === 'win32'
 			? path.join(homeDir, 'ardrive-caches', 'metadata')
 			: path.join(homeDir, '.ardrive', 'caches', 'metadata');
-	const cachedTxId = TxID('ThisIsAFakeTransactionIDThatsDefinitelyFake');
+
+	const randomTxID = v4().toString().repeat(2).split('-').join('').substring(0, 43);
+	const cachedTxId = TxID(randomTxID);
 	const cachedTxFilePath = path.join(metadataCacheDir, `${cachedTxId}`);
 
 	beforeEach(() => {
@@ -50,13 +52,17 @@ describe('getDataForTxID function -- integrated', () => {
 		} as AxiosResponse<unknown>);
 
 		// Inspect disk and cache for absence of cached data
-		expect(fs.existsSync(cachedTxFilePath)).to.be.false;
-		expect(await ArFSMetadataCache.get(cachedTxId)).to.be.undefined;
+		expect(fs.existsSync(cachedTxFilePath), 'Disk cache should not contain file').to.be.false;
+		expect(await ArFSMetadataCache.get(cachedTxId), 'Cache should not contain file').to.be.undefined;
 
 		expect(await getDataForTxID(cachedTxId, fakeArweave, mockAxiosInstance)).to.deep.equal(expectedRandomBuffer);
 
 		// Inspect disk and cache for presence of cached data
-		expect(fs.readFileSync(cachedTxFilePath)).to.deep.equal(expectedRandomBuffer);
-		expect(await ArFSMetadataCache.get(cachedTxId)).to.deep.equal(expectedRandomBuffer);
+		expect(fs.readFileSync(cachedTxFilePath), 'Disk cache should contain correct file data').to.deep.equal(
+			expectedRandomBuffer
+		);
+		expect(await ArFSMetadataCache.get(cachedTxId), 'Cache should return correct file data').to.deep.equal(
+			expectedRandomBuffer
+		);
 	});
 });
