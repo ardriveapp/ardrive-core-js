@@ -32,9 +32,11 @@ const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'invalid_proof'
 ];
 
-// Amount we will delay on receiving an error response but do want to continue.
-const ERROR_DELAY = 1000 * 20;
-
+interface ArFSTransactionUploaderConstructorParams {
+	transaction: Transaction;
+	gatewayUrl: URL;
+	maxConcurrentChunks?: number;
+}
 export class ArFSTransactionUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
@@ -54,19 +56,11 @@ export class ArFSTransactionUploader {
 		return Math.trunc((this.uploadedChunks / this.totalChunks) * 100);
 	}
 
-	private arweave: Arweave;
+	private gatewayUrl: URL;
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
 
-	constructor({
-		transaction,
-		arweave,
-		maxConcurrentChunks = 32
-	}: {
-		transaction: Transaction;
-		arweave: Arweave;
-		maxConcurrentChunks?: number;
-	}) {
+	constructor({ transaction, gatewayUrl, maxConcurrentChunks = 32 }: ArFSTransactionUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
 		}
@@ -74,7 +68,7 @@ export class ArFSTransactionUploader {
 			throw new Error(`Transaction chunks not prepared`);
 		}
 
-		this.arweave = arweave;
+		this.gatewayUrl = gatewayUrl;
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
 	}
@@ -118,11 +112,7 @@ export class ArFSTransactionUploader {
 
 	private async uploadChunk(chunk: Chunk) {
 		try {
-			console.log('sending chunk');
-			await this.retryRequestUntilMaxErrors(this.arweave.api.post(`chunk`, chunk));
-		} catch (err) {
-			throw new Error(`Too many errors encountered while posting chunks: ${err}`);
-		}
+				await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}chunk`, chunk));
 
 		this.uploadedChunks++;
 
@@ -146,8 +136,7 @@ export class ArFSTransactionUploader {
 			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 
 		try {
-			console.log('posting tx');
-			await this.retryRequestUntilMaxErrors(this.arweave.api.post(`tx`, transactionToUpload));
+			await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}tx`, transactionToUpload));
 		} catch (err) {
 			throw new Error(`Too many errors encountered while posting transaction headers:  ${err}`);
 		}
