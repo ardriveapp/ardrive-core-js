@@ -4,14 +4,11 @@ import axios, { AxiosResponse } from 'axios';
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
 
-/** Maximum errors we will accumulate before ending the upload attempt */
-const MAX_ERRORS = 100;
-
 /**
- *  Amount of time that we will delay upon receiving an error
- *  response from the gateway, but we do want to continue
+ * Error delay for the first failed request for a transaction header post or chunk upload
+ * Subsequent requests will delay longer with an exponential back off strategy
  */
-const ERROR_DELAY = 1000 * 20; // 20 seconds
+const INITIAL_ERROR_DELAY = 500; // 500ms
 
 // We assume these errors are intermittent and we can try again after a delay:
 // - not_joined
@@ -35,15 +32,20 @@ const FATAL_CHUNK_UPLOAD_ERRORS = [
 ];
 
 interface ArFSTransactionUploaderConstructorParams {
-	transaction: Transaction;
 	gatewayUrl: URL;
+	transaction: Transaction;
 	maxConcurrentChunks?: number;
+	maxRetriesPerRequest?: number;
 }
 export class ArFSTransactionUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
-	private totalErrors = 0;
 	private uploadedChunks = 0;
+	private failedRequests: Promise<AxiosResponse<unknown>>[] = [];
+
+	public get hasFailedRequests(): boolean {
+		return this.failedRequests.length > 0;
+	}
 
 	public get isComplete(): boolean {
 		return this.txPosted && this.uploadedChunks === this.totalChunks;
@@ -61,8 +63,14 @@ export class ArFSTransactionUploader {
 	private gatewayUrl: URL;
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
+	private maxRetriesPerRequest: number;
 
-	constructor({ transaction, gatewayUrl, maxConcurrentChunks = 32 }: ArFSTransactionUploaderConstructorParams) {
+	constructor({
+		gatewayUrl,
+		transaction,
+		maxConcurrentChunks = 32,
+		maxRetriesPerRequest = 5
+	}: ArFSTransactionUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
 		}
@@ -73,6 +81,7 @@ export class ArFSTransactionUploader {
 		this.gatewayUrl = gatewayUrl;
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
+		this.maxRetriesPerRequest = maxRetriesPerRequest;
 	}
 
 	/**
@@ -85,6 +94,10 @@ export class ArFSTransactionUploader {
 	 * next chunk until it completes.
 	 */
 	public async batchUploadChunks(): Promise<void> {
+		if (this.hasFailedRequests) {
+			throw new Error('Transaction upload has failed requests!');
+		}
+
 		if (!this.txPosted) {
 			await this.postTransactionHeader();
 
@@ -100,7 +113,11 @@ export class ArFSTransactionUploader {
 			uploadPromises.push(this.uploadChunk());
 		}
 
-		await Promise.all(uploadPromises);
+		try {
+			await Promise.all(uploadPromises);
+		} catch (err) {
+			throw new Error(err);
+		}
 	}
 
 	/**
@@ -110,15 +127,19 @@ export class ArFSTransactionUploader {
 	 * @remarks Will continue posting chunks until all chunks have been posted
 	 */
 	private async uploadChunk(): Promise<void> {
-		while (this.chunkOffset < this.totalChunks) {
+		while (this.chunkOffset < this.totalChunks && !this.hasFailedRequests) {
 			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
+
 			try {
 				await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}chunk`, chunk));
 			} catch (err) {
 				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
 			}
+
 			this.uploadedChunks++;
 		}
+
+		return;
 	}
 
 	// POST to /tx
@@ -143,36 +164,42 @@ export class ArFSTransactionUploader {
 			this.chunkOffset += MAX_CHUNKS_IN_BODY;
 			this.uploadedChunks += MAX_CHUNKS_IN_BODY;
 		}
+
 		return;
 	}
 
 	private async retryRequestUntilMaxErrors(request: Promise<AxiosResponse<unknown>>) {
 		let resp: AxiosResponse<unknown> | string;
+		let retryNumber = 0;
+		let error = '';
 
-		try {
-			resp = await request;
-		} catch (err) {
-			resp = err;
-		}
+		while (retryNumber <= this.maxRetriesPerRequest && !this.hasFailedRequests) {
+			try {
+				resp = await request;
+			} catch (err) {
+				resp = err;
+			}
 
-		if (respIsError(resp) || resp?.status !== 200) {
-			const error = respIsError(resp) ? resp : resp.statusText;
+			if (respIsError(resp) || resp?.status !== 200) {
+				error = respIsError(resp) ? resp : resp.statusText;
 
-			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
-				throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
-			} else {
-				this.totalErrors++;
-				if (this.totalErrors >= MAX_ERRORS) {
-					throw new Error(`Unable to complete request: ${error}`);
+				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
+					throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
 				} else {
-					// Jitter delay after failed requests -- subtract up to 30% from ERROR_DELAY
-					await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
+					// Jitter delay after failed requests
+					const delay = Math.pow(2, retryNumber) * INITIAL_ERROR_DELAY;
+					await new Promise((res) => setTimeout(res, delay));
 
-					// Retry the request
-					await request;
+					retryNumber++;
 				}
+			} else {
+				// Response has succeeded with status code 200, return from loop
+				return;
 			}
 		}
+
+		this.failedRequests.push(request);
+		throw new Error(`Request to gateway has failed: ${error}`);
 	}
 }
 
