@@ -1,18 +1,17 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosResponse } from 'axios';
 
-interface Chunk {
-	data_root: string;
-	data_size: string;
-	data_path: string;
-	offset: string;
-	chunk: string;
-}
-
-// Maximum amount of chunks we will upload in the body.
+/** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
 
+/** Maximum errors we will accumulate before ending the upload attempt */
 const MAX_ERRORS = 100;
+
+/**
+ *  Amount of time that we will delay upon receiving an error
+ *  response from the gateway, but we do want to continue
+ */
+const ERROR_DELAY = 1000 * 20; // 20 seconds
 
 // We assume these errors are intermittent and we can try again after a delay:
 // - not_joined
@@ -21,7 +20,10 @@ const MAX_ERRORS = 100;
 // - exceeds_disk_pool_size_limit
 // We also try again after any kind of unexpected network errors
 
-// Errors from /chunk we should never try and continue on.
+/**
+ *  These are errors from the `/chunk` endpoint on an Arweave
+ *  node that we should never try to continue on
+ */
 const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'invalid_json',
 	'chunk_too_big',
@@ -75,6 +77,7 @@ export class ArFSTransactionUploader {
 
 	/**
 	 * TODO: Update this docblock, and add docs to other methods
+	 * TODO: Convert this to a stream to report back event triggered progress
 	 *
 	 * Uploads the next part of the transaction.
 	 * On the first call this posts the transaction
@@ -100,6 +103,12 @@ export class ArFSTransactionUploader {
 		await Promise.all(uploadPromises);
 	}
 
+	/**
+	 * Iterates through and posts each chunk to the `/chunk`
+	 * endpoint on the provided gateway
+	 *
+	 * @remarks Will continue posting chunks until all chunks have been posted
+	 */
 	private async uploadChunk(): Promise<void> {
 		while (this.chunkOffset < this.totalChunks) {
 			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
