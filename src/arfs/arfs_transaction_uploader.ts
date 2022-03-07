@@ -52,9 +52,7 @@ interface ArFSTransactionUploaderConstructorParams {
  *			gatewayUrl: new URL('https://arweave.net:443')
  *		});
  *
- *		while (!transactionUploader.isComplete) {
- *			await transactionUploader.batchUploadChunks();
- *		}
+ *		await transactionUploader.batchUploadChunks();
  * ```
  */
 export class ArFSTransactionUploader {

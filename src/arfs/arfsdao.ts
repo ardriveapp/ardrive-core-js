@@ -1072,9 +1072,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					gatewayUrl: gatewayUrlForArweave(this.arweave)
 				});
 
-				while (!transactionUploader.isComplete) {
-					await transactionUploader.batchUploadChunks();
-				}
+				await transactionUploader.batchUploadChunks();
 			}
 		}
 	}
