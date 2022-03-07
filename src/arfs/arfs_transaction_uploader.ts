@@ -162,17 +162,13 @@ export class ArFSTransactionUploader {
 				throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
 			} else {
 				this.totalErrors++;
-				console.log('this.totalErrors', this.totalErrors);
 				if (this.totalErrors >= MAX_ERRORS) {
 					throw new Error(`Unable to complete request: ${error}`);
 				} else {
-					console.log('delaying');
 					// Jitter delay after failed requests -- subtract up to 30% from ERROR_DELAY
 					await new Promise((res) => setTimeout(res, ERROR_DELAY - ERROR_DELAY * Math.random() * 0.3));
 
 					// Retry the request
-					console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
-					console.log('retrying request');
 					await request;
 				}
 			}

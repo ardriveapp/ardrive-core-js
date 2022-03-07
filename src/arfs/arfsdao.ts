@@ -153,7 +153,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { formatBytes, gatewayUrlForArweave } from '../utils/common';
+import { gatewayUrlForArweave } from '../utils/common';
 import { ArFSTransactionUploader } from './arfs_transaction_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 
@@ -1067,16 +1067,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
-				const transactionUploader = new ArFSTransactionUploader({ transaction, arweave: this.arweave });
-
-				console.time('chunk upload time');
-				console.log('rss memory before chunk upload:', formatBytes(process.memoryUsage().rss));
+				const transactionUploader = new ArFSTransactionUploader({
+					transaction,
+					gatewayUrl: gatewayUrlForArweave(this.arweave)
+				});
 
 				while (!transactionUploader.isComplete) {
 					await transactionUploader.batchUploadChunks();
 				}
-				console.timeEnd('chunk upload time');
-				console.log('rss memory after chunk upload:', formatBytes(process.memoryUsage().rss));
 			}
 		}
 	}
