@@ -367,12 +367,12 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		it('we can upload a multi-chunk 50 MiB file as a v2 transaction and fetch that public file', async function () {
+		it('we can upload a multi-chunk 5 MiB file as a v2 transaction and fetch that public file', async function () {
 			const { created } = await v2ArDrive.uploadAllEntities({
 				entitiesToUpload: [
 					{
 						destFolderId: rootFolderId,
-						wrappedEntity: wrapFileOrFolder('tests/stub_files/50MiB.txt'),
+						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt'),
 						destName: 'unique_0'
 					}
 				]
