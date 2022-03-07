@@ -82,51 +82,38 @@ export class ArFSTransactionUploader {
 	 * next chunk until it completes.
 	 */
 	public async batchUploadChunks(): Promise<void> {
-		if (this.isComplete) {
-			throw new Error(`Upload is already complete`);
-		}
-
 		if (!this.txPosted) {
-			await this.postTransactionHeaders();
-			return;
+			await this.postTransactionHeader();
+
+			if (this.isComplete) {
+				return;
+			}
 		}
 
-		console.log('this.totalChunks', this.totalChunks);
-		console.log('this.chunkOffset', this.chunkOffset);
-		const initialChunksToGet = Math.min(this.totalChunks - this.chunkOffset, this.maxConcurrentChunks);
-		console.log('getting this many chunks', initialChunksToGet);
+		const numOfConcurrentUploadPromises = Math.min(this.totalChunks - this.chunkOffset, this.maxConcurrentChunks);
 
-		const initialChunks = (() => {
-			const chunksToSend: Chunk[] = [];
-			for (let index = this.chunkOffset; index < this.chunkOffset + initialChunksToGet; index++) {
-				chunksToSend.push(this.transaction.getChunk(index, this.transaction.data));
-			}
-			return chunksToSend;
-		})();
+		const uploadPromises: Promise<void>[] = [];
+		for (let index = 0; index < numOfConcurrentUploadPromises; index++) {
+			uploadPromises.push(this.uploadChunk());
+		}
 
-		console.log('chunks.length', initialChunks.length);
-		this.chunkOffset += initialChunks.length;
-		console.log('new this.chunkOffset after getting chunks', this.chunkOffset);
-		await Promise.all(initialChunks.map((chunk) => this.uploadChunk(chunk)));
+		await Promise.all(uploadPromises);
 	}
 
-	private async uploadChunk(chunk: Chunk) {
-		try {
+	private async uploadChunk(): Promise<void> {
+		while (this.chunkOffset < this.totalChunks) {
+			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
+			try {
 				await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}chunk`, chunk));
-
-		this.uploadedChunks++;
-
-		if (this.chunkOffset < this.totalChunks) {
-			console.log('Resident Set Size:', formatBytes(+process.memoryUsage().rss));
-			// Start next chunk when this one finishes
-			console.log('getting new chunk at offset:', this.chunkOffset);
-			await this.uploadChunk(this.transaction.getChunk(this.chunkOffset++, this.transaction.data));
+			} catch (err) {
+				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
+			}
+			this.uploadedChunks++;
 		}
-		return;
 	}
 
 	// POST to /tx
-	private async postTransactionHeaders(): Promise<void> {
+	private async postTransactionHeader(): Promise<void> {
 		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
 
 		// We will send the data with the headers if chunks will fit into transaction header body
