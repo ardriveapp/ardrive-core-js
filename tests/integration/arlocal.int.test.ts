@@ -17,7 +17,7 @@ import {
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
-import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
+import { gatewayUrlForArweave, readJWKFile, sleep } from '../../src/utils/common';
 import { ArDrive } from '../../src/ardrive';
 
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -41,6 +41,7 @@ import {
 } from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', function () {
+	this.timeout(60 * 1000); // 60 seconds
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const arweave = Arweave.init({
@@ -335,12 +336,44 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		it('we can upload a multi-chunk public file as a v2 transaction and fetch that public file', async function () {
+		// This test breaks the arlocal docker image atm and is skipped for now
+		it.skip('we can upload a multi-chunk 5 MiB file as a bundle transaction and fetch that public file', async function () {
+			const { created } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt'),
+						destName: 'unique_0'
+					}
+				]
+			});
+			await arweave.api.get(`mine`);
+
+			// Wait for 10 second for arlocal gateway to process bundle ??
+			await sleep(10000);
+
+			const file = await bundledArDrive.getPublicFile({ fileId: created[0].entityId! });
+
+			assertPublicFileExpectations({
+				entity: file,
+				driveId,
+				parentFolderId: rootFolderId,
+				metaDataTxId: created[0].metadataTxId!,
+				dataTxId: created[0].dataTxId!,
+				fileId: created[0].entityId!,
+				dataContentType: 'text/plain',
+				entityName: 'unique_0',
+				size: new ByteCount(52428800)
+			});
+		});
+
+		it('we can upload a multi-chunk 50 MiB file as a v2 transaction and fetch that public file', async function () {
 			const { created } = await v2ArDrive.uploadAllEntities({
 				entitiesToUpload: [
 					{
 						destFolderId: rootFolderId,
-						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt')
+						wrappedEntity: wrapFileOrFolder('tests/stub_files/50MiB.txt'),
+						destName: 'unique_0'
 					}
 				]
 			});
@@ -356,8 +389,8 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId: created[0].dataTxId!,
 				fileId: created[0].entityId!,
 				dataContentType: 'text/plain',
-				entityName: '5MiB.txt',
-				size: new ByteCount(5242880)
+				entityName: 'unique_0',
+				size: new ByteCount(52428800)
 			});
 		});
 	});
