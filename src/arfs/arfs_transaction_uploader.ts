@@ -1,9 +1,5 @@
 import Transaction from 'arweave/node/lib/transaction';
-// import { getError } from 'arweave/node/lib/error';
-import Arweave from 'arweave';
-import { AxiosResponse } from 'axios';
-import { formatBytes } from '../utils/common';
-import { writeFileSync } from 'fs';
+import axios, { AxiosResponse } from 'axios';
 
 interface Chunk {
 	data_root: string;
@@ -171,11 +167,11 @@ export class ArFSTransactionUploader {
 		try {
 			resp = await request;
 		} catch (err) {
-			resp = err.message;
+			resp = err;
 		}
 
-		if (respIsError(resp) || resp.status !== 200) {
-			const error = respIsError(resp) ? resp : getError(resp);
+		if (respIsError(resp) || resp?.status !== 200) {
+			const error = respIsError(resp) ? resp : resp.statusText;
 
 			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
 				throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
@@ -201,37 +197,4 @@ export class ArFSTransactionUploader {
 
 function respIsError(resp: AxiosResponse<unknown> | string): resp is string {
 	return resp === typeof 'string';
-}
-
-// Temp copy pasted from arweave-js for debugging
-export function getError(resp: AxiosResponse<unknown>) {
-	let data = resp.data;
-
-	if (typeof resp.data === 'string') {
-		console.log('is string');
-		try {
-			data = JSON.parse(resp.data);
-			// eslint-disable-next-line no-empty
-		} catch (e) {}
-	}
-
-	if (resp.data instanceof ArrayBuffer || resp.data instanceof Uint8Array) {
-		console.log('is buffer or such');
-		try {
-			data = JSON.parse((data as ArrayBuffer).toString());
-			// eslint-disable-next-line no-empty
-		} catch (e) {}
-	}
-
-	console.log(resp.status);
-	console.log(resp.statusText);
-
-	if (resp.status === undefined) {
-		// Write this obscure failure to file to analyze further
-		writeFileSync(`${Math.random()}.txt`, JSON.stringify(resp, null, 4));
-	}
-
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
-	return data ? data.error || data : resp.statusText || 'unknown';
 }
