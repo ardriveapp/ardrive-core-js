@@ -390,7 +390,7 @@ describe('ArLocal Integration Tests', function () {
 				fileId: created[0].entityId!,
 				dataContentType: 'text/plain',
 				entityName: 'unique_0',
-				size: new ByteCount(52428800)
+				size: new ByteCount(5242880)
 			});
 		});
 	});
