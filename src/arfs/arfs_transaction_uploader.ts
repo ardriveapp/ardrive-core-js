@@ -37,6 +37,26 @@ interface ArFSTransactionUploaderConstructorParams {
 	maxConcurrentChunks?: number;
 	maxRetriesPerRequest?: number;
 }
+
+/**
+ *  A transaction uploader class that has been modified to handle uploading
+ *  the chunks of a transaction in parallel to the specified gateway url
+ *
+ * @example
+ *
+ *  ```ts
+ * 	await transaction.prepareChunks(transaction.data);
+ *
+ *		const transactionUploader = new ArFSTransactionUploader({
+ *			transaction,
+ *			gatewayUrl: new URL('https://arweave.net:443')
+ *		});
+ *
+ *		while (!transactionUploader.isComplete) {
+ *			await transactionUploader.batchUploadChunks();
+ *		}
+ * ```
+ */
 export class ArFSTransactionUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
@@ -85,13 +105,11 @@ export class ArFSTransactionUploader {
 	}
 
 	/**
-	 * TODO: Update this docblock, and add docs to other methods
+	 * Uploads a transaction and all of its chunks until the upload is complete or has failed
+	 *
 	 * TODO: Convert this to a stream to report back event triggered progress
 	 *
-	 * Uploads the next part of the transaction.
-	 * On the first call this posts the transaction
-	 * itself and on unknown subsequent calls uploads the
-	 * next chunk until it completes.
+	 * @throws when any requests have failed beyond the maxRetries setting
 	 */
 	public async batchUploadChunks(): Promise<void> {
 		if (this.hasFailedRequests) {
@@ -121,10 +139,11 @@ export class ArFSTransactionUploader {
 	}
 
 	/**
-	 * Iterates through and posts each chunk to the `/chunk`
-	 * endpoint on the provided gateway
+	 * Iterates through and posts each chunk to the `/chunk` endpoint on the provided gateway
 	 *
 	 * @remarks Will continue posting chunks until all chunks have been posted
+	 *
+	 * @throws when a chunk request has exceeded the maxRetries and has failed to post
 	 */
 	private async uploadChunk(): Promise<void> {
 		while (this.chunkOffset < this.totalChunks && !this.hasFailedRequests) {
@@ -142,7 +161,13 @@ export class ArFSTransactionUploader {
 		return;
 	}
 
-	// POST to /tx
+	/**
+	 * Posts the transaction's header to the `/tx` endpoint on the provided gateway
+	 *
+	 * @remarks Will post chunks with header if those chunks will fit into the transaction header's body
+	 *
+	 * @throws when a post header request has exceeded the maxRetries and has failed to post
+	 */
 	private async postTransactionHeader(): Promise<void> {
 		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
 
@@ -168,6 +193,13 @@ export class ArFSTransactionUploader {
 		return;
 	}
 
+	/**
+	 * Retries the given request until the response returns a successful
+	 * status code of 200 or the maxRetries setting has been exceeded
+	 *
+	 * @throws when a fatal chunk error has been returned by an Arweave node
+	 * @throws when max retries have been exhausted
+	 */
 	private async retryRequestUntilMaxErrors(request: Promise<AxiosResponse<unknown>>) {
 		let resp: AxiosResponse<unknown> | string;
 		let retryNumber = 0;
@@ -193,7 +225,7 @@ export class ArFSTransactionUploader {
 					retryNumber++;
 				}
 			} else {
-				// Response has succeeded with status code 200, return from loop
+				// Request has succeeded with status code 200, return from loop
 				return;
 			}
 		}
