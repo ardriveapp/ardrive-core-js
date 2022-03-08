@@ -1095,8 +1095,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {
-		let debounce = false;
-
 		// Execute the uploads
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
@@ -1107,17 +1105,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					this.shouldProgressLog && transaction.chunks!.chunks.length > defaultMaxConcurrentChunks;
 
+				let progressLogDebounce = false;
+
 				const transactionUploader = new MultiChunkTxUploader({
 					transaction,
 					gatewayUrl: gatewayUrlForArweave(this.arweave),
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
-								if (!debounce || pct === 100) {
+								if (!progressLogDebounce || pct === 100) {
 									console.info(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
-									debounce = true;
+									progressLogDebounce = true;
 
 									setTimeout(() => {
-										debounce = false;
+										progressLogDebounce = false;
 									}, 250); // .25 sec debounce
 								}
 						  }
