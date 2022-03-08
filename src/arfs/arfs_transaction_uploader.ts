@@ -118,7 +118,8 @@ export class ArFSTransactionUploader {
 			}
 		}
 
-		const numOfConcurrentUploadPromises = Math.min(this.totalChunks - this.chunkOffset, this.maxConcurrentChunks);
+		const numRemainingChunks = this.totalChunks - this.chunkOffset;
+		const numOfConcurrentUploadPromises = Math.min(numRemainingChunks, this.maxConcurrentChunks);
 
 		const uploadPromises: Promise<void>[] = [];
 		for (let index = 0; index < numOfConcurrentUploadPromises; index++) {
