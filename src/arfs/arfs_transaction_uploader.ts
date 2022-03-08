@@ -40,7 +40,7 @@ interface ArFSTransactionUploaderConstructorParams {
 
 /**
  *  A transaction uploader class that has been modified to handle uploading
- *  the chunks of a transaction in parallel to the specified gateway url
+ *  the chunks of a transaction concurrently to the specified gateway url
  *
  * @example
  *
