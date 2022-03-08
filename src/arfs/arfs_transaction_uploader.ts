@@ -184,8 +184,8 @@ export class ArFSTransactionUploader {
 		this.txPosted = true;
 
 		if (uploadInBody) {
-			this.chunkOffset += MAX_CHUNKS_IN_BODY;
-			this.uploadedChunks += MAX_CHUNKS_IN_BODY;
+			this.chunkOffset += this.totalChunks;
+			this.uploadedChunks += this.totalChunks;
 		}
 
 		return;
