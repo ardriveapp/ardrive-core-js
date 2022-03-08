@@ -215,6 +215,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		super(arweave, undefined, undefined, caches);
 	}
 
+	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
+
 	/** Prepare an ArFS folder entity for upload */
 	private async prepareFolder<T>({
 		folderPrototypeFactory,
@@ -1063,13 +1065,27 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {
+		let debounce = false;
+
 		// Execute the uploads
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
 				const transactionUploader = new ArFSTransactionUploader({
 					transaction,
-					gatewayUrl: gatewayUrlForArweave(this.arweave)
+					gatewayUrl: gatewayUrlForArweave(this.arweave),
+					progressCallback: this.shouldProgressLog
+						? (pct: number) => {
+								if (!debounce) {
+									console.info(`Upload Progress: ${pct}%`);
+									debounce = true;
+
+									setTimeout(() => {
+										debounce = false;
+									}, 500); // .5 sec debounce
+								}
+						  }
+						: undefined
 				});
 
 				await transactionUploader.batchUploadChunks();

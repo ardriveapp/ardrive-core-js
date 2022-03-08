@@ -36,6 +36,7 @@ interface ArFSTransactionUploaderConstructorParams {
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
 	maxRetriesPerRequest?: number;
+	progressCallback?: (pctComplete: number) => void;
 }
 
 /**
@@ -78,12 +79,14 @@ export class ArFSTransactionUploader {
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
 	private maxRetriesPerRequest: number;
+	private progressCallback?: (pctComplete: number) => void;
 
 	constructor({
 		gatewayUrl,
 		transaction,
 		maxConcurrentChunks = 32,
-		maxRetriesPerRequest = 8
+		maxRetriesPerRequest = 8,
+		progressCallback
 	}: ArFSTransactionUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
@@ -96,6 +99,10 @@ export class ArFSTransactionUploader {
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
+
+		if (progressCallback) {
+			this.progressCallback = progressCallback;
+		}
 	}
 
 	/**
@@ -137,6 +144,7 @@ export class ArFSTransactionUploader {
 	 * Iterates through and posts each chunk to the `/chunk` endpoint on the provided gateway
 	 *
 	 * @remarks Will continue posting chunks until all chunks have been posted
+	 * @remarks Reports progress if class was initialized with a `progressCallback`
 	 *
 	 * @throws when a chunk request has exceeded the maxRetries and has failed to post
 	 */
@@ -151,6 +159,10 @@ export class ArFSTransactionUploader {
 			}
 
 			this.uploadedChunks++;
+
+			if (this.progressCallback) {
+				this.progressCallback(this.pctComplete);
+			}
 		}
 
 		return;
