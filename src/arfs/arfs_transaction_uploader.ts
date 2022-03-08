@@ -59,11 +59,7 @@ export class ArFSTransactionUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
 	private uploadedChunks = 0;
-	private failedRequests: Promise<AxiosResponse<unknown>>[] = [];
-
-	public get hasFailedRequests(): boolean {
-		return this.failedRequests.length > 0;
-	}
+	public hasFailedRequests = false;
 
 	public get isComplete(): boolean {
 		return this.txPosted && this.uploadedChunks === this.totalChunks;
@@ -239,7 +235,7 @@ export class ArFSTransactionUploader {
 			}
 		}
 
-		this.failedRequests.push(request());
+		this.hasFailedRequests = true;
 		throw new Error(`Request to gateway has failed: ${error}`);
 	}
 }
