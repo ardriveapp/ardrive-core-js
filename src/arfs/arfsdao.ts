@@ -154,7 +154,7 @@ import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
-import { ArFSTransactionUploader } from './arfs_transaction_uploader';
+import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -1067,7 +1067,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
-				const transactionUploader = new ArFSTransactionUploader({
+				const transactionUploader = new MultiChunkTxUploader({
 					transaction,
 					gatewayUrl: gatewayUrlForArweave(this.arweave)
 				});

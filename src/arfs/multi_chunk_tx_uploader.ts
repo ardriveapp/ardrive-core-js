@@ -31,7 +31,7 @@ const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'invalid_proof'
 ];
 
-interface ArFSTransactionUploaderConstructorParams {
+interface MultiChunkTxUploaderConstructorParams {
 	gatewayUrl: URL;
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
@@ -47,7 +47,7 @@ interface ArFSTransactionUploaderConstructorParams {
  *  ```ts
  * 	await transaction.prepareChunks(transaction.data);
  *
- *		const transactionUploader = new ArFSTransactionUploader({
+ *		const transactionUploader = new MultiChunkTxUploader({
  *			transaction,
  *			gatewayUrl: new URL('https://arweave.net:443')
  *		});
@@ -55,7 +55,7 @@ interface ArFSTransactionUploaderConstructorParams {
  *		await transactionUploader.batchUploadChunks();
  * ```
  */
-export class ArFSTransactionUploader {
+export class MultiChunkTxUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
 	private uploadedChunks = 0;
@@ -84,7 +84,7 @@ export class ArFSTransactionUploader {
 		transaction,
 		maxConcurrentChunks = 32,
 		maxRetriesPerRequest = 8
-	}: ArFSTransactionUploaderConstructorParams) {
+	}: MultiChunkTxUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
 		}
