@@ -803,7 +803,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const logProgress = () => {
 			if (this.shouldProgressLog && totalFileAndBundleUploads > 1) {
-				console.info(
+				console.error(
 					`Uploading file transaction ${
 						uploadsCompleted + 1
 					} of total ${totalFileAndBundleUploads} transactions...`
@@ -1113,7 +1113,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
 								if (!progressLogDebounce || pct === 100) {
-									console.info(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
+									console.error(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
 									progressLogDebounce = true;
 
 									setTimeout(() => {
