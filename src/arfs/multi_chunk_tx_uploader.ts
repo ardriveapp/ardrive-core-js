@@ -59,7 +59,7 @@ export class MultiChunkTxUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
 	private uploadedChunks = 0;
-	public hasFailedRequests = false;
+	private hasFailedRequests = false;
 
 	public get isComplete(): boolean {
 		return this.txPosted && this.uploadedChunks === this.totalChunks;
