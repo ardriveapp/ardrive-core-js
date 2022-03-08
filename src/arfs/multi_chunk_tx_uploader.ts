@@ -157,10 +157,7 @@ export class MultiChunkTxUploader {
 			}
 
 			this.uploadedChunks++;
-
-			if (this.progressCallback) {
-				this.progressCallback(this.pctComplete);
-			}
+			this.progressCallback?.(this.pctComplete);
 		}
 
 		return;
