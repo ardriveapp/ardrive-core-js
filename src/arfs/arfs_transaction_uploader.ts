@@ -87,7 +87,7 @@ export class ArFSTransactionUploader {
 		gatewayUrl,
 		transaction,
 		maxConcurrentChunks = 32,
-		maxRetriesPerRequest = 5
+		maxRetriesPerRequest = 8
 	}: ArFSTransactionUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
@@ -216,7 +216,18 @@ export class ArFSTransactionUploader {
 				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
 					throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
 				} else {
-					// Jitter delay after failed requests
+					// Use exponential back-off delay after failed requests. With the current
+					// default error delay and max retries, we expect the following wait times:
+
+					// Retry wait 1: 500ms
+					// Retry wait 2: 1,000ms
+					// Retry wait 3: 2,000ms
+					// Retry wait 4: 4,000ms
+					// Retry wait 5: 8,000ms
+					// Retry wait 6: 16,000ms
+					// Retry wait 7: 32,000ms
+					// Retry wait 8: 64,000ms
+
 					const delay = Math.pow(2, retryNumber) * INITIAL_ERROR_DELAY;
 					await new Promise((res) => setTimeout(res, delay));
 
