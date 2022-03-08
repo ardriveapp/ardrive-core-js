@@ -1112,8 +1112,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					gatewayUrl: gatewayUrlForArweave(this.arweave),
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
-								if (!debounce) {
-									console.info(`Transaction Upload Progress: ${pct}%`);
+								if (!debounce || pct === 100) {
+									console.info(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
 									debounce = true;
 
 									setTimeout(() => {
@@ -1125,10 +1125,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 
 				await transactionUploader.batchUploadChunks();
-
-				if (shouldProgressLog) {
-					console.info('Transaction upload complete!');
-				}
 			}
 		}
 	}
