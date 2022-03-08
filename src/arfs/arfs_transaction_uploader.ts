@@ -148,7 +148,7 @@ export class ArFSTransactionUploader {
 			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
 
 			try {
-				await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}chunk`, chunk));
+				await this.retryRequestUntilMaxErrors(() => axios.post(`${this.gatewayUrl.href}chunk`, chunk));
 			} catch (err) {
 				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
 			}
@@ -176,7 +176,7 @@ export class ArFSTransactionUploader {
 			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 
 		try {
-			await this.retryRequestUntilMaxErrors(axios.post(`${this.gatewayUrl.href}tx`, transactionToUpload));
+			await this.retryRequestUntilMaxErrors(() => axios.post(`${this.gatewayUrl.href}tx`, transactionToUpload));
 		} catch (err) {
 			throw new Error(`Too many errors encountered while posting transaction headers:  ${err}`);
 		}
@@ -198,14 +198,14 @@ export class ArFSTransactionUploader {
 	 * @throws when a fatal chunk error has been returned by an Arweave node
 	 * @throws when max retries have been exhausted
 	 */
-	private async retryRequestUntilMaxErrors(request: Promise<AxiosResponse<unknown>>) {
+	private async retryRequestUntilMaxErrors(request: () => Promise<AxiosResponse<unknown>>) {
 		let resp: AxiosResponse<unknown> | string;
 		let retryNumber = 0;
 		let error = '';
 
 		while (retryNumber <= this.maxRetriesPerRequest && !this.hasFailedRequests) {
 			try {
-				resp = await request;
+				resp = await request();
 			} catch (err) {
 				resp = err;
 			}
@@ -228,7 +228,7 @@ export class ArFSTransactionUploader {
 			}
 		}
 
-		this.failedRequests.push(request);
+		this.failedRequests.push(request());
 		throw new Error(`Request to gateway has failed: ${error}`);
 	}
 }
