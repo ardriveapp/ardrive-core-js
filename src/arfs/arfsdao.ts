@@ -1118,7 +1118,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 									setTimeout(() => {
 										progressLogDebounce = false;
-									}, 250); // .25 sec debounce
+									}, 500); // .5 sec debounce
 								}
 						  }
 						: undefined
