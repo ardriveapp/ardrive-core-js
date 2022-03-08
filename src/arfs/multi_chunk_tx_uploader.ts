@@ -1,5 +1,6 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosResponse } from 'axios';
+import { defaultMaxConcurrentChunks } from '../utils/constants';
 
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
@@ -84,7 +85,7 @@ export class MultiChunkTxUploader {
 	constructor({
 		gatewayUrl,
 		transaction,
-		maxConcurrentChunks = 32,
+		maxConcurrentChunks = defaultMaxConcurrentChunks,
 		maxRetriesPerRequest = 8,
 		progressCallback
 	}: MultiChunkTxUploaderConstructorParams) {
