@@ -100,10 +100,7 @@ export class MultiChunkTxUploader {
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
-
-		if (progressCallback) {
-			this.progressCallback = progressCallback;
-		}
+		this.progressCallback = progressCallback;
 	}
 
 	/**
