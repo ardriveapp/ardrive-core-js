@@ -131,7 +131,10 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 }
 
-export abstract class ArFSFileOrFolderBuilder<T extends ArFSFileOrFolderEntity> extends ArFSMetadataEntityBuilder<T> {
+export abstract class ArFSFileOrFolderBuilder<
+	U extends 'file' | 'folder',
+	T extends ArFSFileOrFolderEntity<U>
+> extends ArFSMetadataEntityBuilder<T> {
 	parentFolderId?: FolderID;
 
 	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {

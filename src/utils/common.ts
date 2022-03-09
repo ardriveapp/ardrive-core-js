@@ -16,7 +16,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount } from '../types';
+import { ByteCount, DriveKey, FileKey } from '../types';
 import Arweave from 'arweave';
 
 // Pauses application
@@ -25,15 +25,6 @@ export async function sleep(ms: number): Promise<number> {
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		setTimeout(resolve, ms);
 	});
-}
-
-// Asyncronous ForEach function
-export async function asyncForEach(array: any[], callback: any): Promise<string> {
-	for (let index = 0; index < array.length; index += 1) {
-		// eslint-disable-next-line no-await-in-loop
-		await callback(array[index], index, array);
-	}
-	return 'Done';
 }
 
 // Format byte size to something nicer.  This is minified...
@@ -384,17 +375,17 @@ export async function createPrivateFileSharingLink(
 ): Promise<string> {
 	let fileSharingUrl = '';
 	try {
-		const driveKey: Buffer = await deriveDriveKey(
+		const driveKey: DriveKey = await deriveDriveKey(
 			user.dataProtectionKey,
 			fileToShare.driveId,
 			user.walletPrivateKey
 		);
-		const fileKey: Buffer = await deriveFileKey(fileToShare.fileId, driveKey);
+		const fileKey: FileKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',
 			fileToShare.fileId,
 			'/view?fileKey=',
-			fileKey.toString('base64')
+			fileKey.keyData.toString('base64')
 		);
 	} catch (err) {
 		console.log(err);
@@ -527,7 +518,7 @@ export function winstonToAr(winston: number): number {
 // Returns encrypted data using driveKey for folders, and fileKey for files
 export async function encryptFileOrFolderData(
 	itemToUpload: types.ArFSFileMetaData,
-	driveKey: Buffer,
+	driveKey: DriveKey,
 	secondaryFileMetaDataJSON: string
 ): Promise<types.ArFSEncryptedData> {
 	const encryptionKey =

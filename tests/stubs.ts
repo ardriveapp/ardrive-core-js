@@ -2,12 +2,10 @@ import Arweave from 'arweave';
 import { readFileSync } from 'fs';
 import {
 	ArFSPublicDrive,
-	ArFSPrivateDrive,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
 	ArFSPublicFile,
-	ArFSPrivateFile,
-	ArFSPublicFileOrFolderWithPaths
+	ArFSPrivateFile
 } from '../src/arfs/arfs_entities';
 import {
 	ArFSFileToUpload,
@@ -32,11 +30,14 @@ import {
 	deriveDriveKey,
 	FolderHierarchy,
 	JWKWallet,
+	publicEntityWithPathsFactory,
 	readJWKFile,
 	RootFolderID,
 	UploadStats,
 	W,
-	wrapFileOrFolder
+	wrapFileOrFolder,
+	ArFSPrivateDrive,
+	deriveFileKey
 } from '../src/exports';
 import {
 	ADDR,
@@ -68,7 +69,7 @@ export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz12345678
 };
 
 export const getStubDriveKey = async (): Promise<DriveKey> => {
-	return deriveDriveKey(
+	return await deriveDriveKey(
 		'stubPassword',
 		`${stubEntityID}`,
 		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
@@ -107,8 +108,8 @@ export const stubPublicFileMetaDataTx = new ArFSPublicFileMetaDataPrototype(
 	stubEntityIDAltTwo
 );
 
-export const stubPrivateFileMetaDataTx = (async () =>
-	new ArFSPrivateFileMetaDataPrototype(
+export const stubPrivateFileMetaDataTx = (async () => {
+	return new ArFSPrivateFileMetaDataPrototype(
 		await ArFSPrivateFileMetadataTransactionData.from(
 			'Test Private File Metadata',
 			new ByteCount(10),
@@ -121,7 +122,8 @@ export const stubPrivateFileMetaDataTx = (async () =>
 		stubEntityID,
 		stubEntityIDAlt,
 		stubEntityIDAltTwo
-	))();
+	);
+})();
 
 export const stubPublicDriveMetaDataTx = new ArFSPublicDriveMetaDataPrototype(
 	new ArFSPublicDriveTransactionData('Test Public Drive Metadata', stubEntityID),
@@ -184,22 +186,24 @@ export const stubPublicDrive = (): ArFSPublicDrive =>
 		stubEntityID
 	);
 
-export const stubPrivateDrive = new ArFSPrivateDrive(
-	'Integration Test',
-	'1.0',
-	ArFS_O_11,
-	PRIVATE_CONTENT_TYPE,
-	stubEntityID,
-	'drive',
-	'STUB DRIVE',
-	stubTransactionID,
-	new UnixTime(0),
-	'private',
-	stubEntityID,
-	'password',
-	'stubCipher',
-	'stubIV'
-);
+export const stubPrivateDrive = async (): Promise<ArFSPrivateDrive> =>
+	new ArFSPrivateDrive(
+		'Integration Test',
+		'1.0',
+		ArFS_O_11,
+		PRIVATE_CONTENT_TYPE,
+		stubEntityID,
+		'drive',
+		'STUB DRIVE',
+		stubTransactionID,
+		new UnixTime(0),
+		'private',
+		stubEntityID,
+		'password',
+		'stubCipher',
+		'stubIV',
+		await getStubDriveKey()
+	);
 
 interface StubFolderParams {
 	folderId?: FolderID;
@@ -220,7 +224,6 @@ export const stubPublicFolder = ({
 		ArFS_O_11,
 		JSON_CONTENT_TYPE,
 		driveId,
-		'folder',
 		folderName,
 		stubTransactionID,
 		new UnixTime(0),
@@ -228,26 +231,26 @@ export const stubPublicFolder = ({
 		folderId
 	);
 
-export const stubPrivateFolder = ({
+export const stubPrivateFolder = async ({
 	folderId = stubEntityID,
 	parentFolderId = stubEntityID,
 	folderName = 'STUB NAME',
 	driveId = stubEntityID
-}: StubFolderParams): ArFSPrivateFolder =>
+}: StubFolderParams): Promise<ArFSPrivateFolder> =>
 	new ArFSPrivateFolder(
 		'Integration Test',
 		'1.0',
 		ArFS_O_11,
 		JSON_CONTENT_TYPE,
 		driveId,
-		'folder',
 		folderName,
 		stubTransactionID,
 		new UnixTime(0),
 		parentFolderId,
 		folderId,
 		'stubCipher',
-		'stubIV'
+		'stubIV',
+		await getStubDriveKey()
 	);
 
 interface StubFileParams {
@@ -273,7 +276,6 @@ export const stubPublicFile = ({
 		ArFS_O_11,
 		JSON_CONTENT_TYPE,
 		driveId,
-		'file',
 		fileName,
 		txId,
 		new UnixTime(0),
@@ -285,21 +287,22 @@ export const stubPublicFile = ({
 		JSON_CONTENT_TYPE
 	);
 
-export const stubPrivateFile = ({
+export const stubPrivateFile = async ({
 	driveId = stubEntityID,
 	fileName = 'STUB NAME',
 	txId = stubTransactionID,
 	parentFolderId = stubEntityID,
 	fileId = stubEntityID,
 	dataTxId = stubTransactionID
-}: StubFileParams): ArFSPrivateFile =>
-	new ArFSPrivateFile(
+}: StubFileParams): Promise<ArFSPrivateFile> => {
+	const driveKey = await getStubDriveKey();
+	const fileKey = await deriveFileKey(`${fileId}`, driveKey);
+	return new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
 		ArFS_O_11,
 		JSON_CONTENT_TYPE,
 		driveId,
-		'file',
 		fileName,
 		txId,
 		new UnixTime(0),
@@ -310,8 +313,11 @@ export const stubPrivateFile = ({
 		dataTxId,
 		JSON_CONTENT_TYPE,
 		'stubCipher',
-		'stubIV'
+		'stubIV',
+		fileKey,
+		driveKey
 	);
+};
 
 const stubPublicRootFolder = stubPublicFolder({ folderId: stubEntityIDRoot, parentFolderId: new RootFolderID() });
 const stubPublicParentFolder = stubPublicFolder({
@@ -350,12 +356,14 @@ export const stubPublicEntities = [
 	stubPublicFileInRoot,
 	stubPublicFileInParent,
 	stubPublicFileInChild
-];
+] as const;
 
-export const stubPublicHierarchy = FolderHierarchy.newFromEntities(stubPublicEntities);
+export const stubPublicFolders = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
 
-export const stubPublicEntitiesWithPaths = stubPublicEntities.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubPublicHierarchy)
+export const stubPublicHierarchy = FolderHierarchy.newFromEntities(stubPublicFolders);
+
+export const stubPublicEntitiesWithPaths = stubPublicEntities.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubPublicHierarchy)
 );
 
 const stubIndexFileInRoot = stubPublicFile({
@@ -367,10 +375,10 @@ const stubIndexFileInRoot = stubPublicFile({
 
 export const stubEntitiesWithIndexInRoot = [...stubPublicEntities, stubIndexFileInRoot];
 
-export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stubEntitiesWithIndexInRoot);
+export const stubHierarchyWithIndexInRoot = FolderHierarchy.newFromEntities(stubPublicFolders);
 
-export const stubEntitiesWithPathsAndIndexInRoot = stubEntitiesWithIndexInRoot.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithIndexInRoot)
+export const stubEntitiesWithPathsAndIndexInRoot = stubEntitiesWithIndexInRoot.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubHierarchyWithIndexInRoot)
 );
 
 const stubSpecialCharParentFolder = stubPublicFolder({
@@ -402,27 +410,31 @@ const stubSpecialCharFileInChild = stubPublicFile({
 	dataTxId: stubTxIDAltTwo
 });
 
-export const stubSpecialCharEntities = [
+export const stubSpecialCharacterFolders = [
 	stubPublicRootFolder,
 	stubSpecialCharParentFolder,
-	stubSpecialCharChildFolder,
+	stubSpecialCharChildFolder
+];
+
+export const stubSpecialCharEntities = [
+	...stubSpecialCharacterFolders,
 	stubSpecialCharFileInRoot,
 	stubSpecialCharFileInParent,
 	stubSpecialCharFileInChild
 ];
 
-export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpecialCharEntities);
+export const stubSpecialCharHierarchy = FolderHierarchy.newFromEntities(stubSpecialCharacterFolders);
 
-export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubSpecialCharHierarchy)
+export const stubSpecialCharEntitiesWithPaths = stubSpecialCharEntities.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubSpecialCharHierarchy)
 );
 
 export const stubEntitiesWithOneFile = [stubPublicRootFolder, stubPublicFileInRoot];
 
-export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities(stubEntitiesWithOneFile);
+export const stubHierarchyWithOneFile = FolderHierarchy.newFromEntities([stubPublicRootFolder]);
 
-export const stubEntitiesWithOneFileWithPaths = stubEntitiesWithOneFile.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithOneFile)
+export const stubEntitiesWithOneFileWithPaths = stubEntitiesWithOneFile.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubHierarchyWithOneFile)
 );
 
 export const stubEntitiesWithNestedFile = [
@@ -432,16 +444,16 @@ export const stubEntitiesWithNestedFile = [
 	stubPublicFileInChild
 ];
 
-export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubEntitiesWithNestedFile);
+export const stubHierarchyWithNestedFile = FolderHierarchy.newFromEntities(stubPublicFolders);
 
-export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNestedFile)
+export const stubEntitiesWithNestedFileWithPaths = stubEntitiesWithNestedFile.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubHierarchyWithNestedFile)
 );
 
 export const stubEntitiesWithNoFiles = [stubPublicRootFolder, stubPublicParentFolder, stubPublicChildFolder];
 export const stubHierarchyWithNoFiles = FolderHierarchy.newFromEntities(stubEntitiesWithNoFiles);
-export const stubEntitiesWithNoFilesWithPaths = stubEntitiesWithNoFiles.map(
-	(entity) => new ArFSPublicFileOrFolderWithPaths(entity, stubHierarchyWithNoFiles)
+export const stubEntitiesWithNoFilesWithPaths = stubEntitiesWithNoFiles.map((entity) =>
+	publicEntityWithPathsFactory(entity, stubHierarchyWithNoFiles)
 );
 
 export const stubCommunityContract = {

@@ -26,9 +26,10 @@ export class RootFolderID extends EntityID {
 	}
 }
 
-export abstract class ArFSFolderBuilder<
-	T extends ArFSPublicFolder | ArFSPrivateFolder
-> extends ArFSFileOrFolderBuilder<T> {
+export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivateFolder> extends ArFSFileOrFolderBuilder<
+	'folder',
+	T
+> {
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
 			{ name: 'Folder-Id', value: `${this.entityId}` },
@@ -64,7 +65,8 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			this.txId &&
 			this.unixTime &&
 			this.parentFolderId &&
-			this.entityId
+			this.entityId &&
+			this.entityType === 'folder'
 		) {
 			const txData = await this.getDataForTxID(this.txId);
 			const dataString = await Utf8ArrayToStr(txData);
@@ -83,7 +85,6 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 					this.arFS,
 					this.contentType,
 					this.driveId,
-					this.entityType,
 					this.name,
 					this.txId,
 					this.unixTime,
@@ -158,7 +159,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 			this.parentFolderId &&
 			this.entityId &&
 			this.cipher?.length &&
-			this.cipherIV?.length
+			this.cipherIV?.length &&
+			this.entityType === 'folder'
 		) {
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
@@ -179,14 +181,14 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.arFS,
 				this.contentType,
 				this.driveId,
-				this.entityType,
 				this.name,
 				this.txId,
 				this.unixTime,
 				this.parentFolderId,
 				this.entityId,
 				this.cipher,
-				this.cipherIV
+				this.cipherIV,
+				this.driveKey
 			);
 		}
 		throw new Error('Invalid private folder state');
