@@ -1,5 +1,6 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosResponse } from 'axios';
+import { defaultMaxConcurrentChunks } from '../utils/constants';
 
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
@@ -36,6 +37,7 @@ interface MultiChunkTxUploaderConstructorParams {
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
 	maxRetriesPerRequest?: number;
+	progressCallback?: (pctComplete: number) => void;
 }
 
 /**
@@ -78,12 +80,14 @@ export class MultiChunkTxUploader {
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
 	private maxRetriesPerRequest: number;
+	private progressCallback?: (pctComplete: number) => void;
 
 	constructor({
 		gatewayUrl,
 		transaction,
-		maxConcurrentChunks = 32,
-		maxRetriesPerRequest = 8
+		maxConcurrentChunks = defaultMaxConcurrentChunks,
+		maxRetriesPerRequest = 8,
+		progressCallback
 	}: MultiChunkTxUploaderConstructorParams) {
 		if (!transaction.id) {
 			throw new Error(`Transaction is not signed`);
@@ -96,6 +100,7 @@ export class MultiChunkTxUploader {
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
+		this.progressCallback = progressCallback;
 	}
 
 	/**
@@ -137,6 +142,7 @@ export class MultiChunkTxUploader {
 	 * Iterates through and posts each chunk to the `/chunk` endpoint on the provided gateway
 	 *
 	 * @remarks Will continue posting chunks until all chunks have been posted
+	 * @remarks Reports progress if class was initialized with a `progressCallback`
 	 *
 	 * @throws when a chunk request has exceeded the maxRetries and has failed to post
 	 */
@@ -151,6 +157,7 @@ export class MultiChunkTxUploader {
 			}
 
 			this.uploadedChunks++;
+			this.progressCallback?.(this.pctComplete);
 		}
 
 		return;

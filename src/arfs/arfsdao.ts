@@ -69,7 +69,13 @@ import {
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength, gatewayGqlEndpoint } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	authTagLength,
+	gatewayGqlEndpoint,
+	defaultMaxConcurrentChunks
+} from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -214,6 +220,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
+
+	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
 
 	/** Prepare an ArFS folder entity for upload */
 	private async prepareFolder<T>({
@@ -790,6 +798,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 		const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans: folderMetaDataPlan } = v2TxPlans;
 
+		const totalFileAndBundleUploads = fileAndMetaDataPlans.length + fileDataOnlyPlans.length + bundlePlans.length;
+		let uploadsCompleted = 0;
+
+		const logProgress = () => {
+			if (this.shouldProgressLog && totalFileAndBundleUploads > 1) {
+				console.error(
+					`Uploading file transaction ${
+						uploadsCompleted + 1
+					} of total ${totalFileAndBundleUploads} transactions...`
+				);
+			}
+		};
+
 		// First, we must upload all planned v2 transactions so we can preserve any file metaData data items
 		for (const {
 			dataTxRewardSettings,
@@ -797,11 +818,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			communityTipSettings,
 			metaDataBundleIndex
 		} of fileDataOnlyPlans) {
+			logProgress();
+
 			const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
 				getPrepFileParams(uploadStats),
 				dataTxRewardSettings,
 				communityTipSettings
 			);
+
+			uploadsCompleted++;
 			results.fileResults.push(fileResult);
 
 			// Add data item to its intended bundle plan
@@ -815,12 +840,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			uploadStats,
 			communityTipSettings
 		} of fileAndMetaDataPlans) {
+			logProgress();
+
 			const fileResult = await this.uploadFileAndMetaDataAsV2(
 				getPrepFileParams(uploadStats),
 				dataTxRewardSettings,
 				metaDataRewardSettings,
 				communityTipSettings
 			);
+
+			uploadsCompleted++;
 			results.fileResults.push(fileResult);
 		}
 		v2TxPlans.fileAndMetaDataPlans = [];
@@ -844,6 +873,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
 			let dataItems: DataItem[] = [];
+
+			logProgress();
 
 			for (const uploadStat of uploadStats) {
 				const { wrappedEntity, driveKey } = uploadStat;
@@ -906,6 +937,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// This bundle is now complete, send it off before starting a new one
 			await this.sendTransactionsAsChunks([bundleTx]);
 
+			uploadsCompleted++;
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
 				communityTipSettings,
@@ -1067,9 +1099,29 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
+
+				// Only log progress if total chunks of transaction is greater than the max concurrent chunks setting
+				const shouldProgressLog =
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					this.shouldProgressLog && transaction.chunks!.chunks.length > defaultMaxConcurrentChunks;
+
+				let progressLogDebounce = false;
+
 				const transactionUploader = new MultiChunkTxUploader({
 					transaction,
-					gatewayUrl: gatewayUrlForArweave(this.arweave)
+					gatewayUrl: gatewayUrlForArweave(this.arweave),
+					progressCallback: shouldProgressLog
+						? (pct: number) => {
+								if (!progressLogDebounce || pct === 100) {
+									console.error(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
+									progressLogDebounce = true;
+
+									setTimeout(() => {
+										progressLogDebounce = false;
+									}, 500); // .5 sec debounce
+								}
+						  }
+						: undefined
 				});
 
 				await transactionUploader.batchUploadChunks();

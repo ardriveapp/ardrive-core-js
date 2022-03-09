@@ -45,3 +45,4 @@ export const privateCipherTag = { name: 'Cipher', value: defaultCipher };
 export const fakePrivateCipherIVTag = { name: 'Cipher-IV', value: 'qwertyuiopasdfgh' }; // Cipher-IV is always 16 characters
 
 export const authTagLength = 16;
+export const defaultMaxConcurrentChunks = 32;
