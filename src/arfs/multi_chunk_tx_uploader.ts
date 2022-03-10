@@ -131,11 +131,7 @@ export class MultiChunkTxUploader {
 			uploadPromises.push(this.uploadChunk());
 		}
 
-		try {
-			await Promise.all(uploadPromises);
-		} catch (err) {
-			throw new Error(err);
-		}
+		await Promise.all(uploadPromises);
 	}
 
 	/**
