@@ -17,7 +17,7 @@ import {
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
-import { gatewayUrlForArweave, readJWKFile, sleep } from '../../src/utils/common';
+import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
 import { ArDrive } from '../../src/ardrive';
 
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -41,7 +41,6 @@ import {
 } from '../../src/arfs/arfs_entities';
 
 describe('ArLocal Integration Tests', function () {
-	this.timeout(60 * 1000); // 60 seconds
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const arweave = Arweave.init({
@@ -333,37 +332,6 @@ describe('ArLocal Integration Tests', function () {
 					'/arlocal_test_drive/bulk_root_folder/parent_folder/child_folder/grandchild_folder/file_in_grandchild.txt',
 				expectedEntityIdPath: `/${rootFolderId}/${rootFolder.entityId}/${parentFolder.entityId}/${childFolder.entityId}/${grandChildFolder.entityId}/${fileInGrandChildResult.entityId}`,
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${grandChildFolder.txId}/${fileInGrandChildResult.metadataTxId}`
-			});
-		});
-
-		// This test breaks the arlocal docker image atm and is skipped for now
-		it.skip('we can upload a multi-chunk 5 MiB file as a bundle transaction and fetch that public file', async function () {
-			const { created } = await bundledArDrive.uploadAllEntities({
-				entitiesToUpload: [
-					{
-						destFolderId: rootFolderId,
-						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt'),
-						destName: 'unique_0'
-					}
-				]
-			});
-			await arweave.api.get(`mine`);
-
-			// Wait for 10 second for arlocal gateway to process bundle ??
-			await sleep(10000);
-
-			const file = await bundledArDrive.getPublicFile({ fileId: created[0].entityId! });
-
-			assertPublicFileExpectations({
-				entity: file,
-				driveId,
-				parentFolderId: rootFolderId,
-				metaDataTxId: created[0].metadataTxId!,
-				dataTxId: created[0].dataTxId!,
-				fileId: created[0].entityId!,
-				dataContentType: 'text/plain',
-				entityName: 'unique_0',
-				size: new ByteCount(52428800)
 			});
 		});
 
