@@ -22,7 +22,7 @@ const INITIAL_ERROR_DELAY = 500; // 500ms
  *  These are errors from the `/chunk` endpoint on an Arweave
  *  node that we should never try to continue on
  */
-const FATAL_CHUNK_UPLOAD_ERRORS = [
+export const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'invalid_json',
 	'chunk_too_big',
 	'data_path_too_big',
@@ -39,6 +39,8 @@ interface MultiChunkTxUploaderConstructorParams {
 	maxRetriesPerRequest?: number;
 	progressCallback?: (pctComplete: number) => void;
 }
+
+export type ProgressCallback = (pctComplete: number) => void;
 
 /**
  *  A transaction uploader class that has been modified to handle uploading
@@ -178,7 +180,7 @@ export class MultiChunkTxUploader {
 		try {
 			await this.retryRequestUntilMaxErrors(() => axios.post(`${this.gatewayUrl.href}tx`, transactionToUpload));
 		} catch (err) {
-			throw new Error(`Too many errors encountered while posting transaction headers:  ${err}`);
+			throw new Error(`Too many errors encountered while posting transaction header: ${err}`);
 		}
 
 		this.txPosted = true;
@@ -214,7 +216,8 @@ export class MultiChunkTxUploader {
 				error = respIsError(resp) ? resp : resp.statusText;
 
 				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
-					throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
+					this.hasFailedRequests = true;
+					throw new Error(`Fatal error uploading chunk: ${error}`);
 				} else {
 					// Use exponential back-off delay after failed requests. With the current
 					// default error delay and max retries, we expect the following wait times:
