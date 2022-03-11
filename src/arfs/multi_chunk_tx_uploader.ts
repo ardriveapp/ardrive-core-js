@@ -245,5 +245,5 @@ export class MultiChunkTxUploader {
 }
 
 function respIsError(resp: AxiosResponse<unknown> | string): resp is string {
-	return resp === typeof 'string';
+	return typeof resp === 'string';
 }
