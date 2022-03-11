@@ -205,7 +205,7 @@ export class MultiChunkTxUploader {
 		let retryNumber = 0;
 		let error = '';
 
-		while (retryNumber <= this.maxRetriesPerRequest && !this.hasFailedRequests) {
+		while (retryNumber < this.maxRetriesPerRequest && !this.hasFailedRequests) {
 			try {
 				resp = await request();
 			} catch (err) {
