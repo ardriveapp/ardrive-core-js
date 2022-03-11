@@ -273,10 +273,7 @@ describe('MultiChunkTxUploader class', function () {
 		} as unknown) as AxiosResponse<unknown>);
 
 		it('throws an error after maxRetries have been exhausted', async function () {
-			const txUploader = getSmallTxUploader(2);
-
-			// With uploader set to 2 retries, we will expect 3,500ms of retries
-			this.timeout(4_200);
+			const txUploader = getSmallTxUploader(1);
 
 			await expectAsyncErrorThrow({
 				promiseToError: txUploader['retryRequestUntilMaxErrors'](() => failureRequestPromise()),
@@ -317,10 +314,7 @@ describe('MultiChunkTxUploader class', function () {
 		});
 
 		it('throws an error when an unexpected 504 in string format is returned from gateway', async function () {
-			const txUploader = getSmallTxUploader(2);
-
-			// With uploader set to 2 retries, we will expect 3,500ms of retries
-			this.timeout(4_200);
+			const txUploader = getSmallTxUploader(1);
 
 			await expectAsyncErrorThrow({
 				promiseToError: txUploader['retryRequestUntilMaxErrors'](() =>
