@@ -26,7 +26,10 @@ describe('MultiChunkTxUploader class', function () {
 	before(async () => {
 		wallet = await arweave.wallets.generate();
 
+		/** 1 chunk of data */
 		const smallData = new Uint8Array(5);
+
+		/** 20 chunks of data */
 		const largeData = new Uint8Array(5_000_000);
 
 		const prepTx = async (data: Uint8Array) => {
@@ -46,15 +49,12 @@ describe('MultiChunkTxUploader class', function () {
 	const progressCallback: ProgressCallback = (pct) => {
 		progressCount++;
 
-		// With exactly 20 chunks sent, we expect 5% progress on each progress callback
+		// With exactly 20 chunks sent, we will expect 5% progress on each progress callback
 		expect(pct).to.equal(progressCount * 5);
-	};
-	const resetProgressCount = () => {
-		progressCount = 0;
 	};
 
 	beforeEach(() => {
-		resetProgressCount();
+		progressCount = 0;
 	});
 
 	const getTxUploader = (transaction: Transaction, maxConcurrentChunks?: number, maxRetriesPerRequest?: number) =>
