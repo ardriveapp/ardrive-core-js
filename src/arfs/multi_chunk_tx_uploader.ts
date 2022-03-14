@@ -201,49 +201,45 @@ export class MultiChunkTxUploader {
 	private async retryRequestUntilMaxErrors(request: () => Promise<AxiosResponse<unknown>>) {
 		let resp: AxiosResponse<unknown> | string;
 		let retryNumber = 0;
-		let error = '';
+		let lastError = 'unknown error';
 
-		while (retryNumber <= this.maxRetriesPerRequest && !this.hasFailedRequests) {
+		while (retryNumber < this.maxRetriesPerRequest && !this.hasFailedRequests) {
 			try {
 				resp = await request();
-			} catch (err) {
-				resp = err;
-			}
 
-			if (respIsError(resp) || resp?.status !== 200) {
-				error = respIsError(resp) ? resp : resp.statusText;
-
-				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(error)) {
-					throw new Error(`Fatal error uploading chunk ${this.chunkOffset}: ${error}`);
-				} else {
-					// Use exponential back-off delay after failed requests. With the current
-					// default error delay and max retries, we expect the following wait times:
-
-					// Retry wait 1: 500ms
-					// Retry wait 2: 1,000ms
-					// Retry wait 3: 2,000ms
-					// Retry wait 4: 4,000ms
-					// Retry wait 5: 8,000ms
-					// Retry wait 6: 16,000ms
-					// Retry wait 7: 32,000ms
-					// Retry wait 8: 64,000ms
-
-					const delay = Math.pow(2, retryNumber) * INITIAL_ERROR_DELAY;
-					await new Promise((res) => setTimeout(res, delay));
-
-					retryNumber++;
+				if (resp.status === 200) {
+					// Request successful. All done.
+					return;
 				}
-			} else {
-				// Request has succeeded with status code 200, return from loop
-				return;
+
+				// Throw in cases of unrecoverable errors
+				lastError = resp.statusText;
+				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(lastError)) {
+					this.hasFailedRequests = true;
+					throw new Error(`Fatal error uploading chunk: (Status: ${resp.status}) ${lastError}`);
+				}
+			} catch (err) {
+				lastError = err instanceof Error ? err.message : err;
 			}
+
+			// Use exponential back-off delay after failed requests. With the current
+			// default error delay and max retries, we expect the following wait times:
+
+			// Retry wait 1: 500ms
+			// Retry wait 2: 1,000ms
+			// Retry wait 3: 2,000ms
+			// Retry wait 4: 4,000ms
+			// Retry wait 5: 8,000ms
+			// Retry wait 6: 16,000ms
+			// Retry wait 7: 32,000ms
+			// Retry wait 8: 64,000ms
+
+			const delay = Math.pow(2, retryNumber) * INITIAL_ERROR_DELAY;
+			await new Promise((res) => setTimeout(res, delay));
+			retryNumber++;
 		}
 
 		this.hasFailedRequests = true;
-		throw new Error(`Request to gateway has failed: ${error}`);
+		throw new Error(`Request to gateway has failed: ${lastError}`);
 	}
-}
-
-function respIsError(resp: AxiosResponse<unknown> | string): resp is string {
-	return resp === typeof 'string';
 }
