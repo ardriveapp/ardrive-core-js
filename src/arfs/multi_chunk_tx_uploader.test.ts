@@ -261,14 +261,14 @@ describe('MultiChunkTxUploader class', function () {
 		const failureRequestPromise = (error = 'Big request failure!') =>
 			// eslint-disable-next-line prettier/prettier
 			Promise.resolve(({
-				statusCode: 400,
+				status: 400,
 				statusText: error
 				// eslint-disable-next-line prettier/prettier
 			} as unknown) as AxiosResponse<unknown>);
 
 		// eslint-disable-next-line prettier/prettier
 		const successfulRequestPromise = Promise.resolve(({
-			statusCode: 200
+			status: 200
 			// eslint-disable-next-line prettier/prettier
 		} as unknown) as AxiosResponse<unknown>);
 
@@ -277,7 +277,7 @@ describe('MultiChunkTxUploader class', function () {
 
 			await expectAsyncErrorThrow({
 				promiseToError: txUploader['retryRequestUntilMaxErrors'](() => failureRequestPromise()),
-				errorMessage: 'Request to gateway has failed: Big request failure!'
+				errorMessage: 'Request to gateway has failed: (Status: 400) Big request failure!'
 			});
 			expect(txUploader['hasFailedRequests']).to.be.true;
 		});
@@ -306,7 +306,7 @@ describe('MultiChunkTxUploader class', function () {
 
 				await expectAsyncErrorThrow({
 					promiseToError: txUploader['retryRequestUntilMaxErrors'](() => failureRequestPromise(fatalError)),
-					errorMessage: `Fatal error uploading chunk: ${fatalError}`
+					errorMessage: `Fatal error uploading chunk: (Status: 400) ${fatalError}`
 				});
 
 				expect(txUploader['hasFailedRequests']).to.be.true;
@@ -321,7 +321,7 @@ describe('MultiChunkTxUploader class', function () {
 					// eslint-disable-next-line prettier/prettier
 					Promise.resolve(('<HTML>504 Bad Gateway</HTML>' as unknown) as AxiosResponse<unknown>)
 				),
-				errorMessage: 'Request to gateway has failed: <HTML>504 Bad Gateway</HTML>'
+				errorMessage: 'Request to gateway has failed: (Status: undefined) <HTML>504 Bad Gateway</HTML>'
 			});
 			expect(txUploader['hasFailedRequests']).to.be.true;
 		});
