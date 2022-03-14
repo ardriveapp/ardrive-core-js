@@ -31,7 +31,7 @@ interface MultiChunkTxUploaderConstructorParams {
  *
  *		const transactionUploader = new MultiChunkTxUploader({
  *			transaction,
- *			gatewayUrl: new URL('https://arweave.net:443')
+ *			gatewayApi: new GatewayAPI({ gatewayUrl: new URL('https://arweave.net:443') })
  *		});
  *
  *		await transactionUploader.batchUploadChunks();
