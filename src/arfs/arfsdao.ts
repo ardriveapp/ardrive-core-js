@@ -162,6 +162,7 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
 import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
+import { GatewayAPI } from '../utils/gateway_api';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1109,7 +1110,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				const transactionUploader = new MultiChunkTxUploader({
 					transaction,
-					gatewayUrl: gatewayUrlForArweave(this.arweave),
+					gatewayApi: new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(this.arweave) }),
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
 								if (!progressLogDebounce || pct === 100) {
