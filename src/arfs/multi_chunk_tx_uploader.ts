@@ -199,27 +199,30 @@ export class MultiChunkTxUploader {
 	 * @throws when max retries have been exhausted
 	 */
 	private async retryRequestUntilMaxErrors(request: () => Promise<AxiosResponse<unknown>>) {
-		let resp: AxiosResponse<unknown> | string;
+		let resp: AxiosResponse<unknown>;
 		let retryNumber = 0;
 		let lastError = 'unknown error';
+		let lastRespStatus: number | undefined;
 
 		while (retryNumber < this.maxRetriesPerRequest && !this.hasFailedRequests) {
 			try {
 				resp = await request();
+				lastRespStatus = resp.status;
 
-				if (resp.status === 200) {
+				if (lastRespStatus === 200) {
 					// Request successful. All done.
 					return;
 				}
 
-				// Throw in cases of unrecoverable errors
-				lastError = resp.statusText;
-				if (FATAL_CHUNK_UPLOAD_ERRORS.includes(lastError)) {
-					this.hasFailedRequests = true;
-					throw new Error(`Fatal error uploading chunk: (Status: ${resp.status}) ${lastError}`);
-				}
+				lastError = resp.statusText ?? resp;
 			} catch (err) {
 				lastError = err instanceof Error ? err.message : err;
+			}
+
+			// Throw in cases of unrecoverable errors
+			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(lastError)) {
+				this.hasFailedRequests = true;
+				throw new Error(`Fatal error uploading chunk: (Status: ${lastRespStatus}) ${lastError}`);
 			}
 
 			// Use exponential back-off delay after failed requests. With the current
@@ -240,6 +243,6 @@ export class MultiChunkTxUploader {
 		}
 
 		this.hasFailedRequests = true;
-		throw new Error(`Request to gateway has failed: ${lastError}`);
+		throw new Error(`Request to gateway has failed: (Status: ${lastRespStatus}) ${lastError}`);
 	}
 }
