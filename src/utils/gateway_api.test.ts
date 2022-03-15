@@ -125,7 +125,7 @@ describe('GatewayAPI class', () => {
 
 			await expectAsyncErrorThrow({
 				promiseToError: gatewayApi.postToEndpoint(''),
-				errorMessage: ''
+				errorMessage: 'Request to gateway has failed: (Status: undefined) <HTML>504 Bad Gateway</HTML>'
 			});
 
 			expect(axiosSpy.callCount).to.equal(1);
