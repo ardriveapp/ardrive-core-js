@@ -6,9 +6,10 @@ import { expect } from 'chai';
 import { describe } from 'mocha';
 import { spy, stub } from 'sinon';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
+import { FATAL_CHUNK_UPLOAD_ERRORS } from './constants';
 import { GatewayAPI } from './gateway_api';
 
-describe('GatewayAPI class', function () {
+describe('GatewayAPI class', () => {
 	const arweave = Arweave.init({
 		host: 'fake',
 		port: 433,
@@ -92,6 +93,42 @@ describe('GatewayAPI class', function () {
 
 			// Expect 4 tries with maxRetries set to 3
 			expect(axiosSpy.callCount).to.equal(4);
+		});
+
+		it('throws an error when encountering any default fatal chunk errors', async () => {
+			for (const fatalError of FATAL_CHUNK_UPLOAD_ERRORS) {
+				const axiosInstance = axios.create();
+				const axiosSpy = stub(axiosInstance, 'post').resolves({ status: 666, statusText: fatalError });
+				const gatewayApi = new GatewayAPI({
+					gatewayUrl,
+					maxRetriesPerRequest: 0,
+					axiosInstance
+				});
+
+				await expectAsyncErrorThrow({
+					promiseToError: gatewayApi.postToEndpoint(''),
+					errorMessage: `Fatal error encountered: (Status: 666) ${fatalError}`
+				});
+
+				expect(axiosSpy.callCount).to.equal(1);
+			}
+		});
+
+		it('throws an error when an unexpected 504 in string format is returned from gateway', async () => {
+			const axiosSpy = stub(axiosInstance, 'post').resolves('<HTML>504 Bad Gateway</HTML>');
+			const gatewayApi = new GatewayAPI({
+				gatewayUrl,
+				maxRetriesPerRequest: 0,
+				initialErrorDelayMS: 1,
+				axiosInstance
+			});
+
+			await expectAsyncErrorThrow({
+				promiseToError: gatewayApi.postToEndpoint(''),
+				errorMessage: ''
+			});
+
+			expect(axiosSpy.callCount).to.equal(1);
 		});
 	});
 
