@@ -46,3 +46,23 @@ export const fakePrivateCipherIVTag = { name: 'Cipher-IV', value: 'qwertyuiopasd
 
 export const authTagLength = 16;
 export const defaultMaxConcurrentChunks = 32;
+
+/**
+ * Error delay for the first failed request for a transaction header post or chunk upload
+ * Subsequent requests will delay longer with an exponential back off strategy
+ */
+export const INITIAL_ERROR_DELAY = 500; // 500ms
+
+/**
+ *  These are errors from the `/chunk` endpoint on an Arweave
+ *  node that we should never try to continue on
+ */
+export const FATAL_CHUNK_UPLOAD_ERRORS = [
+	'invalid_json',
+	'chunk_too_big',
+	'data_path_too_big',
+	'offset_too_big',
+	'data_size_too_big',
+	'chunk_proof_ratio_not_attractive',
+	'invalid_proof'
+];

@@ -1,42 +1,22 @@
 import Transaction from 'arweave/node/lib/transaction';
-import axios, { AxiosResponse } from 'axios';
 import { defaultMaxConcurrentChunks } from '../utils/constants';
+import { GatewayAPI } from '../utils/gateway_api';
+
+export interface Chunk {
+	chunk: string;
+	data_root: string;
+	data_size: string;
+	offset: string;
+	data_path: string;
+}
 
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
 
-/**
- * Error delay for the first failed request for a transaction header post or chunk upload
- * Subsequent requests will delay longer with an exponential back off strategy
- */
-const INITIAL_ERROR_DELAY = 500; // 500ms
-
-// We assume these errors are intermittent and we can try again after a delay:
-// - not_joined
-// - timeout
-// - data_root_not_found (we may have hit a node that just hasn't seen it yet)
-// - exceeds_disk_pool_size_limit
-// We also try again after any kind of unexpected network errors
-
-/**
- *  These are errors from the `/chunk` endpoint on an Arweave
- *  node that we should never try to continue on
- */
-const FATAL_CHUNK_UPLOAD_ERRORS = [
-	'invalid_json',
-	'chunk_too_big',
-	'data_path_too_big',
-	'offset_too_big',
-	'data_size_too_big',
-	'chunk_proof_ratio_not_attractive',
-	'invalid_proof'
-];
-
 interface MultiChunkTxUploaderConstructorParams {
-	gatewayUrl: URL;
+	gatewayApi: GatewayAPI;
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
-	maxRetriesPerRequest?: number;
 	progressCallback?: (pctComplete: number) => void;
 }
 
@@ -51,7 +31,7 @@ interface MultiChunkTxUploaderConstructorParams {
  *
  *		const transactionUploader = new MultiChunkTxUploader({
  *			transaction,
- *			gatewayUrl: new URL('https://arweave.net:443')
+ *			gatewayApi: new GatewayAPI({ gatewayUrl: new URL('https://arweave.net:443') })
  *		});
  *
  *		await transactionUploader.batchUploadChunks();
@@ -76,17 +56,15 @@ export class MultiChunkTxUploader {
 		return Math.trunc((this.uploadedChunks / this.totalChunks) * 100);
 	}
 
-	private gatewayUrl: URL;
+	private gatewayApi: GatewayAPI;
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
-	private maxRetriesPerRequest: number;
 	private progressCallback?: (pctComplete: number) => void;
 
 	constructor({
-		gatewayUrl,
+		gatewayApi,
 		transaction,
 		maxConcurrentChunks = defaultMaxConcurrentChunks,
-		maxRetriesPerRequest = 8,
 		progressCallback
 	}: MultiChunkTxUploaderConstructorParams) {
 		if (!transaction.id) {
@@ -96,10 +74,9 @@ export class MultiChunkTxUploader {
 			throw new Error(`Transaction chunks not prepared`);
 		}
 
-		this.gatewayUrl = gatewayUrl;
+		this.gatewayApi = gatewayApi;
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
-		this.maxRetriesPerRequest = maxRetriesPerRequest;
 		this.progressCallback = progressCallback;
 	}
 
@@ -147,8 +124,9 @@ export class MultiChunkTxUploader {
 			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
 
 			try {
-				await this.retryRequestUntilMaxErrors(() => axios.post(`${this.gatewayUrl.href}chunk`, chunk));
+				await this.gatewayApi.postChunk(chunk);
 			} catch (err) {
+				this.hasFailedRequests = true;
 				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
 			}
 
@@ -169,16 +147,17 @@ export class MultiChunkTxUploader {
 	private async postTransactionHeader(): Promise<void> {
 		const uploadInBody = this.totalChunks <= MAX_CHUNKS_IN_BODY;
 
-		// We will send the data with the headers if chunks will fit into transaction header body
-		// Otherwise we send the headers with no data
+		// We will send the data with the header if chunks will fit into transaction header body
+		// Otherwise we send the header with no data
 		const transactionToUpload = uploadInBody
 			? this.transaction
 			: new Transaction(Object.assign({}, this.transaction, { data: new Uint8Array(0) }));
 
 		try {
-			await this.retryRequestUntilMaxErrors(() => axios.post(`${this.gatewayUrl.href}tx`, transactionToUpload));
+			await this.gatewayApi.postTxHeader(transactionToUpload);
 		} catch (err) {
-			throw new Error(`Too many errors encountered while posting transaction headers:  ${err}`);
+			this.hasFailedRequests = true;
+			throw new Error(`Too many errors encountered while posting transaction header:  ${err}`);
 		}
 
 		this.txPosted = true;
@@ -189,60 +168,5 @@ export class MultiChunkTxUploader {
 		}
 
 		return;
-	}
-
-	/**
-	 * Retries the given request until the response returns a successful
-	 * status code of 200 or the maxRetries setting has been exceeded
-	 *
-	 * @throws when a fatal chunk error has been returned by an Arweave node
-	 * @throws when max retries have been exhausted
-	 */
-	private async retryRequestUntilMaxErrors(request: () => Promise<AxiosResponse<unknown>>) {
-		let resp: AxiosResponse<unknown>;
-		let retryNumber = 0;
-		let lastError = 'unknown error';
-		let lastRespStatus: number | undefined;
-
-		while (retryNumber < this.maxRetriesPerRequest && !this.hasFailedRequests) {
-			try {
-				resp = await request();
-				lastRespStatus = resp.status;
-
-				if (lastRespStatus === 200) {
-					// Request successful. All done.
-					return;
-				}
-
-				lastError = resp.statusText ?? resp;
-			} catch (err) {
-				lastError = err instanceof Error ? err.message : err;
-			}
-
-			// Throw in cases of unrecoverable errors
-			if (FATAL_CHUNK_UPLOAD_ERRORS.includes(lastError)) {
-				this.hasFailedRequests = true;
-				throw new Error(`Fatal error uploading chunk: (Status: ${lastRespStatus}) ${lastError}`);
-			}
-
-			// Use exponential back-off delay after failed requests. With the current
-			// default error delay and max retries, we expect the following wait times:
-
-			// Retry wait 1: 500ms
-			// Retry wait 2: 1,000ms
-			// Retry wait 3: 2,000ms
-			// Retry wait 4: 4,000ms
-			// Retry wait 5: 8,000ms
-			// Retry wait 6: 16,000ms
-			// Retry wait 7: 32,000ms
-			// Retry wait 8: 64,000ms
-
-			const delay = Math.pow(2, retryNumber) * INITIAL_ERROR_DELAY;
-			await new Promise((res) => setTimeout(res, delay));
-			retryNumber++;
-		}
-
-		this.hasFailedRequests = true;
-		throw new Error(`Request to gateway has failed: (Status: ${lastRespStatus}) ${lastError}`);
 	}
 }
