@@ -10,6 +10,8 @@ export interface Chunk {
 	data_path: string;
 }
 
+export type ProgressCallback = (pctComplete: number) => void;
+
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
 
@@ -17,7 +19,7 @@ interface MultiChunkTxUploaderConstructorParams {
 	gatewayApi: GatewayAPI;
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
-	progressCallback?: (pctComplete: number) => void;
+	progressCallback?: ProgressCallback;
 }
 
 /**
@@ -59,7 +61,7 @@ export class MultiChunkTxUploader {
 	private gatewayApi: GatewayAPI;
 	private transaction: Transaction;
 	private maxConcurrentChunks: number;
-	private progressCallback?: (pctComplete: number) => void;
+	private progressCallback?: ProgressCallback;
 
 	constructor({
 		gatewayApi,
@@ -157,7 +159,7 @@ export class MultiChunkTxUploader {
 			await this.gatewayApi.postTxHeader(transactionToUpload);
 		} catch (err) {
 			this.hasFailedRequests = true;
-			throw new Error(`Too many errors encountered while posting transaction header:  ${err}`);
+			throw new Error(`Too many errors encountered while posting transaction header: ${err}`);
 		}
 
 		this.txPosted = true;
