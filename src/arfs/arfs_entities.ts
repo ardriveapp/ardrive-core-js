@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { FolderHierarchy } from './folder_hierarchy';
 import {
 	CipherIV,
@@ -143,6 +144,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			cipherIV,
 			new EntityKey(Buffer.from([]))
 		);
+		// @ts-ignore
 		delete this.driveKey;
 	}
 }
@@ -162,8 +164,7 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	extends ArFSEntity
 	// eslint-disable-next-line prettier/prettier
-	implements ArFSFileFolderEntity
-{
+	implements ArFSFileFolderEntity {
 	constructor(
 		appName: string,
 		appVersion: string,
@@ -371,7 +372,9 @@ export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
 
 	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy) {
 		super(entity, hierarchy);
+		// @ts-ignore
 		delete this.driveKey;
+		// @ts-ignore
 		delete this.fileKey;
 	}
 }
@@ -402,7 +405,9 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.fileKey,
 			entity.driveKey
 		);
+		// @ts-ignore
 		delete this.driveKey;
+		// @ts-ignore
 		delete this.fileKey;
 	}
 }
@@ -534,6 +539,7 @@ export class ArFSPrivateFolderWithPathsKeyless extends ArFSPrivateFolderWithPath
 
 	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
 		super(entity, hierarchy);
+		// @ts-ignore
 		delete this.driveKey;
 	}
 }
@@ -558,6 +564,7 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.cipherIV,
 			entity.driveKey
 		);
+		// @ts-ignore
 		delete this.driveKey;
 	}
 }
