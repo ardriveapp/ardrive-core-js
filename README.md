@@ -4,6 +4,90 @@ ArDrive Core is a TypeScript library that contains the essential back end applic
 
 Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more information.
 
+## Integrating with ArDrive Core
+
+To add the ArDrive Core library to your project, simply add it as a dependency:
+
+```shell
+yarn add ardrive-core-js
+```
+
+The recommended approach for integrating with ArDrive Core as a dependency in your project is to construct and use the methods provided on the `ArDrive` class. Developers can use the convenience function `arDriveFactory` to construct the `ArDrive` class.
+
+Below are a few common examples of interacting with Core:
+
+```ts
+import { readJWKFile, arDriveFactory } from 'ardrive-core-js';
+
+// Read wallet from file
+const myWallet = readJWKFile('/path/to/wallet');
+
+// Construct ArDrive class
+const arDrive = arDriveFactory({ wallet: myWallet });
+
+// Create a public drive and its root folder
+const createDriveResult = await arDrive.createPublicDrive({ driveName: 'My-Drive' });
+```
+
+```ts
+import { wrapFileOrFolder, EID } from 'ardrive-core-js';
+
+// Wrap file for upload
+const wrappedEntity = wrapFileOrFolder('path/to/file');
+
+// Construct a safe Entity ID Type
+const destFolderId = EID('10108b54a-eb5e-4134-8ae2-a3946a428ec7');
+
+// Upload a public file to destination folder
+const uploadFileResult = await arDrive.uploadAllEntities({
+    entitiesToUpload: [{ wrappedEntity, destFolderId }]
+});
+```
+
+```ts
+import { deriveDriveKey } from 'ardrive-core-js';
+
+// Derive a private drive key from password, wallet, and drive ID
+const driveKey = await deriveDriveKey(
+    'mySecretPassWord',
+    '12345674a-eb5e-4134-8ae2-a3946a428ec7',
+    JSON.stringify((myWallet as JWKWallet).getPrivateKey())
+);
+
+// Create a private folder
+const createFolderResult = await arDrive.createPrivateFolder({
+    folderName: 'My New Private Folder',
+    driveKey,
+    parentFolderId: EID('47162534a-eb5e-4134-8ae2-a3946a428ec7')
+});
+```
+
+```ts
+import { wrapFileOrFolder, EntityKey, EID } from 'ardrive-core-js';
+
+// Derive a private drive key from raw drive key string
+const driveKey = new EntityKey(Buffer.from('MyAwesomeDriveKeyZZZZZZZZZZZZZZZZZZZZFAKE/s', 'base64'));
+
+// Wrap folder and all of its contents for upload
+const wrappedFolder = wrapFileOrFolder('path/to/folder');
+
+// Upload a private folder and all its contents
+const uploadFileResult = await arDrive.uploadAllEntities({
+    entitiesToUpload: [
+        {
+            wrappedEntity: wrappedFolder,
+            destFolderId: EID('76543214a-eb5e-4134-8ae2-a3946a428ec7'),
+            driveKey
+        },
+        // And some other public file to a different destination 🤯
+        {
+          wrappedEntity: someOtherWrappedFile
+          destFolderId: EID('675489321-eb5e-4134-8ae2-a3946a428ec7')
+        }
+    ]
+});
+```
+
 ## Development Environment Setup
 
 We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.
@@ -119,6 +203,23 @@ And finally, to view the detailed error messages in your terminal:
 ```shell
 yarn power-assert -g 'My test case'
 ```
+
+### Persistent Caching of ArFS Entity Metadata
+
+To avoid redundant requests to the Arweave network for immutable ArFS entity metadata, a persistent file cache is created and maintained at:
+
+```
+Windows: <os.homedir()>/ardrive-caches/metadata
+Non-Windows: <os.homedir()>/.ardrive/caches/metadata
+```
+
+The `XDG_CACHE_HOME` environment variable is honored, where applicable, and will be used in place of `os.homedir()` in the scenarios described above.
+
+Metadata cache logging to stderr can be enabled by setting the `ARDRIVE_CACHE_LOG` environment variable to `1`.
+
+Cache performance is UNDEFINED for multi-process scenarios, but is presumed to be generally usable.
+
+The cache can be manually cleared safely at any time that any integrating app is not in operation.
 
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
