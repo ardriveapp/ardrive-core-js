@@ -16,8 +16,16 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey, FileKey } from '../types';
+import { ByteCount, DriveKey, FileKey, GQLTagInterface } from '../types';
 import Arweave from 'arweave';
+import { Tag } from 'arweave/node/lib/transaction';
+
+// Helper function to grab the decoded gql tags off of a Transaction
+export const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
+	tags.map((tag) => ({
+		name: tag.get('name', { decode: true, string: true }),
+		value: tag.get('value', { decode: true, string: true })
+	}));
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {

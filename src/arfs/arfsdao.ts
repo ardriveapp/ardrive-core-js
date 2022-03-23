@@ -68,7 +68,7 @@ import {
 	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
-import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import { deriveDriveKey, deriveFileKey, driveDecrypt, fileEncrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -94,7 +94,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	EntityID
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -158,9 +159,16 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave } from '../utils/common';
+import { gatewayUrlForArweave, getDecodedTags } from '../utils/common';
 import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
-import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
+import {
+	ArFSEncryptedData,
+	ArFSFileToUpload,
+	ArFSPrivateFileWithPaths,
+	ArFSPrivateFolderWithPaths,
+	ByteCount,
+	privateEntityWithPathsKeylessFactory
+} from '../exports';
 import { getDataForTxID } from '../utils/get_tx_data';
 import { GatewayAPI } from '../utils/gateway_api';
 
@@ -1127,6 +1135,58 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 				await transactionUploader.batchUploadChunks();
 			}
+		}
+	}
+
+	public async retryFileDataTransaction(
+		wrappedFile: ArFSFileToUpload,
+		txId: TransactionID,
+		driveKey?: DriveKey
+	): Promise<void> {
+		const transaction = await new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(this.arweave) }).getTransaction(
+			txId
+		);
+
+		let fileSize: ByteCount;
+		if (driveKey) {
+			const fileId: FileID = new EntityID(this.getRequiredGQLTagValue(transaction, 'File-Id'));
+			const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
+
+			const { data: encryptedData }: ArFSEncryptedData = await fileEncrypt(
+				fileKey,
+				wrappedFile.getFileDataBuffer()
+			);
+
+			transaction.data = encryptedData;
+			fileSize = wrappedFile.encryptedDataSize();
+		} else {
+			transaction.data = wrappedFile.getFileDataBuffer();
+			fileSize = wrappedFile.size;
+		}
+
+		this.assertFileAndTxSizesMatch(transaction, fileSize);
+
+		await this.sendTransactionsAsChunks([transaction]);
+	}
+
+	private getRequiredGQLTagValue(transaction: Transaction, tagName: string): string {
+		const gqlTags = getDecodedTags(transaction.tags);
+		const requiredTag = gqlTags.find((t) => t.name === tagName);
+
+		if (!requiredTag) {
+			throw Error(`Required "${tagName}" GQL tag could not be found on transaction with id: ${transaction.id}!`);
+		}
+
+		return requiredTag.value;
+	}
+
+	private assertFileAndTxSizesMatch(transaction: Transaction, fileSize: ByteCount): void {
+		const txSize = new ByteCount(+transaction.data_size);
+
+		if (!txSize.equals(fileSize)) {
+			throw Error(
+				`Provided file's size does not match the "data_size" field on transaction with id: ${transaction.id}!`
+			);
 		}
 	}
 

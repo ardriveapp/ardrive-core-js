@@ -35,10 +35,3 @@ export async function expectAsyncErrorThrow({
 		expect(error?.message).to.equal(errorMessage);
 	}
 }
-
-// Helper function to grab the decoded gql tags off of a Transaction
-export const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
-	tags.map((tag) => ({
-		name: tag.get('name', { decode: true, string: true }),
-		value: tag.get('value', { decode: true, string: true })
-	}));
