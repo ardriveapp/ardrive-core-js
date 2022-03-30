@@ -43,46 +43,63 @@ import {
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
 
-	let arDrive: ArDrive;
-	let arweave: Arweave;
+	const arweave = Arweave.init({
+		host: 'localhost',
+		port: 1984,
+		protocol: 'http'
+	});
+
+	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
+	const communityOracle = new ArDriveCommunityOracle(arweave);
+	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
+	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+	const arfsDao = new ArFSDAO(wallet, arweave, false, undefined, undefined, arFSTagSettings);
+
+	const bundledUploadPlanner = new ArFSUploadPlanner({
+		arFSTagSettings,
+		priceEstimator,
+		communityOracle
+	});
+
+	const v2TxUploadPlanner = new ArFSUploadPlanner({
+		arFSTagSettings,
+		priceEstimator,
+		communityOracle,
+		shouldBundle: false
+	});
+
+	const v2ArDrive = new ArDrive(
+		wallet,
+		walletDao,
+		arfsDao,
+		communityOracle,
+		undefined,
+		undefined,
+		priceEstimator,
+		new FeeMultiple(1.0),
+		false,
+		arFSTagSettings,
+		v2TxUploadPlanner
+	);
+
+	const bundledArDrive = new ArDrive(
+		wallet,
+		walletDao,
+		arfsDao,
+		communityOracle,
+		undefined,
+		undefined,
+		priceEstimator,
+		new FeeMultiple(1.0),
+		false,
+		arFSTagSettings,
+		bundledUploadPlanner
+	);
 
 	before(async () => {
-		arweave = Arweave.init({
-			host: 'localhost',
-			port: 1984,
-			protocol: 'http'
-		});
-
 		// Fund wallet
 		await arweave.api.get(`mint/${await wallet.getAddress()}/9999999999999999`);
-
-		const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
-		const communityOracle = new ArDriveCommunityOracle(arweave);
-		const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
-		const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
-		const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
-		const arfsDao = new ArFSDAO(wallet, arweave, false, undefined, undefined, arFSTagSettings);
-
-		const bundledUploadPlanner = new ArFSUploadPlanner({
-			arFSTagSettings,
-			priceEstimator,
-			communityOracle
-		});
-
-		arDrive = new ArDrive(
-			wallet,
-			walletDao,
-			arfsDao,
-			communityOracle,
-			undefined,
-			undefined,
-			priceEstimator,
-			new FeeMultiple(1.0),
-			false,
-			arFSTagSettings,
-			bundledUploadPlanner
-		);
-		await arweave.api.get(`mine`);
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
@@ -92,7 +109,7 @@ describe('ArLocal Integration Tests', function () {
 		let driveId: DriveID;
 
 		before(async () => {
-			const { created } = await arDrive.createPublicDrive({ driveName: 'arlocal_test_drive' });
+			const { created } = await bundledArDrive.createPublicDrive({ driveName: 'arlocal_test_drive' });
 
 			rootFolderId = created[1].entityId!;
 			rootFolderTxId = created[1].metadataTxId!;
@@ -103,7 +120,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can fetch that public drive with `getPublicDrive`', async () => {
-			const drive = await arDrive.getPublicDrive({
+			const drive = await bundledArDrive.getPublicDrive({
 				driveId
 			});
 
@@ -117,7 +134,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can fetch the public root folder for that drive with with `getPublicFolder`', async () => {
-			const folder = await arDrive.getPublicFolder({
+			const folder = await bundledArDrive.getPublicFolder({
 				folderId: rootFolderId
 			});
 
@@ -131,13 +148,13 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can create a public folder with `createPublicFolder` and get that public folder with `getPublicFolder`', async () => {
-			const { created } = await arDrive.createPublicFolder({
+			const { created } = await bundledArDrive.createPublicFolder({
 				parentFolderId: rootFolderId,
 				folderName: 'folder5'
 			});
 			await arweave.api.get(`mine`);
 
-			const folder = await arDrive.getPublicFolder({
+			const folder = await bundledArDrive.getPublicFolder({
 				folderId: created[0].entityId!
 			});
 
@@ -152,7 +169,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a public file with `uploadPublicFile` and get that public file with `getPublicFile`', async () => {
-			const { created } = await arDrive.uploadPublicFile({
+			const { created } = await bundledArDrive.uploadPublicFile({
 				parentFolderId: rootFolderId,
 				wrappedFile: wrapFileOrFolder(
 					'tests/stub_files/bulk_root_folder/parent_folder/file_in_parent.txt'
@@ -160,7 +177,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 			await arweave.api.get(`mine`);
 
-			const file = await arDrive.getPublicFile({
+			const file = await bundledArDrive.getPublicFile({
 				fileId: created[0].entityId!
 			});
 
@@ -178,7 +195,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a public folder with `createPublicFolderAndUploadChildren` and list the contents of that public folder with `listPublicFolder`', async () => {
-			const { created } = await arDrive.createPublicFolderAndUploadChildren({
+			const { created } = await bundledArDrive.createPublicFolderAndUploadChildren({
 				parentFolderId: rootFolderId,
 				wrappedFolder: wrapFileOrFolder('tests/stub_files/bulk_root_folder/') as ArFSFolderToUpload
 			});
@@ -196,7 +213,7 @@ describe('ArLocal Integration Tests', function () {
 			] = created;
 
 			const entities = (
-				await arDrive.listPublicFolder({
+				await bundledArDrive.listPublicFolder({
 					folderId: created[0].entityId!,
 					maxDepth: Number.MAX_SAFE_INTEGER,
 					includeRoot: true
@@ -317,6 +334,33 @@ describe('ArLocal Integration Tests', function () {
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${grandChildFolder.txId}/${fileInGrandChildResult.metadataTxId}`
 			});
 		});
+
+		it('we can upload a multi-chunk 5 MiB file as a v2 transaction and fetch that public file', async function () {
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt'),
+						destName: 'unique_0'
+					}
+				]
+			});
+			await arweave.api.get(`mine`);
+
+			const file = await bundledArDrive.getPublicFile({ fileId: created[0].entityId! });
+
+			assertPublicFileExpectations({
+				entity: file,
+				driveId,
+				parentFolderId: rootFolderId,
+				metaDataTxId: created[0].metadataTxId!,
+				dataTxId: created[0].dataTxId!,
+				fileId: created[0].entityId!,
+				dataContentType: 'text/plain',
+				entityName: 'unique_0',
+				size: new ByteCount(5242880)
+			});
+		});
 	});
 
 	describe('when a private drive is created with `createPrivateDrive`', () => {
@@ -327,7 +371,7 @@ describe('ArLocal Integration Tests', function () {
 		let driveKey: DriveKey;
 
 		before(async () => {
-			const { created } = await arDrive.createPrivateDrive({
+			const { created } = await bundledArDrive.createPrivateDrive({
 				driveName: 'arlocal_test_drive',
 				newPrivateDriveData: await PrivateDriveKeyData.from('123', (wallet as JWKWallet).getPrivateKey())
 			});
@@ -342,7 +386,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can fetch that private drive with `getPrivateDrive`', async () => {
-			const drive = await arDrive.getPrivateDrive({
+			const drive = await bundledArDrive.getPrivateDrive({
 				driveId,
 				driveKey
 			});
@@ -357,7 +401,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can fetch the private root folder for that drive with with `getPrivateFolder`', async () => {
-			const folder = await arDrive.getPrivateFolder({
+			const folder = await bundledArDrive.getPrivateFolder({
 				folderId: rootFolderId,
 				driveKey
 			});
@@ -372,14 +416,14 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can create a private folder with `createPrivateFolder` and get that private folder with `getPrivateFolder`', async () => {
-			const { created } = await arDrive.createPrivateFolder({
+			const { created } = await bundledArDrive.createPrivateFolder({
 				parentFolderId: rootFolderId,
 				folderName: 'folder5',
 				driveKey
 			});
 			await arweave.api.get(`mine`);
 
-			const folder = await arDrive.getPrivateFolder({
+			const folder = await bundledArDrive.getPrivateFolder({
 				folderId: created[0].entityId!,
 				driveKey
 			});
@@ -395,7 +439,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a private file with `uploadPrivateFile` and get that private file with `getPrivateFile`', async () => {
-			const { created } = await arDrive.uploadPrivateFile({
+			const { created } = await bundledArDrive.uploadPrivateFile({
 				parentFolderId: rootFolderId,
 				wrappedFile: wrapFileOrFolder(
 					'tests/stub_files/bulk_root_folder/parent_folder/file_in_parent.txt'
@@ -404,7 +448,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 			await arweave.api.get(`mine`);
 
-			const file = await arDrive.getPrivateFile({
+			const file = await bundledArDrive.getPrivateFile({
 				fileId: created[0].entityId!,
 				driveKey
 			});
@@ -423,7 +467,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a private folder with `createPrivateFolderAndUploadChildren` and list the contents of that private folder with `listPrivateFolder`', async () => {
-			const { created } = await arDrive.createPrivateFolderAndUploadChildren({
+			const { created } = await bundledArDrive.createPrivateFolderAndUploadChildren({
 				parentFolderId: rootFolderId,
 				wrappedFolder: wrapFileOrFolder('tests/stub_files/bulk_root_folder/') as ArFSFolderToUpload,
 				driveKey
@@ -442,7 +486,7 @@ describe('ArLocal Integration Tests', function () {
 			] = created;
 
 			const entities = (
-				await arDrive.listPrivateFolder({
+				await bundledArDrive.listPrivateFolder({
 					folderId: created[0].entityId!,
 					maxDepth: Number.MAX_SAFE_INTEGER,
 					includeRoot: true,
@@ -562,6 +606,33 @@ describe('ArLocal Integration Tests', function () {
 					'/arlocal_test_drive/bulk_root_folder/parent_folder/child_folder/grandchild_folder/file_in_grandchild.txt',
 				expectedEntityIdPath: `/${rootFolderId}/${rootFolder.entityId}/${parentFolder.entityId}/${childFolder.entityId}/${grandChildFolder.entityId}/${fileInGrandChildResult.entityId}`,
 				expectedTxIdPath: `/${rootFolderTxId}/${rootFolder.txId}/${parentFolder.txId}/${childFolder.txId}/${grandChildFolder.txId}/${fileInGrandChildResult.metadataTxId}`
+			});
+		});
+
+		it('we can upload a multi-chunk private file as a v2 transaction and fetch that private file', async function () {
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder('tests/stub_files/5MiB.txt'),
+						driveKey
+					}
+				]
+			});
+			await arweave.api.get(`mine`);
+
+			const file = await bundledArDrive.getPrivateFile({ fileId: created[0].entityId!, driveKey });
+
+			assertPrivateFileExpectations({
+				entity: file,
+				driveId,
+				parentFolderId: rootFolderId,
+				metaDataTxId: created[0].metadataTxId!,
+				dataTxId: created[0].dataTxId!,
+				fileId: created[0].entityId!,
+				dataContentType: 'text/plain',
+				entityName: '5MiB.txt',
+				size: new ByteCount(5242880)
 			});
 		});
 	});
