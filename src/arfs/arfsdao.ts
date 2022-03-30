@@ -1134,15 +1134,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedEntities,
 		txId,
 		driveKey,
-		fileId,
-		destinationFolderId
-	}: {
+		fileId
+	}: // destinationFolderId
+	{
 		wrappedEntities: (ArFSFileToUpload | ArFSFolderToUpload)[];
 		txId: TransactionID;
 		driveKey?: DriveKey;
 		fileId?: FileID;
 		destinationFolderId?: FolderID;
-	}): Promise<ArFSUploadEntitiesResult> {
+	}): Promise</*ArFSUploadEntitiesResult*/ void> {
 		// TODO: Check pending uploads cache for uploads matching the filePaths from the wrapped entities
 		const tx = await this.gatewayAPI.getTransaction(txId);
 
@@ -1177,9 +1177,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		await this.retryV2FileTransaction(wrappedFile, tx, privateFileInfo);
 
-		return {
-			fileResults: [{ fileDataTxId: tx.id }]
-		};
+		// return {
+		// 	fileResults: [{ fileDataTxId: EID(tx.id) }]
+		// };
 	}
 
 	// private async retryBundleFileTransaction(
@@ -1237,15 +1237,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return tag?.value;
 	}
 
-	private getRequiredGQLTagValue(tx: Transaction, tagName: string): string {
-		const requiredTagValue = this.getGQLTagValue(tx, tagName);
+	// private getRequiredGQLTagValue(tx: Transaction, tagName: string): string {
+	// 	const requiredTagValue = this.getGQLTagValue(tx, tagName);
 
-		if (!requiredTagValue) {
-			throw Error(`Required "${tagName}" GQL tag could not be found on transaction with id: ${tx.id}!`);
-		}
+	// 	if (!requiredTagValue) {
+	// 		throw Error(`Required "${tagName}" GQL tag could not be found on transaction with id: ${tx.id}!`);
+	// 	}
 
-		return requiredTagValue;
-	}
+	// 	return requiredTagValue;
+	// }
 
 	private assertDataRootsMatch(transaction: Transaction, dataRootFromGateway: string): void {
 		if (transaction.data_root !== dataRootFromGateway) {
@@ -2095,21 +2095,21 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 }
 
-interface RetryDataItemInfo {
-	wrappedEntity: ArFSFileToUpload | ArFSFolderToUpload;
-	metaDataItemTxId: TransactionID;
-	driveKey?: DriveKey;
-}
+// interface RetryDataItemInfo {
+// 	wrappedEntity: ArFSFileToUpload | ArFSFolderToUpload;
+// 	metaDataItemTxId: TransactionID;
+// 	driveKey?: DriveKey;
+// }
 
-interface RetryFolderDataItemInfo extends RetryDataItemInfo {
-	wrappedEntity: ArFSFolderToUpload;
-	folderId: FolderID;
-}
-interface RetryFileDataItemInfo extends RetryDataItemInfo {
-	wrappedEntity: ArFSFileToUpload;
-	fileId: FileID;
-	dataDataItemTxId: TransactionID;
-}
+// interface RetryFolderDataItemInfo extends RetryDataItemInfo {
+// 	wrappedEntity: ArFSFolderToUpload;
+// 	folderId: FolderID;
+// }
+// interface RetryFileDataItemInfo extends RetryDataItemInfo {
+// 	wrappedEntity: ArFSFileToUpload;
+// 	fileId: FileID;
+// 	dataDataItemTxId: TransactionID;
+// }
 
 // Information we need to properly re-encrypt a private file's data
 interface PrivateFileInfo {
