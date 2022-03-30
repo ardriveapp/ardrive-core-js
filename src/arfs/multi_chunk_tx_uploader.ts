@@ -42,11 +42,11 @@ export interface MultiChunkTxUploaderConstructorParams {
 export class MultiChunkTxUploader {
 	private chunkOffset = 0;
 	private txPosted = false;
-	private uploadedChunks = 0;
+	private uploadedChunks: number[] = [];
 	private hasFailedRequests = false;
 
 	public get isComplete(): boolean {
-		return this.txPosted && this.uploadedChunks === this.totalChunks;
+		return this.txPosted && this.uploadedChunks.length === this.totalChunks;
 	}
 
 	public get totalChunks(): number {
@@ -55,7 +55,7 @@ export class MultiChunkTxUploader {
 	}
 
 	public get pctComplete(): number {
-		return Math.trunc((this.uploadedChunks / this.totalChunks) * 100);
+		return Math.trunc((this.uploadedChunks.length / this.totalChunks) * 100);
 	}
 
 	private gatewayApi: GatewayAPI;
@@ -130,7 +130,8 @@ export class MultiChunkTxUploader {
 	 */
 	private async uploadChunk(): Promise<void> {
 		while (this.chunkOffset < this.totalChunks && !this.hasFailedRequests) {
-			const chunk = this.transaction.getChunk(this.chunkOffset++, this.transaction.data);
+			const chunkIndex = this.chunkOffset++;
+			const chunk = this.transaction.getChunk(chunkIndex, this.transaction.data);
 
 			try {
 				await this.gatewayApi.postChunk(chunk);
@@ -139,7 +140,7 @@ export class MultiChunkTxUploader {
 				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
 			}
 
-			this.uploadedChunks++;
+			this.uploadedChunks.push(chunkIndex);
 			this.progressCallback?.(this.pctComplete);
 		}
 
@@ -173,7 +174,9 @@ export class MultiChunkTxUploader {
 
 		if (uploadInBody) {
 			this.chunkOffset += this.totalChunks;
-			this.uploadedChunks += this.totalChunks;
+			for (let chunkIndex = 0; chunkIndex < this.totalChunks; chunkIndex++) {
+				this.uploadedChunks.push(chunkIndex);
+			}
 		}
 
 		return;
