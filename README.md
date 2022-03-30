@@ -204,6 +204,27 @@ And finally, to view the detailed error messages in your terminal:
 yarn power-assert -g 'My test case'
 ```
 
+### Progress Logging of Transaction Uploads
+
+Progress logging of transaction uploads to stderr can be enabled by setting the `ARDRIVE_PROGRESS_LOG` environment variable to `1`:
+
+```shell
+Uploading file transaction 1 of total 2 transactions...
+Transaction _GKQasQX194a364Hph8Oe-oku1AdfHwxWOw9_JC1yjc Upload Progress: 0%
+Transaction _GKQasQX194a364Hph8Oe-oku1AdfHwxWOw9_JC1yjc Upload Progress: 35%
+Transaction _GKQasQX194a364Hph8Oe-oku1AdfHwxWOw9_JC1yjc Upload Progress: 66%
+Transaction _GKQasQX194a364Hph8Oe-oku1AdfHwxWOw9_JC1yjc Upload Progress: 100%
+Uploading file transaction 2 of total 2 transactions...
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 0%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 13%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 28%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 42%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 60%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 76%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 91%
+Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 100%
+```
+
 ### Persistent Caching of ArFS Entity Metadata
 
 To avoid redundant requests to the Arweave network for immutable ArFS entity metadata, a persistent file cache is created and maintained at:
