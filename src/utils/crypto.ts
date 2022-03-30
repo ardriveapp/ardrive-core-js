@@ -62,8 +62,8 @@ export async function driveEncrypt(driveKey: DriveKey, data: Buffer): Promise<Ar
 }
 
 // New ArFS File encryption function using a buffer and using ArDrive KDF with AES-256-GCM
-export async function fileEncrypt(fileKey: FileKey, data: Buffer): Promise<ArFSEncryptedData> {
-	const iv: Buffer = crypto.randomBytes(12);
+export async function fileEncrypt(fileKey: FileKey, data: Buffer, cipherIV?: string): Promise<ArFSEncryptedData> {
+	const iv: Buffer = cipherIV ? Buffer.from(cipherIV, 'base64') : crypto.randomBytes(12);
 	const cipher = crypto.createCipheriv(algo, fileKey.keyData, iv, { authTagLength });
 	const encryptedBuffer: Buffer = Buffer.concat([cipher.update(data), cipher.final(), cipher.getAuthTag()]);
 	const encryptedFile: ArFSEncryptedData = {
