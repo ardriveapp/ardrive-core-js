@@ -1103,18 +1103,28 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return transaction;
 	}
 
-	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {
+	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
 		// Execute the uploads
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
 				await transaction.prepareChunks(transaction.data);
 
-				// Only log progress if total chunks of transaction is greater than the max concurrent chunks setting
-				const shouldProgressLog =
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					this.shouldProgressLog && transaction.chunks!.chunks.length > defaultMaxConcurrentChunks;
+				const uploaderParams: MultiChunkTxUploaderConstructorParams = {
+					transaction,
+					gatewayApi: this.gatewayAPI,
+					progressCallback: this.shouldProgressLog
+						? new TxProgressLogger(transaction).progressCallback
+						: undefined
+				};
 
-				let progressLogDebounce = false;
+				const transactionUploader = resumeChunkUpload
+					? MultiChunkTxUploader.resumeChunkUpload(uploaderParams)
+					: new MultiChunkTxUploader(uploaderParams);
+
+				await transactionUploader.batchUploadChunks();
+			}
+		}
+	}
 
 				const transactionUploader = new MultiChunkTxUploader({
 					transaction,
