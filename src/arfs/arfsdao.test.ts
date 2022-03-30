@@ -23,7 +23,7 @@ import {
 	stubCommunityTipSettings
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
-import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
+import { getDecodedTags, readJWKFile, Utf8ArrayToStr } from '../utils/common';
 import {
 	ArFSCache,
 	ArFSDAO,
@@ -36,7 +36,7 @@ import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_ent
 import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache } from './arfsdao_anonymous';
 import { stub } from 'sinon';
 import { expect } from 'chai';
-import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
+import { expectAsyncErrorThrow } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
 import { DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';

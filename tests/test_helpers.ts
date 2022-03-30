@@ -1,6 +1,4 @@
-import { Tag } from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
-import { GQLTagInterface } from '../src/types';
 
 interface expectAsyncErrorThrowParams {
 	promiseToError: Promise<unknown>;
