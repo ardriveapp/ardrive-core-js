@@ -161,6 +161,7 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave, getDecodedTags } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import {
+	ADDR,
 	ArFSEncryptedData,
 	ArFSFileToUpload,
 	ArFSFolderToUpload,
@@ -1134,20 +1135,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedEntities,
 		txId,
 		driveKey,
-		fileId
-	}: // destinationFolderId
-	{
+		fileId,
+		destinationFolderId
+	}: {
 		wrappedEntities: (ArFSFileToUpload | ArFSFolderToUpload)[];
 		txId: TransactionID;
 		driveKey?: DriveKey;
 		fileId?: FileID;
 		destinationFolderId?: FolderID;
-	}): Promise</*ArFSUploadEntitiesResult*/ void> {
+	}): Promise<ArFSUploadEntitiesResult | true> {
 		// TODO: Check pending uploads cache for uploads matching the filePaths from the wrapped entities
 		const tx = await this.gatewayAPI.getTransaction(txId);
 
 		if (this.isBundleTx(tx) || wrappedEntities.length > 1) {
-			// TODO: Implement bundle Tx
+			// TODO: Implement bundle Tx retry
 			throw Error('Unimplemented retry for bulk upload or bundle tx');
 		}
 
@@ -1158,28 +1159,128 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		if (this.isMetaDataTx(tx)) {
-			// TODO: Implement retry flow for when a user provides metadata TX ID
+			// TODO: Implement OR disallow retry flow for when a user provides metadata TX ID
 			throw Error('Unimplemented retry for provided MetaData TxID ');
 		}
 
-		let privateFileInfo: PrivateFileInfo | undefined = undefined;
-		const dataTxCipherIV = this.getGQLTagValue(tx, 'Cipher-IV');
-		if (dataTxCipherIV) {
-			// This was a private file upload, we need File Key and Cipher IV to reconstruct
-			if (!driveKey || !fileId) {
-				throw Error('Drive key and File ID are required to retry encrypting private file data');
-			}
-			const fileKey = await deriveFileKey(`${fileId}`, driveKey);
-
-			privateFileInfo = { cipherIV: dataTxCipherIV, fileKey };
-		}
 		const wrappedFile = wrappedEntities[0];
 
-		await this.retryV2FileTransaction(wrappedFile, tx, privateFileInfo);
+		if (destinationFolderId || fileId) {
+			return {
+				fileResults: [
+					await this.retryV2ArFSFileTransaction({
+						wrappedFile,
+						arFSDataTx: tx,
+						destinationFolderId,
+						fileId,
+						driveKey
+					})
+				],
+				bundleResults: [],
+				folderResults: []
+			};
+		} else {
+			await this.retryV2FileTransaction(wrappedFile, tx);
 
-		// return {
-		// 	fileResults: [{ fileDataTxId: EID(tx.id) }]
-		// };
+			// Non-ArFS Retry has completed
+			return true;
+		}
+	}
+
+	private async retryV2ArFSFileTransaction({
+		wrappedFile,
+		arFSDataTx,
+		destinationFolderId,
+		fileId,
+		driveKey
+	}: {
+		wrappedFile: ArFSFileToUpload;
+		arFSDataTx: Transaction;
+		destinationFolderId?: FolderID;
+		fileId?: FileID;
+		driveKey?: DriveKey;
+	}): Promise<FileResult> {
+		let metaDataTxId: undefined | TransactionID = undefined;
+		let fileKey: undefined | FileKey = undefined;
+
+		if (fileId) {
+			try {
+				const owner = await this.getDriveOwnerForFileId(fileId);
+				const fileMetaData = await this.getFile(fileId, owner, driveKey);
+
+				metaDataTxId = fileMetaData.txId;
+			} catch (err) {
+				// File was not found... Disregard fileId input and proceed
+				fileId = undefined;
+				console.error(err);
+			}
+		}
+
+		// We derive the Cipher IV directly from the transactions tags to determine privacy
+		const dataTxCipherIV = this.getGQLTagValue(arFSDataTx, 'Cipher-IV');
+
+		if (!fileId && destinationFolderId) {
+			const owner = await this.getDriveOwnerForFolderId(destinationFolderId);
+
+			// TODO: Throw here if folder is missing?
+			// -- we cannot verify an ArFS tx to a non-existent folder
+			// Probably change this to `assertFolderExists(...)`
+			await this.getFolder(destinationFolderId, owner, driveKey);
+
+			// TODO: private files here
+			const allFileMetaDataTxInFolder = await this.getPublicFilesWithParentFolderIds(
+				[destinationFolderId],
+				owner
+			);
+
+			const metaDataTxsForThisTx = allFileMetaDataTxInFolder.filter((f) => `${f.dataTxId}` === arFSDataTx.id);
+
+			if (metaDataTxsForThisTx.length > 0) {
+				// This data tx has a healthy meta data tx 👏👏
+
+				// We can use this file ID for PRIVATE flow
+				fileId ??= metaDataTxsForThisTx[0].fileId;
+				metaDataTxId = metaDataTxsForThisTx[0].txId;
+			} else {
+				// There is no healthy meta data tx
+
+				// TODO: We must now re-create the MetaData Tx here and resubmit it
+
+				if (dataTxCipherIV) {
+					// TODO: PRIVATE FLOW
+					if (!driveKey || !fileId) {
+						throw Error('Drive key and File ID are required to retry encrypting private file data');
+					}
+
+					fileKey = await deriveFileKey(`${fileId}`, driveKey);
+				} else {
+					// TODO: PUBLIC FLOW
+				}
+			}
+		}
+
+		if (!metaDataTxId || !fileId) {
+			// TODO: Temp satisfying TypeScript flows.
+			// These will exist or other errors above will have already been thrown
+			throw Error('MetaData Tx could not be verified');
+		}
+
+		const privateFileInfo: PrivateFileInfo | undefined =
+			dataTxCipherIV !== undefined && fileKey !== undefined ? { cipherIV: dataTxCipherIV, fileKey } : undefined;
+
+		await this.retryV2FileTransaction(wrappedFile, arFSDataTx, privateFileInfo);
+
+		return {
+			fileDataTxId: TxID(arFSDataTx.id),
+			metaDataTxId,
+			communityTipSettings: {
+				communityTipTarget: ADDR(arFSDataTx.target),
+				communityWinstonTip: W(arFSDataTx.quantity)
+			},
+			fileDataReward: W(arFSDataTx.reward),
+			fileId,
+			fileKey
+		};
 	}
 
 	// private async retryBundleFileTransaction(
@@ -1196,6 +1297,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transaction: Transaction,
 		privateInfo?: PrivateFileInfo
 	): Promise<void> {
+		const dataRootFromGateway = transaction.data_root;
+
 		if (privateInfo) {
 			const { fileKey, cipherIV } = privateInfo;
 
@@ -1210,7 +1313,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			transaction.data = wrappedFile.getFileDataBuffer();
 		}
 
-		this.assertDataRootsMatch(transaction, transaction.data_root);
+		await transaction.prepareChunks(transaction.data);
+		this.assertDataRootsMatch(transaction, dataRootFromGateway);
 
 		await this.sendTransactionsAsChunks([transaction], true);
 	}
@@ -1268,6 +1372,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
+	private async getFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveKey?: DriveKey
+	): Promise<ArFSPublicFolder | ArFSPrivateFolder> {
+		try {
+			if (driveKey) {
+				return this.getPrivateFolder(folderId, driveKey, owner);
+			}
+			return this.getPublicFolder(folderId, owner);
+		} catch (err) {
+			throw Error(
+				`${driveKey === undefined ? 'Public' : 'Private'} folder with ID ${folderId} could not be found: ${err}`
+			);
+		}
+	}
+
 	// Convenience function for known-private use cases
 	async getPrivateFolder(folderId: FolderID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFolder> {
 		const cacheKey = { folderId, driveKey, owner };
@@ -1279,6 +1400,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			cacheKey,
 			new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build()
 		);
+	}
+
+	private async getFile(
+		fileId: FileID,
+		owner: ArweaveAddress,
+		driveKey?: DriveKey
+	): Promise<ArFSPublicFile | ArFSPrivateFile> {
+		try {
+			if (driveKey) {
+				return this.getPrivateFile(fileId, driveKey, owner);
+			}
+			return this.getPublicFile(fileId, owner);
+		} catch (err) {
+			throw Error(
+				`${driveKey === undefined ? 'Public' : 'Private'} file with ID ${fileId} could not be found: ${err}`
+			);
+		}
 	}
 
 	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
