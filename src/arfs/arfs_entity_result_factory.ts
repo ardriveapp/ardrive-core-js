@@ -40,6 +40,11 @@ export interface FileResult {
 	fileKey?: FileKey;
 }
 
+export interface ArFSV2PublicRetryResult extends Omit<FileResult, 'fileKey'> {
+	fileDataReward: Winston;
+	communityTipSettings: CommunityTipSettings;
+}
+
 export interface BundleResult {
 	bundleTxId: TransactionID;
 	bundleReward: Winston;

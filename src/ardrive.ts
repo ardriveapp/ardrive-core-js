@@ -11,7 +11,7 @@ import {
 	privateEntityWithPathsKeylessFactory,
 	ArFSPrivateDriveKeyless
 } from './arfs/arfs_entities';
-import { ArFSPrivateFileToDownload, ArFSManifestToUpload } from './arfs/arfs_file_wrapper';
+import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -76,7 +76,9 @@ import {
 	RenamePublicDriveParams,
 	RenamePrivateDriveParams,
 	DriveKey,
-	W
+	W,
+	ArFSFees,
+	TransactionID
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -1109,6 +1111,37 @@ export class ArDrive extends ArDriveAnonymous {
 		if (collidesWithExistingSiblingName) {
 			throw new Error(`There already is an entity named that way`);
 		}
+	}
+
+	public async retryPublicArFSFileUpload(p: {
+		wrappedFile: ArFSFileToUpload;
+		arFSDataTxId: TransactionID;
+		destinationFolderId?: FolderID;
+		fileId?: FileID;
+	}): Promise<ArFSResult> {
+		// prettier-ignore
+		const { fileDataReward, fileMetaDataReward, fileDataTxId, fileId, metaDataTxId, communityTipSettings } =
+			await this.arFsDao.retryV2ArFSFileTransaction(p);
+
+		let fees: ArFSFees = {
+			[`${fileDataTxId}`]: fileDataReward
+		};
+
+		if (fileMetaDataReward) {
+			fees = { ...fees, [`${metaDataTxId}`]: fileMetaDataReward };
+		}
+
+		return {
+			created: [{ type: 'file', dataTxId: fileDataTxId, metadataTxId: metaDataTxId, entityId: fileId }],
+			tips: [
+				{
+					recipient: communityTipSettings.communityTipTarget,
+					txId: fileDataTxId,
+					winston: communityTipSettings.communityWinstonTip
+				}
+			],
+			fees
+		};
 	}
 
 	async assertUniqueNameWithinPrivateFolder(name: string, folderId: FolderID, driveKey: DriveKey): Promise<void> {

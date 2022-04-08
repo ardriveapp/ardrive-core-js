@@ -37,7 +37,8 @@ import {
 	ArFSRenamePublicFolderResult,
 	ArFSRenamePrivateFolderResult,
 	ArFSRenamePublicDriveResult,
-	ArFSRenamePrivateDriveResult
+	ArFSRenamePrivateDriveResult,
+	ArFSV2PublicRetryResult
 } from './arfs_entity_result_factory';
 import { ArFSFolderToDownload, ArFSManifestToUpload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
 import { getPrepFileParams, getPrepFolderFactoryParams, MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
@@ -68,13 +69,14 @@ import {
 	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
-import { deriveDriveKey, deriveFileKey, driveDecrypt, fileEncrypt } from '../utils/crypto';
+import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
 	authTagLength,
 	gatewayGqlEndpoint,
-	validArFSVersions
+	fakeTxID,
+	fakeEntityId
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -158,13 +160,11 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave, getDecodedTags } from '../utils/common';
+import { gatewayUrlForArweave } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import {
 	ADDR,
-	ArFSEncryptedData,
 	ArFSFileToUpload,
-	ArFSFolderToUpload,
 	ArFSPrivateFileWithPaths,
 	ArFSPrivateFolderWithPaths,
 	privateEntityWithPathsKeylessFactory
@@ -1131,103 +1131,103 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 	}
 
-	public async retryUpload({
-		wrappedEntities,
-		txId,
-		driveKey,
-		fileId,
-		destinationFolderId
-	}: {
-		wrappedEntities: (ArFSFileToUpload | ArFSFolderToUpload)[];
-		txId: TransactionID;
-		driveKey?: DriveKey;
-		fileId?: FileID;
-		destinationFolderId?: FolderID;
-	}): Promise<ArFSUploadEntitiesResult | true> {
-		// TODO: Check pending uploads cache for uploads matching the filePaths from the wrapped entities
-		const tx = await this.gatewayAPI.getTransaction(txId);
+	// public async retryUpload({
+	// 	wrappedEntities,
+	// 	txId,
+	// 	driveKey,
+	// 	fileId,
+	// 	destinationFolderId
+	// }: {
+	// 	wrappedEntities: (ArFSFileToUpload | ArFSFolderToUpload)[];
+	// 	txId: TransactionID;
+	// 	driveKey?: DriveKey;
+	// 	fileId?: FileID;
+	// 	destinationFolderId?: FolderID;
+	// }): Promise<ArFSUploadEntitiesResult | true> {
+	// 	// TODO: Check pending uploads cache for uploads matching the filePaths from the wrapped entities
+	// 	const tx = await this.gatewayAPI.getTransaction(txId);
 
-		if (this.isBundleTx(tx) || wrappedEntities.length > 1) {
-			// TODO: Implement bundle Tx retry
-			throw Error('Unimplemented retry for bulk upload or bundle tx');
-		}
+	// 	if (this.isBundleTx(tx) || wrappedEntities.length > 1) {
+	// 		// TODO: Implement bundle Tx retry
+	// 		throw Error('Unimplemented retry for bulk upload or bundle tx');
+	// 	}
 
-		if (wrappedEntities[0].entityType !== 'file') {
-			throw Error(
-				'V2 folder uploads only contain one chunk. One chunk transactions would never be in a state where their chunks are missing because that chunk is sent with the transactions headers'
-			);
-		}
+	// 	if (wrappedEntities[0].entityType !== 'file') {
+	// 		throw Error(
+	// 			'V2 folder uploads only contain one chunk. One chunk transactions would never be in a state where their chunks are missing because that chunk is sent with the transactions headers'
+	// 		);
+	// 	}
 
-		if (this.isMetaDataTx(tx)) {
-			// TODO: Implement OR disallow retry flow for when a user provides metadata TX ID
-			throw Error('Unimplemented retry for provided MetaData TxID ');
-		}
+	// 	if (this.isMetaDataTx(tx)) {
+	// 		// TODO: Implement OR disallow retry flow for when a user provides metadata TX ID
+	// 		throw Error('Unimplemented retry for provided MetaData TxID ');
+	// 	}
 
-		const wrappedFile = wrappedEntities[0];
+	// 	const wrappedFile = wrappedEntities[0];
 
-		if (destinationFolderId || fileId) {
-			return {
-				fileResults: [
-					await this.retryV2ArFSFileTransaction({
-						wrappedFile,
-						arFSDataTx: tx,
-						destinationFolderId,
-						fileId,
-						driveKey
-					})
-				],
-				bundleResults: [],
-				folderResults: []
-			};
-		} else {
-			await this.retryV2FileTransaction(wrappedFile, tx);
+	// 	if (destinationFolderId || fileId) {
+	// 		return {
+	// 			fileResults: [
+	// 				await this.retryV2ArFSFileTransaction({
+	// 					wrappedFile,
+	// 					arFSDataTx: tx,
+	// 					destinationFolderId,
+	// 					fileId,
+	// 					driveKey
+	// 				})
+	// 			],
+	// 			bundleResults: [],
+	// 			folderResults: []
+	// 		};
+	// 	} else {
+	// 		await this.retryV2FileTransaction(wrappedFile, tx);
 
-			// Non-ArFS Retry has completed
-			return true;
-		}
-	}
+	// 		// Non-ArFS Retry has completed
+	// 		return true;
+	// 	}
+	// }
 
-	private async retryV2ArFSFileTransaction({
+	public async retryV2ArFSFileTransaction({
 		wrappedFile,
-		arFSDataTx,
+		arFSDataTxId,
 		destinationFolderId,
-		fileId,
-		driveKey
-	}: {
+		fileId
+	}: // driveKey
+	{
 		wrappedFile: ArFSFileToUpload;
-		arFSDataTx: Transaction;
+		arFSDataTxId: TransactionID;
 		destinationFolderId?: FolderID;
 		fileId?: FileID;
-		driveKey?: DriveKey;
-	}): Promise<FileResult> {
+		// driveKey?: DriveKey;
+	}): Promise<ArFSV2PublicRetryResult> {
+		const arFSDataTx = await this.gatewayAPI.getTransaction(arFSDataTxId);
+		console.log('arFSDataTx', arFSDataTx);
+
 		let metaDataTxId: undefined | TransactionID = undefined;
-		let fileKey: undefined | FileKey = undefined;
+		// let fileKey: undefined | FileKey = undefined;
 
 		if (fileId) {
 			try {
 				const owner = await this.getDriveOwnerForFileId(fileId);
-				const fileMetaData = await this.getFile(fileId, owner, driveKey);
+				const fileMetaData = await this.getFile(fileId, owner);
 
-				metaDataTxId = fileMetaData.txId;
+				if (fileMetaData.dataTxId.equals(arFSDataTxId)) {
+					// This metadata tx id is verified
+					metaDataTxId = fileMetaData.txId;
+				}
 			} catch (err) {
-				// File was not found... Disregard fileId input and proceed
-				fileId = undefined;
 				console.error(err);
 			}
 		}
 
-		// We derive the Cipher IV directly from the transactions tags to determine privacy
-		const dataTxCipherIV = this.getGQLTagValue(arFSDataTx, 'Cipher-IV');
-
-		if (!fileId && destinationFolderId) {
+		if (!metaDataTxId && destinationFolderId) {
 			const owner = await this.getDriveOwnerForFolderId(destinationFolderId);
 
 			// TODO: Throw here if folder is missing?
 			// -- we cannot verify an ArFS tx to a non-existent folder
 			// Probably change this to `assertFolderExists(...)`
-			await this.getFolder(destinationFolderId, owner, driveKey);
+			await this.getFolder(destinationFolderId, owner);
 
-			// TODO: private files here
 			const allFileMetaDataTxInFolder = await this.getPublicFilesWithParentFolderIds(
 				[destinationFolderId],
 				owner
@@ -1245,17 +1245,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				// There is no healthy meta data tx
 
 				// TODO: We must now re-create the MetaData Tx here and resubmit it
-
-				if (dataTxCipherIV) {
-					// TODO: PRIVATE FLOW
-					if (!driveKey || !fileId) {
-						throw Error('Drive key and File ID are required to retry encrypting private file data');
-					}
-
-					fileKey = await deriveFileKey(`${fileId}`, driveKey);
-				} else {
-					// TODO: PUBLIC FLOW
-				}
+				console.log('create new meta data TX');
+				metaDataTxId = fakeTxID;
+				fileId = fakeEntityId;
 			}
 		}
 
@@ -1265,10 +1257,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			throw Error('MetaData Tx could not be verified');
 		}
 
-		const privateFileInfo: PrivateFileInfo | undefined =
-			dataTxCipherIV !== undefined && fileKey !== undefined ? { cipherIV: dataTxCipherIV, fileKey } : undefined;
-
-		await this.retryV2FileTransaction(wrappedFile, arFSDataTx, privateFileInfo);
+		await this.retryV2FileTransaction(wrappedFile, arFSDataTx);
 
 		return {
 			fileDataTxId: TxID(arFSDataTx.id),
@@ -1278,8 +1267,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				communityWinstonTip: W(arFSDataTx.quantity)
 			},
 			fileDataReward: W(arFSDataTx.reward),
-			fileId,
-			fileKey
+			fileId
+			// fileKey
 		};
 	}
 
@@ -1294,24 +1283,26 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	// Retry a single public or private file transaction
 	private async retryV2FileTransaction(
 		wrappedFile: ArFSFileToUpload,
-		transaction: Transaction,
-		privateInfo?: PrivateFileInfo
+		transaction: Transaction
+		// privateInfo?: PrivateFileInfo
 	): Promise<void> {
 		const dataRootFromGateway = transaction.data_root;
 
-		if (privateInfo) {
-			const { fileKey, cipherIV } = privateInfo;
+		transaction = new Transaction(transaction);
 
-			const { data: encryptedData }: ArFSEncryptedData = await fileEncrypt(
-				fileKey,
-				wrappedFile.getFileDataBuffer(),
-				cipherIV
-			);
+		// if (privateInfo) {
+		// 	const { fileKey, cipherIV } = privateInfo;
 
-			transaction.data = encryptedData;
-		} else {
-			transaction.data = wrappedFile.getFileDataBuffer();
-		}
+		// 	const { data: encryptedData }: ArFSEncryptedData = await fileEncrypt(
+		// 		fileKey,
+		// 		wrappedFile.getFileDataBuffer(),
+		// 		cipherIV
+		// 	);
+
+		// 	transaction.data = encryptedData;
+		// } else {
+		transaction.data = wrappedFile.getFileDataBuffer();
+		// }
 
 		await transaction.prepareChunks(transaction.data);
 		this.assertDataRootsMatch(transaction, dataRootFromGateway);
@@ -1319,27 +1310,27 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await this.sendTransactionsAsChunks([transaction], true);
 	}
 
-	private isBundleTx(tx: Transaction): boolean {
-		const bundleTagValue = this.getGQLTagValue(tx, 'Bundle-Format');
-		return bundleTagValue === 'binary';
-	}
+	// private isBundleTx(tx: Transaction): boolean {
+	// 	const bundleTagValue = this.getGQLTagValue(tx, 'Bundle-Format');
+	// 	return bundleTagValue === 'binary';
+	// }
 
-	private isMetaDataTx(tx: Transaction): boolean {
-		const bundleTagValue = this.getGQLTagValue(tx, 'ArFS');
+	// private isMetaDataTx(tx: Transaction): boolean {
+	// 	const bundleTagValue = this.getGQLTagValue(tx, 'ArFS');
 
-		if (!bundleTagValue) {
-			return false;
-		}
+	// 	if (!bundleTagValue) {
+	// 		return false;
+	// 	}
 
-		return validArFSVersions.includes(bundleTagValue);
-	}
+	// 	return validArFSVersions.includes(bundleTagValue);
+	// }
 
-	private getGQLTagValue(tx: Transaction, tagName: string): string | undefined {
-		const gqlTags = getDecodedTags(tx.tags);
-		const tag = gqlTags.find((t) => t.name === tagName);
+	// private getGQLTagValue(tx: Transaction, tagName: string): string | undefined {
+	// 	const gqlTags = getDecodedTags(tx.tags);
+	// 	const tag = gqlTags.find((t) => t.name === tagName);
 
-		return tag?.value;
-	}
+	// 	return tag?.value;
+	// }
 
 	// private getRequiredGQLTagValue(tx: Transaction, tagName: string): string {
 	// 	const requiredTagValue = this.getGQLTagValue(tx, tagName);
@@ -2249,8 +2240,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 // 	dataDataItemTxId: TransactionID;
 // }
 
-// Information we need to properly re-encrypt a private file's data
-interface PrivateFileInfo {
-	fileKey: FileKey;
-	cipherIV: CipherIV;
-}
+// // Information we need to properly re-encrypt a private file's data
+// interface PrivateFileInfo {
+// 	fileKey: FileKey;
+// 	cipherIV: CipherIV;
+// }
