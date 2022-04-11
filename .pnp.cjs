@@ -36,12 +36,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@alexsasharegan/simple-cache", "npm:3.3.3"],\
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],\
             ["@types/chai", "npm:4.2.21"],\
-            ["@types/fs-extra", "npm:9.0.8"],\
+            ["@types/fs-extra", "npm:9.0.13"],\
             ["@types/jwk-to-pem", "npm:2.0.0"],\
             ["@types/lodash", "npm:4.14.176"],\
             ["@types/mime-types", "npm:2.1.0"],\
             ["@types/mocha", "npm:8.2.1"],\
-            ["@types/node", "npm:14.17.5"],\
+            ["@types/node", "npm:17.0.23"],\
             ["@types/power-assert", "npm:1.5.3"],\
             ["@types/regression", "npm:2.0.2"],\
             ["@types/sinon", "npm:10.0.2"],\
@@ -1257,10 +1257,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["@types/fs-extra", [\
-        ["npm:9.0.8", {\
-          "packageLocation": "./.yarn/cache/@types-fs-extra-npm-9.0.8-330686f6fb-88b6a29ebb.zip/node_modules/@types/fs-extra/",\
+        ["npm:9.0.13", {\
+          "packageLocation": "./.yarn/cache/@types-fs-extra-npm-9.0.13-12fb7badd7-add79e212a.zip/node_modules/@types/fs-extra/",\
           "packageDependencies": [\
-            ["@types/fs-extra", "npm:9.0.8"],\
+            ["@types/fs-extra", "npm:9.0.13"],\
             ["@types/node", "npm:16.11.7"]\
           ],\
           "linkType": "HARD"\
@@ -1360,6 +1360,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-node-npm-16.11.7-1799a0a435-2706403e6e.zip/node_modules/@types/node/",\
           "packageDependencies": [\
             ["@types/node", "npm:16.11.7"]\
+          ],\
+          "linkType": "HARD"\
+        }],\
+        ["npm:17.0.23", {\
+          "packageLocation": "./.yarn/cache/@types-node-npm-17.0.23-167849e796-a351755473.zip/node_modules/@types/node/",\
+          "packageDependencies": [\
+            ["@types/node", "npm:17.0.23"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -1995,12 +2002,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@alexsasharegan/simple-cache", "npm:3.3.3"],\
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],\
             ["@types/chai", "npm:4.2.21"],\
-            ["@types/fs-extra", "npm:9.0.8"],\
+            ["@types/fs-extra", "npm:9.0.13"],\
             ["@types/jwk-to-pem", "npm:2.0.0"],\
             ["@types/lodash", "npm:4.14.176"],\
             ["@types/mime-types", "npm:2.1.0"],\
             ["@types/mocha", "npm:8.2.1"],\
-            ["@types/node", "npm:14.17.5"],\
+            ["@types/node", "npm:17.0.23"],\
             ["@types/power-assert", "npm:1.5.3"],\
             ["@types/regression", "npm:2.0.2"],\
             ["@types/sinon", "npm:10.0.2"],\
@@ -7804,7 +7811,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@tsconfig/node12", "npm:1.0.9"],\
             ["@tsconfig/node14", "npm:1.0.1"],\
             ["@tsconfig/node16", "npm:1.0.1"],\
-            ["@types/node", "npm:14.17.5"],\
+            ["@types/node", "npm:17.0.23"],\
             ["@types/swc__core", null],\
             ["@types/swc__wasm", null],\
             ["@types/typescript", null],\

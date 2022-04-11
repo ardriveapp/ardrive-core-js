@@ -1031,12 +1031,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/fs-extra@npm:^9.0.8":
-  version: 9.0.8
-  resolution: "@types/fs-extra@npm:9.0.8"
+"@types/fs-extra@npm:^9.0.13":
+  version: 9.0.13
+  resolution: "@types/fs-extra@npm:9.0.13"
   dependencies:
     "@types/node": "*"
-  checksum: 88b6a29ebb27b743fbc3340df5619fefe8d64e73224a29939ec19cf7cd3235f22a25a865ab1059fc49131389eab5513c997b1b4b24622ae7d4a15bfc2fbf130e
+  checksum: add79e212acd5ac76b97b9045834e03a7996aef60a814185e0459088fd290519a3c1620865d588fa36c4498bf614210d2a703af5cf80aa1dbc125db78f6edac3
   languageName: node
   linkType: hard
 
@@ -1115,10 +1115,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^14.14.32, @types/node@npm:^14.6.1":
+"@types/node@npm:^14.6.1":
   version: 14.17.5
   resolution: "@types/node@npm:14.17.5"
   checksum: 8fba22a8df7bcea75039f08e00fcff8e331f6d367739a9631d3457bc3e8e5ddfdd60e1a5d685d9420312e9ed7cf2f2146d37224ec9f7d578fe8dd32ce3821e62
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^17.0.23":
+  version: 17.0.23
+  resolution: "@types/node@npm:17.0.23"
+  checksum: a3517554737cbb042e76c30d0e5482192ac4d9bea0eeb086e2622d9cabf460a0eb52a696b99fcd18e7fcc93c96db6cc7ae507f6608f256ef0b5c1d8c87a5a470
   languageName: node
   linkType: hard
 
@@ -1607,12 +1614,12 @@ __metadata:
     "@alexsasharegan/simple-cache": ^3.3.3
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/chai": ^4.2.15
-    "@types/fs-extra": ^9.0.8
+    "@types/fs-extra": ^9.0.13
     "@types/jwk-to-pem": ^2.0.0
     "@types/lodash": ^4
     "@types/mime-types": ^2.1.0
     "@types/mocha": ^8.2.1
-    "@types/node": ^14.14.32
+    "@types/node": ^17.0.23
     "@types/power-assert": ^1
     "@types/regression": ^2
     "@types/sinon": ^10.0.2
