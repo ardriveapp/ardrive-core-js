@@ -37,9 +37,11 @@ describe('FeeMultiple class', () => {
 		});
 
 		it('returns rounded FeeMultiple strings when precision is excessive', () => {
+			// eslint-disable-next-line @typescript-eslint/no-loss-of-precision
 			const feeMultipleRoundDown = new FeeMultiple(2.000000000000000000000000000000001);
 			expect(`${feeMultipleRoundDown}`).to.equal('2');
 
+			// eslint-disable-next-line @typescript-eslint/no-loss-of-precision
 			const feeMultipleRoundUp = new FeeMultiple(0.999999999999999999999999999);
 			expect(`${feeMultipleRoundUp}`).to.equal('1');
 		});
