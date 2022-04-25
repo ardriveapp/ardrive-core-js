@@ -41,6 +41,26 @@ describe('MultiChunkTxUploader class', () => {
 		txWithTwentyChunksOfData = await prepTx(twentyChunksOfData);
 	});
 
+	describe('resumeChunkUpload static method', () => {
+		it('returns an uploader that will not post the transaction header', async () => {
+			const uploader = MultiChunkTxUploader.resumeChunkUpload({
+				gatewayApi,
+				transaction: txWithTwentyChunksOfData
+			});
+
+			const uploadChunkSpy = spy(uploader as any, 'uploadChunk');
+			const postTxHeaderSpy = spy(uploader as any, 'postTransactionHeader');
+
+			stub(gatewayApi, 'postToEndpoint').resolves();
+
+			await uploader.batchUploadChunks();
+
+			expect(uploader.isComplete).to.be.true;
+			expect(uploadChunkSpy.callCount).to.equal(20);
+			expect(postTxHeaderSpy.callCount).to.equal(0);
+		});
+	});
+
 	describe('batchUploadChunks method', () => {
 		it('posts chunk with tx header as expected with a small sized tx', async () => {
 			const uploader = new MultiChunkTxUploader({
