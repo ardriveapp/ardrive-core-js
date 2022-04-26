@@ -146,6 +146,11 @@ export interface CalculatedFolderMetaDataPlan extends Omit<V2FolderMetaDataPlan,
 	metaDataRewardSettings: RewardSettings;
 }
 
+export interface CalculatedV2MetaDataUploadPlan {
+	metaDataRewardSettings: RewardSettings;
+	totalWinstonPrice: Winston;
+}
+
 export interface PlanEntityParams {
 	isBulkUpload: boolean;
 }
