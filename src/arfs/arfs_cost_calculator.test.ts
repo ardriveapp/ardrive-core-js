@@ -306,4 +306,30 @@ describe('ArFSCostCalculator class', () => {
 			expect(+rootFolderRewardSettings.feeMultiple!).to.equal(10);
 		});
 	});
+
+	describe('calculateCostForV2MetaDataUpload', () => {
+		it('returns the expected calculated v2 meta data upload plan', async () => {
+			const { metaDataRewardSettings, totalWinstonPrice } = await costCalc.calculateCostForV2MetaDataUpload(
+				new ByteCount(20)
+			);
+
+			const { reward, feeMultiple } = metaDataRewardSettings;
+
+			expect(+totalWinstonPrice).to.equal(20);
+			expect(+reward!).to.equal(20);
+			expect(+feeMultiple!).to.equal(1);
+		});
+
+		it('returns the expected calculated create drive plan for a boosted bundle', async () => {
+			// prettier-ignore
+			const { metaDataRewardSettings, totalWinstonPrice } =
+				await boostedX10CostCalc.calculateCostForV2MetaDataUpload(new ByteCount(20));
+
+			const { reward, feeMultiple } = metaDataRewardSettings;
+
+			expect(+totalWinstonPrice).to.equal(200);
+			expect(+reward!).to.equal(20);
+			expect(+feeMultiple!).to.equal(10);
+		});
+	});
 });
