@@ -6,6 +6,7 @@ import { expect } from 'chai';
 import { describe } from 'mocha';
 import { spy, stub } from 'sinon';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
+import { stubTransactionID } from '../types';
 import { FATAL_CHUNK_UPLOAD_ERRORS } from './constants';
 import { GatewayAPI } from './gateway_api';
 
@@ -155,6 +156,20 @@ describe('GatewayAPI class', () => {
 
 			expect(axiosSpy.callCount).to.equal(1);
 			expect(endPointSpy.args[0][0]).to.equal('tx');
+		});
+	});
+
+	describe('getTransaction method', () => {
+		it('returns the expected transaction without error when the response contains a successful status code', async () => {
+			const axiosSpy = stub(axiosInstance, 'get').resolves({ data: smallTx, status: 200 });
+
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			const tx = await gatewayApi.getTransaction(stubTransactionID);
+
+			expect(tx).to.deep.equal(smallTx);
+			expect(axiosSpy.callCount).to.equal(1);
+			expect(axiosSpy.args[0][0]).to.equal('http://fake/tx/0000000000000000000000000000000000000000000');
 		});
 	});
 });
