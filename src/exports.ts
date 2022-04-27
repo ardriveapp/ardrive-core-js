@@ -36,6 +36,7 @@ export * from './community/contract_oracle';
 export * from './community/contract_types';
 export * from './community/smartweave_contract_oracle';
 export * from './community/verto_contract_oracle';
+export * from './community/redstone_contract_oracle';
 
 // Pricing
 export * from './pricing/ar_data_price';
