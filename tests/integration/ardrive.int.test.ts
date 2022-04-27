@@ -3399,8 +3399,6 @@ describe('ArDrive class - integrated', () => {
 			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
-			stub(arfsDao, 'getPublicFile').resolves(stubRetryFile);
-
 			stub(arfsDao, 'getPublicFilesWithParentFolderIds').resolves([stubRetryFile]);
 			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
 
@@ -3408,6 +3406,8 @@ describe('ArDrive class - integrated', () => {
 		});
 
 		it('returns the expected result when a valid metaData tx is found with the provided file ID', async () => {
+			stub(arfsDao, 'getPublicFile').resolves(stubRetryFile);
+
 			const result = await arDrive.retryPublicArFSFileUpload({
 				dataTxId: matchingDataTxID,
 				wrappedFile: stubSmallFileToUpload(),
@@ -3415,6 +3415,19 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			assertRetryExpectations({ result, expectedFileId: stubEntityIDAlt });
+		});
+
+		it('throws an error when a valid metadata tx could not be found and there is destination folder id provided', async () => {
+			stub(arfsDao, 'getPublicFile').throws();
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.retryPublicArFSFileUpload({
+					dataTxId: matchingDataTxID,
+					wrappedFile: stubSmallFileToUpload(),
+					fileId: stubEntityIDAlt
+				}),
+				errorMessage: `A valid file ID for an existing MetaData Tx or a valid destination folder ID is required to restore an ArFS file!`
+			});
 		});
 
 		it('returns the expected result when a valid metaData tx is found within the provided folder ID', async () => {
@@ -3516,7 +3529,6 @@ function assertRetryExpectations({
 	expectedMetaDataTxReward?: Winston;
 }): void {
 	const { created, tips, fees } = result;
-	console.log('result', JSON.stringify(result, null, 4));
 
 	expect(created).to.have.length(1);
 	const { type, bundleTxId, dataTxId, entityId, key, metadataTxId } = created[0];
