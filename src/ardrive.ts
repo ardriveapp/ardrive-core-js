@@ -636,7 +636,13 @@ export class ArDrive extends ArDriveAnonymous {
 			metaDataTxId = await this.deriveMetaDataTxIdForFileId(fileId, dataTxId);
 		}
 
-		if (metaDataTxId === undefined && destinationFolderId) {
+		if (metaDataTxId === undefined) {
+			if (!destinationFolderId) {
+				throw Error(
+					'A valid file ID for an existing MetaData Tx or a valid destination folder ID is required to restore an ArFS file!'
+				);
+			}
+
 			const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
 
 			if (metaDataTx) {
