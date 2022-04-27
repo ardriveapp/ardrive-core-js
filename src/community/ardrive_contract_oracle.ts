@@ -39,7 +39,7 @@ export class ArDriveContractOracle implements ContractOracle {
 	 *
 	 * @remarks Will fallback to other contract readers when one fails
 	 */
-	async readContract(txId: TransactionID): Promise<unknown> {
+	async readContract(txId: TransactionID, height?: number): Promise<unknown> {
 		let contract: unknown;
 		let currentContractReader = initialContractReader;
 		let readContractAttempts = initialContractAttempts;
@@ -47,7 +47,7 @@ export class ArDriveContractOracle implements ContractOracle {
 		while (!contract) {
 			try {
 				// Get contract with current contract reader's readContract implementation
-				contract = await this.contractReaders[currentContractReader].readContract(txId);
+				contract = await this.contractReaders[currentContractReader].readContract(txId, height);
 			} catch (error) {
 				console.error(`Contract could not be fetched: ${error}`);
 				readContractAttempts++;

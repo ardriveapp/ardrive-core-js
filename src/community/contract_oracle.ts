@@ -8,5 +8,5 @@ export interface ContractOracle extends ContractReader {
 }
 
 export interface ContractReader {
-	readContract(txId: TransactionID): Promise<unknown>;
+	readContract(txId: TransactionID, height?: number): Promise<unknown>;
 }

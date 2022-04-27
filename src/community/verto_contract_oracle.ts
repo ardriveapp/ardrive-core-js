@@ -8,7 +8,10 @@ import { ContractReader } from './contract_oracle';
  */
 export class VertoContractReader implements ContractReader {
 	/** Fetches smartweave contracts from the Verto cache */
-	public async readContract(txId: TransactionID): Promise<unknown> {
+	public async readContract(txId: TransactionID, height?: number): Promise<unknown> {
+		if (height) {
+			throw new Error('Unimplemented! Cannot query by block height with Verto');
+		}
 		const response: AxiosResponse = await axios.get(`https://v2.cache.verto.exchange/${txId}`);
 		const contract = response.data;
 		return contract.state;
