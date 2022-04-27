@@ -79,12 +79,18 @@ export class GatewayAPI {
 	}
 
 	public async getTransaction(txId: TransactionID): Promise<Transaction> {
-		console.log('enter');
-		return (
-			await this.retryRequestUntilMaxRetries<Transaction>(() =>
-				this.axiosInstance.get(`${this.gatewayUrl.href}tx/${txId}`)
-			)
-		).data;
+		try {
+			return (
+				await this.retryRequestUntilMaxRetries<Transaction>(() =>
+					this.axiosInstance.get(`${this.gatewayUrl.href}tx/${txId}`)
+				)
+			).data;
+		} catch (err) {
+			console.log('this.lastError', this.lastError);
+			throw Error(
+				`Transaction could not be found from the gateway: (Status: ${this.lastRespStatus}) ${this.lastError}`
+			);
+		}
 	}
 
 	/**
