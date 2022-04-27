@@ -26,7 +26,8 @@ import {
 	ArFSPublicDrive,
 	ArFSPrivateDrive,
 	ArFSPrivateFileWithPaths,
-	ArFSPrivateFolderWithPaths
+	ArFSPrivateFolderWithPaths,
+	ArFSFileToUpload
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';
@@ -224,4 +225,17 @@ export interface SeparatedFolderHierarchy<FileType, FolderType> {
 	hierarchy: FolderHierarchy;
 	childFiles: FileType[];
 	childFolders: FolderType[];
+}
+
+export interface ArFSRetryPublicFileUploadParams {
+	wrappedFile: ArFSFileToUpload;
+	arFSDataTxId: TransactionID;
+	createMetaDataPlan?: ArFSCreateFileMetaDataV2Plan;
+}
+
+export interface ArFSCreateFileMetaDataV2Plan {
+	rewardSettings: RewardSettings;
+	destinationFolderId: FolderID;
+	// File ID will be defined here for revision retries
+	fileId?: FileID;
 }

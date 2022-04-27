@@ -56,6 +56,18 @@ export interface ArFSCreateDriveResult extends ArFSWriteResult, ArFSDriveResult 
 	rootFolderTxReward: Winston;
 }
 
+export interface ArFSV2PublicRetryResult {
+	fileDataReward: Winston;
+	communityTipSettings: CommunityTipSettings;
+	newMetaDataInfo?: NewFileMetaDataCreated;
+}
+
+export interface NewFileMetaDataCreated {
+	fileId: FileID;
+	metaDataTxId: TransactionID;
+	fileMetaDataReward: Winston;
+}
+
 export interface ArFSFileResult {
 	fileId: FileID;
 	dataTxId: TransactionID;

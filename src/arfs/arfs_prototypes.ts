@@ -24,8 +24,10 @@ import {
 	ContentType,
 	DrivePrivacy,
 	GQLTagInterface,
-	EntityType
+	EntityType,
+	TransactionID
 } from '../types';
+import { ArFSDataToUpload } from './arfs_file_wrapper';
 
 export abstract class ArFSObjectMetadataPrototype {
 	abstract gqlTags: GQLTagInterface[];
@@ -175,6 +177,14 @@ export abstract class ArFSFileMetaDataPrototype extends ArFSEntityMetaDataProtot
 		];
 	}
 }
+
+export interface ArFSPublicFileMetaDataPrototypeFromFileParams {
+	wrappedFile: ArFSDataToUpload;
+	dataTxId: TransactionID;
+	driveId: DriveID;
+	fileId: FileID;
+	parentFolderId: FolderID;
+}
 export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 	readonly contentType: ContentType = JSON_CONTENT_TYPE;
 
@@ -185,6 +195,29 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		readonly parentFolderId: FolderID
 	) {
 		super();
+	}
+
+	public static fromFile({
+		wrappedFile,
+		dataTxId,
+		parentFolderId,
+		fileId,
+		driveId
+	}: ArFSPublicFileMetaDataPrototypeFromFileParams): ArFSPublicFileMetaDataPrototype {
+		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+		return new ArFSPublicFileMetaDataPrototype(
+			new ArFSPublicFileMetadataTransactionData(
+				wrappedFile.destinationBaseName,
+				fileSize,
+				lastModifiedDateMS,
+				dataTxId,
+				dataContentType
+			),
+			driveId,
+			fileId,
+			parentFolderId
+		);
 	}
 }
 

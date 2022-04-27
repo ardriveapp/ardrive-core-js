@@ -1,4 +1,5 @@
 import Arweave from 'arweave';
+import Transaction from 'arweave/node/lib/transaction';
 import { readFileSync } from 'fs';
 import {
 	ArFSPublicDrive,
@@ -483,13 +484,16 @@ export const stubFolderUploadStats = (destFolderId = stubEntityID): UploadStats<
 	};
 };
 
-export const stubFileToUpload = (destinationName?: string): ArFSFileToUpload => {
-	const file = wrapFileOrFolder('test_wallet.json') as ArFSFileToUpload;
+export const stubFileToUpload = (destinationName?: string, filePath = 'test_wallet.json'): ArFSFileToUpload => {
+	const file = wrapFileOrFolder(filePath) as ArFSFileToUpload;
 
 	// Assign destination name if provided
 	file.destName = destinationName;
 	return file;
 };
+
+export const stubSmallFileToUpload = (destinationName?: string): ArFSFileToUpload =>
+	stubFileToUpload(destinationName, 'tests/stub_files/bulk_root_folder/file_in_root.txt');
 
 export const stubFolderToUpload = (): ArFSFolderToUpload =>
 	wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
@@ -512,6 +516,25 @@ export const stubEmptyFolderStats = (destFolderId = stubEntityID): UploadStats<A
 		...stubPlanUploadStats(destFolderId),
 		wrappedEntity: stubEmptyFolderToUpload()
 	};
+};
+
+export const stubSignedTransaction = async (): Promise<Transaction> => {
+	const testWalletPrivateKey = (readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey();
+
+	const transaction = await fakeArweave.createTransaction(
+		{
+			reward: '10',
+			last_tx: 'STUB',
+			quantity: '5',
+			target: `${stubArweaveAddress()}`,
+			data: stubSmallFileToUpload().getFileDataBuffer()
+		},
+		testWalletPrivateKey
+	);
+
+	await fakeArweave.transactions.sign(transaction, testWalletPrivateKey);
+
+	return transaction;
 };
 
 export const stub1025CharString =

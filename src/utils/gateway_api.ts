@@ -86,7 +86,6 @@ export class GatewayAPI {
 				)
 			).data;
 		} catch (err) {
-			console.log('this.lastError', this.lastError);
 			throw Error(
 				`Transaction could not be found from the gateway: (Status: ${this.lastRespStatus}) ${this.lastError}`
 			);

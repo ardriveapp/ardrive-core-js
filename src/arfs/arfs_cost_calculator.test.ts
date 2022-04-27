@@ -307,7 +307,7 @@ describe('ArFSCostCalculator class', () => {
 		});
 	});
 
-	describe('calculateCostForV2MetaDataUpload', () => {
+	describe('calculateCostForV2MetaDataUpload method', () => {
 		it('returns the expected calculated v2 meta data upload plan', async () => {
 			const { metaDataRewardSettings, totalWinstonPrice } = await costCalc.calculateCostForV2MetaDataUpload(
 				new ByteCount(20)
