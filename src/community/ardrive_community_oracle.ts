@@ -5,6 +5,7 @@ import { ArDriveContractOracle } from './ardrive_contract_oracle';
 import Arweave from 'arweave';
 import { SmartweaveContractReader } from './smartweave_contract_oracle';
 import { VertoContractReader } from './verto_contract_oracle';
+import { RedstoneContractReader } from './redstone_contract_oracle';
 import { ADDR, ArweaveAddress, W, Winston } from '../types';
 
 /**
@@ -30,7 +31,8 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 	private defaultContractReaders: ContractReader[] = [
 		new VertoContractReader(),
-		new SmartweaveContractReader(this.arweave)
+		new SmartweaveContractReader(this.arweave),
+		new RedstoneContractReader(this.arweave)
 	];
 
 	/**

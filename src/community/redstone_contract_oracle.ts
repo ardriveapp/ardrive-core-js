@@ -7,7 +7,7 @@ import { ContractReader } from './contract_oracle';
  *  Oracle class responsible for retrieving and reading
  *  Smartweave Contracts from Arweave with the `redstone-smartweave` package
  */
-export class SmartweaveContractReader implements ContractReader {
+export class RedstoneContractReader implements ContractReader {
 	smartweave: SmartWeave;
 
 	constructor(private readonly arweave: Arweave) {
