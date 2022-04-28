@@ -494,10 +494,13 @@ export const stubFileToUpload = (destinationName?: string, filePath = 'test_wall
 
 export const stubSmallFileToUpload = (destinationName?: string): ArFSFileToUpload =>
 	stubFileToUpload(destinationName, 'tests/stub_files/bulk_root_folder/file_in_root.txt');
-export const stub258KiBFileToUpload = stubFileToUpload(undefined, 'tests/stub_files/258KiB.txt');
-export const stub2ChunkFileToUpload = stubFileToUpload(undefined, 'tests/stub_files/2Chunk.txt');
-export const stub3ChunkFileToUpload = stubFileToUpload(undefined, 'tests/stub_files/3Chunk.txt');
-export const stub5MiBFileToUpload = stubFileToUpload(undefined, 'tests/stub_files/5MiB.txt');
+export const stub258KiBFileToUpload = (): ArFSFileToUpload =>
+	stubFileToUpload(undefined, 'tests/stub_files/258KiB.txt');
+export const stub2ChunkFileToUpload = (): ArFSFileToUpload =>
+	stubFileToUpload(undefined, 'tests/stub_files/2Chunk.txt');
+export const stub3ChunkFileToUpload = (): ArFSFileToUpload =>
+	stubFileToUpload(undefined, 'tests/stub_files/3Chunk.txt');
+export const stub5MiBFileToUpload = (): ArFSFileToUpload => stubFileToUpload(undefined, 'tests/stub_files/5MiB.txt');
 
 export const stubFolderToUpload = (): ArFSFolderToUpload =>
 	wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;

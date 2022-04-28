@@ -397,7 +397,7 @@ describe('ArLocal Integration Tests', function () {
 				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
-				const wrappedFile = stub2ChunkFileToUpload;
+				const wrappedFile = stub2ChunkFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
 				// This will result in:
@@ -464,7 +464,7 @@ describe('ArLocal Integration Tests', function () {
 				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
-				const wrappedFile = stub3ChunkFileToUpload;
+				const wrappedFile = stub3ChunkFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
 				// This will result in:
@@ -530,7 +530,7 @@ describe('ArLocal Integration Tests', function () {
 				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
 
-				const wrappedFile = stub258KiBFileToUpload;
+				const wrappedFile = stub258KiBFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to THROW
 				// This will result in:
