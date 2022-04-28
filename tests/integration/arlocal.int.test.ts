@@ -421,6 +421,7 @@ describe('ArLocal Integration Tests', function () {
 
 				// File MetaData should already be valid
 				const file = await bundledArDrive.getPublicFile({ fileId });
+				console.log('file', JSON.stringify(file));
 				assertPublicFileExpectations({
 					entity: file,
 					driveId,
@@ -446,6 +447,7 @@ describe('ArLocal Integration Tests', function () {
 				await arweave.api.get(`mine`);
 
 				const repairedData = await getFileData(dataTxId);
+				console.log('dataTxId test 1', JSON.stringify(dataTxId));
 				expect(repairedData.byteLength).to.equal(524_288);
 
 				assertRetryExpectations({
@@ -511,6 +513,7 @@ describe('ArLocal Integration Tests', function () {
 					destinationFolderId: rootFolderId
 				});
 				await arweave.api.get(`mine`);
+				console.log('dataTxId test 2', JSON.stringify(dataTxId));
 
 				const repairedData = await getFileData(dataTxId);
 				expect(repairedData.byteLength).to.equal(786_432);
@@ -559,6 +562,8 @@ describe('ArLocal Integration Tests', function () {
 				}
 
 				const dataTxId = await deriveLastTxInfoFromGqlForOwner(await wallet.getAddress());
+
+				console.log('dataTxId test 3', JSON.stringify(dataTxId));
 
 				// Restore GatewayAPI from stub
 				restore();
