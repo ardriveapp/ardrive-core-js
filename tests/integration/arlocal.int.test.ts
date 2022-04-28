@@ -449,7 +449,7 @@ describe('ArLocal Integration Tests', function () {
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(524_288);
-				expect(repairedData.byteLength).to.equal(0);
+				expect(repairedData.byteLength).to.be.greaterThan(0);
 
 				assertRetryExpectations({
 					result,
