@@ -440,7 +440,7 @@ describe('ArLocal Integration Tests', function () {
 				// Retry this file
 				const result = await v2ArDrive.retryPublicArFSFileUpload({
 					dataTxId,
-					wrappedFile,
+					wrappedFile: stub2ChunkFileToUpload(),
 					fileId
 				});
 				await arweave.api.get(`mine`);
@@ -507,7 +507,7 @@ describe('ArLocal Integration Tests', function () {
 				// Retry this file
 				const result = await v2ArDrive.retryPublicArFSFileUpload({
 					dataTxId,
-					wrappedFile,
+					wrappedFile: stub3ChunkFileToUpload(),
 					destinationFolderId: rootFolderId
 				});
 				await arweave.api.get(`mine`);
@@ -570,7 +570,7 @@ describe('ArLocal Integration Tests', function () {
 				// Retry this file
 				const result = await v2ArDrive.retryPublicArFSFileUpload({
 					dataTxId,
-					wrappedFile,
+					wrappedFile: stub258KiBFileToUpload(),
 					destinationFolderId: rootFolderId
 				});
 				await arweave.api.get(`mine`);
