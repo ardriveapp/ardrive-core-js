@@ -13,7 +13,10 @@ import {
 	DriveKey,
 	FileID,
 	DataContentType,
-	ByteCount
+	ByteCount,
+	ArweaveAddress,
+	W,
+	TxID
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
@@ -39,8 +42,20 @@ import {
 	ArFSPublicFolder,
 	ArFSPublicFolderWithPaths
 } from '../../src/arfs/arfs_entities';
+import { GatewayAPI } from '../../src/utils/gateway_api';
+import { restore, stub } from 'sinon';
+import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload } from '../stubs';
+import axios from 'axios';
+import { assertRetryExpectations } from '../test_assertions';
+import { expectAsyncErrorThrow } from '../test_helpers';
+import GQLResultInterface from '../../src/types/gql_Types';
+import { buildQuery } from '../../src/utils/query';
 
 describe('ArLocal Integration Tests', function () {
+	this.timeout(60000);
+
+	process.env.NODE_ENV = 'arlocal-test';
+
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const arweave = Arweave.init({
@@ -54,7 +69,17 @@ describe('ArLocal Integration Tests', function () {
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
-	const arfsDao = new ArFSDAO(wallet, arweave, false, undefined, undefined, arFSTagSettings);
+	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
+	const arfsDao = new ArFSDAO(
+		wallet,
+		arweave,
+		false,
+		undefined,
+		undefined,
+		arFSTagSettings,
+		undefined,
+		fakeGatewayApi
+	);
 
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
@@ -101,6 +126,30 @@ describe('ArLocal Integration Tests', function () {
 		// Fund wallet
 		await arweave.api.get(`mint/${await wallet.getAddress()}/9999999999999999`);
 	});
+
+	// it('send a tx', async () => {
+	// 	const privkey = (wallet as JWKWallet).getPrivateKey();
+
+	// 	const tx = await arweave.createTransaction(
+	// 		{
+	// 			data: readFileSync('tests/stub_files/5MiB.txt'),
+	// 			reward: '10',
+	// 			quantity: '10',
+	// 			target: `${stubArweaveAddress()}`
+	// 		},
+	// 		privkey
+	// 	);
+
+	// 	await arweave.transactions.sign(tx, privkey);
+
+	// 	const up = await arweave.transactions.getUploader(tx);
+
+	// 	while (!up.isComplete) {
+	// 		await up.uploadChunk();
+	// 	}
+
+	// 	await arweave.api.get(`mine`);
+	// });
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
 		let rootFolderId: FolderID;
@@ -359,6 +408,227 @@ describe('ArLocal Integration Tests', function () {
 				dataContentType: 'text/plain',
 				entityName: 'unique_0',
 				size: new ByteCount(5242880)
+			});
+		});
+
+		describe('with a v2 public file transaction that has incomplete chunks', () => {
+			const getFileData = async (txId: TransactionID): Promise<Buffer> =>
+				(
+					await axios.get(`${gatewayUrlForArweave(arweave).href}${txId}`, {
+						responseType: 'arraybuffer'
+					})
+				).data;
+
+			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
+				// prettier-ignore
+				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
+				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
+				stub(fakeGatewayApi, 'postChunk').resolves();
+
+				const wrappedFile = stub2ChunkFileToUpload;
+
+				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
+				// This will result in:
+				//  - Data Tx Headers Posted and Incomplete Chunks
+				//  - Valid MetaData Tx Posted
+				const { created } = await v2ArDrive.uploadAllEntities({
+					entitiesToUpload: [
+						{
+							destFolderId: rootFolderId,
+							wrappedEntity: wrappedFile
+						}
+					]
+				});
+				await arweave.api.get(`mine`);
+
+				const fileId = created[0].entityId!;
+				const dataTxId = created[0].dataTxId!;
+
+				// Restore GatewayAPI from stub
+				restore();
+
+				// File MetaData should already be valid
+				const file = await bundledArDrive.getPublicFile({ fileId });
+				assertPublicFileExpectations({
+					entity: file,
+					driveId,
+					parentFolderId: rootFolderId,
+					metaDataTxId: created[0].metadataTxId!,
+					dataTxId: created[0].dataTxId!,
+					fileId: created[0].entityId!,
+					dataContentType: 'text/plain',
+					entityName: '2Chunk.txt',
+					size: new ByteCount(524_288)
+				});
+
+				// Ensure that the data is incomplete
+				const incompleteData = await getFileData(dataTxId);
+				expect(incompleteData.byteLength).to.equal(0);
+
+				// Retry this file
+				const result = await v2ArDrive.retryPublicArFSFileUpload({
+					dataTxId,
+					wrappedFile,
+					fileId
+				});
+				await arweave.api.get(`mine`);
+
+				const repairedData = await getFileData(dataTxId);
+				expect(repairedData.byteLength).to.equal(524_288);
+
+				assertRetryExpectations({
+					result,
+					expectedDataTxId: dataTxId,
+					expectedFileId: fileId,
+					emptyTarget: true,
+					expectedCommunityTip: W(154544268902),
+					expectedDataTxReward: W(1030295126016)
+				});
+			});
+
+			it('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
+				// prettier-ignore
+				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
+				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
+				stub(fakeGatewayApi, 'postChunk').resolves();
+
+				const wrappedFile = stub3ChunkFileToUpload;
+
+				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
+				// This will result in:
+				//  - Data Tx Headers Posted and Incomplete Chunks
+				//  - Valid MetaData Tx Posted
+				const { created } = await v2ArDrive.uploadAllEntities({
+					entitiesToUpload: [
+						{
+							destFolderId: rootFolderId,
+							wrappedEntity: wrappedFile
+						}
+					]
+				});
+				await arweave.api.get(`mine`);
+
+				const fileId = created[0].entityId!;
+				const dataTxId = created[0].dataTxId!;
+
+				// Restore GatewayAPI from stub
+				restore();
+
+				// File MetaData should already be valid
+				const file = await bundledArDrive.getPublicFile({ fileId });
+				assertPublicFileExpectations({
+					entity: file,
+					driveId,
+					parentFolderId: rootFolderId,
+					metaDataTxId: created[0].metadataTxId!,
+					dataTxId: created[0].dataTxId!,
+					fileId: created[0].entityId!,
+					dataContentType: 'text/plain',
+					entityName: '3Chunk.txt',
+					size: new ByteCount(786_432)
+				});
+
+				// Ensure that the data is incomplete
+				const incompleteData = await getFileData(dataTxId);
+				expect(incompleteData.byteLength).to.equal(0);
+
+				// Retry this file
+				const result = await v2ArDrive.retryPublicArFSFileUpload({
+					dataTxId,
+					wrappedFile,
+					destinationFolderId: rootFolderId
+				});
+				await arweave.api.get(`mine`);
+
+				const repairedData = await getFileData(dataTxId);
+				expect(repairedData.byteLength).to.equal(786_432);
+
+				assertRetryExpectations({
+					result,
+					expectedDataTxId: dataTxId,
+					emptyTarget: true,
+					expectedCommunityTip: W(231816403353),
+					expectedDataTxReward: W(1545442689024)
+				});
+			});
+
+			it('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
+				// prettier-ignore
+				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
+				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
+				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
+
+				const wrappedFile = stub258KiBFileToUpload;
+
+				// Upload file with `postChunk` method stubbed to THROW
+				// This will result in:
+				//  - Data Tx Headers Posted and Incomplete Chunks
+				//  - No MetaData Tx Posted
+				await expectAsyncErrorThrow({
+					promiseToError: v2ArDrive.uploadAllEntities({
+						entitiesToUpload: [
+							{
+								destFolderId: rootFolderId,
+								wrappedEntity: wrappedFile
+							}
+						]
+					}),
+					errorMessage: 'Too many errors encountered while posting chunks: Bad Error!'
+				});
+				await arweave.api.get(`mine`);
+
+				async function deriveLastTxInfoFromGqlForOwner(owner: ArweaveAddress): Promise<TransactionID> {
+					const gqlResp: GQLResultInterface = (
+						await arweave.api.post('graphql', buildQuery({ tags: [], owner }))
+					).data;
+
+					const txNode = gqlResp.data.transactions.edges[0].node;
+					return TxID(txNode.id);
+				}
+
+				const dataTxId = await deriveLastTxInfoFromGqlForOwner(await wallet.getAddress());
+
+				// Restore GatewayAPI from stub
+				restore();
+
+				// Ensure data is incomplete
+				const incompleteData = await getFileData(dataTxId);
+				expect(incompleteData.byteLength).to.equal(0);
+
+				// Retry this file
+				const result = await v2ArDrive.retryPublicArFSFileUpload({
+					dataTxId,
+					wrappedFile,
+					destinationFolderId: rootFolderId
+				});
+				await arweave.api.get(`mine`);
+
+				const repairedData = await getFileData(dataTxId);
+				expect(repairedData.byteLength).to.equal(264_192);
+
+				assertRetryExpectations({
+					result,
+					expectedDataTxId: dataTxId,
+					emptyTarget: true,
+					expectedCommunityTip: W(154_544_268_902),
+					expectedDataTxReward: W(1_030_295_126_016),
+					// We expect a metaData reward to exist
+					expectedMetaDataTxReward: W(5_468_962_356)
+				});
+
+				// File MetaData should now be valid
+				const file = await bundledArDrive.getPublicFile({ fileId: result.created[0].entityId! });
+				assertPublicFileExpectations({
+					entity: file,
+					driveId,
+					parentFolderId: rootFolderId,
+					metaDataTxId: result.created[0].metadataTxId!,
+					dataTxId: result.created[0].dataTxId!,
+					fileId: result.created[0].entityId!,
+					dataContentType: 'text/plain',
+					entityName: '258KiB.txt',
+					size: new ByteCount(264_192)
+				});
 			});
 		});
 	});

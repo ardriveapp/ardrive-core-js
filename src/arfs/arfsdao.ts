@@ -1170,7 +1170,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return {
 			communityTipSettings: {
-				communityTipTarget: ADDR(arFSDataTx.target),
+				// prettier-ignore
+				// TODO: Provided for ArLocal integration testing work around
+				// Remove this when `target` field can be set on ArLocal for multi-chunk uploads
+				communityTipTarget: arFSDataTx.target ? ADDR(arFSDataTx.target) : ('' as unknown as ArweaveAddress),
 				communityWinstonTip: W(arFSDataTx.quantity)
 			},
 			fileDataReward: W(arFSDataTx.reward),

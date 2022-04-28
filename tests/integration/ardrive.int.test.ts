@@ -72,7 +72,6 @@ import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 import {
 	ArFSPrivateFile,
 	ArFSPrivateFolder,
-	EntityID,
 	FolderHierarchy,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
@@ -80,6 +79,7 @@ import {
 } from '../../src/exports';
 import { MAX_BUNDLE_SIZE } from '../../src/utils/constants';
 import { GatewayAPI } from '../../src/utils/gateway_api';
+import { assertRetryExpectations } from '../test_assertions';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -3514,58 +3514,6 @@ describe('ArDrive class - integrated', () => {
 		});
 	});
 });
-
-function assertRetryExpectations({
-	result,
-	expectedFileId,
-	expectedDataTxId = stubTxID,
-	expectedMetaDataTxId,
-	expectedMetaDataTxReward
-}: {
-	result: ArFSResult;
-	expectedFileId?: EntityID;
-	expectedDataTxId?: TransactionID;
-	expectedMetaDataTxId?: TransactionID;
-	expectedMetaDataTxReward?: Winston;
-}): void {
-	const { created, tips, fees } = result;
-
-	expect(created).to.have.length(1);
-	const { type, bundleTxId, dataTxId, entityId, key, metadataTxId } = created[0];
-
-	expect(type).to.equal('file');
-
-	expect(bundleTxId).to.be.undefined;
-	expect(key).to.be.undefined;
-
-	expect(`${dataTxId}`).to.equal(`${expectedDataTxId}`);
-
-	if (expectedMetaDataTxId) {
-		expect(`${metadataTxId}`).to.equal(`${expectedMetaDataTxId}`);
-	} else {
-		expect(metadataTxId).to.match(txIdRegex);
-	}
-
-	if (expectedFileId) {
-		expect(`${entityId}`).to.equal(`${expectedFileId}`);
-	} else {
-		expect(entityId).to.match(entityIdRegex);
-	}
-
-	expect(tips).to.have.length(1);
-	const { recipient, txId, winston } = tips[0];
-
-	expect(`${recipient}`).to.equal(`${stubArweaveAddress()}`);
-	expect(`${txId}`).to.equal(`${expectedDataTxId}`);
-	expect(+winston).to.equal(5);
-
-	expect(Object.keys(fees)).to.have.length(expectedMetaDataTxReward === undefined ? 1 : 2);
-	expect(+fees[`${expectedDataTxId}`]).to.equal(10);
-
-	if (expectedMetaDataTxReward) {
-		expect(+Object.values(fees)[1]).to.equal(+expectedMetaDataTxReward);
-	}
-}
 
 function assertCreateDriveExpectations(
 	result: ArFSResult,
