@@ -1,11 +1,16 @@
 import { expect } from 'chai';
-import { fakeArweave, stubCommunityContract } from '../../tests/stubs';
-import { W } from '../types';
+import { fakeArweave, stubCommunityContract, stubOlderCommunityContract } from '../../tests/stubs';
+import { TransactionID, W } from '../types';
 import { ArDriveCommunityOracle } from './ardrive_community_oracle';
+import type { ContractReader } from './contract_oracle';
 
 describe('The ArDriveCommunityOracle', () => {
-	const stubContractReader = {
-		async readContract() {
+	const stubContractReader: ContractReader = {
+		async readContract(_: TransactionID, height?: number) {
+			if (height) {
+				// this ensures ArDriveCommunityOracle is not using block height
+				return stubOlderCommunityContract;
+			}
 			return stubCommunityContract;
 		}
 	};

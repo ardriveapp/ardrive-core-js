@@ -462,6 +462,12 @@ export const stubCommunityContract = {
 	balances: { [`${stubArweaveAddress()}`]: 200 }
 };
 
+export const stubOlderCommunityContract = {
+	settings: [['fee', 25]],
+	vault: { [`${stubArweaveAddress('olderAddress')}`]: [{ balance: 500, start: 1, end: 2 }] },
+	balances: { [`${stubArweaveAddress('olderAddress')}`]: 200 }
+};
+
 const stubPlanUploadStats = (destFolderId: FolderID): Omit<UploadStats, 'wrappedEntity'> => {
 	return {
 		destDriveId: stubEntityID,
