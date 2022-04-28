@@ -52,10 +52,6 @@ import GQLResultInterface from '../../src/types/gql_Types';
 import { buildQuery } from '../../src/utils/query';
 
 describe('ArLocal Integration Tests', function () {
-	this.timeout(60000);
-
-	process.env.NODE_ENV = 'arlocal-test';
-
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const arweave = Arweave.init({
@@ -126,30 +122,6 @@ describe('ArLocal Integration Tests', function () {
 		// Fund wallet
 		await arweave.api.get(`mint/${await wallet.getAddress()}/9999999999999999`);
 	});
-
-	// it('send a tx', async () => {
-	// 	const privkey = (wallet as JWKWallet).getPrivateKey();
-
-	// 	const tx = await arweave.createTransaction(
-	// 		{
-	// 			data: readFileSync('tests/stub_files/5MiB.txt'),
-	// 			reward: '10',
-	// 			quantity: '10',
-	// 			target: `${stubArweaveAddress()}`
-	// 		},
-	// 		privkey
-	// 	);
-
-	// 	await arweave.transactions.sign(tx, privkey);
-
-	// 	const up = await arweave.transactions.getUploader(tx);
-
-	// 	while (!up.isComplete) {
-	// 		await up.uploadChunk();
-	// 	}
-
-	// 	await arweave.api.get(`mine`);
-	// });
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
 		let rootFolderId: FolderID;
