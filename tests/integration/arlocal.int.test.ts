@@ -20,7 +20,7 @@ import {
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
-import { gatewayUrlForArweave, readJWKFile, sleep } from '../../src/utils/common';
+import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
 import { ArDrive } from '../../src/ardrive';
 
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -445,7 +445,6 @@ describe('ArLocal Integration Tests', function () {
 					fileId
 				});
 				// Delay `mine` to see if GitHub CI catches up
-				await sleep(500);
 				await arweave.api.get(`mine`);
 
 				const repairedData = await getFileData(dataTxId);
@@ -516,7 +515,6 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Delay `mine` to see if GitHub CI catches up
-				await sleep(500);
 				await arweave.api.get(`mine`);
 
 				console.log('dataTxId test 2', JSON.stringify(dataTxId));
@@ -585,7 +583,6 @@ describe('ArLocal Integration Tests', function () {
 					destinationFolderId: rootFolderId
 				});
 				// Delay `mine` to see if GitHub CI catches up
-				await sleep(500);
 				await arweave.api.get(`mine`);
 
 				const repairedData = await getFileData(dataTxId);
