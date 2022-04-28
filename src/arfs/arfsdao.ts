@@ -1117,6 +1117,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					await transaction.prepareChunks(transaction.data);
 				}
 
+				console.log('byteLength inside tx chunk send', transaction.data.byteLength);
+
 				// Only log progress if total chunks of transaction is greater than the max concurrent chunks setting
 				const shouldProgressLog =
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -1157,6 +1159,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		createMetaDataPlan
 	}: ArFSRetryPublicFileUploadParams): Promise<ArFSV2PublicRetryResult> {
 		const arFSDataTx = await this.gatewayApi.getTransaction(arFSDataTxId);
+
+		console.log('arFSDataTxId', arFSDataTxId);
+		console.log('wrappedFile byte length', wrappedFile.getFileDataBuffer().byteLength);
 
 		const newMetaDataInfo = createMetaDataPlan
 			? await this.createV2PublicFileMetaData({
