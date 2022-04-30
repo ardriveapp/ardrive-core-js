@@ -21,6 +21,8 @@ export type FileKey = EntityKey;
 
 export type DataContentType = string;
 
+export type SourceUri = string;
+
 export interface ArDriveCommunityTip {
 	tipPercentage: number;
 	minWinstonFee: Winston;

@@ -23,8 +23,11 @@ export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
 export interface ArFSEntityData {
 	type: ArFSEntityDataType;
+	sourceUri?: string;
+	entityName?: string;
 	bundleTxId?: TransactionID;
 	metadataTxId?: TransactionID;
+	bundledIn?: TransactionID;
 	dataTxId?: TransactionID;
 	entityId?: AnyEntityID;
 	key?: EntityKey;

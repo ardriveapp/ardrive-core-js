@@ -18,13 +18,12 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths } from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, SourceUri } from '../exports';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
 
 type BaseName = string;
-type FilePath = string;
 
 /**
  *  Fs + Node implementation file size limitations -- tested on MacOS Sep 27, 2021
@@ -57,7 +56,7 @@ export interface FileInfo {
  *
  */
 export function wrapFileOrFolder(
-	fileOrFolderPath: FilePath,
+	fileOrFolderPath: SourceUri,
 	customContentType?: DataContentType
 ): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
@@ -93,6 +92,7 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 	abstract readonly contentType: DataContentType;
 	abstract readonly lastModifiedDate: UnixTime;
 	abstract readonly size: ByteCount;
+	abstract readonly sourceUri: SourceUri;
 
 	conflictResolution?: FileConflictResolution;
 	readonly customContentType?: DataContentType;
@@ -103,6 +103,10 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 export class ArFSManifestToUpload extends ArFSDataToUpload {
 	manifest: Manifest;
 	lastModifiedDateMS: UnixTime;
+
+	public get sourceUri(): SourceUri {
+		return this.destinationBaseName;
+	}
 
 	constructor(
 		public readonly folderToGenManifest: (ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[],
@@ -207,7 +211,7 @@ export type FileConflictResolution = FolderConflictResolution | typeof upsertOnC
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
-		public readonly filePath: FilePath,
+		public readonly filePath: SourceUri,
 		public readonly fileStats: Stats,
 		public readonly customContentType?: DataContentType
 	) {
@@ -215,6 +219,10 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 		if (+this.fileStats.size > +maxFileSize) {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
+	}
+
+	public get sourceUri(): SourceUri {
+		return this.filePath;
 	}
 
 	public gatherFileInfo(): FileInfo {
@@ -269,7 +277,7 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 
 	readonly entityType = 'folder';
 
-	constructor(public readonly filePath: FilePath, public readonly fileStats: Stats) {
+	constructor(public readonly filePath: SourceUri, public readonly fileStats: Stats) {
 		super();
 
 		const entitiesInFolder = readdirSync(this.filePath);

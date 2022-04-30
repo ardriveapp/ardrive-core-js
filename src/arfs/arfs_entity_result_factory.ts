@@ -23,16 +23,23 @@ export interface ArFSUploadEntitiesResult {
 	bundleResults: BundleResult[];
 }
 
-export interface FolderResult {
+export interface BaseArFSUploadResult {
+	bundledIn?: TransactionID;
+}
+
+export interface FolderResult extends BaseArFSUploadResult {
+	folderName: string;
 	folderTxId: TransactionID;
 	folderId: FolderID;
 	folderMetaDataReward?: Winston;
 	driveKey?: DriveKey;
 }
 
-export interface FileResult {
+export interface FileResult extends BaseArFSUploadResult {
 	fileDataTxId: TransactionID;
 	metaDataTxId: TransactionID;
+	sourceUri: string;
+	fileName: string;
 	fileId: FileID;
 	fileDataReward?: Winston;
 	fileMetaDataReward?: Winston;
