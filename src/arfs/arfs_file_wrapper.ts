@@ -76,6 +76,7 @@ export function isFolder(fileOrFolder: ArFSDataToUpload | ArFSFolderToUpload): f
 export abstract class ArFSBaseEntityToUpload {
 	abstract getBaseName(): BaseName;
 	abstract entityType: EntityType;
+	abstract readonly sourceUri: SourceUri;
 
 	destName?: string;
 	existingId?: EntityID;
@@ -92,7 +93,6 @@ export abstract class ArFSDataToUpload extends ArFSBaseEntityToUpload {
 	abstract readonly contentType: DataContentType;
 	abstract readonly lastModifiedDate: UnixTime;
 	abstract readonly size: ByteCount;
-	abstract readonly sourceUri: SourceUri;
 
 	conflictResolution?: FileConflictResolution;
 	readonly customContentType?: DataContentType;
@@ -276,6 +276,10 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	conflictResolution: FolderConflictResolution = undefined;
 
 	readonly entityType = 'folder';
+
+	public get sourceUri(): SourceUri {
+		return this.filePath;
+	}
 
 	constructor(public readonly filePath: SourceUri, public readonly fileStats: Stats) {
 		super();

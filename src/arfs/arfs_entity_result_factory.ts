@@ -1,4 +1,14 @@
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, CommunityTipSettings } from '../types';
+import {
+	DriveID,
+	FolderID,
+	FileID,
+	FileKey,
+	DriveKey,
+	TransactionID,
+	Winston,
+	CommunityTipSettings,
+	SourceUri
+} from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -31,6 +41,7 @@ export interface FolderResult extends BaseArFSUploadResult {
 	folderName: string;
 	folderTxId: TransactionID;
 	folderId: FolderID;
+	sourceUri: SourceUri;
 	folderMetaDataReward?: Winston;
 	driveKey?: DriveKey;
 }

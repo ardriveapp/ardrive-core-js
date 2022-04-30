@@ -555,7 +555,8 @@ export class ArDrive extends ArDriveAnonymous {
 			driveKey,
 			folderMetaDataReward,
 			folderName,
-			bundledIn
+			bundledIn,
+			sourceUri
 		} of results.folderResults) {
 			arFSResult.created.push({
 				type: 'folder',
@@ -563,7 +564,8 @@ export class ArDrive extends ArDriveAnonymous {
 				metadataTxId: folderTxId,
 				key: driveKey,
 				bundledIn,
-				entityName: folderName
+				entityName: folderName,
+				sourceUri
 			});
 
 			if (folderMetaDataReward) {

@@ -874,7 +874,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				folderName: uploadStats.wrappedEntity.destinationBaseName,
 				folderTxId: metaDataTxId,
 				folderMetaDataReward: metaDataTxReward,
-				driveKey: uploadStats.driveKey
+				driveKey: uploadStats.driveKey,
+				sourceUri: uploadStats.wrappedEntity.sourceUri
 			});
 		}
 		v2TxPlans.folderMetaDataPlans = [];
@@ -913,7 +914,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						folderId,
 						folderTxId: TxID(folderDataItem.id),
 						driveKey,
-						folderName: wrappedEntity.destinationBaseName
+						folderName: wrappedEntity.destinationBaseName,
+						sourceUri: wrappedEntity.sourceUri
 					});
 				} else {
 					if (!communityTipSettings) {
