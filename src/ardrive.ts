@@ -82,7 +82,8 @@ import {
 	ArFSFees,
 	ArFSCreateFileMetaDataV2Plan,
 	RewardSettings,
-	FileNameConflictResolution
+	FileNameConflictResolution,
+	RetryPublicArFSFileParams
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -622,13 +623,7 @@ export class ArDrive extends ArDriveAnonymous {
 		wrappedFile,
 		fileId,
 		conflictResolution = 'upsert'
-	}: {
-		wrappedFile: ArFSFileToUpload;
-		dataTxId: TransactionID;
-		destinationFolderId?: FolderID;
-		fileId?: FileID;
-		conflictResolution?: FileNameConflictResolution;
-	}): Promise<ArFSResult> {
+	}: RetryPublicArFSFileParams): Promise<ArFSResult> {
 		let metaDataTxId: undefined | TransactionID = undefined;
 		let createMetaDataV2Plan: undefined | ArFSCreateFileMetaDataV2Plan = undefined;
 
@@ -646,41 +641,17 @@ export class ArDrive extends ArDriveAnonymous {
 			const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
 
 			if (metaDataTx) {
+				// MetaData has been verified
 				fileId = metaDataTx.fileId;
 				metaDataTxId = metaDataTx.txId;
 			} else {
-				const destDriveId = await this.arFsDao.getDriveIdForFolderId(destinationFolderId);
-				const owner = await this.arFsDao.getOwnerAndAssertDrive(destDriveId);
-				await this.assertOwnerAddress(owner);
-
-				await resolveFileNameConflicts({
-					wrappedFile,
-					conflictResolution,
-					destFolderId: destinationFolderId,
-					destinationFileName: wrappedFile.destinationBaseName,
-					getConflictInfoFn: (folderId: FolderID) =>
-						this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner)
-				});
-
-				// Assign revision ID if it is being used here
-				fileId = wrappedFile.existingId;
-
-				if (wrappedFile.conflictResolution) {
-					switch (wrappedFile.conflictResolution) {
-						case 'error':
-							throw Error('File names cannot conflict with a folder name in the destination folder!');
-
-						case 'skip' || 'upsert':
-							throw Error(
-								'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this data transaction'
-							);
-					}
-				}
+				// Metadata has not been found, it must be created
+				await this.assertWriteFileMetaData({ wrappedFile, conflictResolution, destinationFolderId });
 
 				createMetaDataV2Plan = {
 					rewardSettings: await this.deriveAndAssertV2PublicFileMetaDataRewardSettings(wrappedFile),
 					destinationFolderId,
-					fileId
+					fileId: wrappedFile.existingId
 				};
 			}
 		}
@@ -702,9 +673,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		return {
-			created: [
-				{ type: 'file', dataTxId, metadataTxId: metaDataTxId, entityId: newMetaDataInfo?.fileId || fileId }
-			],
+			created: [{ type: 'file', dataTxId, metadataTxId: metaDataTxId, entityId: fileId }],
 			tips: [
 				{
 					recipient: communityTipSettings.communityTipTarget,
@@ -761,6 +730,40 @@ export class ArDrive extends ArDriveAnonymous {
 			await this.arFsDao.getPublicFolder(destinationFolderId, owner);
 		} catch (error) {
 			throw Error(`The supplied public destination folder ID (${destinationFolderId}) cannot be found!`);
+		}
+	}
+
+	private async assertWriteFileMetaData({
+		wrappedFile,
+		destinationFolderId,
+		conflictResolution
+	}: {
+		wrappedFile: ArFSFileToUpload;
+		destinationFolderId: FolderID;
+		conflictResolution: FileNameConflictResolution;
+	}) {
+		const destDriveId = await this.arFsDao.getDriveIdForFolderId(destinationFolderId);
+		const owner = await this.arFsDao.getOwnerAndAssertDrive(destDriveId);
+		await this.assertOwnerAddress(owner);
+
+		await resolveFileNameConflicts({
+			wrappedFile,
+			conflictResolution,
+			destFolderId: destinationFolderId,
+			destinationFileName: wrappedFile.destinationBaseName,
+			getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner)
+		});
+
+		if (wrappedFile.conflictResolution) {
+			switch (wrappedFile.conflictResolution) {
+				case 'error':
+					throw Error('File names cannot conflict with a folder name in the destination folder!');
+
+				case 'skip' || 'upsert':
+					throw Error(
+						'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
+					);
+			}
 		}
 	}
 

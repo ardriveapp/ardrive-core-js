@@ -273,3 +273,11 @@ export interface RenamePublicDriveParams {
 }
 
 export type RenamePrivateDriveParams = RenamePublicDriveParams & WithDriveKey;
+
+export interface RetryPublicArFSFileParams {
+	wrappedFile: ArFSFileToUpload;
+	dataTxId: TransactionID;
+	conflictResolution?: FileNameConflictResolution;
+	destinationFolderId?: FolderID;
+	fileId?: FileID;
+}

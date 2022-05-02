@@ -3509,7 +3509,7 @@ describe('ArDrive class - integrated', () => {
 					conflictResolution: 'skip'
 				}),
 				errorMessage:
-					'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this data transaction'
+					'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
 			});
 		});
 	});
