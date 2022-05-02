@@ -47,7 +47,7 @@ import { restore, stub } from 'sinon';
 import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload } from '../stubs';
 import axios from 'axios';
 import { assertRetryExpectations } from '../test_assertions';
-import { expectAsyncErrorThrow } from '../test_helpers';
+import { expectAsyncErrorThrow, fundArLocalWallet, mineArLocalBlock } from '../test_helpers';
 import GQLResultInterface from '../../src/types/gql_Types';
 import { buildQuery } from '../../src/utils/query';
 
@@ -119,8 +119,7 @@ describe('ArLocal Integration Tests', function () {
 	);
 
 	before(async () => {
-		// Fund wallet
-		await arweave.api.get(`mint/${await wallet.getAddress()}/9999999999999999`);
+		await fundArLocalWallet(arweave, wallet);
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
@@ -137,7 +136,7 @@ describe('ArLocal Integration Tests', function () {
 			driveId = created[0].entityId!;
 			driveTxID = created[0].metadataTxId!;
 
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 		});
 
 		it('we can fetch that public drive with `getPublicDrive`', async () => {
@@ -173,7 +172,7 @@ describe('ArLocal Integration Tests', function () {
 				parentFolderId: rootFolderId,
 				folderName: 'folder5'
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const folder = await bundledArDrive.getPublicFolder({
 				folderId: created[0].entityId!
@@ -196,7 +195,7 @@ describe('ArLocal Integration Tests', function () {
 					'tests/stub_files/bulk_root_folder/parent_folder/file_in_parent.txt'
 				) as ArFSFileToUpload
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const file = await bundledArDrive.getPublicFile({
 				fileId: created[0].entityId!
@@ -220,7 +219,7 @@ describe('ArLocal Integration Tests', function () {
 				parentFolderId: rootFolderId,
 				wrappedFolder: wrapFileOrFolder('tests/stub_files/bulk_root_folder/') as ArFSFolderToUpload
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const [
 				rootFolderResult,
@@ -366,7 +365,7 @@ describe('ArLocal Integration Tests', function () {
 					}
 				]
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const file = await bundledArDrive.getPublicFile({ fileId: created[0].entityId! });
 
@@ -411,7 +410,7 @@ describe('ArLocal Integration Tests', function () {
 						}
 					]
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				const fileId = created[0].entityId!;
 				const dataTxId = created[0].dataTxId!;
@@ -443,7 +442,7 @@ describe('ArLocal Integration Tests', function () {
 					wrappedFile: stub2ChunkFileToUpload(),
 					fileId
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				const repairedData = await getFileData(dataTxId);
 
@@ -481,7 +480,7 @@ describe('ArLocal Integration Tests', function () {
 						}
 					]
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				const fileId = created[0].entityId!;
 				const dataTxId = created[0].dataTxId!;
@@ -513,7 +512,7 @@ describe('ArLocal Integration Tests', function () {
 					wrappedFile: stub3ChunkFileToUpload(),
 					destinationFolderId: rootFolderId
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				const repairedData = await getFileData(dataTxId);
 
@@ -553,7 +552,7 @@ describe('ArLocal Integration Tests', function () {
 					}),
 					errorMessage: 'Too many errors encountered while posting chunks: Bad Error!'
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				async function deriveLastTxInfoFromGqlForOwner(owner: ArweaveAddress): Promise<TransactionID> {
 					const gqlResp: GQLResultInterface = (
@@ -579,7 +578,7 @@ describe('ArLocal Integration Tests', function () {
 					wrappedFile: stub258KiBFileToUpload(),
 					destinationFolderId: rootFolderId
 				});
-				await arweave.api.get(`mine`);
+				await mineArLocalBlock(arweave);
 
 				const repairedData = await getFileData(dataTxId);
 
@@ -633,7 +632,7 @@ describe('ArLocal Integration Tests', function () {
 			driveTxID = created[0].metadataTxId!;
 			driveKey = created[0].key!;
 
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 		});
 
 		it('we can fetch that private drive with `getPrivateDrive`', async () => {
@@ -672,7 +671,7 @@ describe('ArLocal Integration Tests', function () {
 				folderName: 'folder5',
 				driveKey
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const folder = await bundledArDrive.getPrivateFolder({
 				folderId: created[0].entityId!,
@@ -697,7 +696,7 @@ describe('ArLocal Integration Tests', function () {
 				) as ArFSFileToUpload,
 				driveKey
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const file = await bundledArDrive.getPrivateFile({
 				fileId: created[0].entityId!,
@@ -723,7 +722,7 @@ describe('ArLocal Integration Tests', function () {
 				wrappedFolder: wrapFileOrFolder('tests/stub_files/bulk_root_folder/') as ArFSFolderToUpload,
 				driveKey
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const [
 				rootFolderResult,
@@ -870,7 +869,7 @@ describe('ArLocal Integration Tests', function () {
 					}
 				]
 			});
-			await arweave.api.get(`mine`);
+			await mineArLocalBlock(arweave);
 
 			const file = await bundledArDrive.getPrivateFile({ fileId: created[0].entityId!, driveKey });
 
