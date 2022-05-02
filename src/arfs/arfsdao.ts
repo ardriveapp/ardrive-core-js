@@ -749,10 +749,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { sourceUri, destinationBaseName } = prepFileParams.wrappedFile;
 		return {
 			sourceUri,
-			fileName: destinationBaseName,
+			entityName: destinationBaseName,
 			fileDataTxId: TxID(dataTx.id),
 			fileDataReward: W(dataTx.reward),
-			fileId,
+			entityId: fileId,
 			metaDataTxId: TxID(metaDataTx.id),
 			fileMetaDataReward: W(metaDataTx.reward),
 			fileKey,
@@ -789,10 +789,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return {
 			fileResult: {
 				sourceUri,
-				fileName: destinationBaseName,
+				entityName: destinationBaseName,
 				fileDataTxId: TxID(dataTx.id),
 				fileDataReward: W(dataTx.reward),
-				fileId,
+				entityId: fileId,
 				metaDataTxId: TxID(metaDataDataItem.id),
 				fileKey,
 				communityTipSettings
@@ -870,8 +870,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 
 			results.folderResults.push({
-				folderId,
-				folderName: uploadStats.wrappedEntity.destinationBaseName,
+				entityId: folderId,
+				entityName: uploadStats.wrappedEntity.destinationBaseName,
 				folderTxId: metaDataTxId,
 				folderMetaDataReward: metaDataTxReward,
 				driveKey: uploadStats.driveKey,
@@ -911,10 +911,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					dataItems.push(folderDataItem);
 					currentBundleResults.folderResults.push({
-						folderId,
+						entityId: folderId,
 						folderTxId: TxID(folderDataItem.id),
 						driveKey,
-						folderName: wrappedEntity.destinationBaseName,
+						entityName: wrappedEntity.destinationBaseName,
 						sourceUri: wrappedEntity.sourceUri
 					});
 				} else {
@@ -935,11 +935,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 					dataItems.push(...arFSObjects);
 					currentBundleResults.fileResults.push({
-						fileId,
+						entityId: fileId,
 						fileDataTxId: TxID(fileDataItem.id),
 						metaDataTxId: TxID(metaDataItem.id),
 						fileKey,
-						fileName: wrappedEntity.destinationBaseName,
+						entityName: wrappedEntity.destinationBaseName,
 						sourceUri: wrappedEntity.sourceUri
 					});
 				}

@@ -550,21 +550,21 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Add folder results
 		for (const {
-			folderId,
+			entityId,
 			folderTxId,
 			driveKey,
 			folderMetaDataReward,
-			folderName,
+			entityName,
 			bundledIn,
 			sourceUri
 		} of results.folderResults) {
 			arFSResult.created.push({
 				type: 'folder',
-				entityId: folderId,
+				entityId,
 				metadataTxId: folderTxId,
 				key: driveKey,
 				bundledIn,
-				entityName: folderName,
+				entityName,
 				sourceUri
 			});
 
@@ -576,20 +576,20 @@ export class ArDrive extends ArDriveAnonymous {
 		// Add file results
 		for (const {
 			fileDataTxId,
-			fileId,
+			entityId,
 			metaDataTxId,
 			fileDataReward,
 			fileKey,
 			fileMetaDataReward,
 			communityTipSettings,
 			bundledIn,
-			fileName,
+			entityName,
 			sourceUri
 		} of results.fileResults) {
 			arFSResult.created.push({
 				type: 'file',
-				entityName: fileName,
-				entityId: fileId,
+				entityName,
+				entityId,
 				dataTxId: fileDataTxId,
 				metadataTxId: metaDataTxId,
 				bundledIn,

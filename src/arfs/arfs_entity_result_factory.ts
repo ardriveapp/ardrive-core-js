@@ -7,7 +7,9 @@ import {
 	TransactionID,
 	Winston,
 	CommunityTipSettings,
-	SourceUri
+	SourceUri,
+	EntityName,
+	EntityID
 } from '../types';
 
 export interface ArFSBundleWriteResult {
@@ -34,14 +36,14 @@ export interface ArFSUploadEntitiesResult {
 }
 
 export interface BaseArFSUploadResult {
+	entityName: EntityName;
 	bundledIn?: TransactionID;
+	sourceUri: SourceUri;
+	entityId: EntityID;
 }
 
 export interface FolderResult extends BaseArFSUploadResult {
-	folderName: string;
 	folderTxId: TransactionID;
-	folderId: FolderID;
-	sourceUri: SourceUri;
 	folderMetaDataReward?: Winston;
 	driveKey?: DriveKey;
 }
@@ -49,9 +51,6 @@ export interface FolderResult extends BaseArFSUploadResult {
 export interface FileResult extends BaseArFSUploadResult {
 	fileDataTxId: TransactionID;
 	metaDataTxId: TransactionID;
-	sourceUri: string;
-	fileName: string;
-	fileId: FileID;
 	fileDataReward?: Winston;
 	fileMetaDataReward?: Winston;
 	communityTipSettings?: CommunityTipSettings;

@@ -4106,8 +4106,6 @@ function assertEntityNameExpectations({
 }
 
 function assertBulkFolderExpectations(created: ArFSEntityData[], bundleTxId?: TransactionID, expectPrivateKey = false) {
-	console.log(JSON.stringify(created, null, 4));
-
 	assertFolderCreatedResult({
 		entityData: created[0],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder',
