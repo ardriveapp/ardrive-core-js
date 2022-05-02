@@ -962,14 +962,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 			uploadsCompleted++;
 
-			currentBundleResults.folderResults.map((r) => {
-				return { ...r, bundledIn: bundleTx.id };
-			});
-			currentBundleResults.fileResults.map((r) => {
-				return { ...r, bundledIn: bundleTx.id };
-			});
-			results.fileResults.push(...currentBundleResults.fileResults);
-			results.folderResults.push(...currentBundleResults.folderResults);
+			results.fileResults.push(
+				...currentBundleResults.fileResults.map((r) => {
+					return { ...r, bundledIn: TxID(bundleTx.id) };
+				})
+			);
+			results.folderResults.push(
+				...currentBundleResults.folderResults.map((r) => {
+					return { ...r, bundledIn: TxID(bundleTx.id) };
+				})
+			);
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
 				communityTipSettings,
