@@ -68,6 +68,7 @@ import {
 	ArFSPrivateFile,
 	ArFSPrivateFolder,
 	EntityID,
+	EntityName,
 	FolderHierarchy,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
@@ -270,7 +271,12 @@ describe('ArDrive class - integrated', () => {
 			it('returns the correct ArFSResult', async () => {
 				const result = await arDrive.createPublicDrive({ driveName: validEntityName });
 
-				assertCreateDriveExpectations(result, W(104), W(50));
+				assertCreateDriveExpectations({
+					result,
+					driveFee: W(104),
+					expectedDriveName: validEntityName,
+					folderFee: W(50)
+				});
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
@@ -278,7 +284,13 @@ describe('ArDrive class - integrated', () => {
 					driveName: validEntityName
 				});
 
-				assertCreateDriveExpectations(result, W(2809), W(37), undefined, true);
+				assertCreateDriveExpectations({
+					result,
+					driveFee: W(2809),
+					expectedDriveName: validEntityName,
+					folderFee: W(37),
+					isBundled: true
+				});
 			});
 		});
 
@@ -353,7 +365,14 @@ describe('ArDrive class - integrated', () => {
 					newPrivateDriveData: stubPrivateDriveData
 				});
 
-				assertCreateDriveExpectations(result, W(120), W(66), stubDriveKey);
+				assertCreateDriveExpectations({
+					result,
+					driveFee: W(120),
+					expectedDriveName: validEntityName,
+					folderFee: W(66),
+
+					expectedDriveKey: stubDriveKey
+				});
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
@@ -368,7 +387,14 @@ describe('ArDrive class - integrated', () => {
 					newPrivateDriveData: stubPrivateDriveData
 				});
 
-				assertCreateDriveExpectations(result, W(2973), W(37), stubDriveKey, true);
+				assertCreateDriveExpectations({
+					result,
+					driveFee: W(2973),
+					expectedDriveName: validEntityName,
+					folderFee: W(37),
+					isBundled: true,
+					expectedDriveKey: stubDriveKey
+				});
 			});
 		});
 	});
@@ -3652,32 +3678,44 @@ describe('ArDrive class - integrated', () => {
 	});
 });
 
-function assertCreateDriveExpectations(
-	result: ArFSResult,
-	driveFee: Winston,
-	folderFee?: Winston,
-	expectedDriveKey?: DriveKey,
-	isBundled = false
-) {
+function assertCreateDriveExpectations({
+	result,
+	driveFee,
+	folderFee,
+	expectedDriveKey,
+	isBundled = false,
+	expectedDriveName
+}: {
+	result: ArFSResult;
+	driveFee: Winston;
+	folderFee?: Winston;
+	expectedDriveKey?: DriveKey;
+	isBundled?: boolean;
+	expectedDriveName: EntityName;
+}) {
 	// Ensure that 3 arfs entities are created with a bundled transaction,
 	// and 2 arfs entities are created during a v2 transaction
 	expect(result.created.length).to.equal(isBundled ? 3 : 2);
 
+	const bundleTxId = isBundled ? result.created[2].bundleTxId! : undefined;
+
 	// Ensure that the drive entity looks healthy
 	const driveEntity = result.created[0];
-	expect(driveEntity.dataTxId).to.be.undefined;
-	expect(driveEntity.entityId).to.match(entityIdRegex);
-	expect(driveEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
-	expect(driveEntity.metadataTxId).to.match(txIdRegex);
-	expect(driveEntity.type).to.equal('drive');
+	assertDriveCreatedResult({
+		entityData: driveEntity,
+		expectedEntityName: expectedDriveName,
+		expectedBundleIn: bundleTxId,
+		expectedDriveKey
+	});
 
 	// Ensure that the root folder entity looks healthy
 	const rootFolderEntity = result.created[1];
-	expect(rootFolderEntity.dataTxId).to.be.undefined;
-	expect(rootFolderEntity.entityId).to.match(entityIdRegex);
-	expect(rootFolderEntity.key?.toString()).to.equal(expectedDriveKey?.toString());
-	expect(rootFolderEntity.metadataTxId).to.match(txIdRegex);
-	expect(rootFolderEntity.type).to.equal('folder');
+	assertFolderCreatedResult({
+		entityData: rootFolderEntity,
+		expectDriveKey: !!expectedDriveKey,
+		expectedFolderName: expectedDriveName,
+		expectedBundleIn: bundleTxId
+	});
 
 	// There should be no tips
 	expect(result.tips).to.be.empty;
@@ -3687,12 +3725,7 @@ function assertCreateDriveExpectations(
 	if (isBundled) {
 		// Ensure that the bundle tx looks healthy
 		const bundleEntity = result.created[2];
-		expect(bundleEntity.dataTxId).to.be.undefined;
-		expect(bundleEntity.entityId).to.be.undefined;
-		expect(bundleEntity.key?.toString()).to.be.undefined;
-		expect(bundleEntity.metadataTxId).to.be.undefined;
-		expect(bundleEntity.bundleTxId).to.match(txIdRegex);
-		expect(bundleEntity.type).to.equal('bundle');
+		assertBundleCreatedResult(bundleEntity);
 
 		// Ensure that the bundle fee look healthy
 		expect(feeKeys.length).to.equal(1);
@@ -4024,6 +4057,30 @@ function assertFolderCreatedResult({
 	}
 }
 
+function assertDriveCreatedResult({
+	entityData,
+	expectedEntityName,
+	expectedBundleIn,
+	expectedDriveKey
+}: {
+	entityData: ArFSEntityData;
+	expectedEntityName: string;
+	expectedBundleIn?: TransactionID;
+	expectedDriveKey?: DriveKey;
+}) {
+	const { key, type, dataTxId } = entityData;
+
+	expect(key?.toString()).to.equal(expectedDriveKey?.toString());
+	expect(type).to.equal('drive');
+	expect(dataTxId).to.be.undefined;
+
+	assertEntityCreatedResult({
+		entityData,
+		expectedEntityName,
+		expectedBundleIn
+	});
+}
+
 function assertEntityCreatedResult({
 	entityData,
 	expectedEntityId,
@@ -4045,10 +4102,14 @@ function assertEntityCreatedResult({
 
 	if (expectedSourceUri) {
 		expect(sourceUri).to.equal(expectedSourceUri);
+	} else {
+		expect(sourceUri).to.be.undefined;
 	}
 
 	if (expectedBundleIn) {
 		expect(`${bundledIn}`).to.equal(`${expectedBundleIn}`);
+	} else {
+		expect(bundledIn).to.be.undefined;
 	}
 
 	if (expectedEntityId) {
@@ -4058,12 +4119,25 @@ function assertEntityCreatedResult({
 	}
 }
 
-function assertBundleCreatedResult({ type, bundleTxId, dataTxId, entityId, key, metadataTxId }: ArFSEntityData) {
+function assertBundleCreatedResult({
+	type,
+	bundleTxId,
+	dataTxId,
+	entityId,
+	key,
+	metadataTxId,
+	bundledIn,
+	entityName,
+	sourceUri
+}: ArFSEntityData) {
 	expect(type).to.equal('bundle');
+	expect(entityName).to.be.undefined;
+	expect(sourceUri).to.be.undefined;
 
 	expect(bundleTxId).to.match(txIdRegex);
 	expect(dataTxId).to.be.undefined;
 	expect(metadataTxId).to.be.undefined;
+	expect(bundledIn).to.be.undefined;
 
 	expect(entityId).to.be.undefined;
 	expect(key).to.be.undefined;
