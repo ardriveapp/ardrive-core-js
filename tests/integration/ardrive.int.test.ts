@@ -14,7 +14,6 @@ import {
 	ArFSManifestResult,
 	ArFSResult,
 	DriveKey,
-	DrivePrivacy,
 	EID,
 	EntityType,
 	FeeMultiple,
@@ -22,7 +21,6 @@ import {
 	FileID,
 	FolderConflictPrompts,
 	ArFSEntityData,
-	FolderID,
 	ByteCount,
 	TipData,
 	TransactionID,
@@ -72,7 +70,8 @@ import {
 	FolderHierarchy,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
-	publicEntityWithPathsFactory
+	publicEntityWithPathsFactory,
+	SourceUri
 } from '../../src/exports';
 import { MAX_BUNDLE_SIZE } from '../../src/utils/constants';
 
@@ -274,7 +273,7 @@ describe('ArDrive class - integrated', () => {
 				assertCreateDriveExpectations({
 					result,
 					driveFee: W(104),
-					expectedDriveName: validEntityName,
+					expectedEntityName: validEntityName,
 					folderFee: W(50)
 				});
 			});
@@ -287,7 +286,7 @@ describe('ArDrive class - integrated', () => {
 				assertCreateDriveExpectations({
 					result,
 					driveFee: W(2809),
-					expectedDriveName: validEntityName,
+					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true
 				});
@@ -368,10 +367,10 @@ describe('ArDrive class - integrated', () => {
 				assertCreateDriveExpectations({
 					result,
 					driveFee: W(120),
-					expectedDriveName: validEntityName,
+					expectedEntityName: validEntityName,
 					folderFee: W(66),
 
-					expectedDriveKey: stubDriveKey
+					expectPrivateKey: true
 				});
 			});
 
@@ -390,10 +389,10 @@ describe('ArDrive class - integrated', () => {
 				assertCreateDriveExpectations({
 					result,
 					driveFee: W(2973),
-					expectedDriveName: validEntityName,
+					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true,
-					expectedDriveKey: stubDriveKey
+					expectPrivateKey: true
 				});
 			});
 		});
@@ -798,7 +797,7 @@ describe('ArDrive class - integrated', () => {
 					driveId: stubEntityID,
 					parentFolderId: stubEntityID
 				});
-				assertCreateFolderExpectations({ result, folderFee: W(50), expectedFolderName: validEntityName });
+				assertCreateFolderExpectations({ result, folderFee: W(50), expectedEntityName: validEntityName });
 			});
 		});
 
@@ -900,8 +899,8 @@ describe('ArDrive class - integrated', () => {
 				assertCreateFolderExpectations({
 					result,
 					folderFee: W(66),
-					expectedFolderName: validEntityName,
-					expectDriveKey: true
+					expectedEntityName: validEntityName,
+					expectPrivateKey: true
 				});
 			});
 		});
@@ -1027,7 +1026,7 @@ describe('ArDrive class - integrated', () => {
 				assertCreateFolderExpectations({
 					result,
 					folderFee: W(20),
-					expectedFolderName: 'STUB NAME'
+					expectedEntityName: 'STUB NAME'
 				});
 			});
 		});
@@ -1171,8 +1170,8 @@ describe('ArDrive class - integrated', () => {
 				assertCreateFolderExpectations({
 					result,
 					folderFee: W(36),
-					expectedFolderName: 'STUB NAME',
-					expectDriveKey: true
+					expectedEntityName: 'STUB NAME',
+					expectPrivateKey: true
 				});
 			});
 		});
@@ -1357,10 +1356,9 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3204),
 					metadataFee: W(171),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1399,10 +1397,9 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3204),
 					metadataFee: W(162),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1426,8 +1423,7 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3204),
 					metadataFee: W(159),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'New File!',
+					expectedEntityName: 'New File!',
 					expectedSourceUri: 'test_wallet.json'
 				});
 			});
@@ -1451,10 +1447,9 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3204),
 					metadataFee: W(171),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1471,8 +1466,7 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(5959),
 					metadataFee: W(166),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'test_wallet.json',
+					expectedEntityName: 'test_wallet.json',
 					expectedSourceUri: 'test_wallet.json',
 					isBundled: true
 				});
@@ -1491,8 +1485,7 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3204),
 					metadataFee: W(166),
 					expectedTip: W(1),
-					drivePrivacy: 'public',
-					expectedFileName: 'test_wallet.json',
+					expectedEntityName: 'test_wallet.json',
 					expectedSourceUri: 'test_wallet.json'
 				});
 			});
@@ -1646,10 +1639,10 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3220),
 					metadataFee: W(187),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectPrivateKey: true,
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1690,10 +1683,10 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3220),
 					metadataFee: W(178),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectPrivateKey: true,
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1718,8 +1711,8 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3220),
 					metadataFee: W(175),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'New File!',
+					expectPrivateKey: true,
+					expectedEntityName: 'New File!',
 					expectedSourceUri: 'test_wallet.json'
 				});
 			});
@@ -1744,10 +1737,10 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3220),
 					metadataFee: W(187),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'CONFLICTING_FILE_NAME',
+					expectPrivateKey: true,
+					expectedEntityName: 'CONFLICTING_FILE_NAME',
 					expectedSourceUri: 'test_wallet.json',
-					expectedFileId: existingFileId
+					expectedEntityId: existingFileId
 				});
 			});
 
@@ -1787,8 +1780,8 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(6097),
 					metadataFee: W(187),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'test_wallet.json',
+					expectPrivateKey: true,
+					expectedEntityName: 'test_wallet.json',
 					expectedSourceUri: 'test_wallet.json',
 					isBundled: true
 				});
@@ -1808,8 +1801,8 @@ describe('ArDrive class - integrated', () => {
 					fileFee: W(3220),
 					metadataFee: W(182),
 					expectedTip: W(1),
-					drivePrivacy: 'private',
-					expectedFileName: 'test_wallet.json',
+					expectPrivateKey: true,
+					expectedEntityName: 'test_wallet.json',
 					expectedSourceUri: 'test_wallet.json'
 				});
 			});
@@ -2904,8 +2897,7 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(3204),
 				metadataFee: W(166),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
-				expectedFileName: 'test_wallet.json',
+				expectedEntityName: 'test_wallet.json',
 				expectedSourceUri: 'test_wallet.json'
 			});
 		});
@@ -2919,9 +2911,9 @@ describe('ArDrive class - integrated', () => {
 				result,
 				fileFee: W(3220),
 				metadataFee: W(182),
+				expectPrivateKey: true,
 				expectedTip: W(1),
-				drivePrivacy: 'private',
-				expectedFileName: 'test_wallet.json',
+				expectedEntityName: 'test_wallet.json',
 				expectedSourceUri: 'test_wallet.json'
 			});
 		});
@@ -2934,8 +2926,7 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(5959),
 				metadataFee: W(166),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
-				expectedFileName: 'test_wallet.json',
+				expectedEntityName: 'test_wallet.json',
 				expectedSourceUri: 'test_wallet.json',
 				isBundled: true
 			});
@@ -2974,12 +2965,12 @@ describe('ArDrive class - integrated', () => {
 
 			assertFileCreatedResult({
 				entityData: created[0],
-				expectedFileName: 'Unique-Name',
+				expectedEntityName: 'Unique-Name',
 				expectedSourceUri: 'test_wallet.json'
 			});
 			assertFileCreatedResult({
 				entityData: created[1],
-				expectedFileName: 'Unique-Name-2',
+				expectedEntityName: 'Unique-Name-2',
 				expectedSourceUri: 'test_wallet.json'
 			});
 
@@ -3059,18 +3050,18 @@ describe('ArDrive class - integrated', () => {
 			assertFolderCreatedResult({
 				entityData: created[0],
 				expectedSourceUri: './tests/stub_files/bulk_root_folder',
-				expectedFolderName: 'bulk_root_folder',
-				expectedBundleIn: bundleTxId
+				expectedEntityName: 'bulk_root_folder',
+				expectedBundledIn: bundleTxId
 			});
 
 			assertFileCreatedResult({
 				entityData: created[1],
-				expectedFileName: 'test_wallet.json',
+				expectedEntityName: 'test_wallet.json',
 				expectedSourceUri: 'test_wallet.json'
 			});
 			assertFileCreatedResult({
 				entityData: created[2],
-				expectedFileName: 'Unique-Name',
+				expectedEntityName: 'Unique-Name',
 				expectedSourceUri: 'test_wallet.json'
 			});
 
@@ -3249,28 +3240,28 @@ describe('ArDrive class - integrated', () => {
 			expect(tips.length).to.equal(1);
 			expect(feeKeys.length).to.equal(1);
 
-			const expectedFileId = EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7');
+			const expectedEntityId = EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7');
 
 			assertFileCreatedResult({
 				entityData: created[0],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 			assertFileCreatedResult({
 				entityData: created[1],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 			assertFileCreatedResult({
 				entityData: created[2],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 
 			assertBundleCreatedResult(created[3]);
@@ -3309,28 +3300,28 @@ describe('ArDrive class - integrated', () => {
 			expect(tips.length).to.equal(1);
 			expect(feeKeys.length).to.equal(1);
 
-			const expectedFileId = EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7');
+			const expectedEntityId = EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7');
 
 			assertFileCreatedResult({
 				entityData: created[0],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 			assertFileCreatedResult({
 				entityData: created[1],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 			assertFileCreatedResult({
 				entityData: created[2],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId
+				expectedBundledIn: bundleTxId,
+				expectedEntityId
 			});
 
 			assertBundleCreatedResult(created[3]);
@@ -3381,17 +3372,17 @@ describe('ArDrive class - integrated', () => {
 
 			assertFileCreatedResult({
 				entityData: created[0],
-				expectedFileName: 'CONFLICTING_FILE_NAME',
+				expectedEntityName: 'CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId: EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7')
+				expectedBundledIn: bundleTxId,
+				expectedEntityId: EID('caa8b54a-eb5e-4134-8ae2-a3946a428ec7')
 			});
 			assertFileCreatedResult({
 				entityData: created[1],
-				expectedFileName: 'ANOTHER_CONFLICTING_FILE_NAME',
+				expectedEntityName: 'ANOTHER_CONFLICTING_FILE_NAME',
 				expectedSourceUri: 'test_wallet.json',
-				expectedBundleIn: bundleTxId,
-				expectedFileId: EID('72b8b54a-eb5e-4134-8ae2-a3946a428ec7')
+				expectedBundledIn: bundleTxId,
+				expectedEntityId: EID('72b8b54a-eb5e-4134-8ae2-a3946a428ec7')
 			});
 
 			assertBundleCreatedResult(created[2]);
@@ -3439,14 +3430,14 @@ describe('ArDrive class - integrated', () => {
 			assertFolderCreatedResult({
 				entityData: created[0],
 				expectedSourceUri: './tests/stub_files/bulk_root_folder',
-				expectedFolderName: 'Unique-Name',
-				expectedBundleIn: bundleTxId
+				expectedEntityName: 'Unique-Name',
+				expectedBundledIn: bundleTxId
 			});
 			assertFolderCreatedResult({
 				entityData: created[1],
 				expectedSourceUri: './tests/stub_files/bulk_root_folder',
-				expectedFolderName: 'bulk_root_folder',
-				expectedBundleIn: bundleTxId
+				expectedEntityName: 'bulk_root_folder',
+				expectedBundledIn: bundleTxId
 			});
 
 			assertBundleCreatedResult(created[2]);
@@ -3492,8 +3483,8 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(6097),
 				metadataFee: W(182),
 				expectedTip: W(1),
-				drivePrivacy: 'private',
-				expectedFileName: 'test_wallet.json',
+				expectPrivateKey: true,
+				expectedEntityName: 'test_wallet.json',
 				expectedSourceUri: 'test_wallet.json',
 				isBundled: true
 			});
@@ -3505,7 +3496,7 @@ describe('ArDrive class - integrated', () => {
 			assertCreateFolderExpectations({
 				result,
 				folderFee: W(27),
-				expectedFolderName: 'bulk_root_folder',
+				expectedEntityName: 'bulk_root_folder',
 				expectedSourceUri: './tests/stub_files/bulk_root_folder'
 			});
 		});
@@ -3518,8 +3509,8 @@ describe('ArDrive class - integrated', () => {
 			assertCreateFolderExpectations({
 				result,
 				folderFee: W(43),
-				expectedFolderName: 'bulk_root_folder',
-				expectDriveKey: true,
+				expectedEntityName: 'bulk_root_folder',
+				expectPrivateKey: true,
 				expectedSourceUri: './tests/stub_files/bulk_root_folder'
 			});
 		});
@@ -3537,8 +3528,7 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(14),
 				metadataFee: W(159),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3557,8 +3547,7 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(14),
 				metadataFee: W(163),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3578,8 +3567,8 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(30),
 				metadataFee: W(175),
 				expectedTip: W(1),
-				drivePrivacy: 'private',
-				expectedFileName: 'file_in_child.txt',
+				expectPrivateKey: true,
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3604,8 +3593,8 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(30),
 				metadataFee: W(179),
 				expectedTip: W(1),
-				drivePrivacy: 'private',
-				expectedFileName: 'file_in_child.txt',
+				expectPrivateKey: true,
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3623,9 +3612,8 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(2756),
 				metadataFee: W(159),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
 				isBundled: true,
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3644,9 +3632,8 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(2764),
 				metadataFee: W(163),
 				expectedTip: W(1),
-				drivePrivacy: 'public',
 				isBundled: true,
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3666,9 +3653,9 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(2900),
 				metadataFee: W(179),
 				expectedTip: W(1),
-				drivePrivacy: 'private',
+				expectPrivateKey: true,
 				isBundled: true,
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
@@ -3693,30 +3680,40 @@ describe('ArDrive class - integrated', () => {
 				fileFee: W(2904),
 				metadataFee: W(179),
 				expectedTip: W(1),
-				drivePrivacy: 'private',
+				expectPrivateKey: true,
 				isBundled: true,
-				expectedFileName: 'file_in_child.txt',
+				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
 			});
 		});
 	});
 });
 
+interface BaseArFSAssertionParams {
+	expectedEntityName: EntityName;
+	expectedEntityId?: EntityID;
+	expectedSourceUri?: SourceUri;
+	expectPrivateKey?: boolean;
+}
+
+interface AssertArFSResultExpectationsParams extends BaseArFSAssertionParams {
+	isBundled?: boolean;
+	result: ArFSResult;
+}
+
+interface AssertDriveResultExpectationsParams extends AssertArFSResultExpectationsParams {
+	driveFee: Winston;
+	folderFee?: Winston;
+}
+
 function assertCreateDriveExpectations({
 	result,
 	driveFee,
 	folderFee,
-	expectedDriveKey,
+	expectPrivateKey = false,
 	isBundled = false,
-	expectedDriveName
-}: {
-	result: ArFSResult;
-	driveFee: Winston;
-	folderFee?: Winston;
-	expectedDriveKey?: DriveKey;
-	isBundled?: boolean;
-	expectedDriveName: EntityName;
-}) {
+	expectedEntityName
+}: AssertDriveResultExpectationsParams) {
 	// Ensure that 3 arfs entities are created with a bundled transaction,
 	// and 2 arfs entities are created during a v2 transaction
 	expect(result.created.length).to.equal(isBundled ? 3 : 2);
@@ -3727,18 +3724,18 @@ function assertCreateDriveExpectations({
 	const driveEntity = result.created[0];
 	assertDriveCreatedResult({
 		entityData: driveEntity,
-		expectedEntityName: expectedDriveName,
-		expectedBundleIn: bundleTxId,
-		expectedDriveKey
+		expectedEntityName,
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey
 	});
 
 	// Ensure that the root folder entity looks healthy
 	const rootFolderEntity = result.created[1];
 	assertFolderCreatedResult({
 		entityData: rootFolderEntity,
-		expectDriveKey: !!expectedDriveKey,
-		expectedFolderName: expectedDriveName,
-		expectedBundleIn: bundleTxId
+		expectPrivateKey,
+		expectedEntityName,
+		expectedBundledIn: bundleTxId
 	});
 
 	// There should be no tips
@@ -3768,21 +3765,17 @@ function assertCreateDriveExpectations({
 	}
 }
 
+interface AssertFolderResultExpectationsParams extends AssertArFSResultExpectationsParams {
+	folderFee: Winston;
+}
+
 function assertCreateFolderExpectations({
 	result,
 	folderFee,
-	expectedFolderName,
-	expectDriveKey = false,
-	// isBundled = false,
+	expectedEntityName,
+	expectPrivateKey = false,
 	expectedSourceUri
-}: {
-	result: ArFSResult;
-	folderFee: Winston;
-	expectDriveKey?: boolean;
-	expectedFolderName: EntityName;
-	expectedSourceUri?: string;
-	isBundled?: boolean;
-}) {
+}: AssertFolderResultExpectationsParams) {
 	// Ensure that 1 arfs entity was created
 	expect(result.created.length).to.equal(1);
 
@@ -3790,8 +3783,8 @@ function assertCreateFolderExpectations({
 	const folderEntity = result.created[0];
 	assertFolderCreatedResult({
 		entityData: folderEntity,
-		expectedFolderName,
-		expectDriveKey,
+		expectedEntityName,
+		expectPrivateKey,
 		expectedSourceUri
 	});
 
@@ -3806,27 +3799,23 @@ function assertCreateFolderExpectations({
 	expect(`${result.fees[folderEntity.metadataTxId!.toString()]}`).to.equal(`${folderFee}`);
 }
 
-function assertUploadFileExpectations({
-	result,
-	expectedFileId,
-	metadataFee,
-	fileFee,
-	expectedTip,
-	drivePrivacy,
-	isBundled = false,
-	expectedSourceUri,
-	expectedFileName
-}: {
-	result: ArFSResult;
+interface AssertFileResultExpectationsParams extends AssertArFSResultExpectationsParams {
 	fileFee: Winston;
 	metadataFee: Winston;
 	expectedTip: Winston;
-	drivePrivacy: DrivePrivacy;
-	expectedFileId?: FileID;
-	expectedFileName: string;
-	expectedSourceUri: string;
-	isBundled?: boolean;
-}) {
+}
+
+function assertUploadFileExpectations({
+	result,
+	expectedEntityId,
+	metadataFee,
+	fileFee,
+	expectedTip,
+	expectPrivateKey = false,
+	isBundled = false,
+	expectedSourceUri,
+	expectedEntityName
+}: AssertFileResultExpectationsParams) {
 	// Ensure that 2 arfs entities are created with a bundled transaction,
 	// and 1 arfs entity is created during a v2 transaction
 	expect(result.created.length).to.equal(isBundled ? 2 : 1);
@@ -3840,11 +3829,11 @@ function assertUploadFileExpectations({
 
 	assertFileCreatedResult({
 		entityData: fileEntity,
-		expectFileKey: drivePrivacy === 'private',
+		expectPrivateKey,
 		expectedSourceUri,
-		expectedFileName,
-		expectedBundleIn: bundleTxId,
-		expectedFileId
+		expectedEntityName,
+		expectedBundledIn: bundleTxId,
+		expectedEntityId
 	});
 
 	// There should be 1 tip
@@ -3883,15 +3872,15 @@ function assertUploadFileExpectations({
 function assertMoveFileExpectations(
 	result: ArFSResult,
 	fileFee: Winston,
-	expectedFileName: EntityName,
-	expectFileKey = false
+	expectedEntityName: EntityName,
+	expectPrivateKey = false
 ) {
 	// Ensure that 1 arfs entity was created
 	expect(result.created.length).to.equal(1);
 
 	// Ensure that the file entity looks healthy
 	const fileEntity = result.created[0];
-	assertFileCreatedResult({ entityData: fileEntity, expectFileKey, expectedFileName });
+	assertFileCreatedResult({ entityData: fileEntity, expectPrivateKey, expectedEntityName });
 
 	// There should be no tips
 	expect(result.tips).to.be.empty;
@@ -3909,7 +3898,7 @@ function assertUploadManifestExpectations(
 	fileFee: Winston,
 	metadataFee: Winston,
 	expectedTip: Winston,
-	expectedFileId?: FileID,
+	expectedEntityId?: FileID,
 	specialCharacters = false,
 	isBundled = false
 ) {
@@ -3922,8 +3911,8 @@ function assertUploadManifestExpectations(
 	expect(fileEntity.dataTxId).to.match(txIdRegex);
 	expect(fileEntity.entityId).to.match(entityIdRegex);
 
-	if (expectedFileId) {
-		expect(fileEntity.entityId).to.equal(expectedFileId);
+	if (expectedEntityId) {
+		expect(fileEntity.entityId).to.equal(expectedEntityId);
 	}
 
 	expect(fileEntity.metadataTxId).to.match(txIdRegex);
@@ -4018,36 +4007,34 @@ function assertUploadManifestExpectations(
 	}
 }
 
+interface AssertArFSEntityDataCreatedParams extends BaseArFSAssertionParams {
+	entityData: ArFSEntityData;
+	expectedBundledIn?: TransactionID;
+}
+
 function assertFileCreatedResult({
 	entityData,
-	expectFileKey = false,
-	expectedFileId,
-	expectedFileName,
+	expectPrivateKey = false,
+	expectedEntityId,
+	expectedEntityName,
 	expectedSourceUri,
-	expectedBundleIn
-}: {
-	entityData: ArFSEntityData;
-	expectFileKey?: boolean;
-	expectedFileId?: FileID;
-	expectedFileName: string;
-	expectedSourceUri?: string;
-	expectedBundleIn?: TransactionID;
-}) {
+	expectedBundledIn
+}: AssertArFSEntityDataCreatedParams) {
 	const { type, dataTxId, key } = entityData;
 
 	expect(type).to.equal('file');
 
 	assertEntityCreatedResult({
-		expectedEntityName: expectedFileName,
+		expectedEntityName,
 		expectedSourceUri,
-		expectedBundleIn,
-		expectedEntityId: expectedFileId,
+		expectedBundledIn,
+		expectedEntityId,
 		entityData
 	});
 
 	expect(dataTxId).to.match(txIdRegex);
 
-	if (expectFileKey) {
+	if (expectPrivateKey) {
 		expect(key).to.match(fileKeyRegex);
 	} else {
 		expect(key).to.be.undefined;
@@ -4056,34 +4043,27 @@ function assertFileCreatedResult({
 
 function assertFolderCreatedResult({
 	entityData,
-	expectDriveKey = false,
-	expectedFolderId,
-	expectedFolderName,
+	expectPrivateKey = false,
+	expectedEntityId,
+	expectedEntityName,
 	expectedSourceUri,
-	expectedBundleIn
-}: {
-	entityData: ArFSEntityData;
-	expectDriveKey?: boolean;
-	expectedFolderId?: FolderID;
-	expectedFolderName: string;
-	expectedSourceUri?: string;
-	expectedBundleIn?: TransactionID;
-}) {
+	expectedBundledIn
+}: AssertArFSEntityDataCreatedParams) {
 	const { type, dataTxId, key } = entityData;
 
 	expect(type).to.equal('folder');
 
 	assertEntityCreatedResult({
-		expectedEntityName: expectedFolderName,
+		expectedEntityName,
 		expectedSourceUri,
-		expectedBundleIn,
-		expectedEntityId: expectedFolderId,
+		expectedBundledIn,
+		expectedEntityId,
 		entityData
 	});
 
 	expect(dataTxId).to.be.undefined;
 
-	if (expectDriveKey) {
+	if (expectPrivateKey) {
 		// Output of stubDriveKey
 		expect(key?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
 	} else {
@@ -4094,24 +4074,25 @@ function assertFolderCreatedResult({
 function assertDriveCreatedResult({
 	entityData,
 	expectedEntityName,
-	expectedBundleIn,
-	expectedDriveKey
-}: {
-	entityData: ArFSEntityData;
-	expectedEntityName: string;
-	expectedBundleIn?: TransactionID;
-	expectedDriveKey?: DriveKey;
-}) {
+	expectedBundledIn,
+	expectPrivateKey
+}: AssertArFSEntityDataCreatedParams) {
 	const { key, type, dataTxId } = entityData;
 
-	expect(key?.toString()).to.equal(expectedDriveKey?.toString());
 	expect(type).to.equal('drive');
 	expect(dataTxId).to.be.undefined;
+
+	if (expectPrivateKey) {
+		// Output of stubDriveKey
+		expect(key?.toString()).to.equal('nxTl2ki5hWjyYE0SjOg2FV3PE7EBKMe9E6kD8uOvm6w');
+	} else {
+		expect(key).to.be.undefined;
+	}
 
 	assertEntityCreatedResult({
 		entityData,
 		expectedEntityName,
-		expectedBundleIn
+		expectedBundledIn
 	});
 }
 
@@ -4120,14 +4101,8 @@ function assertEntityCreatedResult({
 	expectedEntityId,
 	expectedEntityName,
 	expectedSourceUri,
-	expectedBundleIn
-}: {
-	entityData: ArFSEntityData;
-	expectedEntityName: string;
-	expectedEntityId?: EntityID;
-	expectedSourceUri?: string;
-	expectedBundleIn?: TransactionID;
-}): void {
+	expectedBundledIn
+}: AssertArFSEntityDataCreatedParams): void {
 	const { entityId, metadataTxId, entityName, sourceUri, bundledIn, bundleTxId } = entityData;
 
 	expect(entityName).to.equal(expectedEntityName);
@@ -4140,8 +4115,8 @@ function assertEntityCreatedResult({
 		expect(sourceUri).to.be.undefined;
 	}
 
-	if (expectedBundleIn) {
-		expect(`${bundledIn}`).to.equal(`${expectedBundleIn}`);
+	if (expectedBundledIn) {
+		expect(`${bundledIn}`).to.equal(`${expectedBundledIn}`);
 	} else {
 		expect(bundledIn).to.be.undefined;
 	}
@@ -4217,59 +4192,59 @@ function assertBulkFolderExpectations(created: ArFSEntityData[], bundleTxId?: Tr
 	assertFolderCreatedResult({
 		entityData: created[0],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder',
-		expectedFolderName: 'bulk_root_folder',
-		expectedBundleIn: bundleTxId,
-		expectDriveKey: expectPrivateKey
+		expectedEntityName: 'bulk_root_folder',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey
 	});
 	assertFolderCreatedResult({
 		entityData: created[1],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder',
-		expectedFolderName: 'parent_folder',
-		expectedBundleIn: bundleTxId,
-		expectDriveKey: expectPrivateKey
+		expectedEntityName: 'parent_folder',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey
 	});
 	assertFolderCreatedResult({
 		entityData: created[2],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder',
-		expectedFolderName: 'child_folder',
-		expectedBundleIn: bundleTxId,
-		expectDriveKey: expectPrivateKey
+		expectedEntityName: 'child_folder',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey
 	});
 	assertFolderCreatedResult({
 		entityData: created[3],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
-		expectedFolderName: 'grandchild_folder',
-		expectedBundleIn: bundleTxId,
-		expectDriveKey: expectPrivateKey
+		expectedEntityName: 'grandchild_folder',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey
 	});
 
 	assertFileCreatedResult({
 		entityData: created[4],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/file_in_root.txt',
-		expectedFileName: 'file_in_root.txt',
-		expectedBundleIn: bundleTxId,
-		expectFileKey: expectPrivateKey
+		expectedEntityName: 'file_in_root.txt',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey: expectPrivateKey
 	});
 	assertFileCreatedResult({
 		entityData: created[5],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/file_in_parent.txt',
-		expectedFileName: 'file_in_parent.txt',
-		expectedBundleIn: bundleTxId,
-		expectFileKey: expectPrivateKey
+		expectedEntityName: 'file_in_parent.txt',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey: expectPrivateKey
 	});
 	assertFileCreatedResult({
 		entityData: created[6],
 		expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt',
-		expectedFileName: 'file_in_child.txt',
-		expectedBundleIn: bundleTxId,
-		expectFileKey: expectPrivateKey
+		expectedEntityName: 'file_in_child.txt',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey: expectPrivateKey
 	});
 	assertFileCreatedResult({
 		entityData: created[7],
 		expectedSourceUri:
 			'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder/file_in_grandchild.txt',
-		expectedFileName: 'file_in_grandchild.txt',
-		expectedBundleIn: bundleTxId,
-		expectFileKey: expectPrivateKey
+		expectedEntityName: 'file_in_grandchild.txt',
+		expectedBundledIn: bundleTxId,
+		expectPrivateKey: expectPrivateKey
 	});
 }
