@@ -886,6 +886,9 @@ export class ArDrive extends ArDriveAnonymous {
 				type: 'bundle',
 				bundleTxId: createDriveResult.bundleTxId
 			});
+			arFSResults.created[0].bundledIn = createDriveResult.bundleTxId;
+			arFSResults.created[1].bundledIn = createDriveResult.bundleTxId;
+
 			return {
 				...arFSResults,
 				fees: {
