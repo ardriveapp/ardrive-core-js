@@ -38,7 +38,7 @@ export interface ArFSUploadEntitiesResult {
 export interface BaseArFSUploadResult {
 	entityName: EntityName;
 	bundledIn?: TransactionID;
-	sourceUri: SourceUri;
+	sourceUri?: SourceUri;
 	entityId: EntityID;
 }
 
