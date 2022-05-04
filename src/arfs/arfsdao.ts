@@ -2,7 +2,7 @@ import Arweave from 'arweave';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateTransactionInterface } from 'arweave/node/common';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import Transaction from 'arweave/node/lib/transaction';
+import Transaction, { Tag } from 'arweave/node/lib/transaction';
 import { ArFSFileOrFolderBuilder } from './arfs_builders/arfs_builders';
 import { ArFSPrivateDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
@@ -163,6 +163,7 @@ import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 import { GatewayAPI } from '../utils/gateway_api';
 import { getDataForTxID } from '../utils/get_tx_data';
+import { assertTagByteLimit } from '../utils/assert_tag_byte_limit';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -737,7 +738,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSObjectTransaction({
 					objectMetaData,
-					rewardSettings: metaDataRewardSettings
+					rewardSettings: metaDataRewardSettings,
+					otherTags: prepFileParams.wrappedFile.customTags
 				})
 		});
 
@@ -772,7 +774,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
 				this.prepareArFSDataItem({
-					objectMetaData
+					objectMetaData,
+					otherTags: prepFileParams.wrappedFile.customTags
 				})
 		});
 
@@ -891,7 +894,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 							...uploadStat,
 							wrappedEntity
 						}),
-						prepareArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+						prepareArFSObject: (objectMetaData) =>
+							this.prepareArFSDataItem({ objectMetaData, otherTags: wrappedEntity.customTags })
 					});
 					const folderDataItem = arFSObjects[0];
 
@@ -907,8 +911,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
 						prepareArFSObject: (objectMetaData) =>
-							this.prepareArFSDataItem({ objectMetaData, excludedTagNames: ['ArFS'] }),
-						prepareMetaDataArFSObject: (objectMetaData) => this.prepareArFSDataItem({ objectMetaData })
+							this.prepareArFSDataItem({
+								objectMetaData,
+								excludedTagNames: ['ArFS']
+							}),
+						prepareMetaDataArFSObject: (objectMetaData) =>
+							this.prepareArFSDataItem({ objectMetaData, otherTags: wrappedEntity.customTags })
 					});
 
 					const [fileDataItem, metaDataItem] = arFSObjects;
@@ -967,6 +975,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Sign the data item
 		const dataItem = createData(objectMetaData.objectData.asTransactionData(), signer, { tags });
 		await dataItem.sign(signer);
+
+		assertTagByteLimit(dataItem.tags as Tag[]);
 
 		return dataItem;
 	}
@@ -1031,6 +1041,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		for (const tag of tags) {
 			bundledDataTx.addTag(tag.name, tag.value);
 		}
+		assertTagByteLimit(bundledDataTx.tags);
 
 		await this.arweave.transactions.sign(bundledDataTx, wallet.getPrivateKey());
 		return bundledDataTx;
@@ -1089,6 +1100,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		for (const tag of tags) {
 			transaction.addTag(tag.name, tag.value);
 		}
+
+		assertTagByteLimit(transaction.tags);
 
 		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());

@@ -361,6 +361,8 @@ describe('ArLocal Integration Tests', function () {
 				size: new ByteCount(5242880)
 			});
 		});
+
+		it('we can upload a public file with a custom content type and custom tags');
 	});
 
 	describe('when a private drive is created with `createPrivateDrive`', () => {

@@ -65,7 +65,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		);
 		const metaDataByteCountAsDataItem = byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+			this.arFSTagSettings.baseArFSTagsIncluding({
+				tags: wrappedFile.customTags
+					? [...fileMetaDataPrototype.gqlTags, ...wrappedFile.customTags]
+					: fileMetaDataPrototype.gqlTags
+			})
 		);
 		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
 
