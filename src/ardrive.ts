@@ -83,7 +83,9 @@ import {
 	ArFSCreateFileMetaDataV2Plan,
 	RewardSettings,
 	FileNameConflictResolution,
-	RetryPublicArFSFileParams
+	RetryPublicArFSFileParams,
+	RetryPublicArFSFileByFileIdParams,
+	RetryPublicArFSFileByDestFolderIdParams
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -617,51 +619,59 @@ export class ArDrive extends ArDriveAnonymous {
 		return arFSResult;
 	}
 
-	public async retryPublicArFSFileUpload({
+	public async retryPublicArFSFileUploadByFileId({
 		dataTxId,
-		destinationFolderId,
+		wrappedFile,
+		fileId
+	}: RetryPublicArFSFileByFileIdParams): Promise<ArFSResult> {
+		const metaDataTxId = await this.deriveMetaDataTxIdForFileId(fileId, dataTxId);
+
+		return this.retryPublicArFSFileUpload({ dataTxId, wrappedFile, fileId, metaDataTxId });
+	}
+
+	public async retryPublicArFSFileUploadByDestFolderId({
+		dataTxId,
+		wrappedFile,
+		conflictResolution = 'upsert',
+		destinationFolderId
+	}: RetryPublicArFSFileByDestFolderIdParams): Promise<ArFSResult> {
+		const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
+
+		let metaDataTxId: undefined | TransactionID = undefined;
+		let createMetaDataPlan: undefined | ArFSCreateFileMetaDataV2Plan = undefined;
+		let fileId: undefined | FileID = undefined;
+
+		if (metaDataTx) {
+			// MetaData has been verified
+			metaDataTxId = metaDataTx.txId;
+			fileId = metaDataTx.fileId;
+		} else {
+			// Metadata has not been found, it must be created
+			await this.assertWriteFileMetaData({ wrappedFile, conflictResolution, destinationFolderId });
+
+			createMetaDataPlan = {
+				rewardSettings: await this.deriveAndAssertV2PublicFileMetaDataRewardSettings(wrappedFile),
+				destinationFolderId,
+				fileId: wrappedFile.existingId
+			};
+		}
+
+		return this.retryPublicArFSFileUpload({ dataTxId, wrappedFile, fileId, metaDataTxId, createMetaDataPlan });
+	}
+
+	private async retryPublicArFSFileUpload({
+		dataTxId,
 		wrappedFile,
 		fileId,
-		conflictResolution = 'upsert'
+		createMetaDataPlan,
+		metaDataTxId
 	}: RetryPublicArFSFileParams): Promise<ArFSResult> {
-		let metaDataTxId: undefined | TransactionID = undefined;
-		let createMetaDataV2Plan: undefined | ArFSCreateFileMetaDataV2Plan = undefined;
-
-		if (fileId) {
-			metaDataTxId = await this.deriveMetaDataTxIdForFileId(fileId, dataTxId);
-		}
-
-		if (metaDataTxId === undefined) {
-			if (!destinationFolderId) {
-				throw Error(
-					'A valid file ID for an existing MetaData Tx or a valid destination folder ID is required to restore an ArFS file!'
-				);
-			}
-
-			const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
-
-			if (metaDataTx) {
-				// MetaData has been verified
-				fileId = metaDataTx.fileId;
-				metaDataTxId = metaDataTx.txId;
-			} else {
-				// Metadata has not been found, it must be created
-				await this.assertWriteFileMetaData({ wrappedFile, conflictResolution, destinationFolderId });
-
-				createMetaDataV2Plan = {
-					rewardSettings: await this.deriveAndAssertV2PublicFileMetaDataRewardSettings(wrappedFile),
-					destinationFolderId,
-					fileId: wrappedFile.existingId
-				};
-			}
-		}
-
 		// prettier-ignore
 		const { fileDataReward, communityTipSettings, newMetaDataInfo } =
 			await this.arFsDao.retryV2ArFSPublicFileTransaction({
 				arFSDataTxId: dataTxId,
 				wrappedFile,
-				createMetaDataPlan: createMetaDataV2Plan
+				createMetaDataPlan
 			});
 
 		const fees: ArFSFees = { [`${dataTxId}`]: fileDataReward };
@@ -685,24 +695,16 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 	}
 
-	private async deriveMetaDataTxIdForFileId(
-		fileId: FileID,
-		dataTxId: TransactionID
-	): Promise<TransactionID | undefined> {
-		try {
-			const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
-			const fileMetaData = await this.arFsDao.getPublicFile(fileId, owner);
+	private async deriveMetaDataTxIdForFileId(fileId: FileID, dataTxId: TransactionID): Promise<TransactionID> {
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		const fileMetaData = await this.arFsDao.getPublicFile(fileId, owner);
 
-			if (fileMetaData.dataTxId.equals(dataTxId)) {
-				// This metadata tx id is verified
-				return fileMetaData.txId;
-			}
-		} catch (err) {
-			// Gracefully fail with std err logging
-			console.error(err);
+		if (fileMetaData.dataTxId.equals(dataTxId)) {
+			// This metadata tx id is verified
+			return fileMetaData.txId;
 		}
 
-		return undefined;
+		throw Error(`File with id "${fileId}" has no metadata that links to dataTxId: "${dataTxId}"`);
 	}
 
 	private async deriveMetaDataTxFromPublicFolder(

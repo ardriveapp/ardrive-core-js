@@ -437,7 +437,7 @@ describe('ArLocal Integration Tests', function () {
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
-				const result = await v2ArDrive.retryPublicArFSFileUpload({
+				const result = await v2ArDrive.retryPublicArFSFileUploadByFileId({
 					dataTxId,
 					wrappedFile: stub2ChunkFileToUpload(),
 					fileId
@@ -507,7 +507,7 @@ describe('ArLocal Integration Tests', function () {
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
-				const result = await v2ArDrive.retryPublicArFSFileUpload({
+				const result = await v2ArDrive.retryPublicArFSFileUploadByDestFolderId({
 					dataTxId,
 					wrappedFile: stub3ChunkFileToUpload(),
 					destinationFolderId: rootFolderId
@@ -573,7 +573,7 @@ describe('ArLocal Integration Tests', function () {
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
-				const result = await v2ArDrive.retryPublicArFSFileUpload({
+				const result = await v2ArDrive.retryPublicArFSFileUploadByDestFolderId({
 					dataTxId,
 					wrappedFile: stub258KiBFileToUpload(),
 					destinationFolderId: rootFolderId

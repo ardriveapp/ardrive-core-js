@@ -3408,7 +3408,7 @@ describe('ArDrive class - integrated', () => {
 		it('returns the expected result when a valid metaData tx is found with the provided file ID', async () => {
 			stub(arfsDao, 'getPublicFile').resolves(stubRetryFile);
 
-			const result = await arDrive.retryPublicArFSFileUpload({
+			const result = await arDrive.retryPublicArFSFileUploadByFileId({
 				dataTxId: matchingDataTxID,
 				wrappedFile: stubSmallFileToUpload(),
 				fileId: stubEntityIDAlt
@@ -3417,23 +3417,23 @@ describe('ArDrive class - integrated', () => {
 			assertRetryExpectations({ result, expectedFileId: stubEntityIDAlt });
 		});
 
-		it('throws an error when a valid metadata tx could not be found and there is destination folder id provided', async () => {
-			stub(arfsDao, 'getPublicFile').throws();
+		it('throws an error when a valid metadata tx could not be found with the provided data tx id', async () => {
+			stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ dataTxId: mismatchedDataTxID }));
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.retryPublicArFSFileUpload({
+				promiseToError: arDrive.retryPublicArFSFileUploadByFileId({
 					dataTxId: matchingDataTxID,
 					wrappedFile: stubSmallFileToUpload(),
 					fileId: stubEntityIDAlt
 				}),
-				errorMessage: `A valid file ID for an existing MetaData Tx or a valid destination folder ID is required to restore an ArFS file!`
+				errorMessage: `File with id "caa8b54a-eb5e-4134-8ae2-a3946a428ec7" has no metadata that links to dataTxId: "0000000000000000000000000000000000000000001"`
 			});
 		});
 
 		it('returns the expected result when a valid metaData tx is found within the provided folder ID', async () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
-			const result = await arDrive.retryPublicArFSFileUpload({
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
 				dataTxId: matchingDataTxID,
 				wrappedFile: stubSmallFileToUpload(),
 				destinationFolderId: stubEntityID
@@ -3445,7 +3445,7 @@ describe('ArDrive class - integrated', () => {
 		it('returns the expected result when no valid metaData tx can be found', async () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
-			const result = await arDrive.retryPublicArFSFileUpload({
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
 				dataTxId: mismatchedDataTxID,
 				wrappedFile: stubSmallFileToUpload(),
 				destinationFolderId: stubEntityID
@@ -3457,7 +3457,7 @@ describe('ArDrive class - integrated', () => {
 		it('returns the expected REVISION result when no valid metaData tx can be found and the destination name conflicts with an existing file in the destination folder', async () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
-			const result = await arDrive.retryPublicArFSFileUpload({
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
 				dataTxId: mismatchedDataTxID,
 				wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
 				destinationFolderId: stubEntityID,
@@ -3476,7 +3476,7 @@ describe('ArDrive class - integrated', () => {
 			stub(arfsDao, 'getPublicFolder').throws();
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.retryPublicArFSFileUpload({
+				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
 					dataTxId: matchingDataTxID,
 					wrappedFile: stubSmallFileToUpload(),
 					destinationFolderId: stubEntityID
@@ -3489,7 +3489,7 @@ describe('ArDrive class - integrated', () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.retryPublicArFSFileUpload({
+				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
 					dataTxId: mismatchedDataTxID,
 					wrappedFile: stubSmallFileToUpload('CONFLICTING_FOLDER_NAME'),
 					destinationFolderId: stubEntityID
@@ -3502,7 +3502,7 @@ describe('ArDrive class - integrated', () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
 			await expectAsyncErrorThrow({
-				promiseToError: arDrive.retryPublicArFSFileUpload({
+				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
 					dataTxId: mismatchedDataTxID,
 					wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
 					destinationFolderId: stubEntityID,
