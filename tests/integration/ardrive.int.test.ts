@@ -3501,15 +3501,17 @@ describe('ArDrive class - integrated', () => {
 		it('throws an error if destination name conflicts with an existing file and the conflict resolution is set to `skip`', async () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
-			await expectAsyncErrorThrow({
-				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
-					dataTxId: mismatchedDataTxID,
-					wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
-					destinationFolderId: stubEntityID,
-					conflictResolution: 'skip'
-				}),
-				errorMessage:
-					'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
+				dataTxId: mismatchedDataTxID,
+				wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
+				destinationFolderId: stubEntityID,
+				conflictResolution: 'skip'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {}
 			});
 		});
 	});
