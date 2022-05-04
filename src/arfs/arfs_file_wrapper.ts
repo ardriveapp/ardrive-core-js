@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
-import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
+import { basename, dirname, join as joinPath, relative as relativePath, resolve as resolveAbsolutePath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
@@ -24,6 +24,7 @@ import { defaultArweaveGatewayPath } from '../utils/constants';
 const pipelinePromise = promisify(pipeline);
 
 type BaseName = string;
+type EntityPath = string;
 
 /**
  *  Fs + Node implementation file size limitations -- tested on MacOS Sep 27, 2021
@@ -37,6 +38,10 @@ export interface FileInfo {
 	dataContentType: DataContentType;
 	lastModifiedDateMS: UnixTime;
 	fileSize: ByteCount;
+}
+
+export function resolvePathToSourceUri(entityPath: EntityPath): SourceUri {
+	return `file://${resolveAbsolutePath(entityPath)}`;
 }
 
 /**
@@ -217,7 +222,7 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 		}
 	}
 
-	public readonly sourceUri = this.filePath;
+	public readonly sourceUri = resolvePathToSourceUri(this.filePath);
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -270,7 +275,7 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	conflictResolution: FolderConflictResolution = undefined;
 
 	public readonly entityType = 'folder';
-	public readonly sourceUri = this.filePath;
+	public readonly sourceUri = resolvePathToSourceUri(this.filePath);
 
 	constructor(public readonly filePath: SourceUri, public readonly fileStats: Stats) {
 		super();

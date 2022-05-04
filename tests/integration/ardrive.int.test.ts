@@ -3049,7 +3049,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertFolderCreatedResult({
 				entityData: created[0],
-				expectedSourceUri: './tests/stub_files/bulk_root_folder',
+				expectedSourceUri: 'tests/stub_files/bulk_root_folder',
 				expectedEntityName: 'bulk_root_folder',
 				expectedBundledIn: bundleTxId
 			});
@@ -3429,13 +3429,13 @@ describe('ArDrive class - integrated', () => {
 
 			assertFolderCreatedResult({
 				entityData: created[0],
-				expectedSourceUri: './tests/stub_files/bulk_root_folder',
+				expectedSourceUri: 'tests/stub_files/bulk_root_folder',
 				expectedEntityName: 'Unique-Name',
 				expectedBundledIn: bundleTxId
 			});
 			assertFolderCreatedResult({
 				entityData: created[1],
-				expectedSourceUri: './tests/stub_files/bulk_root_folder',
+				expectedSourceUri: 'tests/stub_files/bulk_root_folder',
 				expectedEntityName: 'bulk_root_folder',
 				expectedBundledIn: bundleTxId
 			});
@@ -3497,7 +3497,7 @@ describe('ArDrive class - integrated', () => {
 				result,
 				folderFee: W(27),
 				expectedEntityName: 'bulk_root_folder',
-				expectedSourceUri: './tests/stub_files/bulk_root_folder'
+				expectedSourceUri: 'tests/stub_files/bulk_root_folder'
 			});
 		});
 
@@ -3511,7 +3511,7 @@ describe('ArDrive class - integrated', () => {
 				folderFee: W(43),
 				expectedEntityName: 'bulk_root_folder',
 				expectPrivateKey: true,
-				expectedSourceUri: './tests/stub_files/bulk_root_folder'
+				expectedSourceUri: 'tests/stub_files/bulk_root_folder'
 			});
 		});
 
@@ -4110,7 +4110,14 @@ function assertEntityCreatedResult({
 	expect(bundleTxId).to.be.undefined;
 
 	if (expectedSourceUri) {
-		expect(sourceUri).to.equal(expectedSourceUri);
+		const lengthOfExpectedSourcePath = expectedSourceUri.split('/').length;
+
+		const sourceUriSplit = sourceUri!.split('/');
+		const sourceUriProtocol = sourceUriSplit[0];
+		const relativeSourceUri = sourceUriSplit.slice(-lengthOfExpectedSourcePath).join('/');
+
+		expect(relativeSourceUri).to.equal(expectedSourceUri);
+		expect(sourceUriProtocol).to.equal('file:');
 	} else {
 		expect(sourceUri).to.be.undefined;
 	}
