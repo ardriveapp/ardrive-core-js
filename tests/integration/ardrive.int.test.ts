@@ -3442,7 +3442,7 @@ describe('ArDrive class - integrated', () => {
 			assertRetryExpectations({ result });
 		});
 
-		it('returns the expected result when no valid metaData tx can be found', async () => {
+		it('returns an ArFSResult that contains a MetaData Tx Reward when no existing MetaData Tx can be found in the destination folder', async () => {
 			stub(arfsDao, 'getPublicFolder').resolves();
 
 			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
