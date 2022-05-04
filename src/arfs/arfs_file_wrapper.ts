@@ -40,7 +40,7 @@ export interface FileInfo {
 	fileSize: ByteCount;
 }
 
-export function resolvePathToSourceUri(entityPath: EntityPath): SourceUri {
+export function resolveEntityPathToLocalSourceUri(entityPath: EntityPath): SourceUri {
 	return `file://${resolveAbsolutePath(entityPath)}`;
 }
 
@@ -61,7 +61,7 @@ export function resolvePathToSourceUri(entityPath: EntityPath): SourceUri {
  *
  */
 export function wrapFileOrFolder(
-	fileOrFolderPath: SourceUri,
+	fileOrFolderPath: EntityPath,
 	customContentType?: DataContentType
 ): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
@@ -212,7 +212,7 @@ export type FileConflictResolution = FolderConflictResolution | typeof upsertOnC
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
-		public readonly filePath: SourceUri,
+		public readonly filePath: EntityPath,
 		public readonly fileStats: Stats,
 		public readonly customContentType?: DataContentType
 	) {
@@ -222,7 +222,7 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 		}
 	}
 
-	public readonly sourceUri = resolvePathToSourceUri(this.filePath);
+	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -275,9 +275,9 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	conflictResolution: FolderConflictResolution = undefined;
 
 	public readonly entityType = 'folder';
-	public readonly sourceUri = resolvePathToSourceUri(this.filePath);
+	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
-	constructor(public readonly filePath: SourceUri, public readonly fileStats: Stats) {
+	constructor(public readonly filePath: EntityPath, public readonly fileStats: Stats) {
 		super();
 
 		const entitiesInFolder = readdirSync(this.filePath);
