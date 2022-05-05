@@ -884,6 +884,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// The upload planner has planned to upload bundles, proceed with bundling
 			let dataItems: DataItem[] = [];
 
+			// We accumulate results from the current bundle in order to add on the
+			// bundledIn field after we have the bundleTxId from signing bundle
 			const currentBundleResults: { folderResults: FolderResult[]; fileResults: FileResult[] } = {
 				folderResults: [],
 				fileResults: []

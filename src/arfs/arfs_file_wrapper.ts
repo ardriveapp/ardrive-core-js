@@ -24,7 +24,7 @@ import { defaultArweaveGatewayPath } from '../utils/constants';
 const pipelinePromise = promisify(pipeline);
 
 type BaseName = string;
-type EntityPath = string;
+type LocalEntityPath = string;
 
 /**
  *  Fs + Node implementation file size limitations -- tested on MacOS Sep 27, 2021
@@ -40,7 +40,7 @@ export interface FileInfo {
 	fileSize: ByteCount;
 }
 
-export function resolveEntityPathToLocalSourceUri(entityPath: EntityPath): SourceUri {
+export function resolveEntityPathToLocalSourceUri(entityPath: LocalEntityPath): SourceUri {
 	return `file://${resolveAbsolutePath(entityPath)}`;
 }
 
@@ -61,7 +61,7 @@ export function resolveEntityPathToLocalSourceUri(entityPath: EntityPath): Sourc
  *
  */
 export function wrapFileOrFolder(
-	fileOrFolderPath: EntityPath,
+	fileOrFolderPath: LocalEntityPath,
 	customContentType?: DataContentType
 ): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
@@ -81,6 +81,9 @@ export function isFolder(fileOrFolder: ArFSDataToUpload | ArFSFolderToUpload): f
 export abstract class ArFSBaseEntityToUpload {
 	abstract getBaseName(): BaseName;
 	abstract readonly entityType: EntityType;
+
+	// Source URI is optional when an upload has no local or remote source (manifest use case). It remains
+	// non-abstract so classes can choose not have to implement it, which will default the value to undefined
 	readonly sourceUri?: SourceUri;
 
 	destName?: string;
@@ -212,7 +215,7 @@ export type FileConflictResolution = FolderConflictResolution | typeof upsertOnC
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
-		public readonly filePath: EntityPath,
+		public readonly filePath: LocalEntityPath,
 		public readonly fileStats: Stats,
 		public readonly customContentType?: DataContentType
 	) {
@@ -277,7 +280,7 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	public readonly entityType = 'folder';
 	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
-	constructor(public readonly filePath: EntityPath, public readonly fileStats: Stats) {
+	constructor(public readonly filePath: LocalEntityPath, public readonly fileStats: Stats) {
 		super();
 
 		const entitiesInFolder = readdirSync(this.filePath);
