@@ -691,6 +691,11 @@ export class ArDrive extends ArDriveAnonymous {
 			fees[`${metaDataTxId}`] = newMetaDataInfo.fileMetaDataReward;
 		}
 
+		if (!fileId || !metaDataTxId) {
+			// Provided for increased type safety, this error is considered unreachable with current code
+			throw Error('MetaData Tx could not be verified or re-created!');
+		}
+
 		return {
 			created: [{ type: 'file', dataTxId, metadataTxId: metaDataTxId, entityId: fileId }],
 			tips: [
