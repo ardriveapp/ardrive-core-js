@@ -11,7 +11,6 @@ export function assertRetryExpectations({
 	expectedDataTxId = stubTxID,
 	expectedMetaDataTxId,
 	expectedMetaDataTxReward,
-	emptyTarget = false,
 	expectedCommunityTip = W(5),
 	expectedDataTxReward = W(10)
 }: {
@@ -20,7 +19,6 @@ export function assertRetryExpectations({
 	expectedDataTxId?: TransactionID;
 	expectedMetaDataTxId?: TransactionID;
 	expectedMetaDataTxReward?: Winston;
-	emptyTarget?: boolean;
 	expectedCommunityTip?: Winston;
 	expectedDataTxReward?: Winston;
 }): void {
@@ -51,7 +49,7 @@ export function assertRetryExpectations({
 	expect(tips).to.have.length(1);
 	const { recipient, txId, winston } = tips[0];
 
-	expect(`${recipient}`).to.equal(emptyTarget ? '' : `${stubArweaveAddress()}`);
+	expect(`${recipient}`).to.equal(`${stubArweaveAddress()}`);
 	expect(`${txId}`).to.equal(`${expectedDataTxId}`);
 	expect(+winston).to.equal(+expectedCommunityTip);
 

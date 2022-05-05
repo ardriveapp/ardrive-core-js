@@ -44,7 +44,7 @@ import {
 } from '../../src/arfs/arfs_entities';
 import { GatewayAPI } from '../../src/utils/gateway_api';
 import { restore, stub } from 'sinon';
-import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload } from '../stubs';
+import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload, stubArweaveAddress } from '../stubs';
 import axios from 'axios';
 import { assertRetryExpectations } from '../test_assertions';
 import { expectAsyncErrorThrow, fundArLocalWallet, mineArLocalBlock } from '../test_helpers';
@@ -120,6 +120,10 @@ describe('ArLocal Integration Tests', function () {
 
 	before(async () => {
 		await fundArLocalWallet(arweave, wallet);
+	});
+
+	beforeEach(() => {
+		stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
@@ -391,9 +395,6 @@ describe('ArLocal Integration Tests', function () {
 				).data;
 
 			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
-				// prettier-ignore
-				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
-				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
 				const wrappedFile = stub2ChunkFileToUpload();
@@ -454,16 +455,12 @@ describe('ArLocal Integration Tests', function () {
 					result,
 					expectedDataTxId: dataTxId,
 					expectedFileId: fileId,
-					emptyTarget: true,
 					expectedCommunityTip: W(154544268902),
 					expectedDataTxReward: W(1030295126016)
 				});
 			});
 
 			it('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
-				// prettier-ignore
-				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
-				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
 				const wrappedFile = stub3ChunkFileToUpload();
@@ -523,16 +520,12 @@ describe('ArLocal Integration Tests', function () {
 				assertRetryExpectations({
 					result,
 					expectedDataTxId: dataTxId,
-					emptyTarget: true,
 					expectedCommunityTip: W(231816403353),
 					expectedDataTxReward: W(1545442689024)
 				});
 			});
 
 			it('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
-				// prettier-ignore
-				// TODO: We stub the token holder out here because of an ArLocal issue with multi-chunk transactions having a `target` field
-				stub(communityOracle, 'selectTokenHolder').resolves('' as unknown as ArweaveAddress);
 				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
 
 				const wrappedFile = stub258KiBFileToUpload();
@@ -589,7 +582,6 @@ describe('ArLocal Integration Tests', function () {
 				assertRetryExpectations({
 					result,
 					expectedDataTxId: dataTxId,
-					emptyTarget: true,
 					expectedCommunityTip: W(154_544_268_902),
 					expectedDataTxReward: W(1_030_295_126_016),
 					// We expect a metaData reward to exist
