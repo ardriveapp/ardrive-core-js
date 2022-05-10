@@ -18,13 +18,17 @@ import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSListPublicFolderParams } from './arfsdao_types';
 import { EntityKey } from './entity_key';
+import { EntityName, SourceUri } from './types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
 export interface ArFSEntityData {
 	type: ArFSEntityDataType;
+	sourceUri?: SourceUri;
+	entityName?: EntityName;
 	bundleTxId?: TransactionID;
 	metadataTxId?: TransactionID;
+	bundledIn?: TransactionID;
 	dataTxId?: TransactionID;
 	entityId?: AnyEntityID;
 	key?: EntityKey;
