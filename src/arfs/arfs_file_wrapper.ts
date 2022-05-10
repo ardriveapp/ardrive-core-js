@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync, readdirSync, readFileSync, Stats, statSync } from 'fs';
-import { basename, dirname, join as joinPath, relative as relativePath } from 'path';
+import { basename, dirname, join as joinPath, relative as relativePath, resolve as resolveAbsolutePath } from 'path';
 import { Duplex, pipeline, Readable } from 'stream';
 import { promisify } from 'util';
 import {
@@ -19,13 +19,13 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths } from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, SourceUri } from '../exports';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
 
 type BaseName = string;
-type FilePath = string;
+type LocalEntityPath = string;
 
 /**
  *  Fs + Node implementation file size limitations -- tested on MacOS Sep 27, 2021
@@ -39,6 +39,10 @@ export interface FileInfo {
 	dataContentType: DataContentType;
 	lastModifiedDateMS: UnixTime;
 	fileSize: ByteCount;
+}
+
+export function resolveEntityPathToLocalSourceUri(entityPath: LocalEntityPath): SourceUri {
+	return `file://${resolveAbsolutePath(entityPath)}`;
 }
 
 /**
@@ -58,7 +62,7 @@ export interface FileInfo {
  *
  */
 export function wrapFileOrFolder(
-	fileOrFolderPath: FilePath,
+	fileOrFolderPath: LocalEntityPath,
 	customContentType?: DataContentType,
 	customTags?: GQLTagInterface[]
 ): ArFSFileToUpload | ArFSFolderToUpload {
@@ -78,7 +82,11 @@ export function isFolder(fileOrFolder: ArFSDataToUpload | ArFSFolderToUpload): f
 
 export abstract class ArFSBaseEntityToUpload {
 	abstract getBaseName(): BaseName;
-	abstract entityType: EntityType;
+	abstract readonly entityType: EntityType;
+
+	// Source URI is optional when an upload has no local or remote source (manifest use case). It remains
+	// non-abstract so classes can choose not have to implement it, which will default the value to undefined
+	readonly sourceUri?: SourceUri;
 
 	destName?: string;
 	existingId?: EntityID;
@@ -211,7 +219,7 @@ export type FileConflictResolution = FolderConflictResolution | typeof upsertOnC
 
 export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
-		public readonly filePath: FilePath,
+		public readonly filePath: LocalEntityPath,
 		public readonly fileStats: Stats,
 		public readonly customContentType?: DataContentType,
 		public readonly customTags?: GQLTagInterface[]
@@ -221,6 +229,8 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 			throw new Error(`Files greater than "${maxFileSize}" bytes are not yet supported!`);
 		}
 	}
+
+	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
 	public gatherFileInfo(): FileInfo {
 		const dataContentType = this.contentType;
@@ -272,10 +282,11 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 
 	conflictResolution: FolderConflictResolution = undefined;
 
-	readonly entityType = 'folder';
+	public readonly entityType = 'folder';
+	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
 	constructor(
-		public readonly filePath: FilePath,
+		public readonly filePath: LocalEntityPath,
 		public readonly fileStats: Stats,
 		public readonly customTags?: GQLTagInterface[]
 	) {

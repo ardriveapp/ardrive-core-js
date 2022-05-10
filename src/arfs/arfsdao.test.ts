@@ -993,7 +993,7 @@ const txIdRegex = /^(\w|-){43}$/;
 function assertFileResult(
 	{
 		fileDataTxId,
-		fileId,
+		entityId,
 		metaDataTxId,
 		communityTipSettings,
 		fileDataReward,
@@ -1007,10 +1007,10 @@ function assertFileResult(
 ): void {
 	expect(fileDataTxId).to.match(txIdRegex);
 	expect(metaDataTxId).to.match(txIdRegex);
-	expect(fileId).to.match(entityIdRegex);
+	expect(entityId).to.match(entityIdRegex);
 
 	if (expectedFileId) {
-		expect(`${fileId}`).to.equal(`${expectedFileId}`);
+		expect(`${entityId}`).to.equal(`${expectedFileId}`);
 	}
 
 	if (fileReward) {
@@ -1036,16 +1036,16 @@ function assertFileResult(
 }
 
 function assertFolderResult(
-	{ folderMetaDataReward, folderId, folderTxId, driveKey }: FolderResult,
+	{ folderMetaDataReward, entityId, folderTxId, driveKey }: FolderResult,
 	folderReward?: number,
 	expectDriveKey = false,
 	expectedFolderId?: FolderID
 ): void {
 	expect(folderTxId).to.match(txIdRegex);
-	expect(folderId).to.match(entityIdRegex);
+	expect(entityId).to.match(entityIdRegex);
 
 	if (expectedFolderId) {
-		expect(`${folderId}`).to.equal(`${expectedFolderId}`);
+		expect(`${entityId}`).to.equal(`${expectedFolderId}`);
 	}
 
 	if (folderReward) {
