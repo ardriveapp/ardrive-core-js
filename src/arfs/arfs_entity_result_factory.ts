@@ -1,4 +1,16 @@
-import { DriveID, FolderID, FileID, FileKey, DriveKey, TransactionID, Winston, CommunityTipSettings } from '../types';
+import {
+	DriveID,
+	FolderID,
+	FileID,
+	FileKey,
+	DriveKey,
+	TransactionID,
+	Winston,
+	CommunityTipSettings,
+	SourceUri,
+	EntityName,
+	EntityID
+} from '../types';
 
 export interface ArFSBundleWriteResult {
 	bundleTxId: TransactionID;
@@ -23,17 +35,22 @@ export interface ArFSUploadEntitiesResult {
 	bundleResults: BundleResult[];
 }
 
-export interface FolderResult {
+export interface BaseArFSUploadResult {
+	entityName: EntityName;
+	bundledIn?: TransactionID;
+	sourceUri?: SourceUri;
+	entityId: EntityID;
+}
+
+export interface FolderResult extends BaseArFSUploadResult {
 	folderTxId: TransactionID;
-	folderId: FolderID;
 	folderMetaDataReward?: Winston;
 	driveKey?: DriveKey;
 }
 
-export interface FileResult {
+export interface FileResult extends BaseArFSUploadResult {
 	fileDataTxId: TransactionID;
 	metaDataTxId: TransactionID;
-	fileId: FileID;
 	fileDataReward?: Winston;
 	fileMetaDataReward?: Winston;
 	communityTipSettings?: CommunityTipSettings;

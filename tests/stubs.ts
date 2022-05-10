@@ -492,7 +492,7 @@ export const stubFileToUpload = (destinationName?: string): ArFSFileToUpload => 
 };
 
 export const stubFolderToUpload = (): ArFSFolderToUpload =>
-	wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+	wrapFileOrFolder('tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
 
 export const stubEmptyFolderToUpload = (destinationName?: string): ArFSFolderToUpload => {
 	const folder = stubFolderToUpload();
