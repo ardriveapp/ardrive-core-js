@@ -42,7 +42,8 @@ import {
 	ArFSRenamePublicDriveResult,
 	ArFSRenamePrivateDriveResult,
 	ArFSV2PublicRetryResult,
-	NewFileMetaDataCreated
+	NewFileMetaDataCreated,
+	FolderResult
 } from './arfs_entity_result_factory';
 import {
 	ArFSFileToUpload,
@@ -758,10 +759,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await this.sendTransactionsAsChunks(arFSObjects);
 
 		const [dataTx, metaDataTx] = arFSObjects;
+		const { sourceUri, destinationBaseName } = prepFileParams.wrappedFile;
 		return {
+			sourceUri,
+			entityName: destinationBaseName,
 			fileDataTxId: TxID(dataTx.id),
 			fileDataReward: W(dataTx.reward),
-			fileId,
+			entityId: fileId,
 			metaDataTxId: TxID(metaDataTx.id),
 			fileMetaDataReward: W(metaDataTx.reward),
 			fileKey,
@@ -794,11 +798,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Send only file data as v2 transaction
 		await this.sendTransactionsAsChunks([dataTx]);
 
+		const { sourceUri, destinationBaseName } = prepFileParams.wrappedFile;
 		return {
 			fileResult: {
+				sourceUri,
+				entityName: destinationBaseName,
 				fileDataTxId: TxID(dataTx.id),
 				fileDataReward: W(dataTx.reward),
-				fileId,
+				entityId: fileId,
 				metaDataTxId: TxID(metaDataDataItem.id),
 				fileKey,
 				communityTipSettings
@@ -876,10 +883,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 
 			results.folderResults.push({
-				folderId,
+				entityId: folderId,
+				entityName: uploadStats.wrappedEntity.destinationBaseName,
 				folderTxId: metaDataTxId,
 				folderMetaDataReward: metaDataTxReward,
-				driveKey: uploadStats.driveKey
+				driveKey: uploadStats.driveKey,
+				sourceUri: uploadStats.wrappedEntity.sourceUri
 			});
 		}
 		v2TxPlans.folderMetaDataPlans = [];
@@ -887,6 +896,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
 			let dataItems: DataItem[] = [];
+
+			// We accumulate results from the current bundle in order to add on the
+			// bundledIn field after we have the bundleTxId from signing bundle
+			const currentBundleResults: { folderResults: FolderResult[]; fileResults: FileResult[] } = {
+				folderResults: [],
+				fileResults: []
+			};
 
 			logProgress();
 
@@ -909,7 +925,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const folderDataItem = arFSObjects[0];
 
 					dataItems.push(folderDataItem);
-					results.folderResults.push({ folderId, folderTxId: TxID(folderDataItem.id), driveKey });
+					currentBundleResults.folderResults.push({
+						entityId: folderId,
+						folderTxId: TxID(folderDataItem.id),
+						driveKey,
+						entityName: wrappedEntity.destinationBaseName,
+						sourceUri: wrappedEntity.sourceUri
+					});
 				} else {
 					if (!communityTipSettings) {
 						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
@@ -927,11 +949,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const [fileDataItem, metaDataItem] = arFSObjects;
 
 					dataItems.push(...arFSObjects);
-					results.fileResults.push({
-						fileId,
+					currentBundleResults.fileResults.push({
+						entityId: fileId,
 						fileDataTxId: TxID(fileDataItem.id),
 						metaDataTxId: TxID(metaDataItem.id),
-						fileKey
+						fileKey,
+						entityName: wrappedEntity.destinationBaseName,
+						sourceUri: wrappedEntity.sourceUri
 					});
 				}
 			}
@@ -952,6 +976,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			await this.sendTransactionsAsChunks([bundleTx]);
 
 			uploadsCompleted++;
+
+			for (const res of currentBundleResults.fileResults) {
+				res.bundledIn = TxID(bundleTx.id);
+				results.fileResults.push(res);
+			}
+			for (const res of currentBundleResults.folderResults) {
+				res.bundledIn = TxID(bundleTx.id);
+				results.folderResults.push(res);
+			}
 			results.bundleResults.push({
 				bundleTxId: TxID(bundleTx.id),
 				communityTipSettings,

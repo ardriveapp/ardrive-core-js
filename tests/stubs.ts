@@ -503,7 +503,7 @@ export const stub3ChunkFileToUpload = (): ArFSFileToUpload =>
 export const stub5MiBFileToUpload = (): ArFSFileToUpload => stubFileToUpload(undefined, 'tests/stub_files/5MiB.txt');
 
 export const stubFolderToUpload = (): ArFSFolderToUpload =>
-	wrapFileOrFolder('./tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
+	wrapFileOrFolder('tests/stub_files/bulk_root_folder') as ArFSFolderToUpload;
 
 export const stubEmptyFolderToUpload = (destinationName?: string): ArFSFolderToUpload => {
 	const folder = stubFolderToUpload();

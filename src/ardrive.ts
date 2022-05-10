@@ -217,7 +217,8 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'file',
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
-					entityId: fileId
+					entityId: fileId,
+					entityName: originalFileMetaData.name
 				}
 			],
 			tips: [],
@@ -282,7 +283,8 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: moveFileResult.metaDataTxId,
 					dataTxId: moveFileResult.dataTxId,
 					entityId: fileId,
-					key: moveFileResult.fileKey
+					key: moveFileResult.fileKey,
+					entityName: originalFileMetaData.name
 				}
 			],
 			tips: [],
@@ -349,7 +351,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
-					entityId: folderId
+					entityId: folderId,
+					entityName: originalFolderMetaData.name
 				}
 			],
 			tips: [],
@@ -429,7 +432,8 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: moveFolderResult.metaDataTxId,
 					entityId: folderId,
-					key: moveFolderResult.driveKey
+					key: moveFolderResult.driveKey,
+					entityName: originalFolderMetaData.name
 				}
 			],
 			tips: [],
@@ -556,12 +560,23 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 
 		// Add folder results
-		for (const { folderId, folderTxId, driveKey, folderMetaDataReward } of results.folderResults) {
+		for (const {
+			entityId,
+			folderTxId,
+			driveKey,
+			folderMetaDataReward,
+			entityName,
+			bundledIn,
+			sourceUri
+		} of results.folderResults) {
 			arFSResult.created.push({
 				type: 'folder',
-				entityId: folderId,
+				entityId,
 				metadataTxId: folderTxId,
-				key: driveKey
+				key: driveKey,
+				bundledIn,
+				entityName,
+				sourceUri
 			});
 
 			if (folderMetaDataReward) {
@@ -572,19 +587,24 @@ export class ArDrive extends ArDriveAnonymous {
 		// Add file results
 		for (const {
 			fileDataTxId,
-			fileId,
+			entityId,
 			metaDataTxId,
 			fileDataReward,
 			fileKey,
 			fileMetaDataReward,
-			communityTipSettings
+			communityTipSettings,
+			bundledIn,
+			entityName,
+			sourceUri
 		} of results.fileResults) {
 			arFSResult.created.push({
 				type: 'file',
-				entityId: fileId,
+				entityName,
+				entityId,
 				dataTxId: fileDataTxId,
-				// TODO: Add bundledIn field here?
 				metadataTxId: metaDataTxId,
+				bundledIn,
+				sourceUri,
 				key: fileKey ? fileKey : undefined
 			});
 
@@ -954,7 +974,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'folder',
 					metadataTxId: metaDataTxId,
-					entityId: folderId
+					entityId: folderId,
+					entityName: folderName
 				}
 			],
 			tips: [],
@@ -1009,7 +1030,8 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: driveKey
+					key: driveKey,
+					entityName: folderName
 				}
 			],
 			tips: [],
@@ -1055,6 +1077,9 @@ export class ArDrive extends ArDriveAnonymous {
 				type: 'bundle',
 				bundleTxId: createDriveResult.bundleTxId
 			});
+			arFSResults.created[0].bundledIn = createDriveResult.bundleTxId;
+			arFSResults.created[1].bundledIn = createDriveResult.bundleTxId;
+
 			return {
 				...arFSResults,
 				fees: {
@@ -1078,9 +1103,15 @@ export class ArDrive extends ArDriveAnonymous {
 
 		assertValidArFSDriveName(driveName);
 
-		return this.createDrive(getPublicCreateDriveEstimationPrototypes(params), (rewardSettings) =>
-			this.arFsDao.createPublicDrive({ driveName, rewardSettings })
+		const createDriveResult = await this.createDrive(
+			getPublicCreateDriveEstimationPrototypes(params),
+			(rewardSettings) => this.arFsDao.createPublicDrive({ driveName, rewardSettings })
 		);
+
+		createDriveResult.created[0].entityName = driveName;
+		createDriveResult.created[1].entityName = driveName;
+
+		return createDriveResult;
 	}
 
 	public async createPrivateDrive(params: CreatePrivateDriveParams): Promise<ArFSResult> {
@@ -1093,9 +1124,11 @@ export class ArDrive extends ArDriveAnonymous {
 			(rewardSettings) => this.arFsDao.createPrivateDrive({ driveName, newDriveData, rewardSettings })
 		);
 
-		// Add drive keys to drive and folder entity results
+		// Add drive keys and entity name to drive and folder entity results
 		createDriveResult.created[0].key = newDriveData.driveKey;
 		createDriveResult.created[1].key = newDriveData.driveKey;
+		createDriveResult.created[0].entityName = driveName;
+		createDriveResult.created[1].entityName = driveName;
 
 		return createDriveResult;
 	}
@@ -1345,7 +1378,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'file',
 					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
@@ -1386,7 +1420,8 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'file',
 					entityId: result.entityId,
 					key: result.fileKey,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
@@ -1422,7 +1457,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'folder',
 					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
@@ -1459,7 +1495,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'folder',
 					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
@@ -1489,7 +1526,8 @@ export class ArDrive extends ArDriveAnonymous {
 				{
 					type: 'drive',
 					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
@@ -1525,7 +1563,8 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'drive',
 					entityId: result.entityId,
 					key: driveKey,
-					metadataTxId: result.metaDataTxId
+					metadataTxId: result.metaDataTxId,
+					entityName: newName
 				}
 			],
 			tips: [],
