@@ -717,7 +717,16 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		return {
-			created: [{ type: 'file', dataTxId, metadataTxId: metaDataTxId, entityId: fileId }],
+			created: [
+				{
+					type: 'file',
+					dataTxId,
+					metadataTxId: metaDataTxId,
+					entityId: fileId,
+					entityName: wrappedFile.destinationBaseName,
+					sourceUri: wrappedFile.sourceUri
+				}
+			],
 			tips: [
 				{
 					recipient: communityTipSettings.communityTipTarget,
