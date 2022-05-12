@@ -21,7 +21,7 @@ import {
 	ArFSObjectTransactionData,
 	ArFSPublicDriveTransactionData,
 	ArFSPrivateDriveTransactionData
-} from './arfs/arfs_tx_data_types';
+} from './arfs/tx/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveFileKey } from './utils/crypto';
@@ -97,7 +97,7 @@ import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
-import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs/tags/tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';

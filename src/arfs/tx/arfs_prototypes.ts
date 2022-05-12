@@ -25,7 +25,7 @@ import {
 	DrivePrivacy,
 	GQLTagInterface,
 	EntityType
-} from '../types';
+} from '../../types';
 
 export abstract class ArFSObjectMetadataPrototype {
 	abstract gqlTags: GQLTagInterface[];

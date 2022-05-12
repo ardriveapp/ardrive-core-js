@@ -1,4 +1,4 @@
-import { driveEncrypt, fileEncrypt, deriveFileKey } from '../utils/crypto';
+import { driveEncrypt, fileEncrypt, deriveFileKey } from '../../utils/crypto';
 import {
 	CipherIV,
 	DataContentType,
@@ -12,7 +12,7 @@ import {
 	ArFSEncryptedData,
 	CipherType,
 	DriveAuthMode
-} from '../types';
+} from '../../types';
 
 export interface ArFSObjectTransactionData {
 	asTransactionData(): string | Buffer;

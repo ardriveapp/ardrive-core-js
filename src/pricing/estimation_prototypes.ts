@@ -3,7 +3,7 @@ import {
 	ArFSFolderMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype
-} from '../arfs/arfs_prototypes';
+} from '../arfs/tx/arfs_prototypes';
 import {
 	ArFSDataToUpload,
 	ArFSPrivateDriveMetaDataPrototype,

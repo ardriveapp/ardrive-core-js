@@ -2,7 +2,7 @@
 // import ArLocal from 'arlocal';
 import Arweave from 'arweave';
 import { expect } from 'chai';
-import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
+import { ArFSTagSettings } from '../../src/arfs/tags/tag_settings';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import {
 	FeeMultiple,

@@ -10,7 +10,7 @@ import {
 	ArFSPublicFileDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
 	ArFSPublicFolderMetaDataPrototype
-} from './arfs_prototypes';
+} from './tx/arfs_prototypes';
 import {
 	ArFSFileMetadataTransactionData,
 	ArFSPrivateFileDataTransactionData,
@@ -19,7 +19,7 @@ import {
 	ArFSPublicFileDataTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData
-} from './arfs_tx_data_types';
+} from './tx/arfs_tx_data_types';
 
 import {
 	DataContentType,
