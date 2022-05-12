@@ -12,8 +12,7 @@ import {
 	TransactionID,
 	EntityID,
 	EntityType,
-	PRIVATE_CONTENT_TYPE,
-	GQLTagInterface
+	PRIVATE_CONTENT_TYPE
 } from '../types';
 import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
@@ -63,16 +62,15 @@ export function resolveEntityPathToLocalSourceUri(entityPath: LocalEntityPath): 
  */
 export function wrapFileOrFolder(
 	fileOrFolderPath: LocalEntityPath,
-	customContentType?: DataContentType,
-	customTags?: GQLTagInterface[]
+	customContentType?: DataContentType
 ): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
 
 	if (entityStats.isDirectory()) {
-		return new ArFSFolderToUpload(fileOrFolderPath, entityStats, customTags);
+		return new ArFSFolderToUpload(fileOrFolderPath, entityStats);
 	}
 
-	return new ArFSFileToUpload(fileOrFolderPath, entityStats, customContentType, customTags);
+	return new ArFSFileToUpload(fileOrFolderPath, entityStats, customContentType);
 }
 
 /** Type-guard function to determine if returned class is a File or Folder */
@@ -90,8 +88,6 @@ export abstract class ArFSBaseEntityToUpload {
 
 	destName?: string;
 	existingId?: EntityID;
-
-	public readonly customTags?: GQLTagInterface[];
 
 	public get destinationBaseName(): string {
 		return this.destName ?? this.getBaseName();
@@ -221,8 +217,7 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
 		public readonly filePath: LocalEntityPath,
 		public readonly fileStats: Stats,
-		public readonly customContentType?: DataContentType,
-		public readonly customTags?: GQLTagInterface[]
+		public readonly customContentType?: DataContentType
 	) {
 		super();
 		if (+this.fileStats.size > +maxFileSize) {
@@ -285,11 +280,7 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	public readonly entityType = 'folder';
 	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
-	constructor(
-		public readonly filePath: LocalEntityPath,
-		public readonly fileStats: Stats,
-		public readonly customTags?: GQLTagInterface[]
-	) {
+	constructor(public readonly filePath: LocalEntityPath, public readonly fileStats: Stats) {
 		super();
 
 		const entitiesInFolder = readdirSync(this.filePath);
