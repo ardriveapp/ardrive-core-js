@@ -995,155 +995,46 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return results;
 	}
 
+	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
 	async prepareArFSDataItem({
 		objectMetaData,
-		excludedTagNames = [],
-		otherTags = []
+		excludedTagNames = []
 	}: ArFSPrepareDataItemsParams): Promise<DataItem> {
-		// Enforce that other tags are not protected
-		objectMetaData.assertProtectedTags(otherTags);
-
-		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
-			tags: [...objectMetaData.gqlTags, ...otherTags],
-			excludedTagNames
-		});
-
-		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
-
-		// Sign the data item
-		const dataItem = createData(objectMetaData.objectData.asTransactionData(), signer, { tags });
-		await dataItem.sign(signer);
-
-		assertTagByteLimit(dataItem.tags as Tag[]);
-
-		return dataItem;
+		return excludedTagNames.includes('ArFS')
+			? this.txPreparer.prepareFileDataDataItem({
+					objectMetaData: objectMetaData as ArFSFileDataPrototype
+			  })
+			: this.txPreparer.prepareMetaDataDataItem({
+					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
+			  });
 	}
 
+	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
 	async prepareArFSObjectBundle({
 		dataItems,
 		rewardSettings = {},
-		excludedTagNames = [],
-		otherTags = [],
 		communityTipSettings
 	}: ArFSPrepareObjectBundleParams): Promise<Transaction> {
-		const wallet = this.wallet as JWKWallet;
-		const signer = new ArweaveSigner(wallet.getPrivateKey());
-
-		const bundle = await bundleAndSignData(dataItems, signer);
-		dataItems = [];
-
-		// Verify the bundle and dataItems
-		if (!(await bundle.verify())) {
-			throw new Error('Bundle format could not be verified!');
-		}
-
-		const txAttributes: Partial<CreateTransactionInterface> = {
-			data: bundle.getRaw()
-		};
-
-		if (rewardSettings.reward) {
-			// If we provided our own reward setting, use it now
-			txAttributes.reward = rewardSettings.reward.toString();
-		}
-
-		if (process.env.NODE_ENV === 'test') {
-			// TODO: Use a mock arweave server instead
-			txAttributes.last_tx = 'STUB';
-		}
-
-		if (communityTipSettings) {
-			// Add community tip to the bundle trx
-			txAttributes.target = `${communityTipSettings.communityTipTarget}`;
-			txAttributes.quantity = `${communityTipSettings.communityWinstonTip}`;
-
-			// Add tip tags to transaction
-			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
-		}
-
-		// We use arweave directly to create our transaction so we can assign our own reward and skip network request
-		const bundledDataTx = await this.arweave.createTransaction(txAttributes);
-
-		// If we've opted to boost the transaction, do so now
-		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
-			bundledDataTx.reward = rewardSettings.feeMultiple.boostReward(bundledDataTx.reward);
-
-			// Add a Boost tag
-			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
-		}
-
-		const tags: GQLTagInterface[] = this.arFSTagSettings.baseBundleTagsIncluding({
-			tags: otherTags,
-			excludedTagNames
-		});
-
-		for (const tag of tags) {
-			bundledDataTx.addTag(tag.name, tag.value);
-		}
-		assertTagByteLimit(bundledDataTx.tags);
-
-		await this.arweave.transactions.sign(bundledDataTx, wallet.getPrivateKey());
-		return bundledDataTx;
+		return this.txPreparer.prepareBundleTx({ dataItems, communityTipSettings, rewardSettings });
 	}
 
+	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
 	async prepareArFSObjectTransaction({
 		objectMetaData,
 		rewardSettings = {},
-		excludedTagNames = [],
-		otherTags = [],
-		communityTipSettings
+		communityTipSettings,
+		excludedTagNames = []
 	}: ArFSPrepareObjectTransactionParams): Promise<Transaction> {
-		// Enforce that other tags are not protected
-		objectMetaData.assertProtectedTags(otherTags);
-
-		// Create transaction
-		const txAttributes: Partial<CreateTransactionInterface> = {
-			data: objectMetaData.objectData.asTransactionData()
-		};
-
-		// If we provided our own reward setting, use it now
-		if (rewardSettings.reward) {
-			txAttributes.reward = rewardSettings.reward.toString();
-		}
-
-		// TODO: Use a mock arweave server instead
-		if (process.env.NODE_ENV === 'test') {
-			txAttributes.last_tx = 'STUB';
-		}
-
-		if (communityTipSettings) {
-			// Add community tip to the v2 transaction
-			txAttributes.target = `${communityTipSettings.communityTipTarget}`;
-			txAttributes.quantity = `${communityTipSettings.communityWinstonTip}`;
-
-			// Add tip tags to transaction
-			otherTags = [...otherTags, ...this.arFSTagSettings.getTipTags()];
-		}
-
-		const wallet = this.wallet as JWKWallet;
-		const transaction = await this.arweave.createTransaction(txAttributes, wallet.getPrivateKey());
-
-		// If we've opted to boost the transaction, do so now
-		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
-			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
-
-			// Add a Boost tag
-			otherTags.push({ name: 'Boost', value: rewardSettings.feeMultiple.toString() });
-		}
-
-		const tags = this.arFSTagSettings.baseArFSTagsIncluding({
-			tags: [...objectMetaData.gqlTags, ...otherTags],
-			excludedTagNames
-		});
-
-		for (const tag of tags) {
-			transaction.addTag(tag.name, tag.value);
-		}
-
-		assertTagByteLimit(transaction.tags);
-
-		// Sign the transaction
-		await this.arweave.transactions.sign(transaction, wallet.getPrivateKey());
-		return transaction;
+		return excludedTagNames.includes('ArFS')
+			? this.txPreparer.prepareFileDataTx({
+					objectMetaData: objectMetaData as ArFSFileDataPrototype,
+					rewardSettings,
+					communityTipSettings
+			  })
+			: this.txPreparer.prepareMetaDataTx({
+					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
+					rewardSettings
+			  });
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {

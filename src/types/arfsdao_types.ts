@@ -125,18 +125,24 @@ export interface ArFSUploadPublicFileParams {
 
 export type ArFSUploadPrivateFileParams = ArFSUploadPublicFileParams & WithDriveKey;
 
+/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead  */
 export interface ArFSPrepareObjectParams {
+	/** @deprecated -- Field no longer fully respected. Provide ['ArFS'] to designate File Data transactions */
 	excludedTagNames?: string[];
+	/** @deprecated -- This field no longer used */
 	otherTags?: GQLTagInterface[];
 }
+/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead  */
 export interface ArFSPrepareDataItemsParams extends ArFSPrepareObjectParams {
 	objectMetaData: ArFSObjectMetadataPrototype;
 }
 
+/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead  */
 export interface ArFSPrepareObjectTransactionParams extends ArFSPrepareDataItemsParams {
 	rewardSettings: RewardSettings;
 	communityTipSettings?: CommunityTipSettings;
 }
+/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead  */
 export interface ArFSPrepareObjectBundleParams extends Omit<ArFSPrepareObjectTransactionParams, 'objectMetaData'> {
 	dataItems: DataItem[];
 }
