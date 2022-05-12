@@ -137,7 +137,14 @@ export class ArDrive extends ArDriveAnonymous {
 		super(arFsDao);
 	}
 
-	// NOTE: Presumes that there's a sufficient wallet balance
+	/**
+	 * @deprecated Sending separate layer 1 community tips is discouraged due
+	 *  to concerns with network congestion. We find it safer to place the tip
+	 *  on the layer 1 data transaction or bundle transaction. This also prevents
+	 *  separation of file data and tip payment
+	 *
+	 * @remarks Presumes that there's a sufficient wallet balance
+	 */
 	async sendCommunityTip({ communityWinstonTip, assertBalance = false }: CommunityTipParams): Promise<TipResult> {
 		const tokenHolder: ArweaveAddress = await this.communityOracle.selectTokenHolder();
 		const arTransferBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
