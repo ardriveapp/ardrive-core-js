@@ -97,7 +97,7 @@ import {
 	getPrivateCreateDriveEstimationPrototypes,
 	getPublicCreateDriveEstimationPrototypes
 } from './pricing/estimation_prototypes';
-import { ArFSTagSettings } from './arfs/tags/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { ROOT_FOLDER_ID_PLACEHOLDER } from './arfs/arfs_builders/arfs_folder_builders';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';

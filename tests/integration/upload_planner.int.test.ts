@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagAssembler } from '../../src/arfs/tags/tag_assembler';
-import { ArFSTagSettings } from '../../src/arfs/tags/arfs_tag_settings';
+import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 import { TxPreparer } from '../../src/arfs/tx/tx_preparer';
 import { UploadStats, ArFSFileToUpload, getPrepFileParams, TxID, W, readJWKFile, JWKWallet } from '../../src/exports';
 import { fakeArweave, stubFileUploadStats, stubEntityID } from '../stubs';

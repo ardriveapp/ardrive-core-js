@@ -38,10 +38,6 @@ describe('ArFSTagSettings class', () => {
 	});
 
 	it('returns the expected file data item tags', () => {
-		console.log(
-			"arFSTagSettings.getFileDataTags(false, 'application/json')",
-			arFSTagSettings.getFileDataItemTags(false, 'application/json')
-		);
 		expect(arFSTagSettings.getFileDataItemTags(false, 'application/json')).to.deep.equal([
 			{ name: 'App-Name', value: 'Tag-Builder-Test' },
 			{ name: 'App-Version', value: '1.2' },

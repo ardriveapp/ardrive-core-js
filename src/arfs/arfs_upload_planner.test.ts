@@ -9,7 +9,7 @@ import {
 	stubPublicDriveMetaDataTx,
 	stubPublicFolderMetaDataTx
 } from '../../tests/stubs';
-import { ArFSTagSettings } from './tags/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs_tag_settings';
 import { ByteCount } from '../types';
 import { CreateDriveBundlePlan, CreateDriveV2Plan, EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { ArFSUploadPlanner } from './arfs_upload_planner';

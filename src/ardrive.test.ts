@@ -16,7 +16,7 @@ import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple } from './types'
 import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
-import { ArFSTagSettings } from './arfs/tags/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { fakeArweave, stubEntityID } from '../tests/stubs';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 

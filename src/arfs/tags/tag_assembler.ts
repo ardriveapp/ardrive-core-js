@@ -1,7 +1,7 @@
 import { FeeMultiple, GQLTagInterface } from '../../exports';
 import { ArFSEntityMetaDataPrototype, ArFSFileDataPrototype } from '../tx/arfs_prototypes';
 import { TagAssertions } from './tag_assertions';
-import { ArFSTagSettings } from './arfs_tag_settings';
+import { ArFSTagSettings } from '../arfs_tag_settings';
 
 export class ArFSTagAssembler {
 	constructor(private readonly arFSTagSettings: ArFSTagSettings) {}

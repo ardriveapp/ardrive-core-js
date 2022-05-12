@@ -1,4 +1,4 @@
-import { GQLTagInterface, FeeMultiple, TipType, DataContentType } from '../../types';
+import { GQLTagInterface, FeeMultiple, TipType, DataContentType } from '../types';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -6,7 +6,7 @@ import {
 	privateOctetContentTypeTag,
 	privateCipherTag,
 	fakePrivateCipherIVTag
-} from '../../utils/constants';
+} from '../utils/constants';
 
 interface ArFSTagSettingsParams {
 	appName?: string;

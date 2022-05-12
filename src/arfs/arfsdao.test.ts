@@ -37,7 +37,7 @@ import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache } from './arfsdao_a
 import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
-import { ArFSTagSettings } from './tags/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
 import { emptyV2TxPlans } from '../types/upload_planner_types';

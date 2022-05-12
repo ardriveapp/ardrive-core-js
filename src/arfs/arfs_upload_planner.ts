@@ -16,7 +16,7 @@ import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
-import { ArFSTagSettings } from './tags/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs_tag_settings';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 
 export interface UploadPlanner {
