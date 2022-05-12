@@ -1,8 +1,7 @@
 import Arweave from 'arweave';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateTransactionInterface } from 'arweave/node/common';
 import { JWKInterface } from 'arweave/node/lib/wallet';
-import Transaction, { Tag } from 'arweave/node/lib/transaction';
+import Transaction from 'arweave/node/lib/transaction';
 import { ArFSFileOrFolderBuilder } from './arfs_builders/arfs_builders';
 import { ArFSPrivateDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
@@ -50,16 +49,11 @@ import {
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSFolderMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
-	ArFSPublicDriveMetaDataPrototype
-} from './arfs_prototypes';
-import {
-	ArFSPublicFolderTransactionData,
-	ArFSPrivateFolderTransactionData,
-	ArFSPrivateDriveTransactionData,
-	ArFSPublicFileMetadataTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
-	ArFSPublicDriveTransactionData
-} from './arfs_tx_data_types';
+	ArFSPublicDriveMetaDataPrototype,
+	ArFSFileDataPrototype,
+	ArFSEntityMetaDataPrototype
+} from './tx/arfs_prototypes';
+
 import { FolderHierarchy } from './folder_hierarchy';
 
 import {
@@ -83,7 +77,6 @@ import {
 	ArweaveAddress,
 	TxID,
 	W,
-	GQLTagInterface,
 	GQLEdgeInterface,
 	GQLNodeInterface,
 	DrivePrivacy,
@@ -109,8 +102,7 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { ArFSEntityCache } from './arfs_entity_cache';
 
-import { bundleAndSignData, createData, DataItem } from 'arbundles';
-import { ArweaveSigner } from 'arbundles/src/signing';
+import { DataItem } from 'arbundles';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -123,14 +115,11 @@ import {
 	ArFSMoveParams,
 	ArFSUploadPublicFileParams,
 	ArFSUploadPrivateFileParams,
-	ArFSPrepareObjectTransactionParams,
 	ArFSAllPrivateFoldersOfDriveParams,
 	ArFSGetPrivateChildFolderIdsParams,
 	ArFSGetPublicChildFolderIdsParams,
 	ArFSListPrivateFolderParams,
 	ArFSTxResult,
-	ArFSPrepareDataItemsParams,
-	ArFSPrepareObjectBundleParams,
 	ArFSRenamePublicFileParams,
 	ArFSRenamePrivateDriveParams,
 	ArFSRenamePrivateFolderParams,
@@ -143,7 +132,10 @@ import {
 	PartialPrepareDriveParams,
 	PartialPrepareFileParams,
 	ArFSDownloadPrivateFolderParams,
-	SeparatedFolderHierarchy
+	SeparatedFolderHierarchy,
+	ArFSPrepareDataItemsParams,
+	ArFSPrepareObjectBundleParams,
+	ArFSPrepareObjectTransactionParams
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
@@ -152,7 +144,6 @@ import {
 	emptyV2TxPlans,
 	isBundleRewardSetting
 } from '../types/upload_planner_types';
-import { ArFSTagSettings } from './arfs_tag_settings';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
@@ -164,7 +155,17 @@ import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 import { GatewayAPI } from '../utils/gateway_api';
 import { getDataForTxID } from '../utils/get_tx_data';
-import { assertTagByteLimit } from '../utils/assert_tag_byte_limit';
+import { ArFSTagSettings } from './tags/tag_settings';
+import { TxPreparer } from './tx/tx_preparer';
+import {
+	ArFSPublicFolderTransactionData,
+	ArFSPublicDriveTransactionData,
+	ArFSPrivateFolderTransactionData,
+	ArFSPrivateDriveTransactionData,
+	ArFSPublicFileMetadataTransactionData,
+	ArFSPrivateFileMetadataTransactionData
+} from './tx/arfs_tx_data_types';
+import { ArFSTagAssembler } from './tags/tag_assembler';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -219,7 +220,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
 			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
 			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
-		}
+		},
+		protected txPreparer = new TxPreparer({
+			arweave: arweave,
+			wallet: wallet as JWKWallet,
+			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
+		})
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -251,7 +257,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { arFSObjects, folderId } = await this.prepareFolder({
 			folderPrototypeFactory,
 			prepareArFSObject: (folderMetaData) =>
-				this.prepareArFSObjectTransaction({ objectMetaData: folderMetaData, rewardSettings })
+				this.txPreparer.prepareMetaDataTx({ objectMetaData: folderMetaData, rewardSettings })
 		});
 		const folderTx = arFSObjects[0];
 
@@ -318,13 +324,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSDataItem({
+				this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData
 				})
 		});
 
 		// Pack data items into a bundle
-		const bundledTx = await this.prepareArFSObjectBundle({ dataItems: arFSObjects, rewardSettings });
+		const bundledTx = await this.txPreparer.prepareBundleTx({ dataItems: arFSObjects, rewardSettings });
 
 		const [rootFolderDataItem, driveDataItem] = arFSObjects;
 		return {
@@ -348,7 +354,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
+				this.txPreparer.prepareMetaDataTx({
 					objectMetaData,
 					rewardSettings:
 						// Type-check the metadata to conditionally pass correct reward setting
@@ -452,7 +458,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const metadataPrototype = metaDataFactory();
 
 		// Prepare meta data transaction
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: metadataPrototype,
 			rewardSettings: metaDataBaseReward
 		});
@@ -730,17 +736,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
+				this.txPreparer.prepareFileDataTx({
 					objectMetaData,
 					rewardSettings: dataTxRewardSettings,
-					communityTipSettings,
-					excludedTagNames: ['ArFS']
+					communityTipSettings
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
+				this.txPreparer.prepareMetaDataTx({
 					objectMetaData,
-					rewardSettings: metaDataRewardSettings,
-					otherTags: prepFileParams.wrappedFile.customTags
+					rewardSettings: metaDataRewardSettings
 				})
 		});
 
@@ -770,16 +774,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 			...prepFileParams,
 			prepareArFSObject: (objectMetaData) =>
-				this.prepareArFSObjectTransaction({
+				this.txPreparer.prepareFileDataTx({
 					objectMetaData,
 					rewardSettings: dataTxRewardSettings,
-					communityTipSettings,
-					excludedTagNames: ['ArFS']
+					communityTipSettings
 				}),
 			prepareMetaDataArFSObject: (objectMetaData) =>
-				this.prepareArFSDataItem({
-					objectMetaData,
-					otherTags: prepFileParams.wrappedFile.customTags
+				this.txPreparer.prepareMetaDataDataItem({
+					objectMetaData
 				})
 		});
 
@@ -911,7 +913,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 							wrappedEntity
 						}),
 						prepareArFSObject: (objectMetaData) =>
-							this.prepareArFSDataItem({ objectMetaData, otherTags: wrappedEntity.customTags })
+							this.txPreparer.prepareMetaDataDataItem({
+								objectMetaData
+							})
 					});
 					const folderDataItem = arFSObjects[0];
 
@@ -933,12 +937,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
 						prepareArFSObject: (objectMetaData) =>
-							this.prepareArFSDataItem({
-								objectMetaData,
-								excludedTagNames: ['ArFS']
+							this.txPreparer.prepareFileDataDataItem({
+								objectMetaData
 							}),
 						prepareMetaDataArFSObject: (objectMetaData) =>
-							this.prepareArFSDataItem({ objectMetaData, otherTags: wrappedEntity.customTags })
+							this.txPreparer.prepareMetaDataDataItem({
+								objectMetaData
+							})
 					});
 
 					const [fileDataItem, metaDataItem] = arFSObjects;
@@ -958,7 +963,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Add any metaData data items from over-sized files sent as v2
 			dataItems.push(...metaDataDataItems);
 
-			const bundleTx = await this.prepareArFSObjectBundle({
+			const bundleTx = await this.txPreparer.prepareBundleTx({
 				dataItems,
 				rewardSettings: bundleRewardSettings,
 				communityTipSettings
@@ -1718,7 +1723,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			file.fileId,
 			file.parentFolderId
 		);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: fileMetadata,
 			rewardSettings: metadataRewardSettings
 		});
@@ -1760,7 +1765,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			file.fileId,
 			file.parentFolderId
 		);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: fileMetadata,
 			rewardSettings: metadataRewardSettings
 		});
@@ -1794,7 +1799,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folder.entityId,
 			folder.parentFolderId
 		);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: folderMetadata,
 			rewardSettings: metadataRewardSettings
 		});
@@ -1828,7 +1833,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folderMetadataTxData,
 			folder.parentFolderId
 		);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: folderMetadata,
 			rewardSettings: metadataRewardSettings
 		});
@@ -1857,7 +1862,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Prepare meta data transaction
 		const driveMetadataTxData = new ArFSPublicDriveTransactionData(newName, drive.rootFolderId);
 		const driveMetadata = new ArFSPublicDriveMetaDataPrototype(driveMetadataTxData, drive.driveId);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: driveMetadata,
 			rewardSettings: metadataRewardSettings
 		});
@@ -1886,7 +1891,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Prepare meta data transaction
 		const driveMetadataTxData = await ArFSPrivateDriveTransactionData.from(newName, drive.rootFolderId, driveKey);
 		const driveMetadata = new ArFSPrivateDriveMetaDataPrototype(drive.driveId, driveMetadataTxData);
-		const metaDataTx = await this.prepareArFSObjectTransaction({
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 			objectMetaData: driveMetadata,
 			rewardSettings: metadataRewardSettings
 		});
