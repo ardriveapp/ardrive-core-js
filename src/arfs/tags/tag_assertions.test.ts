@@ -131,7 +131,7 @@ describe('TagAssertions class', () => {
 function generateStubGqlTagInterfaceArrayWithLength(length: number): GQLTagInterface[] {
 	const tags: GQLTagInterface[] = [];
 	while (tags.length < length) {
-		// Create a gql tag interface array with 128 tags
+		// Create a gql tag interface array with provided length
 		tags.push({ name: `T-${tags.length}`, value: `${tags.length}` });
 	}
 	return tags;

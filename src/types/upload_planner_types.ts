@@ -6,7 +6,7 @@ import {
 	ArFSFileMetaDataPrototype,
 	ArFSFolderMetaDataPrototype
 } from '../arfs/tx/arfs_prototypes';
-import { ArFSTagSettings } from '../arfs/tags/tag_settings';
+import { ArFSTagSettings } from '../arfs/tags/arfs_tag_settings';
 import { CommunityOracle } from '../community/community_oracle';
 import { FileUploadStats, FolderUploadStats, UploadStats } from '../exports';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';

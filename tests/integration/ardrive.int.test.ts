@@ -61,7 +61,7 @@ import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
-import { ArFSTagSettings } from '../../src/arfs/tags/tag_settings';
+import { ArFSTagSettings } from '../../src/arfs/tags/arfs_tag_settings';
 import {
 	ArFSPrivateFile,
 	ArFSPrivateFolder,

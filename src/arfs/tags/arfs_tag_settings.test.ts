@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ArFSTagSettings } from './tag_settings';
+import { ArFSTagSettings } from './arfs_tag_settings';
 
 describe('ArFSTagSettings class', () => {
 	const arFSTagSettings = new ArFSTagSettings({

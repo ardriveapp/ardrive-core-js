@@ -155,7 +155,7 @@ import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
 import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
 import { GatewayAPI } from '../utils/gateway_api';
 import { getDataForTxID } from '../utils/get_tx_data';
-import { ArFSTagSettings } from './tags/tag_settings';
+import { ArFSTagSettings } from './tags/arfs_tag_settings';
 import { TxPreparer } from './tx/tx_preparer';
 import {
 	ArFSPublicFolderTransactionData,
