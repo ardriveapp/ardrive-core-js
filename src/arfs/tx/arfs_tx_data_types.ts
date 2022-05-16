@@ -11,7 +11,8 @@ import {
 	UnixTime,
 	ArFSEncryptedData,
 	CipherType,
-	DriveAuthMode
+	DriveAuthMode,
+	CustomMetaDataTagInterface
 } from '../../types';
 
 export interface ArFSObjectTransactionData {
@@ -125,25 +126,61 @@ export abstract class ArFSFileMetadataTransactionData implements ArFSObjectTrans
 	}
 }
 
+interface FileMetaDataTransactionDataCreateParams {
+	name: string;
+	size: ByteCount;
+	lastModifiedDate: UnixTime;
+	dataTxId: TransactionID;
+	dataContentType: DataContentType;
+	customMetaData?: CustomMetaDataTagInterface[];
+}
+
 export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTransactionData {
 	constructor(
 		private readonly name: string,
 		private readonly size: ByteCount,
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
-		private readonly dataContentType: DataContentType
+		private readonly dataContentType: DataContentType,
+		private readonly customMetaData: CustomMetaDataTagInterface[] = []
 	) {
 		super();
 	}
 
+	public static create({
+		name,
+		size,
+		lastModifiedDate,
+		dataTxId,
+		dataContentType,
+		customMetaData = []
+	}: FileMetaDataTransactionDataCreateParams): ArFSPublicFileMetadataTransactionData {
+		return new ArFSPublicFileMetadataTransactionData(
+			name,
+			size,
+			lastModifiedDate,
+			dataTxId,
+			dataContentType,
+			customMetaData
+		);
+	}
+
 	asTransactionData(): string {
-		return JSON.stringify({
+		const baseArFSDataJSON: Record<string, unknown> = {
 			name: this.name,
 			size: this.size,
 			lastModifiedDate: this.lastModifiedDate,
 			dataTxId: this.dataTxId,
 			dataContentType: this.dataContentType
-		});
+		};
+
+		if (this.customMetaData?.length > 0) {
+			for (const tag of this.customMetaData) {
+				baseArFSDataJSON[tag.name] = tag.values;
+			}
+		}
+
+		return JSON.stringify(baseArFSDataJSON);
 	}
 }
 

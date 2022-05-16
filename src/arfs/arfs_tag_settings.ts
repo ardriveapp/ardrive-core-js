@@ -1,4 +1,4 @@
-import { GQLTagInterface, FeeMultiple, TipType, DataContentType } from '../types';
+import { GQLTagInterface, FeeMultiple, TipType, DataContentType, CustomMetaDataTagInterface } from '../types';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -8,29 +8,34 @@ import {
 	fakePrivateCipherIVTag
 } from '../utils/constants';
 
+export interface CustomMetaData {
+	tags: CustomMetaDataTagInterface[];
+	shouldApplyTagsToGql?: boolean;
+}
+
 interface ArFSTagSettingsParams {
 	appName?: string;
 	appVersion?: string;
 	arFSVersion?: string;
-	customTags?: GQLTagInterface[];
+	customMetaData?: CustomMetaData;
 }
 
 export class ArFSTagSettings {
 	private readonly appName: string;
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
-	private readonly customTags: GQLTagInterface[];
+	private readonly customMetaData: CustomMetaData;
 
 	constructor({
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
 		arFSVersion = CURRENT_ARFS_VERSION,
-		customTags = []
+		customMetaData = { tags: [] }
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
 		this.arFSVersion = arFSVersion;
-		this.customTags = customTags;
+		this.customMetaData = customMetaData;
 	}
 
 	public get baseAppTags(): GQLTagInterface[] {
@@ -48,8 +53,12 @@ export class ArFSTagSettings {
 		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
-	public getCustomTags(): GQLTagInterface[] {
-		return this.customTags;
+	public getCustomTags(): CustomMetaDataTagInterface[] {
+		return this.customMetaData.tags;
+	}
+
+	public shouldApplyTagsToGql(): boolean {
+		return !!this.customMetaData.shouldApplyTagsToGql;
 	}
 
 	public get baseArFSTags(): GQLTagInterface[] {

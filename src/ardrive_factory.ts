@@ -14,10 +14,10 @@ import {
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import { FeeMultiple, GQLTagInterface } from './types';
+import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
-import { ArFSTagSettings } from './arfs/arfs_tag_settings';
+import { ArFSTagSettings, CustomMetaData } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
@@ -47,7 +47,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
 	/** GQL Tags that will be added to the MetaData Tx  */
-	customTags?: GQLTagInterface[];
+	customMetaData?: CustomMetaData;
 }
 
 const defaultArweave = Arweave.init({
@@ -68,8 +68,8 @@ export function arDriveFactory({
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
-	customTags,
-	arFSTagSettings = new ArFSTagSettings({ appName, appVersion, customTags }),
+	customMetaData,
+	arFSTagSettings = new ArFSTagSettings({ appName, appVersion, customMetaData }),
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings
