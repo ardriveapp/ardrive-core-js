@@ -1,5 +1,5 @@
 import Arweave from 'arweave';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, v4 } from 'uuid';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import Transaction from 'arweave/node/lib/transaction';
 import { ArFSFileOrFolderBuilder } from './arfs_builders/arfs_builders';
@@ -13,7 +13,10 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
-	ENCRYPTED_DATA_PLACEHOLDER
+	ENCRYPTED_DATA_PLACEHOLDER,
+	ArFSPrivateFileWithPaths,
+	ArFSPrivateFolderWithPaths,
+	privateEntityWithPathsKeylessFactory
 } from './arfs_entities';
 import {
 	ArFSCreateFolderResult,
@@ -37,9 +40,16 @@ import {
 	ArFSRenamePrivateFolderResult,
 	ArFSRenamePublicDriveResult,
 	ArFSRenamePrivateDriveResult,
+	ArFSV2PublicRetryResult,
+	NewFileMetaDataCreated,
 	FolderResult
 } from './arfs_entity_result_factory';
-import { ArFSFolderToDownload, ArFSManifestToUpload, ArFSPrivateFileToDownload } from './arfs_file_wrapper';
+import {
+	ArFSFileToUpload,
+	ArFSFolderToDownload,
+	ArFSManifestToUpload,
+	ArFSPrivateFileToDownload
+} from './arfs_file_wrapper';
 import { getPrepFileParams, getPrepFolderFactoryParams, MoveEntityMetaDataFactory } from './arfs_meta_data_factory';
 import {
 	ArFSPublicFolderMetaDataPrototype,
@@ -88,7 +98,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface
+	GQLTransactionsResultInterface,
+	ADDR
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -135,7 +146,8 @@ import {
 	SeparatedFolderHierarchy,
 	ArFSPrepareDataItemsParams,
 	ArFSPrepareObjectBundleParams,
-	ArFSPrepareObjectTransactionParams
+	ArFSPrepareObjectTransactionParams,
+	ArFSRetryPublicFileUploadParams
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
@@ -151,8 +163,7 @@ import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
-import { MultiChunkTxUploader } from './multi_chunk_tx_uploader';
-import { ArFSPrivateFileWithPaths, ArFSPrivateFolderWithPaths, privateEntityWithPathsKeylessFactory } from '../exports';
+import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
 import { getDataForTxID } from '../utils/get_tx_data';
 import { ArFSTagSettings } from './arfs_tag_settings';
@@ -166,6 +177,7 @@ import {
 	ArFSPrivateFileMetadataTransactionData
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
+import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -221,6 +233,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
 			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
 		},
+		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
 		protected txPreparer = new TxPreparer({
 			arweave: arweave,
 			wallet: wallet as JWKWallet,
@@ -1037,24 +1050,28 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			  });
 	}
 
-	async sendTransactionsAsChunks(transactions: Transaction[]): Promise<void> {
+	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
 		// Execute the uploads
 		if (!this.dryRun) {
 			for (const transaction of transactions) {
-				await transaction.prepareChunks(transaction.data);
+				if (!resumeChunkUpload) {
+					// Resumed uploads will already have their chunks prepared in order to assert that the data_root is consistent
+					await transaction.prepareChunks(transaction.data);
+				}
 
 				// Only log progress if total chunks of transaction is greater than the max concurrent chunks setting
 				const shouldProgressLog =
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					this.shouldProgressLog && transaction.chunks!.chunks.length > defaultMaxConcurrentChunks;
 
-				let progressLogDebounce = false;
-
-				const transactionUploader = new MultiChunkTxUploader({
+				const uploaderParams: MultiChunkTxUploaderConstructorParams = {
 					transaction,
-					gatewayApi: new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(this.arweave) }),
+					gatewayApi: this.gatewayApi,
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
+								// TODO: Test if this is still progress logging, otherwise lift this var into above scope 👍
+								let progressLogDebounce = false;
+
 								if (!progressLogDebounce || pct === 100) {
 									console.error(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
 									progressLogDebounce = true;
@@ -1065,11 +1082,82 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 								}
 						  }
 						: undefined
-				});
+				};
+
+				const transactionUploader = resumeChunkUpload
+					? MultiChunkTxUploader.resumeChunkUpload(uploaderParams)
+					: new MultiChunkTxUploader(uploaderParams);
 
 				await transactionUploader.batchUploadChunks();
 			}
 		}
+	}
+
+	public async retryV2ArFSPublicFileTransaction({
+		wrappedFile,
+		arFSDataTxId,
+		createMetaDataPlan
+	}: ArFSRetryPublicFileUploadParams): Promise<ArFSV2PublicRetryResult> {
+		const arFSDataTx = await this.gatewayApi.getTransaction(arFSDataTxId);
+
+		const newMetaDataInfo = createMetaDataPlan
+			? await this.createV2PublicFileMetaData({
+					wrappedFile,
+					arFSDataTxId,
+					createMetaDataPlan
+			  })
+			: undefined;
+
+		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);
+
+		return {
+			communityTipSettings: {
+				communityTipTarget: ADDR(arFSDataTx.target),
+				communityWinstonTip: W(arFSDataTx.quantity)
+			},
+			fileDataReward: W(arFSDataTx.reward),
+			newMetaDataInfo
+		};
+	}
+
+	private async createV2PublicFileMetaData({
+		createMetaDataPlan,
+		wrappedFile,
+		arFSDataTxId
+	}: Required<ArFSRetryPublicFileUploadParams>): Promise<NewFileMetaDataCreated> {
+		const { destinationFolderId, rewardSettings } = createMetaDataPlan;
+		const fileId = createMetaDataPlan.fileId ?? EID(v4());
+
+		const fileMetaDataPrototype = ArFSPublicFileMetaDataPrototype.fromFile({
+			wrappedFile,
+			parentFolderId: destinationFolderId,
+			fileId,
+			driveId: await this.getDriveIdForFolderId(destinationFolderId),
+			dataTxId: arFSDataTxId
+		});
+
+		const fileMetaDataTransaction = await this.prepareArFSObjectTransaction({
+			objectMetaData: fileMetaDataPrototype,
+			rewardSettings
+		});
+
+		await this.sendTransactionsAsChunks([fileMetaDataTransaction]);
+
+		return {
+			fileId,
+			fileMetaDataReward: W(fileMetaDataTransaction.reward),
+			metaDataTxId: TxID(fileMetaDataTransaction.id)
+		};
+	}
+
+	// Retry a single public file transaction
+	private async reSeedV2FileTransaction(wrappedFile: ArFSFileToUpload, transaction: Transaction): Promise<void> {
+		const dataRootFromGateway = transaction.data_root;
+
+		transaction = await rePrepareV2Tx(transaction, wrappedFile.getFileDataBuffer());
+		assertDataRootsMatch(transaction, dataRootFromGateway);
+
+		await this.sendTransactionsAsChunks([transaction], true);
 	}
 
 	// Convenience function for known-private use cases

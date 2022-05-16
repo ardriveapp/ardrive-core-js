@@ -20,7 +20,10 @@ import {
 	stubPublicFileDataTx,
 	stubPublicFileMetaDataTx,
 	stubPublicFolderMetaDataTx,
-	stubRootFolderMetaData
+	stubRootFolderMetaData,
+	stubTxID,
+	stubSmallFileToUpload,
+	stubSignedTransaction
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
@@ -43,6 +46,8 @@ import { NameConflictInfo } from '../utils/mapper_functions';
 import { emptyV2TxPlans } from '../types/upload_planner_types';
 import { DataItem } from 'arbundles';
 import { driveDecrypt, fileDecrypt, deriveFileKey } from '../exports';
+import { GatewayAPI } from '../utils/gateway_api';
+import Transaction from 'arweave/node/lib/transaction';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -62,6 +67,8 @@ describe('The ArFSDAO class', () => {
 	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
 	const publicConflictCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10);
 
+	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: new URL('http://test.net:1337') });
+
 	let stubDriveKey: DriveKey;
 
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArFSDAO-Test', appVersion: '1.0' });
@@ -76,7 +83,16 @@ describe('The ArFSDAO class', () => {
 			privateConflictCache,
 			publicConflictCache
 		};
-		arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'ArFSDAO-Test', '1.0', arFSTagSettings, caches);
+		arfsDao = new ArFSDAO(
+			wallet,
+			fakeArweave,
+			true,
+			'ArFSDAO-Test',
+			'1.0',
+			arFSTagSettings,
+			caches,
+			fakeGatewayApi
+		);
 		stubDriveKey = await getStubDriveKey();
 	});
 
@@ -915,6 +931,86 @@ describe('The ArFSDAO class', () => {
 				}),
 				errorMessage: 'Invalid bundle plan, a single metadata transaction can not be bundled alone!'
 			});
+		});
+	});
+
+	describe('retryV2ArFSPublicFileTransaction public method', () => {
+		let stubTx: Transaction;
+		before(async () => {
+			stubTx = await stubSignedTransaction();
+		});
+
+		beforeEach(() => {
+			stub(fakeGatewayApi, 'getTransaction').resolves(stubTx);
+			stub(arfsDao, 'getDriveIDForEntityId').resolves(stubEntityID);
+		});
+
+		it('returns the expected result when a createMetaDataPlan exists', async () => {
+			// prettier-ignore
+			const { communityTipSettings, fileDataReward, newMetaDataInfo } =
+				await arfsDao.retryV2ArFSPublicFileTransaction({
+					wrappedFile: stubSmallFileToUpload('Retry Test File'),
+					arFSDataTxId: stubTxID,
+					createMetaDataPlan: {
+						destinationFolderId: stubEntityID,
+						rewardSettings: { reward: W(10) }
+					}
+				});
+
+			const { communityTipTarget, communityWinstonTip } = communityTipSettings;
+
+			expect(`${communityTipTarget}`).to.equal(`${stubArweaveAddress()}`);
+			expect(+communityWinstonTip).to.equal(5);
+			expect(+fileDataReward).to.equal(10);
+
+			const { fileId, fileMetaDataReward, metaDataTxId } = newMetaDataInfo!;
+
+			expect(`${fileId}`).to.match(entityIdRegex);
+			expect(+fileMetaDataReward).to.equal(10);
+			expect(`${metaDataTxId}`).to.match(txIdRegex);
+		});
+
+		it('returns the expected result when a createMetaDataPlan exists and an existing file ID is provided', async () => {
+			// prettier-ignore
+			const { communityTipSettings, fileDataReward, newMetaDataInfo } =
+				await arfsDao.retryV2ArFSPublicFileTransaction({
+					wrappedFile: stubSmallFileToUpload('Retry Test File'),
+					arFSDataTxId: stubTxID,
+					createMetaDataPlan: {
+						destinationFolderId: stubEntityID,
+						rewardSettings: { reward: W(10) },
+						fileId: stubEntityID
+					}
+				});
+
+			const { communityTipTarget, communityWinstonTip } = communityTipSettings;
+
+			expect(`${communityTipTarget}`).to.equal(`${stubArweaveAddress()}`);
+			expect(+communityWinstonTip).to.equal(5);
+			expect(+fileDataReward).to.equal(10);
+
+			const { fileId, fileMetaDataReward, metaDataTxId } = newMetaDataInfo!;
+
+			expect(`${fileId}`).to.equal(`${stubEntityID}`);
+			expect(+fileMetaDataReward).to.equal(10);
+			expect(`${metaDataTxId}`).to.match(txIdRegex);
+		});
+
+		it('returns the expected result when a createMetaDataPlan does not exist', async () => {
+			// prettier-ignore
+			const { communityTipSettings, fileDataReward, newMetaDataInfo } =
+				await arfsDao.retryV2ArFSPublicFileTransaction({
+					wrappedFile: stubSmallFileToUpload('Retry Test File'),
+					arFSDataTxId: stubTxID,
+				});
+
+			const { communityTipTarget, communityWinstonTip } = communityTipSettings;
+
+			expect(`${communityTipTarget}`).to.equal(`${stubArweaveAddress()}`);
+			expect(+communityWinstonTip).to.equal(5);
+			expect(+fileDataReward).to.equal(10);
+
+			expect(newMetaDataInfo).to.be.undefined;
 		});
 	});
 });

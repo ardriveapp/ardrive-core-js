@@ -1,6 +1,7 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
+import { TransactionID } from '../types';
 import { FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
 
 interface GatewayAPIConstParams {
@@ -77,6 +78,20 @@ export class GatewayAPI {
 		);
 	}
 
+	public async getTransaction(txId: TransactionID): Promise<Transaction> {
+		try {
+			return (
+				await this.retryRequestUntilMaxRetries<Transaction>(() =>
+					this.axiosInstance.get(`${this.gatewayUrl.href}tx/${txId}`)
+				)
+			).data;
+		} catch (err) {
+			throw Error(
+				`Transaction could not be found from the gateway: (Status: ${this.lastRespStatus}) ${this.lastError}`
+			);
+		}
+	}
+
 	/**
 	 * Retries the given request until the response returns a successful
 	 * status code or the maxRetries setting has been exceeded
@@ -84,13 +99,13 @@ export class GatewayAPI {
 	 * @throws when a fatal error has been returned by request
 	 * @throws when max retries have been exhausted
 	 */
-	private async retryRequestUntilMaxRetries(
-		request: () => Promise<AxiosResponse<unknown>>
-	): Promise<AxiosResponse<unknown>> {
+	private async retryRequestUntilMaxRetries<T = unknown>(
+		request: () => Promise<AxiosResponse<T>>
+	): Promise<AxiosResponse<T>> {
 		let retryNumber = 0;
 
 		while (retryNumber <= this.maxRetriesPerRequest) {
-			const response = await this.tryRequest(request);
+			const response = await this.tryRequest<T>(request);
 
 			if (response) {
 				return response;
@@ -104,9 +119,9 @@ export class GatewayAPI {
 		throw new Error(`Request to gateway has failed: (Status: ${this.lastRespStatus}) ${this.lastError}`);
 	}
 
-	private async tryRequest(
-		request: () => Promise<AxiosResponse<unknown>>
-	): Promise<AxiosResponse<unknown> | undefined> {
+	private async tryRequest<T = unknown>(
+		request: () => Promise<AxiosResponse<T>>
+	): Promise<AxiosResponse<T> | undefined> {
 		try {
 			const resp = await request();
 			this.lastRespStatus = resp.status;

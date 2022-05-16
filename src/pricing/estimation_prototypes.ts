@@ -13,7 +13,6 @@ import {
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicDriveMetaDataPrototype,
 	ArFSPublicDriveTransactionData,
-	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderMetaDataPrototype,
 	ArFSPublicFolderTransactionData,
 	ByteCount,
@@ -99,20 +98,13 @@ export async function getPrivateCreateDriveEstimationPrototypes({
  * entity IDs and stubbed tx IDs for estimation and planning purposes
  */
 export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUpload): ArFSPublicFileMetaDataPrototype {
-	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-	return new ArFSPublicFileMetaDataPrototype(
-		new ArFSPublicFileMetadataTransactionData(
-			wrappedFile.destinationBaseName,
-			fileSize,
-			lastModifiedDateMS,
-			fakeTxID,
-			dataContentType
-		),
-		fakeEntityId,
-		fakeEntityId,
-		fakeEntityId
-	);
+	return ArFSPublicFileMetaDataPrototype.fromFile({
+		wrappedFile,
+		dataTxId: fakeTxID,
+		driveId: fakeEntityId,
+		fileId: fakeEntityId,
+		parentFolderId: fakeEntityId
+	});
 }
 
 /**

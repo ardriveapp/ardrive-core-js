@@ -6,6 +6,7 @@ import { expect } from 'chai';
 import { describe } from 'mocha';
 import { spy, stub } from 'sinon';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
+import { stubTransactionID } from '../types';
 import { FATAL_CHUNK_UPLOAD_ERRORS } from './constants';
 import { GatewayAPI } from './gateway_api';
 
@@ -155,6 +156,36 @@ describe('GatewayAPI class', () => {
 
 			expect(axiosSpy.callCount).to.equal(1);
 			expect(endPointSpy.args[0][0]).to.equal('tx');
+		});
+	});
+
+	describe('getTransaction method', () => {
+		it('returns the expected transaction without error when the response contains a successful status code', async () => {
+			const axiosSpy = stub(axiosInstance, 'get').resolves({ data: smallTx, status: 200 });
+
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			const tx = await gatewayApi.getTransaction(stubTransactionID);
+
+			expect(tx).to.deep.equal(smallTx);
+			expect(axiosSpy.callCount).to.equal(1);
+			expect(axiosSpy.args[0][0]).to.equal('http://fake/tx/0000000000000000000000000000000000000000000');
+		});
+
+		it('throws an error when the transaction cannot be found', async () => {
+			stub(axiosInstance, 'get').resolves({ status: 400, statusText: 'Bad Error' });
+
+			const gatewayApi = new GatewayAPI({
+				gatewayUrl,
+				axiosInstance,
+				maxRetriesPerRequest: 2,
+				initialErrorDelayMS: 1
+			});
+
+			await expectAsyncErrorThrow({
+				promiseToError: gatewayApi.getTransaction(stubTransactionID),
+				errorMessage: 'Transaction could not be found from the gateway: (Status: 400) Bad Error'
+			});
 		});
 	});
 });

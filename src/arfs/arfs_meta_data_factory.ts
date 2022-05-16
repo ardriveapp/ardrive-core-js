@@ -17,7 +17,6 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicFileDataTransactionData,
-	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData
 } from './tx/arfs_tx_data_types';
 
@@ -108,18 +107,13 @@ export function getPrepFileParams({
 			),
 		metadataTxDataFactoryFn: (fileId, dataTxId) =>
 			Promise.resolve(
-				new ArFSPublicFileMetaDataPrototype(
-					new ArFSPublicFileMetadataTransactionData(
-						wrappedFile.destinationBaseName,
-						fileSize,
-						lastModifiedDateMS,
-						dataTxId,
-						dataContentType
-					),
-					destDriveId,
+				ArFSPublicFileMetaDataPrototype.fromFile({
+					wrappedFile,
+					parentFolderId: destFolderId,
 					fileId,
-					destFolderId
-				)
+					driveId: destDriveId,
+					dataTxId
+				})
 			)
 	};
 }
