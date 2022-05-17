@@ -20,7 +20,7 @@ import {
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
-import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
+import { gatewayUrlForArweave, readJWKFile, Utf8ArrayToStr } from '../../src/utils/common';
 import { ArDrive } from '../../src/ardrive';
 
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -50,6 +50,8 @@ import { assertRetryExpectations } from '../test_assertions';
 import { expectAsyncErrorThrow, fundArLocalWallet, mineArLocalBlock } from '../test_helpers';
 import GQLResultInterface from '../../src/types/gql_Types';
 import { buildQuery } from '../../src/utils/query';
+import { getDecodedTags } from '../test_helpers';
+import Transaction from 'arweave/node/lib/transaction';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -66,6 +68,13 @@ describe('ArLocal Integration Tests', function () {
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
+
+	const customTagSettings = new ArFSTagSettings({
+		appName: 'Custom Integration Test Settings',
+		appVersion: '1.7',
+		customMetaData: { tags: [{ name: 'Custom Tag', values: 'This Test Works' }], shouldApplyTagsToGql: true }
+	});
+
 	const arfsDao = new ArFSDAO(
 		wallet,
 		arweave,
@@ -73,6 +82,16 @@ describe('ArLocal Integration Tests', function () {
 		undefined,
 		undefined,
 		arFSTagSettings,
+		undefined,
+		fakeGatewayApi
+	);
+	const customTagArfsDao = new ArFSDAO(
+		wallet,
+		arweave,
+		false,
+		undefined,
+		undefined,
+		customTagSettings,
 		undefined,
 		fakeGatewayApi
 	);
@@ -104,6 +123,20 @@ describe('ArLocal Integration Tests', function () {
 		v2TxUploadPlanner
 	);
 
+	const customTagV2ArDrive = new ArDrive(
+		wallet,
+		walletDao,
+		customTagArfsDao,
+		communityOracle,
+		undefined,
+		undefined,
+		priceEstimator,
+		new FeeMultiple(1.0),
+		false,
+		arFSTagSettings,
+		v2TxUploadPlanner
+	);
+
 	const bundledArDrive = new ArDrive(
 		wallet,
 		walletDao,
@@ -117,6 +150,21 @@ describe('ArLocal Integration Tests', function () {
 		arFSTagSettings,
 		bundledUploadPlanner
 	);
+
+	// TODO: Add bundled custom tag tests
+	// const customTagBundledArDrive = new ArDrive(
+	// 	wallet,
+	// 	walletDao,
+	// 	customTagArfsDao,
+	// 	communityOracle,
+	// 	undefined,
+	// 	undefined,
+	// 	priceEstimator,
+	// 	new FeeMultiple(1.0),
+	// 	false,
+	// 	arFSTagSettings,
+	// 	bundledUploadPlanner
+	// );
 
 	before(async () => {
 		await fundArLocalWallet(arweave, wallet);
@@ -386,16 +434,76 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		it('we can upload a public file with a custom content type and custom tags');
+		const getFileData = async (txId: TransactionID): Promise<Buffer> =>
+			(
+				await axios.get(`${gatewayUrlForArweave(arweave).href}${txId}`, {
+					responseType: 'arraybuffer'
+				})
+			).data;
+
+		async function getFileDataJSON(txId: TransactionID): Promise<Buffer> {
+			const dataBuffer = (
+				await axios.get<Buffer>(`${gatewayUrlForArweave(arweave).href}${txId}`, {
+					responseType: 'arraybuffer'
+				})
+			).data;
+			const dataString = await Utf8ArrayToStr(dataBuffer);
+			return JSON.parse(dataString);
+		}
+
+		it('we can upload a public file with a custom content type and custom tags', async () => {
+			const { created } = await customTagV2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							'application/fake'
+						),
+						destName: 'custom_content_unique_stub'
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			const dataTxId = created[0].dataTxId!;
+			const metaDataTxId = created[0].metadataTxId!;
+
+			expect(await getFileDataJSON(metaDataTxId)).to.deep.equal({
+				name: 'custom_content_unique_stub',
+				size: 12,
+				lastModifiedDate: 1638543789556,
+				dataTxId: `${dataTxId}`,
+				dataContentType: 'application/fake'
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metaDataTxId));
+			const metaDataTags = getDecodedTags(metaDataTx.tags);
+
+			// We filter Unix Time from deep equal check because we cannot consistently predict the exact time of Tx creation
+			expect(metaDataTags.filter((t) => t.name !== 'Unix-Time')).to.deep.equal([
+				{ name: 'Content-Type', value: 'application/json' },
+				{ name: 'Entity-Type', value: 'file' },
+				{ name: 'Drive-Id', value: `${driveId}` },
+				{ name: 'File-Id', value: `${created[0].entityId!}` },
+				{ name: 'Parent-Folder-Id', value: `${rootFolderId}` },
+				{ name: 'App-Name', value: 'Custom Integration Test Settings' },
+				{ name: 'App-Version', value: '1.7' },
+				{ name: 'ArFS', value: '0.11' }
+			]);
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			const dataTags = getDecodedTags(dataTx.tags);
+
+			expect(dataTags).to.deep.equal([
+				{ name: 'Content-Type', value: 'application/fake' },
+				{ name: 'App-Name', value: 'Custom Integration Test Settings' },
+				{ name: 'App-Version', value: '1.7' },
+				{ name: 'Tip-Type', value: 'data upload' }
+			]);
+		});
 
 		describe('with a v2 public file transaction that has incomplete chunks', () => {
-			const getFileData = async (txId: TransactionID): Promise<Buffer> =>
-				(
-					await axios.get(`${gatewayUrlForArweave(arweave).href}${txId}`, {
-						responseType: 'arraybuffer'
-					})
-				).data;
-
 			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
