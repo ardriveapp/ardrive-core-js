@@ -441,7 +441,7 @@ describe('ArLocal Integration Tests', function () {
 				})
 			).data;
 
-		async function getFileDataJSON(txId: TransactionID): Promise<Buffer> {
+		async function getFileDataJSON(txId: TransactionID): Promise<Record<string, unknown>> {
 			const dataBuffer = (
 				await axios.get<Buffer>(`${gatewayUrlForArweave(arweave).href}${txId}`, {
 					responseType: 'arraybuffer'
@@ -468,11 +468,15 @@ describe('ArLocal Integration Tests', function () {
 
 			const dataTxId = created[0].dataTxId!;
 			const metaDataTxId = created[0].metadataTxId!;
+			const metaDataJson = await getFileDataJSON(metaDataTxId);
 
-			expect(await getFileDataJSON(metaDataTxId)).to.deep.equal({
+			// We filter last modified date from deep equal check because we cannot
+			// consistently predict when the file is created on separate systems
+			delete metaDataJson.lastModifiedDate;
+
+			expect(metaDataJson).to.deep.equal({
 				name: 'custom_content_unique_stub',
 				size: 12,
-				lastModifiedDate: 1638543789556,
 				dataTxId: `${dataTxId}`,
 				dataContentType: 'application/fake'
 			});
