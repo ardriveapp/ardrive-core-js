@@ -9,9 +9,10 @@ import {
 	ArFSPrivateFileWithPaths,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory,
-	ArFSPrivateDriveKeyless
+	ArFSPrivateDriveKeyless,
+	ArFSPublicFile
 } from './arfs/arfs_entities';
-import { ArFSPrivateFileToDownload, ArFSManifestToUpload } from './arfs/arfs_file_wrapper';
+import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
@@ -76,7 +77,16 @@ import {
 	RenamePublicDriveParams,
 	RenamePrivateDriveParams,
 	DriveKey,
-	W
+	W,
+	TransactionID,
+	ArFSFees,
+	ArFSCreateFileMetaDataV2Plan,
+	RewardSettings,
+	FileNameConflictResolution,
+	RetryPublicArFSFileParams,
+	RetryPublicArFSFileByFileIdParams,
+	RetryPublicArFSFileByDestFolderIdParams,
+	emptyArFSResult
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -95,7 +105,8 @@ import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
 import { CreateDriveRewardSettings, EstimateCreateDriveParams } from './types/upload_planner_types';
 import {
 	getPrivateCreateDriveEstimationPrototypes,
-	getPublicCreateDriveEstimationPrototypes
+	getPublicCreateDriveEstimationPrototypes,
+	getPublicUploadFileEstimationPrototype
 } from './pricing/estimation_prototypes';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
@@ -627,6 +638,195 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		return arFSResult;
+	}
+
+	public async retryPublicArFSFileUploadByFileId({
+		dataTxId,
+		wrappedFile,
+		fileId
+	}: RetryPublicArFSFileByFileIdParams): Promise<ArFSResult> {
+		const metaDataTxId = await this.deriveMetaDataTxIdForFileId(fileId, dataTxId);
+
+		return this.retryPublicArFSFileUpload({ dataTxId, wrappedFile, fileId, metaDataTxId });
+	}
+
+	public async retryPublicArFSFileUploadByDestFolderId({
+		dataTxId,
+		wrappedFile,
+		conflictResolution = 'upsert',
+		destinationFolderId
+	}: RetryPublicArFSFileByDestFolderIdParams): Promise<ArFSResult> {
+		const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
+
+		let metaDataTxId: undefined | TransactionID = undefined;
+		let createMetaDataPlan: undefined | ArFSCreateFileMetaDataV2Plan = undefined;
+		let fileId: undefined | FileID = undefined;
+
+		if (metaDataTx) {
+			// MetaData has been verified
+			metaDataTxId = metaDataTx.txId;
+			fileId = metaDataTx.fileId;
+		} else {
+			// Metadata has not been found, it must be created
+			const isValidUpload = await this.assertWriteFileMetaData({
+				wrappedFile,
+				conflictResolution,
+				destinationFolderId
+			});
+
+			if (!isValidUpload) {
+				return emptyArFSResult;
+			}
+
+			createMetaDataPlan = {
+				rewardSettings: await this.deriveAndAssertV2PublicFileMetaDataRewardSettings(wrappedFile),
+				destinationFolderId,
+				fileId: wrappedFile.existingId
+			};
+		}
+
+		return this.retryPublicArFSFileUpload({ dataTxId, wrappedFile, fileId, metaDataTxId, createMetaDataPlan });
+	}
+
+	private async retryPublicArFSFileUpload({
+		dataTxId,
+		wrappedFile,
+		fileId,
+		createMetaDataPlan,
+		metaDataTxId
+	}: RetryPublicArFSFileParams): Promise<ArFSResult> {
+		// prettier-ignore
+		const { fileDataReward, communityTipSettings, newMetaDataInfo } =
+			await this.arFsDao.retryV2ArFSPublicFileTransaction({
+				arFSDataTxId: dataTxId,
+				wrappedFile,
+				createMetaDataPlan
+			});
+
+		const fees: ArFSFees = { [`${dataTxId}`]: fileDataReward };
+
+		if (newMetaDataInfo) {
+			fileId = newMetaDataInfo.fileId;
+			metaDataTxId = newMetaDataInfo.metaDataTxId;
+			fees[`${metaDataTxId}`] = newMetaDataInfo.fileMetaDataReward;
+		}
+
+		if (!fileId || !metaDataTxId) {
+			// Provided for increased type safety, this error is considered unreachable with current code
+			throw Error('MetaData Tx could not be verified or re-created!');
+		}
+
+		return {
+			created: [
+				{
+					type: 'file',
+					dataTxId,
+					metadataTxId: metaDataTxId,
+					entityId: fileId,
+					entityName: wrappedFile.destinationBaseName,
+					sourceUri: wrappedFile.sourceUri
+				}
+			],
+			tips: [
+				{
+					recipient: communityTipSettings.communityTipTarget,
+					txId: dataTxId,
+					winston: communityTipSettings.communityWinstonTip
+				}
+			],
+			fees
+		};
+	}
+
+	private async deriveMetaDataTxIdForFileId(fileId: FileID, dataTxId: TransactionID): Promise<TransactionID> {
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+		const fileMetaData = await this.arFsDao.getPublicFile(fileId, owner);
+
+		if (fileMetaData.dataTxId.equals(dataTxId)) {
+			// This metadata tx id is verified
+			return fileMetaData.txId;
+		}
+
+		throw Error(`File with id "${fileId}" has no metadata that links to dataTxId: "${dataTxId}"`);
+	}
+
+	private async deriveMetaDataTxFromPublicFolder(
+		destinationFolderId: FolderID,
+		dataTxId: TransactionID
+	): Promise<ArFSPublicFile | undefined> {
+		const owner = await this.arFsDao.getDriveOwnerForFolderId(destinationFolderId);
+		await this.assertFolderExists(destinationFolderId, owner);
+
+		const allFileMetaDataTxInFolder = await this.arFsDao.getPublicFilesWithParentFolderIds(
+			[destinationFolderId],
+			owner
+		);
+		const metaDataTxsForThisTx = allFileMetaDataTxInFolder.filter((f) => `${f.dataTxId}` === `${dataTxId}`);
+
+		if (metaDataTxsForThisTx.length > 0) {
+			return metaDataTxsForThisTx[0];
+		}
+
+		return undefined;
+	}
+
+	private async assertFolderExists(destinationFolderId: FolderID, owner: ArweaveAddress) {
+		try {
+			await this.arFsDao.getPublicFolder(destinationFolderId, owner);
+		} catch (error) {
+			throw Error(`The supplied public destination folder ID (${destinationFolderId}) cannot be found!`);
+		}
+	}
+
+	private async assertWriteFileMetaData({
+		wrappedFile,
+		destinationFolderId,
+		conflictResolution
+	}: {
+		wrappedFile: ArFSFileToUpload;
+		destinationFolderId: FolderID;
+		conflictResolution: FileNameConflictResolution;
+	}): Promise<boolean> {
+		const destDriveId = await this.arFsDao.getDriveIdForFolderId(destinationFolderId);
+		const owner = await this.arFsDao.getOwnerAndAssertDrive(destDriveId);
+		await this.assertOwnerAddress(owner);
+
+		await resolveFileNameConflicts({
+			wrappedFile,
+			conflictResolution,
+			destFolderId: destinationFolderId,
+			destinationFileName: wrappedFile.destinationBaseName,
+			getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner)
+		});
+
+		if (wrappedFile.conflictResolution) {
+			switch (wrappedFile.conflictResolution) {
+				case 'error':
+					throw Error('File names cannot conflict with a folder name in the destination folder!');
+
+				case 'skip' || 'upsert':
+					console.error(
+						'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
+					);
+					return false;
+			}
+		}
+
+		return true;
+	}
+
+	private async deriveAndAssertV2PublicFileMetaDataRewardSettings(
+		wrappedFile: ArFSFileToUpload
+	): Promise<RewardSettings> {
+		const fileEstimationPrototype = getPublicUploadFileEstimationPrototype(wrappedFile);
+
+		// prettier-ignore
+		const { metaDataRewardSettings, totalWinstonPrice } =
+			await this.costCalculator.calculateCostForV2MetaDataUpload(fileEstimationPrototype.objectData.sizeOf());
+
+		this.assertWalletBalance(totalWinstonPrice);
+
+		return metaDataRewardSettings;
 	}
 
 	/** @deprecated -- Now uses the uploadAllEntities method internally. Will be removed in a future major release */

@@ -55,7 +55,12 @@ import {
 	stubEmptyFolderToUpload,
 	stubFileToUpload,
 	stubPublicFile,
-	stubPublicFolder
+	stubPublicFolder,
+	stubTxID,
+	stubSmallFileToUpload,
+	stubSignedTransaction,
+	stubTxIDAlt,
+	stubTxIDAltTwo
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -74,6 +79,8 @@ import {
 	SourceUri
 } from '../../src/exports';
 import { MAX_BUNDLE_SIZE } from '../../src/utils/constants';
+import { GatewayAPI } from '../../src/utils/gateway_api';
+import { assertRetryExpectations } from '../test_assertions';
 
 // Don't use the existing constants just to make sure our expectations don't change
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
@@ -103,7 +110,17 @@ describe('ArDrive class - integrated', () => {
 	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
 	const walletDao = new WalletDAO(fakeArweave, 'Integration Test', '1.2');
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'Integration Test', appVersion: '1.2' });
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagSettings);
+	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: new URL('http://test.net:1337') });
+	const arfsDao = new ArFSDAO(
+		wallet,
+		fakeArweave,
+		true,
+		'Integration Test',
+		'1.2',
+		arFSTagSettings,
+		undefined,
+		fakeGatewayApi
+	);
 	const uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle: false,
 		arFSTagSettings: arFSTagSettings,
@@ -3684,6 +3701,136 @@ describe('ArDrive class - integrated', () => {
 				isBundled: true,
 				expectedEntityName: 'file_in_child.txt',
 				expectedSourceUri: 'tests/stub_files/bulk_root_folder/parent_folder/child_folder/file_in_child.txt'
+			});
+		});
+	});
+
+	describe('retryPublicArFSFileUpload public method', () => {
+		const stubRetryFile = stubPublicFile({ fileName: 'CONFLICTING_NAME', dataTxId: stubTxID, txId: stubTxIDAlt });
+
+		const matchingDataTxID = stubTxID;
+		const mismatchedDataTxID = stubTxIDAltTwo;
+
+		beforeEach(() => {
+			// TODO: Consolidate owner calls...
+			stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
+			stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
+			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
+
+			stub(arfsDao, 'getPublicFilesWithParentFolderIds').resolves([stubRetryFile]);
+			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
+
+			stub(fakeGatewayApi, 'getTransaction').returns(stubSignedTransaction());
+		});
+
+		it('returns the expected result when a valid metaData tx is found with the provided file ID', async () => {
+			stub(arfsDao, 'getPublicFile').resolves(stubRetryFile);
+
+			const result = await arDrive.retryPublicArFSFileUploadByFileId({
+				dataTxId: matchingDataTxID,
+				wrappedFile: stubSmallFileToUpload(),
+				fileId: stubEntityIDAlt
+			});
+
+			assertRetryExpectations({ result, expectedFileId: stubEntityIDAlt });
+		});
+
+		it('throws an error when a valid metadata tx could not be found with the provided data tx id', async () => {
+			stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ dataTxId: mismatchedDataTxID }));
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.retryPublicArFSFileUploadByFileId({
+					dataTxId: matchingDataTxID,
+					wrappedFile: stubSmallFileToUpload(),
+					fileId: stubEntityIDAlt
+				}),
+				errorMessage: `File with id "caa8b54a-eb5e-4134-8ae2-a3946a428ec7" has no metadata that links to dataTxId: "0000000000000000000000000000000000000000001"`
+			});
+		});
+
+		it('returns the expected result when a valid metaData tx is found within the provided folder ID', async () => {
+			stub(arfsDao, 'getPublicFolder').resolves();
+
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
+				dataTxId: matchingDataTxID,
+				wrappedFile: stubSmallFileToUpload(),
+				destinationFolderId: stubEntityID
+			});
+
+			assertRetryExpectations({ result });
+		});
+
+		it('returns an ArFSResult that contains a MetaData Tx Reward when no existing MetaData Tx can be found in the destination folder', async () => {
+			stub(arfsDao, 'getPublicFolder').resolves();
+
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
+				dataTxId: mismatchedDataTxID,
+				wrappedFile: stubSmallFileToUpload(),
+				destinationFolderId: stubEntityID
+			});
+
+			assertRetryExpectations({ result, expectedDataTxId: mismatchedDataTxID, expectedMetaDataTxReward: W(158) });
+		});
+
+		it('returns the expected REVISION result when no valid metaData tx can be found and the destination name conflicts with an existing file in the destination folder', async () => {
+			stub(arfsDao, 'getPublicFolder').resolves();
+
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
+				dataTxId: mismatchedDataTxID,
+				wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
+				destinationFolderId: stubEntityID,
+				conflictResolution: 'replace'
+			});
+
+			assertRetryExpectations({
+				result,
+				expectedDataTxId: mismatchedDataTxID,
+				expectedMetaDataTxReward: W(163),
+				expectedFileId: existingFileId
+			});
+		});
+
+		it('throws an error if the destination folder cannot be found', async () => {
+			stub(arfsDao, 'getPublicFolder').throws();
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
+					dataTxId: matchingDataTxID,
+					wrappedFile: stubSmallFileToUpload(),
+					destinationFolderId: stubEntityID
+				}),
+				errorMessage: `The supplied public destination folder ID (${stubEntityID}) cannot be found!`
+			});
+		});
+
+		it('throws an error if destination name conflicts with an existing folder', async () => {
+			stub(arfsDao, 'getPublicFolder').resolves();
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.retryPublicArFSFileUploadByDestFolderId({
+					dataTxId: mismatchedDataTxID,
+					wrappedFile: stubSmallFileToUpload('CONFLICTING_FOLDER_NAME'),
+					destinationFolderId: stubEntityID
+				}),
+				errorMessage: 'File names cannot conflict with a folder name in the destination folder!'
+			});
+		});
+
+		it('throws an error if destination name conflicts with an existing file and the conflict resolution is set to `skip`', async () => {
+			stub(arfsDao, 'getPublicFolder').resolves();
+
+			const result = await arDrive.retryPublicArFSFileUploadByDestFolderId({
+				dataTxId: mismatchedDataTxID,
+				wrappedFile: stubSmallFileToUpload('CONFLICTING_FILE_NAME'),
+				destinationFolderId: stubEntityID,
+				conflictResolution: 'skip'
+			});
+
+			expect(result).to.deep.equal({
+				created: [],
+				tips: [],
+				fees: {}
 			});
 		});
 	});

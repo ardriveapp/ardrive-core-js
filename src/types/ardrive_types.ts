@@ -16,7 +16,7 @@ import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
-import { ArFSListPublicFolderParams } from './arfsdao_types';
+import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
 import { EntityKey } from './entity_key';
 import { EntityName, SourceUri } from './types';
 
@@ -277,3 +277,22 @@ export interface RenamePublicDriveParams {
 }
 
 export type RenamePrivateDriveParams = RenamePublicDriveParams & WithDriveKey;
+
+export interface BasePublicFileRetryParams {
+	wrappedFile: ArFSFileToUpload;
+	dataTxId: TransactionID;
+}
+export interface RetryPublicArFSFileByFileIdParams extends BasePublicFileRetryParams {
+	fileId: FileID;
+}
+
+export interface RetryPublicArFSFileByDestFolderIdParams extends BasePublicFileRetryParams {
+	conflictResolution?: FileNameConflictResolution;
+	destinationFolderId: FolderID;
+}
+
+export interface RetryPublicArFSFileParams extends BasePublicFileRetryParams {
+	createMetaDataPlan?: ArFSCreateFileMetaDataV2Plan;
+	metaDataTxId?: TransactionID;
+	fileId?: FileID;
+}
