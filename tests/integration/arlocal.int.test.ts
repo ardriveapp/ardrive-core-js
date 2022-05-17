@@ -72,7 +72,7 @@ describe('ArLocal Integration Tests', function () {
 	const customTagSettings = new ArFSTagSettings({
 		appName: 'Custom Integration Test Settings',
 		appVersion: '1.7',
-		customMetaData: { tags: [{ name: 'Custom Tag', values: 'This Test Works' }], shouldApplyTagsToGql: true }
+		customMetaData: { tags: [{ name: 'Custom Tag', values: 'This Test Works' }], includeOn: ['metaDataGql'] }
 	});
 
 	const arfsDao = new ArFSDAO(
@@ -450,6 +450,11 @@ describe('ArLocal Integration Tests', function () {
 			const dataString = await Utf8ArrayToStr(dataBuffer);
 			return JSON.parse(dataString);
 		}
+
+		// TODO: Split this test into:
+		//   - File with custom content type
+		//   - File with multiple custom MetaData GQL tags with mixed 'string' and 'string[]' values input
+		//   - File with multiple custom MetaData JSON tags with mixed 'string' and 'string[]' values input
 
 		it('we can upload a public file with a custom content type and custom tags', async () => {
 			const { created } = await customTagV2ArDrive.uploadAllEntities({

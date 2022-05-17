@@ -8,11 +8,17 @@ import {
 	fakePrivateCipherIVTag
 } from '../utils/constants';
 
+// TODO: Include dataTx GQL tags as an option (PE-1534)
+export const metaDataJsonType = 'metaDataJson';
+export const metaDataGqlType = 'metaDataGql';
+
+export type CustomMetaDataType = typeof metaDataJsonType | typeof metaDataGqlType; // | 'dataTxGql';
+
 export interface CustomMetaData {
 	tags: CustomMetaDataTagInterface[];
-	// TODO: Consider using an array input called `includeOn` instead of boolean input for extendability
-	// includeOn: 'metaDataJson' | 'metaDataGql' | 'dataTxGql'[];  // Default would be ['metaDataJson']
-	shouldApplyTagsToGql?: boolean;
+	includeOn: CustomMetaDataType[];
+	// TODO: Add exclude from certain entity types for when we include on drives/folders (PE-1533)
+	// excludeFrom?: EntityType[];
 }
 
 interface ArFSTagSettingsParams {
@@ -32,7 +38,7 @@ export class ArFSTagSettings {
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
 		arFSVersion = CURRENT_ARFS_VERSION,
-		customMetaData = { tags: [] }
+		customMetaData = { tags: [], includeOn: [] }
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -55,20 +61,20 @@ export class ArFSTagSettings {
 		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
-	public getCustomGqlTags(): CustomMetaDataTagInterface[] {
-		return this.shouldApplyTagsToGql() ? [] : this.customTags;
+	public getCustomMetaDataGqlTags(): CustomMetaDataTagInterface[] {
+		return this.shouldApplyTagsTo(metaDataGqlType) ? [] : this.customTags;
 	}
 
 	public getCustomMetaDataJSONTags(): CustomMetaDataTagInterface[] {
-		return this.shouldApplyTagsToGql() ? [] : this.customTags;
+		return this.shouldApplyTagsTo(metaDataJsonType) ? [] : this.customTags;
+	}
+
+	private shouldApplyTagsTo(customMetaDataType: CustomMetaDataType): boolean {
+		return this.customMetaData.includeOn.includes(customMetaDataType);
 	}
 
 	private get customTags(): CustomMetaDataTagInterface[] {
 		return this.customMetaData.tags;
-	}
-
-	private shouldApplyTagsToGql(): boolean {
-		return !!this.customMetaData.shouldApplyTagsToGql;
 	}
 
 	public get baseArFSTags(): GQLTagInterface[] {

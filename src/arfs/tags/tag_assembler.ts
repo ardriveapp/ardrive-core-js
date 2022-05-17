@@ -57,7 +57,7 @@ export class ArFSTagAssembler {
 	private maybeCustomTags(assertProtectedTags: (tags: GQLTagInterface[]) => void): GQLTagInterface[] {
 		const tags: GQLTagInterface[] = [];
 
-		for (const { name, values } of this.arFSTagSettings.getCustomGqlTags()) {
+		for (const { name, values } of this.arFSTagSettings.getCustomMetaDataGqlTags()) {
 			for (const value of values) {
 				tags.push({ name, value });
 			}
