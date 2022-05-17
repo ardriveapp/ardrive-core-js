@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker run --init --rm -d -p 1984:1984 --name arlocal textury/arlocal:latest
+docker run --init --rm -d -p 1984:1984 --name arlocal textury/arlocal:v1.1.35
 
 set -e
 EXIT_CODE=0

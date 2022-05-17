@@ -1,6 +1,8 @@
+import Arweave from 'arweave';
 import { Tag } from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
 import { GQLTagInterface } from '../src/types';
+import { Wallet } from '../src/wallet';
 
 interface expectAsyncErrorThrowParams {
 	promiseToError: Promise<unknown>;
@@ -42,3 +44,11 @@ export const getDecodedTags = (tags: Tag[]): GQLTagInterface[] =>
 		name: tag.get('name', { decode: true, string: true }),
 		value: tag.get('value', { decode: true, string: true })
 	}));
+
+export async function fundArLocalWallet(arweave: Arweave, wallet: Wallet): Promise<void> {
+	await arweave.api.get(`mint/${await wallet.getAddress()}/9999999999999999`);
+}
+
+export async function mineArLocalBlock(arweave: Arweave): Promise<void> {
+	await arweave.api.get('mine');
+}

@@ -1,6 +1,6 @@
 import { CommunityOracle } from '../community/community_oracle';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
-import { FeeMultiple, Winston, RewardSettings, W, CommunityTipSettings } from '../types';
+import { FeeMultiple, Winston, RewardSettings, W, CommunityTipSettings, ByteCount } from '../types';
 import {
 	CalculatedBundlePlan,
 	BundlePlan,
@@ -17,7 +17,8 @@ import {
 	V2FileDataOnlyPlan,
 	CalculatedV2TxPlans,
 	V2FolderMetaDataPlan,
-	CalculatedFolderMetaDataPlan
+	CalculatedFolderMetaDataPlan,
+	CalculatedV2MetaDataUploadPlan
 } from '../types/upload_planner_types';
 
 export interface CostCalculator {
@@ -26,6 +27,9 @@ export interface CostCalculator {
 		v2TxPlans
 	}: UploadPlan): Promise<{ calculatedUploadPlan: CalculatedUploadPlan; totalWinstonPrice: Winston }>;
 	calculateCostForCreateDrive(createDrivePlan: CreateDrivePlan): Promise<CalculatedCreateDrivePlan>;
+	calculateCostForV2MetaDataUpload(
+		metaDataByteCount: ByteCount
+	): Promise<{ metaDataRewardSettings: RewardSettings; totalWinstonPrice: Winston }>;
 }
 
 interface ArFSCostCalculatorConstructorParams {
@@ -147,11 +151,8 @@ export class ArFSCostCalculator implements CostCalculator {
 	}
 
 	/** Calculates fileDataRewardSettings and communityTipSettings for a planned folder metadata v2 tx */
-	// eslint-disable-next-line prettier/prettier
-	private async calculateCostsForV2FolderMetaData({
-		metaDataByteCount,
-		uploadStats
-	}: V2FolderMetaDataPlan): Promise<{
+	// prettier-ignore
+	private async calculateCostsForV2FolderMetaData({ metaDataByteCount, uploadStats }: V2FolderMetaDataPlan): Promise<{
 		calculatedFolderMetaDataPlan: CalculatedFolderMetaDataPlan;
 		totalPriceOfV2Tx: Winston;
 	}> {
@@ -251,5 +252,16 @@ export class ArFSCostCalculator implements CostCalculator {
 		}
 
 		return this.calculateV2CreateDriveCost(createDrivePlan);
+	}
+
+	public async calculateCostForV2MetaDataUpload(
+		metaDataByteCount: ByteCount
+	): Promise<CalculatedV2MetaDataUploadPlan> {
+		const metaDataReward = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataByteCount);
+
+		return {
+			metaDataRewardSettings: this.rewardSettingsForWinston(metaDataReward),
+			totalWinstonPrice: this.boostedReward(metaDataReward)
+		};
 	}
 }

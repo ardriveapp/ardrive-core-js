@@ -15,7 +15,7 @@ export type ProgressCallback = (pctComplete: number) => void;
 /** Maximum amount of chunks we will upload in the transaction body */
 const MAX_CHUNKS_IN_BODY = 1;
 
-interface MultiChunkTxUploaderConstructorParams {
+export interface MultiChunkTxUploaderConstructorParams {
 	gatewayApi: GatewayAPI;
 	transaction: Transaction;
 	maxConcurrentChunks?: number;
@@ -80,6 +80,13 @@ export class MultiChunkTxUploader {
 		this.transaction = transaction;
 		this.maxConcurrentChunks = maxConcurrentChunks;
 		this.progressCallback = progressCallback;
+	}
+
+	public static resumeChunkUpload(params: MultiChunkTxUploaderConstructorParams): MultiChunkTxUploader {
+		const uploader = new MultiChunkTxUploader(params);
+		uploader.txPosted = true;
+
+		return uploader;
 	}
 
 	/**
