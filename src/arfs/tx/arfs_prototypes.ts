@@ -25,9 +25,11 @@ import {
 	DrivePrivacy,
 	GQLTagInterface,
 	EntityType,
-	TransactionID
+	TransactionID,
+	CustomMetaDataTagInterface
 } from '../../types';
 import { ArFSDataToUpload } from '../arfs_file_wrapper';
+import { WithDriveKey } from '../arfs_entity_result_factory';
 
 export abstract class ArFSObjectMetadataPrototype {
 	abstract gqlTags: GQLTagInterface[];
@@ -184,7 +186,9 @@ export interface ArFSPublicFileMetaDataPrototypeFromFileParams {
 	driveId: DriveID;
 	fileId: FileID;
 	parentFolderId: FolderID;
+	customMetaData?: CustomMetaDataTagInterface[];
 }
+
 export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 	readonly contentType: ContentType = JSON_CONTENT_TYPE;
 
@@ -202,17 +206,18 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		dataTxId,
 		parentFolderId,
 		fileId,
-		driveId
+		driveId,
+		customMetaData = []
 	}: ArFSPublicFileMetaDataPrototypeFromFileParams): ArFSPublicFileMetaDataPrototype {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
 		return new ArFSPublicFileMetaDataPrototype(
 			new ArFSPublicFileMetadataTransactionData(
 				wrappedFile.destinationBaseName,
 				fileSize,
 				lastModifiedDateMS,
 				dataTxId,
-				dataContentType
+				dataContentType,
+				customMetaData
 			),
 			driveId,
 			fileId,
@@ -220,7 +225,8 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		);
 	}
 }
-
+export type ArFSPrivateFileMetaDataPrototypeFromFileParams = ArFSPublicFileMetaDataPrototypeFromFileParams &
+	WithDriveKey;
 export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 	readonly contentType: ContentType = PRIVATE_CONTENT_TYPE;
 
@@ -239,6 +245,34 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV }
 		];
+	}
+
+	public static async fromFile({
+		wrappedFile,
+		dataTxId,
+		parentFolderId,
+		fileId,
+		driveId,
+		driveKey,
+		customMetaData = []
+	}: ArFSPrivateFileMetaDataPrototypeFromFileParams): Promise<ArFSPrivateFileMetaDataPrototype> {
+		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
+
+		return new ArFSPrivateFileMetaDataPrototype(
+			await ArFSPrivateFileMetadataTransactionData.from(
+				wrappedFile.destinationBaseName,
+				fileSize,
+				lastModifiedDateMS,
+				dataTxId,
+				dataContentType,
+				fileId,
+				driveKey,
+				customMetaData
+			),
+			driveId,
+			fileId,
+			parentFolderId
+		);
 	}
 }
 

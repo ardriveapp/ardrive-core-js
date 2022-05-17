@@ -10,6 +10,8 @@ import {
 
 export interface CustomMetaData {
 	tags: CustomMetaDataTagInterface[];
+	// TODO: Consider using an array input called `includeOn` instead of boolean input for extendability
+	// includeOn: 'metaDataJson' | 'metaDataGql' | 'dataTxGql'[];  // Default would be ['metaDataJson']
 	shouldApplyTagsToGql?: boolean;
 }
 
@@ -53,11 +55,19 @@ export class ArFSTagSettings {
 		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
-	public getCustomTags(): CustomMetaDataTagInterface[] {
+	public getCustomGqlTags(): CustomMetaDataTagInterface[] {
+		return this.shouldApplyTagsToGql() ? [] : this.customTags;
+	}
+
+	public getCustomMetaDataJSONTags(): CustomMetaDataTagInterface[] {
+		return this.shouldApplyTagsToGql() ? [] : this.customTags;
+	}
+
+	private get customTags(): CustomMetaDataTagInterface[] {
 		return this.customMetaData.tags;
 	}
 
-	public shouldApplyTagsToGql(): boolean {
+	private shouldApplyTagsToGql(): boolean {
 		return !!this.customMetaData.shouldApplyTagsToGql;
 	}
 

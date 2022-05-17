@@ -8,7 +8,6 @@ import {
 	ArFSDataToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicDriveMetaDataPrototype,
@@ -18,6 +17,7 @@ import {
 	ByteCount,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
+	CustomMetaDataTagInterface,
 	DriveKey,
 	encryptedDataSize
 } from '../exports';
@@ -97,13 +97,17 @@ export async function getPrivateCreateDriveEstimationPrototypes({
  * Constructs a fake public file metadata prototype from stubbed
  * entity IDs and stubbed tx IDs for estimation and planning purposes
  */
-export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUpload): ArFSPublicFileMetaDataPrototype {
+export function getPublicUploadFileEstimationPrototype(
+	wrappedFile: ArFSDataToUpload,
+	customMetaData: CustomMetaDataTagInterface[]
+): ArFSPublicFileMetaDataPrototype {
 	return ArFSPublicFileMetaDataPrototype.fromFile({
 		wrappedFile,
 		dataTxId: fakeTxID,
 		driveId: fakeEntityId,
 		fileId: fakeEntityId,
-		parentFolderId: fakeEntityId
+		parentFolderId: fakeEntityId,
+		customMetaData
 	});
 }
 
@@ -112,24 +116,18 @@ export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUp
  * stubbed tx IDs, and a stubbed drive key for estimation and planning purposes
  */
 export async function getPrivateUploadFileEstimationPrototype(
-	wrappedFile: ArFSDataToUpload
+	wrappedFile: ArFSDataToUpload,
+	customMetaData: CustomMetaDataTagInterface[]
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
-	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-	return new ArFSPrivateFileMetaDataPrototype(
-		await ArFSPrivateFileMetadataTransactionData.from(
-			wrappedFile.destinationBaseName,
-			fileSize,
-			lastModifiedDateMS,
-			fakeTxID,
-			dataContentType,
-			fakeEntityId,
-			await getFakeDriveKey()
-		),
-		fakeEntityId,
-		fakeEntityId,
-		fakeEntityId
-	);
+	return ArFSPrivateFileMetaDataPrototype.fromFile({
+		dataTxId: fakeTxID,
+		driveId: fakeEntityId,
+		fileId: fakeEntityId,
+		parentFolderId: fakeEntityId,
+		wrappedFile,
+		driveKey: await getFakeDriveKey(),
+		customMetaData
+	});
 }
 
 /**
@@ -143,11 +141,12 @@ export async function getPrivateUploadFileEstimationPrototype(
  */
 export async function getFileEstimationInfo(
 	wrappedFile: ArFSDataToUpload,
-	isPrivate: boolean
+	isPrivate: boolean,
+	customMetaData: CustomMetaDataTagInterface[]
 ): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
-		? await getPrivateUploadFileEstimationPrototype(wrappedFile)
-		: getPublicUploadFileEstimationPrototype(wrappedFile);
+		? await getPrivateUploadFileEstimationPrototype(wrappedFile, customMetaData)
+		: getPublicUploadFileEstimationPrototype(wrappedFile, customMetaData);
 
 	const fileDataByteCount = isPrivate ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
 

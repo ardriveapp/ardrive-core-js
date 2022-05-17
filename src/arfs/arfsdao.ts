@@ -847,7 +847,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			logProgress();
 
 			const { fileResult, metaDataDataItem } = await this.uploadOnlyFileAsV2(
-				getPrepFileParams(uploadStats),
+				getPrepFileParams({ ...uploadStats, customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags() }),
 				dataTxRewardSettings,
 				communityTipSettings
 			);
@@ -869,7 +869,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			logProgress();
 
 			const fileResult = await this.uploadFileAndMetaDataAsV2(
-				getPrepFileParams(uploadStats),
+				getPrepFileParams({ ...uploadStats, customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags() }),
 				dataTxRewardSettings,
 				metaDataRewardSettings,
 				communityTipSettings
@@ -946,7 +946,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					}
 
 					// Prepare file data item and results
-					const prepFileParams = getPrepFileParams({ ...uploadStat, wrappedEntity });
+					const prepFileParams = getPrepFileParams({
+						...uploadStat,
+						wrappedEntity,
+						customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
+					});
+
 					const { arFSObjects, fileId, fileKey } = await this.prepareFile({
 						...prepFileParams,
 						prepareArFSObject: (objectMetaData) =>
@@ -1133,7 +1138,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			parentFolderId: destinationFolderId,
 			fileId,
 			driveId: await this.getDriveIdForFolderId(destinationFolderId),
-			dataTxId: arFSDataTxId
+			dataTxId: arFSDataTxId,
+			customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
 		});
 
 		const fileMetaDataTransaction = await this.prepareArFSObjectTransaction({

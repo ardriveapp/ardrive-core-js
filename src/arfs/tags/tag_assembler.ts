@@ -29,7 +29,7 @@ export class ArFSTagAssembler {
 
 		this.arFSTagSettings.baseArFSTags.forEach((t) => tags.push(t));
 
-		if (arFSPrototype.entityType === 'file' && this.arFSTagSettings.shouldApplyTagsToGql()) {
+		if (arFSPrototype.entityType === 'file') {
 			// Add any custom tags to a File MetaData Tx's GQL Tags
 			this.maybeCustomTags((t) => arFSPrototype.assertProtectedTags(t)).forEach((t) => tags.push(t));
 		}
@@ -57,7 +57,7 @@ export class ArFSTagAssembler {
 	private maybeCustomTags(assertProtectedTags: (tags: GQLTagInterface[]) => void): GQLTagInterface[] {
 		const tags: GQLTagInterface[] = [];
 
-		for (const { name, values } of this.arFSTagSettings.getCustomTags()) {
+		for (const { name, values } of this.arFSTagSettings.getCustomGqlTags()) {
 			for (const value of values) {
 				tags.push({ name, value });
 			}
@@ -67,6 +67,7 @@ export class ArFSTagAssembler {
 			assertProtectedTags(tags);
 			return tags;
 		}
+
 		return [];
 	}
 }

@@ -126,15 +126,6 @@ export abstract class ArFSFileMetadataTransactionData implements ArFSObjectTrans
 	}
 }
 
-interface FileMetaDataTransactionDataCreateParams {
-	name: string;
-	size: ByteCount;
-	lastModifiedDate: UnixTime;
-	dataTxId: TransactionID;
-	dataContentType: DataContentType;
-	customMetaData?: CustomMetaDataTagInterface[];
-}
-
 export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTransactionData {
 	constructor(
 		private readonly name: string,
@@ -145,24 +136,6 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		private readonly customMetaData: CustomMetaDataTagInterface[] = []
 	) {
 		super();
-	}
-
-	public static create({
-		name,
-		size,
-		lastModifiedDate,
-		dataTxId,
-		dataContentType,
-		customMetaData = []
-	}: FileMetaDataTransactionDataCreateParams): ArFSPublicFileMetadataTransactionData {
-		return new ArFSPublicFileMetadataTransactionData(
-			name,
-			size,
-			lastModifiedDate,
-			dataTxId,
-			dataContentType,
-			customMetaData
-		);
 	}
 
 	asTransactionData(): string {
@@ -202,20 +175,27 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataTxId: TransactionID,
 		dataContentType: DataContentType,
 		fileId: FileID,
-		driveKey: DriveKey
+		driveKey: DriveKey,
+		customMetaData: CustomMetaDataTagInterface[] = []
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
+		const baseArFSDataJSON: Record<string, unknown> = {
+			name: name,
+			size: size,
+			lastModifiedDate: lastModifiedDate,
+			dataTxId: dataTxId,
+			dataContentType: dataContentType
+		};
+
+		if (customMetaData?.length > 0) {
+			for (const tag of customMetaData) {
+				baseArFSDataJSON[tag.name] = tag.values;
+			}
+		}
+
 		const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
 			fileKey,
-			Buffer.from(
-				JSON.stringify({
-					name: name,
-					size: size,
-					lastModifiedDate: lastModifiedDate,
-					dataTxId: dataTxId,
-					dataContentType: dataContentType
-				})
-			)
+			Buffer.from(JSON.stringify(baseArFSDataJSON))
 		);
 		return new ArFSPrivateFileMetadataTransactionData(cipher, cipherIV, data, fileKey);
 	}

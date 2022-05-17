@@ -19,6 +19,7 @@ import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
 import { EntityKey } from './entity_key';
 import { EntityName, SourceUri } from './types';
+import { CustomMetaDataTagInterface } from './gql_Types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -124,7 +125,7 @@ export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends 
 	owner: ArweaveAddress;
 }
 
-export type FileUploadStats = UploadStats<ArFSDataToUpload>;
+export type FileUploadStats = UploadStats<ArFSDataToUpload> & { customMetaData: CustomMetaDataTagInterface[] };
 export type FolderUploadStats = UploadStats<ArFSFolderToUpload>;
 
 export interface UploadAllEntitiesParams {

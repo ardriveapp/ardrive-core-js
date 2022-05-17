@@ -60,7 +60,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	private async planFile(uploadStats: PlanFileParams, bundlePacker: BundlePacker): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = uploadStats;
 		const isPrivate = driveKey !== undefined;
-		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
+		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(
+			wrappedFile,
+			isPrivate,
+			this.arFSTagSettings.getCustomMetaDataJSONTags()
+		);
 
 		const fileDataItemByteCount = byteCountAsDataItem(
 			fileDataByteCount,
@@ -154,7 +158,8 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			await this.planFile(
 				{
 					...partialPlanParams,
-					wrappedEntity: file
+					wrappedEntity: file,
+					customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
 				},
 				bundlePacker
 			);
@@ -210,7 +215,15 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			if (wrappedEntity.entityType === 'folder') {
 				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
 			} else {
-				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
+				await this.planFile(
+					{
+						...uploadStat,
+						wrappedEntity,
+						isBulkUpload,
+						customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
+					},
+					bundlePacker
+				);
 			}
 		}
 

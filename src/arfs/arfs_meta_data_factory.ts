@@ -14,7 +14,6 @@ import {
 import {
 	ArFSFileMetadataTransactionData,
 	ArFSPrivateFileDataTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPublicFolderTransactionData
@@ -67,10 +66,9 @@ export function getPrepFileParams({
 	destDriveId,
 	destFolderId,
 	wrappedEntity: wrappedFile,
-	driveKey
+	driveKey,
+	customMetaData
 }: FileUploadStats): PartialPrepareFileParams {
-	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
 	if (driveKey) {
 		return {
 			// Return factories for private prototypes
@@ -80,20 +78,15 @@ export function getPrepFileParams({
 					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
-				return new ArFSPrivateFileMetaDataPrototype(
-					await ArFSPrivateFileMetadataTransactionData.from(
-						wrappedFile.destinationBaseName,
-						fileSize,
-						lastModifiedDateMS,
-						dataTxId,
-						dataContentType,
-						fileId,
-						driveKey
-					),
-					destDriveId,
+				return ArFSPrivateFileMetaDataPrototype.fromFile({
+					dataTxId,
+					driveId: destDriveId,
 					fileId,
-					destFolderId
-				);
+					parentFolderId: destFolderId,
+					wrappedFile,
+					driveKey,
+					customMetaData
+				});
 			}
 		};
 	}
@@ -103,7 +96,10 @@ export function getPrepFileParams({
 		wrappedFile,
 		dataPrototypeFactoryFn: (fileData) =>
 			Promise.resolve(
-				new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
+				new ArFSPublicFileDataPrototype(
+					new ArFSPublicFileDataTransactionData(fileData),
+					wrappedFile.contentType
+				)
 			),
 		metadataTxDataFactoryFn: (fileId, dataTxId) =>
 			Promise.resolve(
