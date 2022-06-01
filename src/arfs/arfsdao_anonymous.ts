@@ -17,7 +17,7 @@ import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import { ArFSDriveEntity, ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gatewayGqlEndpoint } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
@@ -26,6 +26,7 @@ import { ArFSEntityCache } from './arfs_entity_cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
+import { GatewayAPI } from '../utils/gateway_api';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -74,7 +75,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		protected appName = DEFAULT_APP_NAME,
 		/** @deprecated App Version is an unused parameter on anonymous ArFSDAO */
 		protected appVersion = DEFAULT_APP_VERSION as string,
-		protected caches = defaultArFSAnonymousCache
+		protected caches = defaultArFSAnonymousCache,
+		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) })
 	) {
 		super();
 	}
@@ -95,8 +97,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const edges: GQLEdgeInterface[] = transactions.edges;
 
 				if (!edges.length) {
 					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
@@ -121,10 +123,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			(async () => {
 				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
 
-				const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-				const { data } = response.data;
-				const { transactions } = data;
-
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 				const edges: GQLEdgeInterface[] = transactions.edges;
 
 				if (!edges.length) {
@@ -166,7 +165,11 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 		return this.caches.publicDriveCache.put(
 			cacheKey,
-			new ArFSPublicDriveBuilder({ entityId: driveId, arweave: this.arweave, owner }).build()
+			new ArFSPublicDriveBuilder({
+				entityId: driveId,
+				gatewayApi: this.gatewayApi,
+				owner
+			}).build()
 		);
 	}
 
@@ -179,7 +182,11 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 		return this.caches.publicFolderCache.put(
 			cacheKey,
-			new ArFSPublicFolderBuilder({ entityId: folderId, arweave: this.arweave, owner }).build()
+			new ArFSPublicFolderBuilder({
+				entityId: folderId,
+				gatewayApi: this.gatewayApi,
+				owner
+			}).build()
 		);
 	}
 
@@ -191,7 +198,11 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 		return this.caches.publicFileCache.put(
 			cacheKey,
-			new ArFSPublicFileBuilder({ entityId: fileId, arweave: this.arweave, owner }).build()
+			new ArFSPublicFileBuilder({
+				entityId: fileId,
+				gatewayApi: this.gatewayApi,
+				owner
+			}).build()
 		);
 	}
 
@@ -207,9 +218,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({ tags: [{ name: 'Entity-Type', value: 'drive' }], cursor, owner: address });
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
@@ -217,7 +226,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const { node } = edge;
 				cursor = edge.cursor;
 
-				const driveBuilder = SafeArFSDriveBuilder.fromArweaveNode(node, this.arweave, privateKeyData);
+				const driveBuilder = SafeArFSDriveBuilder.fromArweaveNode(node, this.gatewayApi, privateKeyData);
 				const drive = await driveBuilder.build(node);
 				if (drive.drivePrivacy === 'public') {
 					const cacheKey = { driveId: drive.driveId, owner: address };
@@ -253,15 +262,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			const files: Promise<ArFSPublicFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.arweave);
+				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 				const file = await fileBuilder.build(node);
 				const cacheKey = { fileId: file.fileId, owner };
 				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
@@ -290,16 +297,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			const folders: Promise<ArFSPublicFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave);
+				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
 				const folder = await folderBuilder.build(node);
 				const cacheKey = { folderId: folder.entityId, owner };
 				return this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));

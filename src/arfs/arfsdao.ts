@@ -80,13 +80,7 @@ import {
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
-import {
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION,
-	authTagLength,
-	gatewayGqlEndpoint,
-	defaultMaxConcurrentChunks
-} from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength, defaultMaxConcurrentChunks } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -105,7 +99,6 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	GQLTransactionsResultInterface,
 	ADDR
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
@@ -174,7 +167,6 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
-import { getDataForTxID } from '../utils/get_tx_data';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -1260,7 +1252,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		return this.caches.privateDriveCache.put(
 			cacheKey,
-			new ArFSPrivateDriveBuilder({ entityId: driveId, arweave: this.arweave, key: driveKey, owner }).build()
+			new ArFSPrivateDriveBuilder({
+				entityId: driveId,
+				key: driveKey,
+				owner,
+				gatewayApi: this.gatewayApi
+			}).build()
 		);
 	}
 
@@ -1273,7 +1270,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		return this.caches.privateFolderCache.put(
 			cacheKey,
-			new ArFSPrivateFolderBuilder(folderId, this.arweave, driveKey, owner).build()
+			new ArFSPrivateFolderBuilder(folderId, this.gatewayApi, driveKey, owner).build()
 		);
 	}
 
@@ -1286,7 +1283,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		return this.caches.privateFileCache.put(
 			cacheKey,
-			new ArFSPrivateFileBuilder(fileId, this.arweave, driveKey, owner).build()
+			new ArFSPrivateFileBuilder(fileId, this.gatewayApi, driveKey, owner).build()
 		);
 	}
 
@@ -1310,16 +1307,14 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
 			const folders: Promise<ArFSPrivateFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				cursor = edge.cursor;
 				const { node } = edge;
-				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 				// Build the folder so that we don't add something invalid to the cache
 				const folder = await folderBuilder.build(node);
 				const cacheKey = { folderId: folder.entityId, owner, driveKey };
@@ -1351,15 +1346,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner
 			});
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			const files: Promise<ArFSPrivateFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey);
+				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 				// Build the file so that we don't add something invalid to the cache
 				const file = await fileBuilder.build(node);
 				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
@@ -1401,13 +1394,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				owner: filterOnOwner ? owner : undefined
 			});
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-			const { data } = response.data;
-			const { transactions } = data;
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<T>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const folders: Promise<T>[] = (edges as any).map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
 				const { tags } = node;
@@ -1437,8 +1429,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner,
 			(node, entityType) =>
 				entityType === 'folder'
-					? ArFSPrivateFolderBuilder.fromArweaveNode(node, this.arweave, driveKey)
-					: ArFSPrivateFileBuilder.fromArweaveNode(node, this.arweave, driveKey),
+					? ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey)
+					: ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey),
 			latestRevisionsOnly
 		);
 	}
@@ -1453,8 +1445,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner,
 			(node, entityType) =>
 				entityType === 'folder'
-					? ArFSPublicFolderBuilder.fromArweaveNode(node, this.arweave)
-					: ArFSPublicFileBuilder.fromArweaveNode(node, this.arweave),
+					? ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi)
+					: ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi),
 			latestRevisionsOnly
 		);
 	}
@@ -1565,8 +1557,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
-				const edges: GQLEdgeInterface[] = response.data.data.transactions.edges;
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const edges: GQLEdgeInterface[] = transactions.edges;
 
 				if (!edges.length) {
 					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
@@ -1593,7 +1585,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
 
-					const driveDataBuffer = await getDataForTxID(TxID(edgeOfFirstDrive.node.id), this.arweave);
+					const driveDataBuffer = await this.gatewayApi.getTxData(TxID(edgeOfFirstDrive.node.id));
 					try {
 						// Attempt to decrypt drive to assert drive key is correct
 						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
@@ -1660,9 +1652,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			owner: walletAddress,
 			sort: ASCENDING_ORDER
 		});
-		const response = await this.arweave.api.post(gatewayGqlEndpoint, query);
-		const { data } = response.data;
-		const { transactions } = data;
+		const transactions = await this.gatewayApi.gqlRequest(query);
 		const { edges } = transactions;
 		if (!edges.length) {
 			// No drive has been created for this wallet
@@ -1671,7 +1661,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const { node }: { node: GQLNodeInterface } = edges[0];
 		const safeDriveBuilder = SafeArFSDriveBuilder.fromArweaveNode(
 			node,
-			this.arweave,
+			this.gatewayApi,
 			new PrivateKeyData({ password, wallet: this.wallet as JWKWallet })
 		);
 		const safelyBuiltDrive = await safeDriveBuilder.build();
@@ -1705,13 +1695,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				ids: txIDs,
 				cursor
 			});
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, query);
-			const { data } = response.data;
-			const { errors } = response.data;
-			if (errors) {
-				throw new Error(`GQL error: ${JSON.stringify(errors)}`);
-			}
-			const { transactions }: { transactions: GQLTransactionsResultInterface } = data;
+			const transactions = await this.gatewayApi.gqlRequest(query);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			if (!edges.length) {

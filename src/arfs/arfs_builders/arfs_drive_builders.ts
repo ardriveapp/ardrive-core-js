@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { driveDecrypt } from '../../utils/crypto';
 import { EntityMetaDataTransactionData, PrivateKeyData } from '../private_key_data';
 import {
@@ -21,6 +20,7 @@ import {
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
 import { ArFSPrivateDriveKeyless } from '../../exports';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
@@ -31,13 +31,13 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave): ArFSPublicDriveBuilder {
+	static fromArweaveNode(node: GQLNodeInterface, gatewayApi: GatewayAPI): ArFSPublicDriveBuilder {
 		const { tags } = node;
 		const driveId = tags.find((tag) => tag.name === 'Drive-Id')?.value;
 		if (!driveId) {
 			throw new Error('Drive-ID tag missing!');
 		}
-		const driveBuilder = new ArFSPublicDriveBuilder({ entityId: EID(driveId), arweave });
+		const driveBuilder = new ArFSPublicDriveBuilder({ entityId: EID(driveId), gatewayApi });
 		return driveBuilder;
 	}
 
@@ -118,8 +118,8 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 	cipherIV?: CipherIV;
 	private readonly driveKey: DriveKey;
 
-	constructor({ entityId: driveId, arweave, key: driveKey, owner }: ArFSPrivateMetadataEntityBuilderParams) {
-		super({ entityId: driveId, arweave, owner });
+	constructor({ entityId: driveId, key: driveKey, owner, gatewayApi }: ArFSPrivateMetadataEntityBuilderParams) {
+		super({ entityId: driveId, owner, gatewayApi });
 		this.driveKey = driveKey;
 	}
 
@@ -131,13 +131,17 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 		];
 	}
 
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave, driveKey: DriveKey): ArFSPrivateDriveBuilder {
+	static fromArweaveNode(
+		node: GQLNodeInterface,
+		gatewayApi: GatewayAPI,
+		driveKey: DriveKey
+	): ArFSPrivateDriveBuilder {
 		const { tags } = node;
 		const driveId = tags.find((tag) => tag.name === 'Drive-Id')?.value;
 		if (!driveId) {
 			throw new Error('Drive-ID tag missing!');
 		}
-		const fileBuilder = new ArFSPrivateDriveBuilder({ entityId: EID(driveId), arweave, key: driveKey });
+		const fileBuilder = new ArFSPrivateDriveBuilder({ entityId: EID(driveId), key: driveKey, gatewayApi });
 		return fileBuilder;
 	}
 
@@ -236,8 +240,8 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 
 	private readonly privateKeyData: PrivateKeyData;
 
-	constructor({ entityId: driveId, arweave, privateKeyData }: SafeArFSPrivateMetadataEntityBuilderParams) {
-		super({ entityId: driveId, arweave });
+	constructor({ entityId: driveId, privateKeyData, gatewayApi }: SafeArFSPrivateMetadataEntityBuilderParams) {
+		super({ entityId: driveId, gatewayApi });
 		this.privateKeyData = privateKeyData;
 	}
 
@@ -250,7 +254,7 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 
 	static fromArweaveNode(
 		node: GQLNodeInterface,
-		arweave: Arweave,
+		gatewayApi: GatewayAPI,
 		privateKeyData: PrivateKeyData
 	): SafeArFSDriveBuilder {
 		const { tags } = node;
@@ -260,9 +264,9 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 		}
 		const driveBuilder = new SafeArFSDriveBuilder({
 			entityId: EID(driveId),
-			arweave,
 			// TODO: Make all private builders optionally take driveKey and fail gracefully, populating fields with 'ENCRYPTED'
-			privateKeyData
+			privateKeyData,
+			gatewayApi
 		});
 		return driveBuilder;
 	}

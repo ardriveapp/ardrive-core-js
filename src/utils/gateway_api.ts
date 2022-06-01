@@ -1,8 +1,11 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
 import { TransactionID } from '../types';
+import GQLResultInterface, { GQLTransactionsResultInterface } from '../types/gql_Types';
 import { FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
+import { GQLQuery } from './query';
 
 interface GatewayAPIConstParams {
 	gatewayUrl: URL;
@@ -51,7 +54,7 @@ export class GatewayAPI {
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
 		validStatusCodes = [200],
-		axiosInstance = axios.create()
+		axiosInstance = axios.create({ validateStatus: undefined })
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
@@ -72,7 +75,17 @@ export class GatewayAPI {
 		await this.postToEndpoint('tx', transaction);
 	}
 
-	public async postToEndpoint(endpoint: string, data?: unknown): Promise<AxiosResponse<unknown>> {
+	public async gqlRequest(query: GQLQuery): Promise<GQLTransactionsResultInterface> {
+		try {
+			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', query);
+
+			return data.data.transactions;
+		} catch (error) {
+			throw Error(`GQL Error: ${error.message}`);
+		}
+	}
+
+	public async postToEndpoint<T = unknown>(endpoint: string, data?: unknown): Promise<AxiosResponse<T>> {
 		return this.retryRequestUntilMaxRetries(() =>
 			this.axiosInstance.post(`${this.gatewayUrl.href}${endpoint}`, data)
 		);
