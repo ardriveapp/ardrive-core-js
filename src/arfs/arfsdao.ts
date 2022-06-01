@@ -1635,7 +1635,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			childFolders.unshift(folder);
 		}
 
-		const children = [...childFolders, ...childFiles];
+		const children: (ArFSPrivateFolder | ArFSPrivateFile)[] = [];
+		for (const en of childFolders) {
+			children.push(en);
+		}
+		for (const en of childFiles) {
+			children.push(en);
+		}
 
 		const entitiesWithPath = children.map((entity) => withPathsFactory(entity, hierarchy, driveKey));
 		return entitiesWithPath;
@@ -2060,7 +2066,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const searchFolderIDs = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth);
 
 		// Fetch all file entities within all Folders of the drive
-		const childFiles = await this.getPrivateFilesWithParentFolderIds(searchFolderIDs, driveKey, owner, true);
+		const childFiles: ArFSPrivateFile[] = [];
+		for (const id of searchFolderIDs) {
+			(await this.getPrivateFilesWithParentFolderIds([id], driveKey, owner, true)).forEach((e) => {
+				childFiles.push(e);
+			});
+		}
 
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);
 		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>

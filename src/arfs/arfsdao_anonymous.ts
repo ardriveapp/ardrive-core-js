@@ -271,9 +271,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 				const file = await fileBuilder.build(node);
 				const cacheKey = { fileId: file.fileId, owner };
+				allFiles.push(file);
 				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 			});
-			allFiles.push(...(await Promise.all(files)));
+			await Promise.all(files);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
@@ -355,9 +356,21 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 
 		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
+		const childrenFileEntities: ArFSPublicFile[] = [];
 
-		const children = [...childrenFolderEntities, ...childrenFileEntities];
+		for (const id of searchFolderIDs) {
+			(await this.getPublicFilesWithParentFolderIds([id], owner, true)).forEach((e) => {
+				childrenFileEntities.push(e);
+			});
+		}
+
+		const children: (ArFSPublicFolder | ArFSPublicFile)[] = [];
+		for (const en of childrenFolderEntities) {
+			children.push(en);
+		}
+		for (const en of childrenFileEntities) {
+			children.push(en);
+		}
 
 		const entitiesWithPath = children.map((entity) => publicEntityWithPathsFactory(entity, hierarchy));
 		return entitiesWithPath;
