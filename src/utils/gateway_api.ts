@@ -144,7 +144,7 @@ export class GatewayAPI {
 				return response;
 			}
 			this.throwIfFatalError();
-			console.error('Request has failed!');
+			console.error(`Request to gateway has failed: (Status: ${this.lastRespStatus}) ${this.lastError}`);
 
 			if (retryNumber < this.maxRetriesPerRequest) {
 				await this.exponentialBackOffAfterFailedRequest(retryNumber);
