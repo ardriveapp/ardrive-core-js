@@ -144,8 +144,14 @@ export class GatewayAPI {
 				return response;
 			}
 			this.throwIfFatalError();
+			console.error('Request has failed!');
 
-			await this.exponentialBackOffAfterFailedRequest(retryNumber++);
+			if (retryNumber < this.maxRetriesPerRequest) {
+				await this.exponentialBackOffAfterFailedRequest(retryNumber);
+
+				console.error(`Retrying request, retry attempt ${retryNumber + 1}...`);
+			}
+			retryNumber++;
 		}
 
 		// Didn't succeed within number of allocated retries
@@ -183,6 +189,7 @@ export class GatewayAPI {
 
 	private async exponentialBackOffAfterFailedRequest(retryNumber: number): Promise<void> {
 		const delay = Math.pow(2, retryNumber) * this.initialErrorDelayMS;
+		console.error(`Waiting for ${(delay / 1000).toFixed(1)} seconds before next request...`);
 		await new Promise((res) => setTimeout(res, delay));
 	}
 }
