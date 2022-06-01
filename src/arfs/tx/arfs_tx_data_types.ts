@@ -133,7 +133,7 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
 		private readonly dataContentType: DataContentType,
-		private readonly customMetaData: CustomMetaDataTagInterface[] = []
+		private readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super();
 	}
@@ -147,9 +147,10 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 			dataContentType: this.dataContentType
 		};
 
-		if (this.customMetaData?.length > 0) {
-			for (const tag of this.customMetaData) {
-				baseArFSDataJSON[tag.name] = tag.values;
+		const customMetaDataArray = Object.entries(this.customMetaData);
+		if (customMetaDataArray.length > 0) {
+			for (const [name, values] of customMetaDataArray) {
+				baseArFSDataJSON[name] = values;
 			}
 		}
 
@@ -176,7 +177,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataContentType: DataContentType,
 		fileId: FileID,
 		driveKey: DriveKey,
-		customMetaData: CustomMetaDataTagInterface[] = []
+		customMetaData: CustomMetaDataTagInterface = {}
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
 		const baseArFSDataJSON: Record<string, unknown> = {
 			name: name,
@@ -186,9 +187,10 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 			dataContentType: dataContentType
 		};
 
-		if (customMetaData?.length > 0) {
-			for (const tag of customMetaData) {
-				baseArFSDataJSON[tag.name] = tag.values;
+		const customMetaDataArray = Object.entries(customMetaData);
+		if (customMetaDataArray.length > 0) {
+			for (const [name, values] of customMetaDataArray) {
+				baseArFSDataJSON[name] = values;
 			}
 		}
 

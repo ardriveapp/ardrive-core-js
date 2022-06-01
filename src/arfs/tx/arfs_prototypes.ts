@@ -186,7 +186,7 @@ export interface ArFSPublicFileMetaDataPrototypeFromFileParams {
 	driveId: DriveID;
 	fileId: FileID;
 	parentFolderId: FolderID;
-	customMetaData?: CustomMetaDataTagInterface[];
+	customMetaData?: CustomMetaDataTagInterface;
 }
 
 export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
@@ -207,7 +207,7 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		parentFolderId,
 		fileId,
 		driveId,
-		customMetaData = []
+		customMetaData = {}
 	}: ArFSPublicFileMetaDataPrototypeFromFileParams): ArFSPublicFileMetaDataPrototype {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		return new ArFSPublicFileMetaDataPrototype(
@@ -254,7 +254,7 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 		fileId,
 		driveId,
 		driveKey,
-		customMetaData = []
+		customMetaData = {}
 	}: ArFSPrivateFileMetaDataPrototypeFromFileParams): Promise<ArFSPrivateFileMetaDataPrototype> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 

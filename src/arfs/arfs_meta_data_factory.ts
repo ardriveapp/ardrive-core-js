@@ -108,7 +108,8 @@ export function getPrepFileParams({
 					parentFolderId: destFolderId,
 					fileId,
 					driveId: destDriveId,
-					dataTxId
+					dataTxId,
+					customMetaData
 				})
 			)
 	};

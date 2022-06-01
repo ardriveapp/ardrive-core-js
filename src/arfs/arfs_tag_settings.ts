@@ -15,7 +15,7 @@ export const metaDataGqlType = 'metaDataGql';
 export type CustomMetaDataType = typeof metaDataJsonType | typeof metaDataGqlType; // | 'dataTxGql';
 
 export interface CustomMetaData {
-	tags: CustomMetaDataTagInterface[];
+	tags: CustomMetaDataTagInterface;
 	includeOn: CustomMetaDataType[];
 	// TODO: Add exclude from certain entity types for when we include on drives/folders (PE-1533)
 	// excludeFrom?: EntityType[];
@@ -38,7 +38,7 @@ export class ArFSTagSettings {
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
 		arFSVersion = CURRENT_ARFS_VERSION,
-		customMetaData = { tags: [], includeOn: [] }
+		customMetaData = { tags: {}, includeOn: [] }
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -61,19 +61,19 @@ export class ArFSTagSettings {
 		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
-	public getCustomMetaDataGqlTags(): CustomMetaDataTagInterface[] {
-		return this.shouldApplyTagsTo(metaDataGqlType) ? [] : this.customTags;
+	public getCustomMetaDataGqlTags(): CustomMetaDataTagInterface {
+		return this.shouldApplyTagsTo(metaDataGqlType) ? this.customTags : {};
 	}
 
-	public getCustomMetaDataJSONTags(): CustomMetaDataTagInterface[] {
-		return this.shouldApplyTagsTo(metaDataJsonType) ? [] : this.customTags;
+	public getCustomMetaDataJSONTags(): CustomMetaDataTagInterface {
+		return this.shouldApplyTagsTo(metaDataJsonType) ? this.customTags : {};
 	}
 
 	private shouldApplyTagsTo(customMetaDataType: CustomMetaDataType): boolean {
 		return this.customMetaData.includeOn.includes(customMetaDataType);
 	}
 
-	private get customTags(): CustomMetaDataTagInterface[] {
+	private get customTags(): CustomMetaDataTagInterface {
 		return this.customMetaData.tags;
 	}
 
