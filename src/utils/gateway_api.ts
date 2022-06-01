@@ -141,17 +141,23 @@ export class GatewayAPI {
 			const response = await this.tryRequest<T>(request);
 
 			if (response) {
+				if (retryNumber > 0) {
+					console.error(`Request has been successfully retried!`);
+				}
 				return response;
 			}
 			this.throwIfFatalError();
 			console.error(`Request to gateway has failed: (Status: ${this.lastRespStatus}) ${this.lastError}`);
 
-			if (retryNumber < this.maxRetriesPerRequest) {
+			const nextRetry = retryNumber + 1;
+
+			if (nextRetry < this.maxRetriesPerRequest) {
 				await this.exponentialBackOffAfterFailedRequest(retryNumber);
 
-				console.error(`Retrying request, retry attempt ${retryNumber + 1}...`);
+				console.error(`Retrying request, retry attempt ${nextRetry}...`);
 			}
-			retryNumber++;
+
+			retryNumber = nextRetry;
 		}
 
 		// Didn't succeed within number of allocated retries
