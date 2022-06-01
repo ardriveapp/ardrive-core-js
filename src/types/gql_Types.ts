@@ -31,6 +31,12 @@ export interface GQLTagInterface {
 
 export type CustomMetaDataTagInterface = Record<string, string | string[]>;
 
+// Used to build the GQL query
+export interface GQLQueryTagInterface {
+	name: string;
+	value: string | string[];
+}
+
 // Details specific to a transaction's block. Used to retrieve its block number, mining date, block hash, and the previous block hash.
 export interface GQLBlockInterface {
 	id: string;
