@@ -93,6 +93,26 @@ export class GatewayAPI {
 	}
 
 	/**
+	 * For fetching the Data JSON of a MetaData Tx
+	 *
+	 * @remarks Will use data from `ArFSMetadataCache` if it exists and will cache any fetched data
+	 * */
+	public async getTxData(txId: TransactionID): Promise<Buffer> {
+		const cachedData = await ArFSMetadataCache.get(txId);
+		if (cachedData) {
+			return cachedData;
+		}
+		const { data: txData } = await this.retryRequestUntilMaxRetries<Buffer>(() =>
+			this.axiosInstance.get(`${this.gatewayUrl.href}${txId}`, {
+				responseType: 'arraybuffer'
+			})
+		);
+
+		await ArFSMetadataCache.put(txId, txData);
+		return txData;
+	}
+
+	/**
 	 * Retries the given request until the response returns a successful
 	 * status code or the maxRetries setting has been exceeded
 	 *
