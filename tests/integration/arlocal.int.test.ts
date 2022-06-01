@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-// import ArLocal from 'arlocal';
 import Arweave from 'arweave';
 import { expect } from 'chai';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
@@ -66,35 +65,24 @@ describe('ArLocal Integration Tests', function () {
 	const communityOracle = new ArDriveCommunityOracle(arweave);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
-	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
 
-	const customTagSettings = new ArFSTagSettings({
-		appName: 'Custom Integration Test Settings',
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+	const customTagGQLAndMetaDataJsonSettings = new ArFSTagSettings({
+		appName: 'ArLocal Integration Test',
 		appVersion: '1.7',
-		customMetaData: { tags: [{ name: 'Custom Tag', values: 'This Test Works' }], includeOn: ['metaDataGql'] }
+		customMetaData: {
+			tags: { ['Custom Tag']: 'This Test Works', ['Custom Tag Array']: ['This Test Works', 'As Well :)'] },
+			includeOn: ['metaDataGql', 'metaDataJson']
+		}
 	});
 
-	const arfsDao = new ArFSDAO(
-		wallet,
-		arweave,
-		false,
-		undefined,
-		undefined,
-		arFSTagSettings,
-		undefined,
-		fakeGatewayApi
-	);
-	const customTagArfsDao = new ArFSDAO(
-		wallet,
-		arweave,
-		false,
-		undefined,
-		undefined,
-		customTagSettings,
-		undefined,
-		fakeGatewayApi
-	);
+	const arfsDaoFact = (tagSettings: ArFSTagSettings = arFSTagSettings) =>
+		new ArFSDAO(wallet, arweave, false, undefined, undefined, tagSettings, undefined, fakeGatewayApi);
+
+	const arfsDao = arfsDaoFact();
+	const customTagArfsDao = arfsDaoFact(customTagGQLAndMetaDataJsonSettings);
 
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
@@ -162,7 +150,7 @@ describe('ArLocal Integration Tests', function () {
 	// 	priceEstimator,
 	// 	new FeeMultiple(1.0),
 	// 	false,
-	// 	arFSTagSettings,
+	// 	arFSTagSettings(),
 	// 	bundledUploadPlanner
 	// );
 
@@ -451,11 +439,6 @@ describe('ArLocal Integration Tests', function () {
 			return JSON.parse(dataString);
 		}
 
-		// TODO: Split this test into:
-		//   - File with custom content type
-		//   - File with multiple custom MetaData GQL tags with mixed 'string' and 'string[]' values input
-		//   - File with multiple custom MetaData JSON tags with mixed 'string' and 'string[]' values input
-
 		it('we can upload a public file with a custom content type and custom tags', async () => {
 			const { created } = await customTagV2ArDrive.uploadAllEntities({
 				entitiesToUpload: [
@@ -480,6 +463,8 @@ describe('ArLocal Integration Tests', function () {
 			delete metaDataJson.lastModifiedDate;
 
 			expect(metaDataJson).to.deep.equal({
+				'Custom Tag': 'This Test Works',
+				'Custom Tag Array': ['This Test Works', 'As Well :)'],
 				name: 'custom_content_unique_stub',
 				size: 12,
 				dataTxId: `${dataTxId}`,
@@ -496,9 +481,12 @@ describe('ArLocal Integration Tests', function () {
 				{ name: 'Drive-Id', value: `${driveId}` },
 				{ name: 'File-Id', value: `${created[0].entityId!}` },
 				{ name: 'Parent-Folder-Id', value: `${rootFolderId}` },
-				{ name: 'App-Name', value: 'Custom Integration Test Settings' },
+				{ name: 'App-Name', value: 'ArLocal Integration Test' },
 				{ name: 'App-Version', value: '1.7' },
-				{ name: 'ArFS', value: '0.11' }
+				{ name: 'ArFS', value: '0.11' },
+				{ name: 'Custom Tag', value: 'This Test Works' },
+				{ name: 'Custom Tag Array', value: 'This Test Works' },
+				{ name: 'Custom Tag Array', value: 'As Well :)' }
 			]);
 
 			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
@@ -506,7 +494,7 @@ describe('ArLocal Integration Tests', function () {
 
 			expect(dataTags).to.deep.equal([
 				{ name: 'Content-Type', value: 'application/fake' },
-				{ name: 'App-Name', value: 'Custom Integration Test Settings' },
+				{ name: 'App-Name', value: 'ArLocal Integration Test' },
 				{ name: 'App-Version', value: '1.7' },
 				{ name: 'Tip-Type', value: 'data upload' }
 			]);
