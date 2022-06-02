@@ -3,7 +3,15 @@ import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { EntityKey, GQLNodeInterface } from '../../types';
+import { gatewayUrlForArweave } from '../../utils/common';
+import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
+
+const gatewayApi = new GatewayAPI({
+	gatewayUrl: gatewayUrlForArweave(fakeArweave),
+	maxRetriesPerRequest: 1,
+	initialErrorDelayMS: 1
+});
 
 describe('ArFSPublicFileBuilder', () => {
 	const stubPublicFileGQLNode: Partial<GQLNodeInterface> = {
@@ -33,7 +41,7 @@ describe('ArFSPublicFileBuilder', () => {
 	]));
 
 	it('constructs expected file from node', async () => {
-		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, fakeArweave);
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, gatewayApi);
 		stub(builder, 'getDataForTxID').resolves(stubPublicFileGetDataResult);
 
 		const fileMetaData = await builder.build(stubPublicFileGQLNode as GQLNodeInterface);
@@ -60,7 +68,7 @@ describe('ArFSPublicFileBuilder', () => {
 	});
 
 	it('returns the expected gql tags', () => {
-		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, fakeArweave);
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, gatewayApi);
 		expect(builder.getGqlQueryParameters()).to.deep.equal([
 			{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' },
 			{ name: 'Entity-Type', value: 'file' }
@@ -74,7 +82,7 @@ describe('ArFSPublicFileBuilder', () => {
 		};
 
 		expect(() =>
-			ArFSPublicFileBuilder.fromArweaveNode(stubNodeWithoutFileId as GQLNodeInterface, fakeArweave)
+			ArFSPublicFileBuilder.fromArweaveNode(stubNodeWithoutFileId as GQLNodeInterface, gatewayApi)
 		).to.throw(Error, 'File-ID tag missing!');
 	});
 
@@ -85,7 +93,7 @@ describe('ArFSPublicFileBuilder', () => {
 		};
 		const builder = ArFSPublicFileBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave
+			gatewayApi
 		);
 
 		await expectAsyncErrorThrow({
@@ -132,7 +140,7 @@ describe('ArFSPrivateFileBuilder', () => {
 	it('constructs expected file from node', async () => {
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
 			stubPrivateFileGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateFile
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateFileGetDataResult);
@@ -169,7 +177,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		expect(() =>
 			ArFSPrivateFileBuilder.fromArweaveNode(
 				stubNodeWithoutFileId as GQLNodeInterface,
-				fakeArweave,
+				gatewayApi,
 				driveKeyForStubPrivateFile
 			)
 		).to.throw(Error, 'File-ID tag missing!');
@@ -182,7 +190,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		};
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateFile
 		);
 

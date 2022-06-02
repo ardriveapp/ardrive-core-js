@@ -1,8 +1,11 @@
 import Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
 import { TransactionID } from '../types';
+import GQLResultInterface, { GQLTransactionsResultInterface } from '../types/gql_Types';
 import { FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
+import { GQLQuery } from './query';
 
 interface GatewayAPIConstParams {
 	gatewayUrl: URL;
@@ -51,7 +54,7 @@ export class GatewayAPI {
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
 		validStatusCodes = [200],
-		axiosInstance = axios.create()
+		axiosInstance = axios.create({ validateStatus: undefined })
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
@@ -72,7 +75,17 @@ export class GatewayAPI {
 		await this.postToEndpoint('tx', transaction);
 	}
 
-	public async postToEndpoint(endpoint: string, data?: unknown): Promise<AxiosResponse<unknown>> {
+	public async gqlRequest(query: GQLQuery): Promise<GQLTransactionsResultInterface> {
+		try {
+			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', query);
+
+			return data.data.transactions;
+		} catch (error) {
+			throw Error(`GQL Error: ${error.message}`);
+		}
+	}
+
+	public async postToEndpoint<T = unknown>(endpoint: string, data?: unknown): Promise<AxiosResponse<T>> {
 		return this.retryRequestUntilMaxRetries(() =>
 			this.axiosInstance.post(`${this.gatewayUrl.href}${endpoint}`, data)
 		);
@@ -93,6 +106,26 @@ export class GatewayAPI {
 	}
 
 	/**
+	 * For fetching the Data JSON of a MetaData Tx
+	 *
+	 * @remarks Will use data from `ArFSMetadataCache` if it exists and will cache any fetched data
+	 * */
+	public async getTxData(txId: TransactionID): Promise<Buffer> {
+		const cachedData = await ArFSMetadataCache.get(txId);
+		if (cachedData) {
+			return cachedData;
+		}
+		const { data: txData } = await this.retryRequestUntilMaxRetries<Buffer>(() =>
+			this.axiosInstance.get(`${this.gatewayUrl.href}${txId}`, {
+				responseType: 'arraybuffer'
+			})
+		);
+
+		await ArFSMetadataCache.put(txId, txData);
+		return txData;
+	}
+
+	/**
 	 * Retries the given request until the response returns a successful
 	 * status code or the maxRetries setting has been exceeded
 	 *
@@ -108,11 +141,23 @@ export class GatewayAPI {
 			const response = await this.tryRequest<T>(request);
 
 			if (response) {
+				if (retryNumber > 0) {
+					console.error(`Request has been successfully retried!`);
+				}
 				return response;
 			}
 			this.throwIfFatalError();
+			console.error(`Request to gateway has failed: (Status: ${this.lastRespStatus}) ${this.lastError}`);
 
-			await this.exponentialBackOffAfterFailedRequest(retryNumber++);
+			const nextRetry = retryNumber + 1;
+
+			if (nextRetry < this.maxRetriesPerRequest) {
+				await this.exponentialBackOffAfterFailedRequest(retryNumber);
+
+				console.error(`Retrying request, retry attempt ${nextRetry}...`);
+			}
+
+			retryNumber = nextRetry;
 		}
 
 		// Didn't succeed within number of allocated retries
@@ -150,6 +195,7 @@ export class GatewayAPI {
 
 	private async exponentialBackOffAfterFailedRequest(retryNumber: number): Promise<void> {
 		const delay = Math.pow(2, retryNumber) * this.initialErrorDelayMS;
+		console.error(`Waiting for ${(delay / 1000).toFixed(1)} seconds before next request...`);
 		await new Promise((res) => setTimeout(res, delay));
 	}
 }
