@@ -16,6 +16,9 @@ interface GatewayAPIConstParams {
 	axiosInstance?: AxiosInstance;
 }
 
+const rateLimitStatus = 429;
+const rateLimitTimeout = 60_000; // 60 seconds
+
 // With the current default error delay and max retries, we expect the following wait times after each request sent:
 
 // 1st request attempt
@@ -147,11 +150,18 @@ export class GatewayAPI {
 				return response;
 			}
 			this.throwIfFatalError();
+
+			if (this.lastRespStatus === rateLimitStatus) {
+				// When rate limited by the gateway, we will wait without incrementing retry count
+				await this.rateLimitThrottle();
+				continue;
+			}
+
 			console.error(`Request to gateway has failed: (Status: ${this.lastRespStatus}) ${this.lastError}`);
 
 			const nextRetry = retryNumber + 1;
 
-			if (nextRetry < this.maxRetriesPerRequest) {
+			if (nextRetry <= this.maxRetriesPerRequest) {
 				await this.exponentialBackOffAfterFailedRequest(retryNumber);
 
 				console.error(`Retrying request, retry attempt ${nextRetry}...`);
@@ -197,5 +207,16 @@ export class GatewayAPI {
 		const delay = Math.pow(2, retryNumber) * this.initialErrorDelayMS;
 		console.error(`Waiting for ${(delay / 1000).toFixed(1)} seconds before next request...`);
 		await new Promise((res) => setTimeout(res, delay));
+	}
+
+	private async rateLimitThrottle() {
+		console.error(
+			`Gateway has returned a ${
+				this.lastRespStatus
+			} status which means your IP is being rate limited. Pausing for ${(rateLimitTimeout / 1000).toFixed(
+				1
+			)} seconds before trying next request...`
+		);
+		await new Promise((res) => setTimeout(res, rateLimitTimeout));
 	}
 }
