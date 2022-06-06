@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { deriveFileKey, fileDecrypt } from '../../utils/crypto';
 import {
 	ArweaveAddress,
@@ -17,6 +16,7 @@ import {
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 interface FileMetaDataTransactionData {
 	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
@@ -44,13 +44,13 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave): ArFSPublicFileBuilder {
+	static fromArweaveNode(node: GQLNodeInterface, gatewayApi: GatewayAPI): ArFSPublicFileBuilder {
 		const { tags } = node;
 		const fileId = tags.find((tag) => tag.name === 'File-Id')?.value;
 		if (!fileId) {
 			throw new Error('File-ID tag missing!');
 		}
-		const fileBuilder = new ArFSPublicFileBuilder({ entityId: EID(fileId), arweave });
+		const fileBuilder = new ArFSPublicFileBuilder({ entityId: EID(fileId), gatewayApi });
 		return fileBuilder;
 	}
 
@@ -118,21 +118,21 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 
 	constructor(
 		readonly fileId: FileID,
-		readonly arweave: Arweave,
+		gatewayApi: GatewayAPI,
 		private readonly driveKey: DriveKey,
 		readonly owner?: ArweaveAddress,
 		readonly fileKey?: FileKey
 	) {
-		super({ entityId: fileId, arweave, owner });
+		super({ entityId: fileId, owner, gatewayApi });
 	}
 
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave, driveKey: DriveKey): ArFSPrivateFileBuilder {
+	static fromArweaveNode(node: GQLNodeInterface, gatewayApi: GatewayAPI, driveKey: DriveKey): ArFSPrivateFileBuilder {
 		const { tags } = node;
 		const fileId = tags.find((tag) => tag.name === 'File-Id')?.value;
 		if (!fileId) {
 			throw new Error('File-ID tag missing!');
 		}
-		const fileBuilder = new ArFSPrivateFileBuilder(EID(fileId), arweave, driveKey);
+		const fileBuilder = new ArFSPrivateFileBuilder(EID(fileId), gatewayApi, driveKey);
 		return fileBuilder;
 	}
 

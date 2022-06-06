@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { ArFSEntity, ArFSFileOrFolderEntity } from '../arfs_entities';
 import { buildQuery } from '../../utils/query';
 import {
@@ -14,15 +13,13 @@ import {
 	ContentType,
 	EntityType,
 	GQLNodeInterface,
-	GQLTagInterface,
-	GQLTransactionsResultInterface
+	GQLTagInterface
 } from '../../types';
-import { gatewayGqlEndpoint } from '../../utils/constants';
-import { getDataForTxID } from '../../utils/get_tx_data';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
-	arweave: Arweave;
+	gatewayApi: GatewayAPI;
 	owner?: ArweaveAddress;
 }
 export type ArFSPublicMetadataEntityBuilderParams = ArFSMetadataEntityBuilderParams;
@@ -47,12 +44,12 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	txId?: TransactionID;
 	unixTime?: UnixTime;
 	protected readonly entityId: AnyEntityID;
-	protected readonly arweave: Arweave;
+	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
 
-	constructor({ entityId, arweave, owner }: ArFSMetadataEntityBuilderParams) {
+	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;
-		this.arweave = arweave;
+		this.gatewayApi = gatewayApi;
 		this.owner = owner;
 	}
 
@@ -73,10 +70,8 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		if (!node) {
 			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
-			const { data } = response.data;
-			const transactions: GQLTransactionsResultInterface = data.transactions;
 			const { edges } = transactions;
 
 			if (!edges.length) {
@@ -127,7 +122,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		return getDataForTxID(txId, this.arweave);
+		return this.gatewayApi.getTxData(txId);
 	}
 }
 

@@ -1,10 +1,11 @@
-import { AxiosResponse } from 'axios';
 import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { ArFSPrivateDrive } from '../../exports';
-import { EID, EntityKey, GQLNodeInterface } from '../../types';
+import { EID, EntityKey, GQLNodeInterface, GQLTransactionsResultInterface } from '../../types';
+import { gatewayUrlForArweave } from '../../utils/common';
+import { GatewayAPI } from '../../utils/gateway_api';
 import { PrivateKeyData } from '../private_key_data';
 import { ArFSPrivateDriveBuilder, ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_drive_builders';
 
@@ -31,9 +32,15 @@ const stubPublicDriveGetDataResult = Buffer.from(Uint8Array.from([
 	50, 51, 52, 99, 34, 125
 ]));
 
+const gatewayApi = new GatewayAPI({
+	gatewayUrl: gatewayUrlForArweave(fakeArweave),
+	maxRetriesPerRequest: 1,
+	initialErrorDelayMS: 1
+});
+
 describe('ArFSPublicDriveBuilder', () => {
 	it('constructs expected drive from node', async () => {
-		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, fakeArweave);
+		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, gatewayApi);
 		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 		const driveMetaData = await builder.build(stubPublicDriveGQLNode as GQLNodeInterface);
 
@@ -56,7 +63,7 @@ describe('ArFSPublicDriveBuilder', () => {
 	});
 
 	it('returns the expected gql tags', () => {
-		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, fakeArweave);
+		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, gatewayApi);
 		expect(builder.getGqlQueryParameters()).to.deep.equal([
 			{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 			{ name: 'Entity-Type', value: 'drive' },
@@ -65,13 +72,13 @@ describe('ArFSPublicDriveBuilder', () => {
 	});
 
 	it('constructs the expected public drive when stubbing graph gql post result', async () => {
-		stub(fakeArweave.api, 'post').resolves({
-			data: { data: { transactions: { edges: [{ node: stubPublicDriveGQLNode }] } } }
-		} as AxiosResponse<unknown>);
+		stub(gatewayApi, 'gqlRequest').resolves({
+			edges: [{ node: stubPublicDriveGQLNode }]
+		} as GQLTransactionsResultInterface);
 
 		const builder = new ArFSPublicDriveBuilder({
 			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
-			arweave: fakeArweave
+			gatewayApi
 		});
 		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 
@@ -82,13 +89,14 @@ describe('ArFSPublicDriveBuilder', () => {
 	});
 
 	it('throws an error when no edges are found in the gql response', async () => {
-		stub(fakeArweave.api, 'post').resolves({
-			data: { data: { transactions: { edges: [] } } }
-		} as AxiosResponse<unknown>);
+		// prettier-ignore
+		stub(gatewayApi, 'gqlRequest').resolves({
+				edges: []
+			} as unknown as GQLTransactionsResultInterface);
 
 		const builder = new ArFSPublicDriveBuilder({
 			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
-			arweave: fakeArweave
+			gatewayApi
 		});
 		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
 
@@ -105,7 +113,7 @@ describe('ArFSPublicDriveBuilder', () => {
 		};
 
 		expect(() =>
-			ArFSPublicDriveBuilder.fromArweaveNode(stubNodeWithoutDriveId as GQLNodeInterface, fakeArweave)
+			ArFSPublicDriveBuilder.fromArweaveNode(stubNodeWithoutDriveId as GQLNodeInterface, gatewayApi)
 		).to.throw(Error, 'Drive-ID tag missing!');
 	});
 
@@ -116,7 +124,7 @@ describe('ArFSPublicDriveBuilder', () => {
 		};
 		const builder = ArFSPublicDriveBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave
+			gatewayApi
 		);
 
 		await expectAsyncErrorThrow({
@@ -158,7 +166,7 @@ describe('ArFSPrivateDriveBuilder', () => {
 	it('constructs expected drive from node', async () => {
 		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateDrive
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
@@ -193,7 +201,7 @@ describe('ArFSPrivateDriveBuilder', () => {
 		expect(() =>
 			ArFSPrivateDriveBuilder.fromArweaveNode(
 				stubNodeWithoutDriveId as GQLNodeInterface,
-				fakeArweave,
+				gatewayApi,
 				driveKeyForStubPrivateDrive
 			)
 		).to.throw(Error, 'Drive-ID tag missing!');
@@ -206,7 +214,7 @@ describe('ArFSPrivateDriveBuilder', () => {
 		};
 		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateDrive
 		);
 
@@ -219,7 +227,7 @@ describe('ArFSPrivateDriveBuilder', () => {
 	it('returns the expected gql tags', () => {
 		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateDrive
 		);
 		expect(builder.getGqlQueryParameters()).to.deep.equal([
@@ -237,7 +245,7 @@ describe('SafeArFSDriveBuilder', () => {
 	it('constructs expected public drive from node', async () => {
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPublicDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			emptyPrivateKeyData
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
@@ -265,7 +273,7 @@ describe('SafeArFSDriveBuilder', () => {
 	it('constructs and decrypts expected private drive from node', async () => {
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			stubPrivateKeyData
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
@@ -297,7 +305,7 @@ describe('SafeArFSDriveBuilder', () => {
 	it('gracefully fails decrypting private drives, replacing values with "ENCRYPTED"', async () => {
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			emptyPrivateKeyData
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
@@ -318,7 +326,7 @@ describe('SafeArFSDriveBuilder', () => {
 		expect(() =>
 			SafeArFSDriveBuilder.fromArweaveNode(
 				stubNodeWithoutDriveId as GQLNodeInterface,
-				fakeArweave,
+				gatewayApi,
 				stubPrivateKeyData
 			)
 		).to.throw(Error, 'Drive-ID tag missing!');
@@ -331,7 +339,7 @@ describe('SafeArFSDriveBuilder', () => {
 		};
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			stubPrivateKeyData
 		);
 
@@ -344,7 +352,7 @@ describe('SafeArFSDriveBuilder', () => {
 	it('returns the expected gql tags', () => {
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			stubPrivateKeyData
 		);
 

@@ -3,7 +3,15 @@ import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { EntityKey, GQLNodeInterface } from '../../types';
+import { gatewayUrlForArweave } from '../../utils/common';
+import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs_folder_builders';
+
+const gatewayApi = new GatewayAPI({
+	gatewayUrl: gatewayUrlForArweave(fakeArweave),
+	maxRetriesPerRequest: 1,
+	initialErrorDelayMS: 1
+});
 
 describe('ArFSPublicFolderBuilder', () => {
 	const stubPublicFolderGQLNode: Partial<GQLNodeInterface> = {
@@ -31,7 +39,7 @@ describe('ArFSPublicFolderBuilder', () => {
 	it('constructs expected folder from node', async () => {
 		const builder = ArFSPublicFolderBuilder.fromArweaveNode(
 			stubPublicFolderGQLNode as GQLNodeInterface,
-			fakeArweave
+			gatewayApi
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPublicFolderGetDataResult);
 
@@ -58,7 +66,7 @@ describe('ArFSPublicFolderBuilder', () => {
 	it('returns the expected gql tags', () => {
 		const builder = ArFSPublicFolderBuilder.fromArweaveNode(
 			stubPublicFolderGQLNode as GQLNodeInterface,
-			fakeArweave
+			gatewayApi
 		);
 		expect(builder.getGqlQueryParameters()).to.deep.equal([
 			{ name: 'Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
@@ -73,7 +81,7 @@ describe('ArFSPublicFolderBuilder', () => {
 		};
 
 		expect(() =>
-			ArFSPublicFolderBuilder.fromArweaveNode(stubNodeWithoutFolderId as GQLNodeInterface, fakeArweave)
+			ArFSPublicFolderBuilder.fromArweaveNode(stubNodeWithoutFolderId as GQLNodeInterface, gatewayApi)
 		).to.throw(Error, 'Folder-ID tag missing!');
 	});
 
@@ -84,7 +92,7 @@ describe('ArFSPublicFolderBuilder', () => {
 		};
 		const builder = ArFSPublicFolderBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave
+			gatewayApi
 		);
 
 		await expectAsyncErrorThrow({
@@ -128,7 +136,7 @@ describe('ArFSPrivateFolderBuilder', () => {
 	it('constructs expected folder from node', async () => {
 		const builder = ArFSPrivateFolderBuilder.fromArweaveNode(
 			stubPrivateFolderGQLNode as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateFolder
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateFolderGetDataResult);
@@ -162,7 +170,7 @@ describe('ArFSPrivateFolderBuilder', () => {
 		expect(() =>
 			ArFSPrivateFolderBuilder.fromArweaveNode(
 				stubNodeWithoutFolderId as GQLNodeInterface,
-				fakeArweave,
+				gatewayApi,
 				driveKeyForStubPrivateFolder
 			)
 		).to.throw(Error, 'Folder-ID tag missing!');
@@ -175,7 +183,7 @@ describe('ArFSPrivateFolderBuilder', () => {
 		};
 		const builder = ArFSPrivateFolderBuilder.fromArweaveNode(
 			stubNodeWithoutEntityType as GQLNodeInterface,
-			fakeArweave,
+			gatewayApi,
 			driveKeyForStubPrivateFolder
 		);
 

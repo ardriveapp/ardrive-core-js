@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import {
 	ArweaveAddress,
@@ -15,6 +14,7 @@ import { Utf8ArrayToStr } from '../../utils/common';
 
 import { ArFSPublicFolder, ArFSPrivateFolder } from '../arfs_entities';
 import { fakeEntityId } from '../../utils/constants';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 export const ROOT_FOLDER_ID_PLACEHOLDER = 'root folder';
 
@@ -39,13 +39,13 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 }
 
 export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder> {
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave): ArFSPublicFolderBuilder {
+	static fromArweaveNode(node: GQLNodeInterface, gatewayApi: GatewayAPI): ArFSPublicFolderBuilder {
 		const { tags } = node;
 		const folderId = tags.find((tag) => tag.name === 'Folder-Id')?.value;
 		if (!folderId) {
 			throw new Error('Folder-ID tag missing!');
 		}
-		const folderBuilder = new ArFSPublicFolderBuilder({ entityId: EID(folderId), arweave });
+		const folderBuilder = new ArFSPublicFolderBuilder({ entityId: EID(folderId), gatewayApi });
 		return folderBuilder;
 	}
 
@@ -103,20 +103,24 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 
 	constructor(
 		readonly folderId: FolderID,
-		readonly arweave: Arweave,
+		readonly gatewayApi: GatewayAPI,
 		protected readonly driveKey: DriveKey,
 		readonly owner?: ArweaveAddress
 	) {
-		super({ entityId: folderId, arweave, owner });
+		super({ entityId: folderId, owner, gatewayApi });
 	}
 
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave, driveKey: DriveKey): ArFSPrivateFolderBuilder {
+	static fromArweaveNode(
+		node: GQLNodeInterface,
+		gatewayApi: GatewayAPI,
+		driveKey: DriveKey
+	): ArFSPrivateFolderBuilder {
 		const { tags } = node;
 		const folderId = tags.find((tag) => tag.name === 'Folder-Id')?.value;
 		if (!folderId) {
 			throw new Error('Folder-ID tag missing!');
 		}
-		const folderBuilder = new ArFSPrivateFolderBuilder(EID(folderId), arweave, driveKey);
+		const folderBuilder = new ArFSPrivateFolderBuilder(EID(folderId), gatewayApi, driveKey);
 		return folderBuilder;
 	}
 
