@@ -58,7 +58,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
             ["axios", "npm:0.21.4"],
-            ["axios-retry", "npm:3.2.4"],
             ["base64-js", "npm:1.5.1"],
             ["bignumber.js", "npm:9.0.1"],
             ["chai", "npm:4.3.4"],
@@ -358,16 +357,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["@babel/parser", "npm:7.14.8"],
             ["@babel/types", "npm:7.14.8"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["@babel/runtime", [
-        ["npm:7.16.7", {
-          "packageLocation": "./.yarn/cache/@babel-runtime-npm-7.16.7-62d4d1151f-2e2078cd93.zip/node_modules/@babel/runtime/",
-          "packageDependencies": [
-            ["@babel/runtime", "npm:7.16.7"],
-            ["regenerator-runtime", "npm:0.13.9"]
           ],
           "linkType": "HARD",
         }]
@@ -1970,7 +1959,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
             ["axios", "npm:0.21.4"],
-            ["axios-retry", "npm:3.2.4"],
             ["base64-js", "npm:1.5.1"],
             ["bignumber.js", "npm:9.0.1"],
             ["chai", "npm:4.3.4"],
@@ -2220,17 +2208,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["axios", "npm:0.24.0"],
             ["follow-redirects", "virtual:39e5c1e79ea63134f0cf339f4463df92854aaf708a45210afd29a0b4b9f67f95b34a1abbcabaae6d0033ad99a1d5f690ab51ed8e5d3283b87ccbc3a9ab3ec05f#npm:1.14.5"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["axios-retry", [
-        ["npm:3.2.4", {
-          "packageLocation": "./.yarn/cache/axios-retry-npm-3.2.4-826fab4739-ae61ba77f4.zip/node_modules/axios-retry/",
-          "packageDependencies": [
-            ["axios-retry", "npm:3.2.4"],
-            ["@babel/runtime", "npm:7.16.7"],
-            ["is-retry-allowed", "npm:2.2.0"]
           ],
           "linkType": "HARD",
         }]
@@ -4950,15 +4927,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
-      ["is-retry-allowed", [
-        ["npm:2.2.0", {
-          "packageLocation": "./.yarn/cache/is-retry-allowed-npm-2.2.0-b4b58fc581-7cbd3c3882.zip/node_modules/is-retry-allowed/",
-          "packageDependencies": [
-            ["is-retry-allowed", "npm:2.2.0"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
       ["is-stream", [
         ["npm:2.0.0", {
           "packageLocation": "./.yarn/cache/is-stream-npm-2.0.0-1401f82ad7-f92ba04a8b.zip/node_modules/is-stream/",
@@ -6769,15 +6737,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["readdirp", "npm:3.5.0"],
             ["picomatch", "npm:2.2.3"]
-          ],
-          "linkType": "HARD",
-        }]
-      ]],
-      ["regenerator-runtime", [
-        ["npm:0.13.9", {
-          "packageLocation": "./.yarn/cache/regenerator-runtime-npm-0.13.9-6d02340eec-8587f99ed6.zip/node_modules/regenerator-runtime/",
-          "packageDependencies": [
-            ["regenerator-runtime", "npm:0.13.9"]
           ],
           "linkType": "HARD",
         }]
