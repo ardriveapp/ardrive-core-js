@@ -46,7 +46,6 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
-	/** GQL Tags that will be added to the MetaData Tx  */
 	customMetaData?: CustomMetaData;
 }
 
