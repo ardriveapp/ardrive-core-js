@@ -23,7 +23,8 @@ import {
 	stubCommunityTipSettings,
 	stubTxID,
 	stubSmallFileToUpload,
-	stubSignedTransaction
+	stubSignedTransaction,
+	stub3073CharString
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
@@ -41,13 +42,15 @@ import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
-import { DataItem } from 'arbundles';
+import { createData, DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
 import { emptyV2TxPlans } from '../types/upload_planner_types';
 import { GatewayAPI } from '../utils/gateway_api';
 import Transaction from 'arweave/node/lib/transaction';
+import { ArweaveSigner } from 'arbundles/src/signing';
+import { JWKWallet } from '../jwk_wallet';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -526,14 +529,22 @@ describe('The ArFSDAO class', () => {
 			expect(bundleTransaction.reward).to.equal('20');
 		});
 
-		// This test is no longer creating an invalid bundle as of arbundles v0.6.19
-		// TODO: Create a broken bundle
-		it.skip('throws an error when bundle cannot be verified', async () => {
-			dataItems[0].id = 'fake ID so verify will return false';
+		it('throws an error when bundle cannot be verified', async () => {
+			const signer = new ArweaveSigner((wallet as JWKWallet).getPrivateKey());
+
+			// Create data item with a tag that exceeds ANS 104 Limits
+			const dataItemWithHugeTagValue = createData(
+				stubPublicFileMetaDataTx.objectData.asTransactionData(),
+				signer,
+				{
+					tags: [{ name: stub3073CharString, value: stub3073CharString }]
+				}
+			);
+			await dataItemWithHugeTagValue.sign(signer);
 
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.prepareArFSObjectBundle({
-					dataItems,
+					dataItems: [dataItemWithHugeTagValue],
 					rewardSettings: { reward: W(10) }
 				}),
 				errorMessage: 'Bundle format could not be verified!'
