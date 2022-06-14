@@ -48,11 +48,12 @@ export * from './pricing/gateway_oracle';
 
 // Utils
 export * from './utils/common';
+export * from './utils/crypto';
 export * from './utils/error_message';
 export * from './utils/filter_methods';
+export * from './utils/gateway_api';
 export * from './utils/mapper_functions';
 export * from './utils/query';
-export * from './utils/crypto';
 export * from './utils/sort_functions';
-export * from './utils/wallet_utils';
 export * from './utils/upload_conflict_resolution';
+export * from './utils/wallet_utils';
