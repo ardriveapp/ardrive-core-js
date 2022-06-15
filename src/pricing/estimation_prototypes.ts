@@ -98,7 +98,7 @@ export async function getPrivateCreateDriveEstimationPrototypes({
  */
 export function getPublicUploadFileEstimationPrototype(
 	wrappedFile: ArFSDataToUpload,
-	customMetaData: CustomMetaDataTagInterface
+	customMetaData?: CustomMetaDataTagInterface
 ): ArFSPublicFileMetaDataPrototype {
 	return ArFSPublicFileMetaDataPrototype.fromFile({
 		wrappedFile,
@@ -116,7 +116,7 @@ export function getPublicUploadFileEstimationPrototype(
  */
 export async function getPrivateUploadFileEstimationPrototype(
 	wrappedFile: ArFSDataToUpload,
-	customMetaData: CustomMetaDataTagInterface
+	customMetaData?: CustomMetaDataTagInterface
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
 	return ArFSPrivateFileMetaDataPrototype.fromFile({
 		dataTxId: fakeTxID,
@@ -141,7 +141,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 export async function getFileEstimationInfo(
 	wrappedFile: ArFSDataToUpload,
 	isPrivate: boolean,
-	customMetaData: CustomMetaDataTagInterface
+	customMetaData?: CustomMetaDataTagInterface
 ): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
 		? await getPrivateUploadFileEstimationPrototype(wrappedFile, customMetaData)

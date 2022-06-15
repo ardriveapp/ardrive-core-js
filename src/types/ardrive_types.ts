@@ -125,7 +125,7 @@ export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends 
 	owner: ArweaveAddress;
 }
 
-export type FileUploadStats = UploadStats<ArFSDataToUpload> & { customMetaData: CustomMetaDataTagInterface };
+export type FileUploadStats = UploadStats<ArFSDataToUpload> & { customMetaData?: CustomMetaDataTagInterface };
 export type FolderUploadStats = UploadStats<ArFSFolderToUpload>;
 
 export interface UploadAllEntitiesParams {

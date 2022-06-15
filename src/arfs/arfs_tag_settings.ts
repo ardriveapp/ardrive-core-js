@@ -4,10 +4,7 @@ import {
 	TipType,
 	DataContentType,
 	CustomMetaDataTagInterface,
-	CustomMetaDataType,
-	CustomMetaData,
-	metaDataGqlType,
-	metaDataJsonType
+	CustomMetaData
 } from '../types';
 import {
 	DEFAULT_APP_NAME,
@@ -35,7 +32,7 @@ export class ArFSTagSettings {
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
 		arFSVersion = CURRENT_ARFS_VERSION,
-		customMetaData = { tags: {}, includeOn: [] }
+		customMetaData = {}
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -58,20 +55,12 @@ export class ArFSTagSettings {
 		return [{ name: 'Tip-Type', value: tipType }];
 	}
 
-	public getCustomMetaDataGqlTags(): CustomMetaDataTagInterface {
-		return this.shouldApplyTagsTo(metaDataGqlType) ? this.customTags : {};
+	public maybeCustomFileMetaDataGqlTags(): CustomMetaDataTagInterface | undefined {
+		return this.customMetaData.tagsOnFileMetaDataGql;
 	}
 
-	public getCustomMetaDataJSONTags(): CustomMetaDataTagInterface {
-		return this.shouldApplyTagsTo(metaDataJsonType) ? this.customTags : {};
-	}
-
-	private shouldApplyTagsTo(customMetaDataType: CustomMetaDataType): boolean {
-		return this.customMetaData.includeOn.includes(customMetaDataType);
-	}
-
-	private get customTags(): CustomMetaDataTagInterface {
-		return this.customMetaData.tags;
+	public maybeCustomFileMetaDataJSONTags(): CustomMetaDataTagInterface | undefined {
+		return this.customMetaData.tagsOnFileMetaDataJson;
 	}
 
 	public get baseArFSTags(): GQLTagInterface[] {

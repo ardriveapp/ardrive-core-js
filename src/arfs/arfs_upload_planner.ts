@@ -63,7 +63,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(
 			wrappedFile,
 			isPrivate,
-			this.arFSTagSettings.getCustomMetaDataJSONTags()
+			this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
 		);
 
 		const fileDataItemByteCount = byteCountAsDataItem(
@@ -159,7 +159,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				{
 					...partialPlanParams,
 					wrappedEntity: file,
-					customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
+					customMetaData: this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
 				},
 				bundlePacker
 			);
@@ -220,7 +220,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 						...uploadStat,
 						wrappedEntity,
 						isBulkUpload,
-						customMetaData: this.arFSTagSettings.getCustomMetaDataJSONTags()
+						customMetaData: this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
 					},
 					bundlePacker
 				);

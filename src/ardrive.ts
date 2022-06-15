@@ -827,7 +827,7 @@ export class ArDrive extends ArDriveAnonymous {
 	): Promise<RewardSettings> {
 		const fileEstimationPrototype = getPublicUploadFileEstimationPrototype(
 			wrappedFile,
-			this.arFSTagSettings.getCustomMetaDataJSONTags()
+			this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
 		);
 
 		// prettier-ignore

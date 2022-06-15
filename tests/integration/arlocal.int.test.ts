@@ -74,12 +74,14 @@ describe('ArLocal Integration Tests', function () {
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
 
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+
+	const customTags = { ['Custom Tag']: 'This Test Works', ['Custom Tag Array']: ['This Test Works', 'As Well :)'] };
 	const customTagGQLAndMetaDataJsonSettings = new ArFSTagSettings({
 		appName: 'ArLocal Integration Test',
 		appVersion: '1.7',
 		customMetaData: {
-			tags: { ['Custom Tag']: 'This Test Works', ['Custom Tag Array']: ['This Test Works', 'As Well :)'] },
-			includeOn: ['metaDataGql', 'metaDataJson']
+			tagsOnFileMetaDataGql: customTags,
+			tagsOnFileMetaDataJson: customTags
 		}
 	});
 
