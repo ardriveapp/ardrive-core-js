@@ -17,11 +17,10 @@ import {
 	ByteCount,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
-	CustomMetaDataTagInterface,
 	DriveKey,
 	encryptedDataSize
 } from '../exports';
-import { EntityKey } from '../types';
+import { EntityKey, CustomMetaDataTagInterface } from '../types';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 

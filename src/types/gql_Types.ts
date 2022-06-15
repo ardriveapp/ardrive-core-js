@@ -29,8 +29,6 @@ export interface GQLTagInterface {
 	value: string;
 }
 
-export type CustomMetaDataTagInterface = Record<string, string | string[]>;
-
 // Used to build the GQL query
 export interface GQLQueryTagInterface {
 	name: string;

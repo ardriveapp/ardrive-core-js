@@ -14,10 +14,10 @@ import {
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import { FeeMultiple } from './types';
+import { CustomMetaData, FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
-import { ArFSTagSettings, CustomMetaData } from './arfs/arfs_tag_settings';
+import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_estimator';
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';

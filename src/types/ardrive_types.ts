@@ -10,7 +10,8 @@ import {
 	FileConflictPrompts,
 	FileNameConflictResolution,
 	FolderConflictPrompts,
-	DriveKey
+	DriveKey,
+	CustomMetaDataTagInterface
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
@@ -19,7 +20,6 @@ import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
 import { EntityKey } from './entity_key';
 import { EntityName, SourceUri } from './types';
-import { CustomMetaDataTagInterface } from './gql_Types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
