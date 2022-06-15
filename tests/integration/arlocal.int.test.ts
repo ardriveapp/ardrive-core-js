@@ -19,7 +19,7 @@ import {
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
-import { gatewayUrlForArweave, readJWKFile, Utf8ArrayToStr } from '../../src/utils/common';
+import { gatewayUrlForArweave, readJWKFile } from '../../src/utils/common';
 import { ArDrive } from '../../src/ardrive';
 
 import { JWKWallet } from '../../src/jwk_wallet';
@@ -44,9 +44,14 @@ import {
 import { GatewayAPI } from '../../src/utils/gateway_api';
 import { restore, stub } from 'sinon';
 import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload, stubArweaveAddress } from '../stubs';
-import axios from 'axios';
 import { assertRetryExpectations } from '../test_assertions';
-import { expectAsyncErrorThrow, fundArLocalWallet, mineArLocalBlock } from '../test_helpers';
+import {
+	expectAsyncErrorThrow,
+	fundArLocalWallet,
+	getMetaDataJSONFromArLocal,
+	getTxDataFromArLocal,
+	mineArLocalBlock
+} from '../test_helpers';
 import GQLResultInterface from '../../src/types/gql_Types';
 import { buildQuery } from '../../src/utils/query';
 import { getDecodedTags } from '../test_helpers';
@@ -422,23 +427,6 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		const getFileData = async (txId: TransactionID): Promise<Buffer> =>
-			(
-				await axios.get(`${gatewayUrlForArweave(arweave).href}${txId}`, {
-					responseType: 'arraybuffer'
-				})
-			).data;
-
-		async function getFileDataJSON(txId: TransactionID): Promise<Record<string, unknown>> {
-			const dataBuffer = (
-				await axios.get<Buffer>(`${gatewayUrlForArweave(arweave).href}${txId}`, {
-					responseType: 'arraybuffer'
-				})
-			).data;
-			const dataString = await Utf8ArrayToStr(dataBuffer);
-			return JSON.parse(dataString);
-		}
-
 		it('we can upload a public file with a custom content type and custom tags', async () => {
 			const { created } = await customTagV2ArDrive.uploadAllEntities({
 				entitiesToUpload: [
@@ -456,7 +444,7 @@ describe('ArLocal Integration Tests', function () {
 
 			const dataTxId = created[0].dataTxId!;
 			const metaDataTxId = created[0].metadataTxId!;
-			const metaDataJson = await getFileDataJSON(metaDataTxId);
+			const metaDataJson = await getMetaDataJSONFromArLocal(arweave, metaDataTxId);
 
 			// We filter last modified date from deep equal check because we cannot
 			// consistently predict when the file is created on separate systems
@@ -541,7 +529,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -552,7 +540,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(524_288);
@@ -607,7 +595,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -618,7 +606,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(786_432);
@@ -669,7 +657,7 @@ describe('ArLocal Integration Tests', function () {
 				restore();
 
 				// Ensure data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -680,7 +668,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(264_192);
