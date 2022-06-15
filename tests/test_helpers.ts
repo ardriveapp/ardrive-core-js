@@ -66,7 +66,7 @@ export async function getMetaDataJSONFromArLocal(
 	arweave: Arweave,
 	txId: TransactionID
 ): Promise<Record<string, unknown>> {
-	const dataBuffer = getTxDataFromArLocal(arweave, txId);
+	const dataBuffer = await getTxDataFromArLocal(arweave, txId);
 	const dataString = await Utf8ArrayToStr(dataBuffer);
 	return JSON.parse(dataString);
 }
