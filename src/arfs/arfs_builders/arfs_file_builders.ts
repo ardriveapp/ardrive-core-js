@@ -41,6 +41,43 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 			{ name: 'Entity-Type', value: 'file' }
 		];
 	}
+
+	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+		const unparsedTags: GQLTagInterface[] = [];
+		const tags = await super.parseFromArweaveNode(node);
+		tags.forEach((tag: GQLTagInterface) => {
+			const key = tag.name;
+			// const { value } = tag;
+			switch (key) {
+				case 'File-Id':
+					break;
+				default:
+					unparsedTags.push(tag);
+					break;
+			}
+		});
+		return unparsedTags;
+	}
+
+	parseCustomMetaData(dataJSON: FileMetaDataTransactionData): void {
+		const numOfArFSTagsInFileMetaDataJSON = 5;
+		const fileJSONAsArray = Object.keys(dataJSON);
+		if (fileJSONAsArray.length > numOfArFSTagsInFileMetaDataJSON) {
+			const arFSTagKeysInFileMetaDataJSON = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'];
+
+			this.addToCustomMetaData(
+				fileJSONAsArray.reduce(
+					(prev, curr) =>
+						arFSTagKeysInFileMetaDataJSON.includes(curr)
+							? prev
+							: // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+							  // @ts-ignore TODO: Proper Types Here
+							  { ...prev, [curr]: dataJSON[curr] },
+					{}
+				)
+			);
+		}
+	}
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
@@ -88,6 +125,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			) {
 				throw new Error('Invalid file state');
 			}
+			this.parseCustomMetaData(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFile(
@@ -104,7 +142,8 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 					this.size,
 					this.lastModifiedDate,
 					this.dataTxId,
-					this.dataContentType
+					this.dataContentType,
+					this.customMetaData
 				)
 			);
 		}
@@ -199,6 +238,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				throw new Error('Invalid file state');
 			}
 
+			this.parseCustomMetaData(decryptedFileJSON);
+
 			return new ArFSPrivateFile(
 				this.appName,
 				this.appVersion,
@@ -217,7 +258,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.cipher,
 				this.cipherIV,
 				fileKey,
-				this.driveKey
+				this.driveKey,
+				this.customMetaData
 			);
 		}
 		throw new Error('Invalid file state');

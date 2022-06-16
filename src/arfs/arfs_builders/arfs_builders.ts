@@ -13,7 +13,8 @@ import {
 	ContentType,
 	EntityType,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	CustomMetaDataTagInterface
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -46,6 +47,8 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	protected readonly entityId: AnyEntityID;
 	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
+
+	customMetaData: CustomMetaDataTagInterface = {};
 
 	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;
@@ -117,8 +120,44 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	async build(node?: GQLNodeInterface): Promise<T> {
-		await this.parseFromArweaveNode(node, this.owner);
+		const extraTags = await this.parseFromArweaveNode(node, this.owner);
+		if (extraTags.length > 0) {
+			const customMetaData: CustomMetaDataTagInterface = {};
+			for (const { name, value } of extraTags) {
+				customMetaData[name] = value;
+			}
+			this.addToCustomMetaData(customMetaData);
+		}
+
 		return this.buildEntity();
+	}
+
+	protected addToCustomMetaData(tags: Record<string, unknown>): void {
+		if (this.isValidCustomMetaData(tags)) {
+			Object.assign(this.customMetaData, tags);
+		}
+	}
+
+	private isValidCustomMetaData(tags: Record<string, unknown>): tags is Record<string, string | string[]> {
+		for (const value of Object.values(tags)) {
+			if (typeof value === 'string') {
+				continue;
+			}
+
+			if (!Array.isArray(value)) {
+				return false;
+			}
+
+			if (value.length > 1) {
+				for (const item of value) {
+					if (typeof item !== 'string') {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	getDataForTxID(txId: TransactionID): Promise<Buffer> {

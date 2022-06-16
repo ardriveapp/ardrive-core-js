@@ -17,7 +17,8 @@ import {
 	FileKey,
 	DriveKey,
 	EntityKey,
-	EntityIDTypeForEntityType
+	EntityIDTypeForEntityType,
+	CustomMetaDataTagInterface
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 
@@ -33,6 +34,8 @@ export class ArFSEntity {
 	readonly txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
 	readonly unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
 
+	customMetaData?: CustomMetaDataTagInterface;
+
 	constructor(
 		appName: string,
 		appVersion: string,
@@ -42,7 +45,8 @@ export class ArFSEntity {
 		entityType: EntityType,
 		name: string,
 		txId: TransactionID,
-		unixTime: UnixTime
+		unixTime: UnixTime,
+		customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -53,6 +57,18 @@ export class ArFSEntity {
 		this.name = name;
 		this.txId = txId;
 		this.unixTime = unixTime;
+		this.customMetaData = customMetaData;
+	}
+
+	public toJSON(): Record<string, unknown> {
+		const customMetaData = this.customMetaData;
+
+		if (!customMetaData) {
+			return this as Record<string, unknown>;
+		}
+
+		delete this.customMetaData;
+		return { ...this, ...customMetaData };
 	}
 }
 
@@ -61,7 +77,7 @@ export type ENCRYPTED_DATA_PLACEHOLDER_TYPE = 'ENCRYPTED';
 
 // A Drive is a logical grouping of folders and files. All folders and files must be part of a drive, and reference the Drive ID.
 // When creating a Drive, a corresponding folder must be created as well. This folder will act as the Drive Root Folder.
-// This seperation of drive and folder entity enables features such as folder view queries.
+// This separation of drive and folder entity enables features such as folder view queries.
 export interface ArFSDriveEntity extends ArFSEntity {
 	drivePrivacy: string; // identifies if this drive is public or private (and encrypted)  can only be "public" or "private"
 	rootFolderId: FolderID | ENCRYPTED_DATA_PLACEHOLDER_TYPE; // the uuid of the related drive root folder, stored in the JSON data that is uploaded with each Drive Entity metadata transaction
@@ -79,9 +95,10 @@ export class ArFSPublicDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly txId: TransactionID,
 		readonly unixTime: UnixTime,
 		readonly drivePrivacy: DrivePrivacy,
-		readonly rootFolderId: FolderID
+		readonly rootFolderId: FolderID,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
-		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime);
+		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
 }
 
@@ -101,9 +118,10 @@ export class ArFSPrivateDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly driveAuthMode: DriveAuthMode,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
-		readonly driveKey: DriveKey
+		readonly driveKey: DriveKey,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
-		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime);
+		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
 }
 
@@ -124,7 +142,8 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 		rootFolderId: FolderID,
 		driveAuthMode: DriveAuthMode,
 		cipher: string,
-		cipherIV: CipherIV
+		cipherIV: CipherIV,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super(
 			appName,
@@ -141,7 +160,8 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			driveAuthMode,
 			cipher,
 			cipherIV,
-			new EntityKey(Buffer.from([]))
+			new EntityKey(Buffer.from([])),
+			customMetaData
 		);
 		delete this.driveKey;
 	}
@@ -151,7 +171,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 // Drive Root Folders must not have a parent folder ID, as they sit at the root of a drive.
 // A File contains actual data, like a photo, document or movie.
 // The File metadata transaction JSON references the File data transaction for retrieval.
-// This separation allows for file metadata to be updated without requiring the file data to be reuploaded.
+// This separation allows for file metadata to be updated without requiring the file data to be re-uploaded.
 // Files and Folders leverage the same entity type since they have the same properties
 export interface ArFSFileFolderEntity extends ArFSEntity {
 	parentFolderId: FolderID; // the uuid of the parent folder that this entity sits within.  Folder Entities used for the drive root must not have a parent folder ID, eg. 41800747-a852-4dc9-9078-6c20f85c0f3a
@@ -162,8 +182,7 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	extends ArFSEntity
 	// eslint-disable-next-line prettier/prettier
-	implements ArFSFileFolderEntity
-{
+	implements ArFSFileFolderEntity {
 	constructor(
 		appName: string,
 		appVersion: string,
@@ -179,9 +198,10 @@ export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 		public dataTxId: TransactionID,
 		public dataContentType: DataContentType,
 		readonly parentFolderId: FolderID,
-		readonly entityId: EntityIDTypeForEntityType<T>
+		readonly entityId: EntityIDTypeForEntityType<T>,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
-		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime);
+		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
 }
 
@@ -236,7 +256,8 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity<'file'> {
 		size: ByteCount,
 		lastModifiedDate: UnixTime,
 		dataTxId: TransactionID,
-		dataContentType: DataContentType
+		dataContentType: DataContentType,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super(
 			appName,
@@ -253,7 +274,8 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity<'file'> {
 			dataTxId,
 			dataContentType,
 			parentFolderId,
-			fileId
+			fileId,
+			customMetaData
 		);
 	}
 }
@@ -278,7 +300,8 @@ export class ArFSPublicFileWithPaths extends ArFSPublicFile implements ArFSWithP
 			entity.size,
 			entity.lastModifiedDate,
 			entity.dataTxId,
-			entity.dataContentType
+			entity.dataContentType,
+			entity.customMetaData
 		);
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
@@ -306,7 +329,8 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity<'file'> {
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
 		readonly fileKey: FileKey,
-		readonly driveKey: DriveKey
+		readonly driveKey: DriveKey,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super(
 			appName,
@@ -323,7 +347,8 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity<'file'> {
 			dataTxId,
 			dataContentType,
 			parentFolderId,
-			fileId
+			fileId,
+			customMetaData
 		);
 	}
 
@@ -356,7 +381,8 @@ export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWit
 			entity.cipher,
 			entity.cipherIV,
 			entity.fileKey,
-			entity.driveKey
+			entity.driveKey,
+			entity.customMetaData
 		);
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
@@ -400,7 +426,8 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.cipher,
 			entity.cipherIV,
 			entity.fileKey,
-			entity.driveKey
+			entity.driveKey,
+			entity.customMetaData
 		);
 		delete this.driveKey;
 		delete this.fileKey;
@@ -418,7 +445,8 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity<'folder'> {
 		txId: TransactionID,
 		unixTime: UnixTime,
 		parentFolderId: FolderID,
-		readonly folderId: FolderID
+		readonly folderId: FolderID,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super(
 			appName,
@@ -435,7 +463,8 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity<'folder'> {
 			stubTransactionID,
 			JSON_CONTENT_TYPE,
 			parentFolderId,
-			folderId
+			folderId,
+			customMetaData
 		);
 	}
 }
@@ -456,7 +485,8 @@ export class ArFSPublicFolderWithPaths extends ArFSPublicFolder implements ArFSW
 			entity.txId,
 			entity.unixTime,
 			entity.parentFolderId,
-			entity.folderId
+			entity.folderId,
+			entity.customMetaData
 		);
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
@@ -479,7 +509,8 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity<'folder'> {
 		readonly folderId: FolderID,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
-		readonly driveKey: DriveKey
+		readonly driveKey: DriveKey,
+		readonly customMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super(
 			appName,
@@ -496,7 +527,8 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity<'folder'> {
 			stubTransactionID,
 			JSON_CONTENT_TYPE,
 			parentFolderId,
-			folderId
+			folderId,
+			customMetaData
 		);
 	}
 }
@@ -520,7 +552,8 @@ export class ArFSPrivateFolderWithPaths extends ArFSPrivateFolder implements ArF
 			entity.folderId,
 			entity.cipher,
 			entity.cipherIV,
-			entity.driveKey
+			entity.driveKey,
+			entity.customMetaData
 		);
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
@@ -556,7 +589,8 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.folderId,
 			entity.cipher,
 			entity.cipherIV,
-			entity.driveKey
+			entity.driveKey,
+			entity.customMetaData
 		);
 		delete this.driveKey;
 	}
