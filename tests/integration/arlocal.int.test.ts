@@ -488,6 +488,19 @@ describe('ArLocal Integration Tests', function () {
 				{ name: 'App-Version', value: '1.7' },
 				{ name: 'Tip-Type', value: 'data upload' }
 			]);
+
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId: created[0].entityId! });
+			expect(arFSFileEntity.customMetaData['Custom Tag']).to.equal('This Test Works');
+
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			delete arFSFileEntity.unixTime, delete arFSFileEntity.lastModifiedDate;
+
+			// TODO: Add custom tags assertions to test helper functions, deep equal is a temporary test
+			// Tags will be flattened on `toJSON`
+			expect(JSON.stringify(arFSFileEntity)).to.deep.equal(
+				`{"appName":"ArLocal Integration Test","appVersion":"1.7","arFS":"0.11","contentType":"application/json","driveId":"${`${driveId}`}","entityType":"file","name":"custom_content_unique_stub","txId":"${`${created[0].metadataTxId}`}","size":12,"dataTxId":"${`${created[0].dataTxId}`}","dataContentType":"application/fake","parentFolderId":"${rootFolderId}","entityId":"${`${created[0].entityId}`}","fileId":"${`${created[0].entityId}`}","Custom Tag":"This Test Works","Custom Tag Array":["This Test Works","As Well :)"]}`
+			);
 		});
 
 		describe('with a v2 public file transaction that has incomplete chunks', () => {
