@@ -60,11 +60,10 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	}
 
 	parseCustomMetaData(dataJSON: FileMetaDataTransactionData): void {
-		const numOfArFSTagsInFileMetaDataJSON = 5;
+		const arFSTagKeysInFileMetaDataJSON = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'] as const;
+		const numOfArFSTagsInFileMetaDataJSON = arFSTagKeysInFileMetaDataJSON.length;
 		const fileJSONAsArray = Object.keys(dataJSON);
 		if (fileJSONAsArray.length > numOfArFSTagsInFileMetaDataJSON) {
-			const arFSTagKeysInFileMetaDataJSON = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'];
-
 			this.addToCustomMetaData(
 				fileJSONAsArray.reduce(
 					(prev, curr) =>
