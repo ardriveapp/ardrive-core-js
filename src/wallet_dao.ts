@@ -123,7 +123,7 @@ export class WalletDAO {
 
 		// TODO: CHECK TAG LIMITS - i.e. upper limit of 2048bytes for all names and values
 
-		// Sign file
+		// Sign the transaction
 		await this.arweave.transactions.sign(transaction, jwkWallet.getPrivateKey());
 
 		// Submit the transaction
@@ -143,5 +143,22 @@ export class WalletDAO {
 		} else {
 			throw new Error(`Transaction failed. Response: ${response}`);
 		}
+	}
+
+	// Attempts to sign, without submitting to Arweave, a stubbed out transaction with the provided wallet
+	async testWallet(wallet: Wallet): Promise<void> {
+		// TODO: Figure out how this works for other wallet types
+		const jwkWallet = wallet as JWKWallet;
+
+		// No need for a real last_tx or data since we're not actually submitting to the network
+		const txAttributes: Partial<CreateTransactionInterface> = {
+			last_tx: 'This is just a test',
+			data: 'This is just a test'
+		};
+
+		const transaction = await this.arweave.createTransaction(txAttributes, jwkWallet.getPrivateKey());
+
+		// Sign the transaction
+		await this.arweave.transactions.sign(transaction, jwkWallet.getPrivateKey());
 	}
 }
