@@ -14,7 +14,8 @@ import {
 	EntityType,
 	GQLNodeInterface,
 	GQLTagInterface,
-	CustomMetaDataTagInterface
+	CustomMetaDataTagInterface,
+	isCustomMetaData
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -133,31 +134,9 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	protected addToCustomMetaData(tags: Record<string, unknown>): void {
-		if (this.isValidCustomMetaData(tags)) {
+		if (isCustomMetaData(tags)) {
 			Object.assign(this.customMetaData, tags);
 		}
-	}
-
-	private isValidCustomMetaData(tags: Record<string, unknown>): tags is Record<string, string | string[]> {
-		for (const value of Object.values(tags)) {
-			if (typeof value === 'string') {
-				continue;
-			}
-
-			if (!Array.isArray(value)) {
-				return false;
-			}
-
-			if (value.length > 1) {
-				for (const item of value) {
-					if (typeof item !== 'string') {
-						return false;
-					}
-				}
-			}
-		}
-
-		return true;
 	}
 
 	getDataForTxID(txId: TransactionID): Promise<Buffer> {
