@@ -246,9 +246,11 @@ The cache can be manually cleared safely at any time that any integrating app is
 
 ArDrive Core has the capability of attaching custom tags to ArFS File Transactions. These tags can be applied to either the GQL tags on the MetaData Transaction or into the MetaData Transaction's Data JSON.
 
-When attached to the GQL tags, those custom tags will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
+All custom tags can be accessed by using by using `ArDrive` class read methods such as `getPublicFile`, `getPrivateFile`, `listPrivateFolder`, etc.
 
-When these tags are added to the MetaData Transaction's Data JSON, they can be accessed by using ArDrive read methods (e.g: `getPublicFile` / `listPrivateFolder`) or by downloading the JSON data directly from `https://arweave.net/METADATA_TX_ID`.
+When the custom metadata is attached to the MetaData Transaction's GQL tags, they will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
+
+When these tags are added to the MetaData Transaction's Data JSON they can be read by downloading the JSON data directly from `https://arweave.net/METADATA_TX_ID`.
 
 To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags during creation of the `ArDrive` Class:
 
