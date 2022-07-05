@@ -242,6 +242,28 @@ Cache performance is UNDEFINED for multi-process scenarios, but is presumed to b
 
 The cache can be manually cleared safely at any time that any integrating app is not in operation.
 
+### Applying Custom MetaData to ArFS File Transactions
+
+ArDrive Core has the capability of attaching custom tags to ArFS File Transactions. These tags can be applied to either the GQL tags on the MetaData Transaction or into the MetaData Transaction's Data JSON.
+
+When attached to the GQL tags, those custom tags will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
+
+When these tags are added to the MetaData Transaction's Data JSON, they can be accessed by using ArDrive read methods (e.g: `getPublicFile` / `listPrivateFolder`) or by downloading the JSON data directly from `https://arweave.net/METADATA_TX_ID`.
+
+To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags during creation of the `ArDrive` Class:
+
+```ts
+const arDrive = arDriveFactory({
+    wallet: myWallet,
+    customMetaData: {
+        tagsOnFileMetaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
+        tagsOnFileMetaDataGql: {
+            ['Another-Custom-Tag']: ['First-Custom-Value', 'Second-Custom-Value', 'Third-Custom-Value']
+        }
+    }
+});
+```
+
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating
 [wsl-install]: https://code.visualstudio.com/docs/remote/wsl
