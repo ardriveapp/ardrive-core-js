@@ -15,7 +15,7 @@ import {
 	GQLNodeInterface,
 	GQLTagInterface,
 	CustomMetaDataTagInterface,
-	isCustomMetaData
+	isCustomMetaDataTagInterface
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -134,7 +134,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	protected addToCustomMetaData(tags: Record<string, unknown>): void {
-		if (isCustomMetaData(tags)) {
+		if (isCustomMetaDataTagInterface(tags)) {
 			Object.assign(this.customMetaData, tags);
 		}
 	}
