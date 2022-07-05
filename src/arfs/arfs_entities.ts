@@ -67,9 +67,16 @@ export class ArFSEntity {
 			return this as Record<string, unknown>;
 		}
 
-		delete this.customMetaData;
-		return { ...this, ...customMetaData };
+		const entity: [string, unknown][] = Object.entries(this).filter(([k]) => k !== 'customMetaData');
+		return Object.assign(fromEntries(entity), customMetaData);
 	}
+}
+
+function fromEntries(iterable: [string, unknown][]) {
+	return [...iterable].reduce((obj: Record<string, unknown>, [key, val]) => {
+		obj[key] = val;
+		return obj;
+	}, {});
 }
 
 export const ENCRYPTED_DATA_PLACEHOLDER = 'ENCRYPTED';
