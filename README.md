@@ -252,18 +252,19 @@ When the custom metadata is attached to the MetaData Transaction's GQL tags, the
 
 When these tags are added to the MetaData Transaction's Data JSON they can be read by downloading the JSON data directly from `https://arweave.net/METADATA_TX_ID`.
 
-To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags during creation of the `ArDrive` Class:
+To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags when wrapping content to upload:
 
 ```ts
-const arDrive = arDriveFactory({
-    wallet: myWallet,
-    customMetaData: {
+const arDrive = wrapFileOrFolder(
+    'path/to/file/on/system', // File or Folder Path
+    'application/custom-content-type', // Custom Content Type
+    customMetaData: { // Custom MetaData
         tagsOnFileMetaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
         tagsOnFileMetaDataGql: {
             ['Another-Custom-Tag']: ['First-Custom-Value', 'Second-Custom-Value', 'Third-Custom-Value']
         }
     }
-});
+);
 ```
 
 [yarn-install]: https://yarnpkg.com/getting-started/install
