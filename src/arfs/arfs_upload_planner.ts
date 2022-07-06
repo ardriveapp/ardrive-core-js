@@ -210,14 +210,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			if (wrappedEntity.entityType === 'folder') {
 				await this.planFolder({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
 			} else {
-				await this.planFile(
-					{
-						...uploadStat,
-						wrappedEntity,
-						isBulkUpload
-					},
-					bundlePacker
-				);
+				await this.planFile({ ...uploadStat, wrappedEntity, isBulkUpload }, bundlePacker);
 			}
 		}
 

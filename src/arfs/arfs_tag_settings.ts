@@ -1,4 +1,4 @@
-import { GQLTagInterface, FeeMultiple, TipType, DataContentType, CustomMetaData } from '../types';
+import { GQLTagInterface, FeeMultiple, TipType, DataContentType } from '../types';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -12,7 +12,6 @@ interface ArFSTagSettingsParams {
 	appName?: string;
 	appVersion?: string;
 	arFSVersion?: string;
-	customMetaData?: CustomMetaData;
 }
 
 export class ArFSTagSettings {

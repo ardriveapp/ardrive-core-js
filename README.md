@@ -260,7 +260,7 @@ const fileToUpload = wrapFileOrFolder(
     'application/custom-content-type', // Custom Content Type
     customMetaData: { // Custom MetaData
         metaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
-        metaDataGql: {
+        metaDataGqlTags: {
             ['Another-Custom-Tag']: ['First-Custom-Value', 'Second-Custom-Value', 'Third-Custom-Value']
         }
     }

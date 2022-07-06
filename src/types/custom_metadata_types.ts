@@ -44,7 +44,7 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 	}
 
 	for (const [key, val] of Object.entries(tags)) {
-		if (key !== 'tagsOnFileMetaDataJson' && key !== 'tagsOnFileMetaDataGql') {
+		if (key !== 'metaDataJson' && key !== 'metaDataGqlTags') {
 			return false;
 		}
 		if (!isCustomMetaDataTagInterface(val)) {
