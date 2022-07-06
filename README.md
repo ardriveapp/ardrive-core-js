@@ -255,12 +255,12 @@ When these tags are added to the MetaData Transaction's Data JSON they can be re
 To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags when wrapping content to upload:
 
 ```ts
-const arDrive = wrapFileOrFolder(
+const fileToUpload = wrapFileOrFolder(
     'path/to/file/on/system', // File or Folder Path
     'application/custom-content-type', // Custom Content Type
     customMetaData: { // Custom MetaData
-        tagsOnFileMetaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
-        tagsOnFileMetaDataGql: {
+        metaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
+        metaDataGql: {
             ['Another-Custom-Tag']: ['First-Custom-Value', 'Second-Custom-Value', 'Third-Custom-Value']
         }
     }
