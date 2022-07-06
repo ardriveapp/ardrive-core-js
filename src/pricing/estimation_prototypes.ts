@@ -20,7 +20,7 @@ import {
 	DriveKey,
 	encryptedDataSize
 } from '../exports';
-import { EntityKey, CustomMetaDataTagInterface } from '../types';
+import { EntityKey } from '../types';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 
@@ -96,17 +96,13 @@ export async function getPrivateCreateDriveEstimationPrototypes({
  * Constructs a fake public file metadata prototype from stubbed
  * entity IDs and stubbed tx IDs for estimation and planning purposes
  */
-export function getPublicUploadFileEstimationPrototype(
-	wrappedFile: ArFSDataToUpload,
-	customMetaData?: CustomMetaDataTagInterface
-): ArFSPublicFileMetaDataPrototype {
+export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUpload): ArFSPublicFileMetaDataPrototype {
 	return ArFSPublicFileMetaDataPrototype.fromFile({
 		wrappedFile,
 		dataTxId: fakeTxID,
 		driveId: fakeEntityId,
 		fileId: fakeEntityId,
-		parentFolderId: fakeEntityId,
-		customMetaData
+		parentFolderId: fakeEntityId
 	});
 }
 
@@ -115,8 +111,7 @@ export function getPublicUploadFileEstimationPrototype(
  * stubbed tx IDs, and a stubbed drive key for estimation and planning purposes
  */
 export async function getPrivateUploadFileEstimationPrototype(
-	wrappedFile: ArFSDataToUpload,
-	customMetaData?: CustomMetaDataTagInterface
+	wrappedFile: ArFSDataToUpload
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
 	return ArFSPrivateFileMetaDataPrototype.fromFile({
 		dataTxId: fakeTxID,
@@ -124,8 +119,7 @@ export async function getPrivateUploadFileEstimationPrototype(
 		fileId: fakeEntityId,
 		parentFolderId: fakeEntityId,
 		wrappedFile,
-		driveKey: await getFakeDriveKey(),
-		customMetaData
+		driveKey: await getFakeDriveKey()
 	});
 }
 
@@ -140,12 +134,11 @@ export async function getPrivateUploadFileEstimationPrototype(
  */
 export async function getFileEstimationInfo(
 	wrappedFile: ArFSDataToUpload,
-	isPrivate: boolean,
-	customMetaData?: CustomMetaDataTagInterface
+	isPrivate: boolean
 ): Promise<{ fileMetaDataPrototype: ArFSFileMetaDataPrototype; fileDataByteCount: ByteCount }> {
 	const fileMetaDataPrototype = isPrivate
-		? await getPrivateUploadFileEstimationPrototype(wrappedFile, customMetaData)
-		: getPublicUploadFileEstimationPrototype(wrappedFile, customMetaData);
+		? await getPrivateUploadFileEstimationPrototype(wrappedFile)
+		: getPublicUploadFileEstimationPrototype(wrappedFile);
 
 	const fileDataByteCount = isPrivate ? encryptedDataSize(wrappedFile.size) : wrappedFile.size;
 

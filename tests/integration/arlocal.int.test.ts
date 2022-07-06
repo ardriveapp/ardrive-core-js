@@ -75,21 +75,10 @@ describe('ArLocal Integration Tests', function () {
 
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
 
-	const customTags = { ['Custom Tag']: 'This Test Works', ['Custom Tag Array']: ['This Test Works', 'As Well :)'] };
-	const customTagGQLAndMetaDataJsonSettings = new ArFSTagSettings({
-		appName: 'ArLocal Integration Test',
-		appVersion: '1.7',
-		customMetaData: {
-			tagsOnFileMetaDataGql: customTags,
-			tagsOnFileMetaDataJson: customTags
-		}
-	});
-
 	const arfsDaoFact = (tagSettings: ArFSTagSettings = arFSTagSettings) =>
 		new ArFSDAO(wallet, arweave, false, undefined, undefined, tagSettings, undefined, fakeGatewayApi);
 
 	const arfsDao = arfsDaoFact();
-	const customTagArfsDao = arfsDaoFact(customTagGQLAndMetaDataJsonSettings);
 
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
@@ -118,20 +107,6 @@ describe('ArLocal Integration Tests', function () {
 		v2TxUploadPlanner
 	);
 
-	const customTagV2ArDrive = new ArDrive(
-		wallet,
-		walletDao,
-		customTagArfsDao,
-		communityOracle,
-		undefined,
-		undefined,
-		priceEstimator,
-		new FeeMultiple(1.0),
-		false,
-		arFSTagSettings,
-		v2TxUploadPlanner
-	);
-
 	const bundledArDrive = new ArDrive(
 		wallet,
 		walletDao,
@@ -145,21 +120,6 @@ describe('ArLocal Integration Tests', function () {
 		arFSTagSettings,
 		bundledUploadPlanner
 	);
-
-	// TODO: Add bundled custom tag tests
-	// const customTagBundledArDrive = new ArDrive(
-	// 	wallet,
-	// 	walletDao,
-	// 	customTagArfsDao,
-	// 	communityOracle,
-	// 	undefined,
-	// 	undefined,
-	// 	priceEstimator,
-	// 	new FeeMultiple(1.0),
-	// 	false,
-	// 	arFSTagSettings(),
-	// 	bundledUploadPlanner
-	// );
 
 	before(async () => {
 		await fundArLocalWallet(arweave, wallet);
@@ -430,13 +390,19 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a public file with a custom content type and custom tags', async () => {
-			const { created } = await customTagV2ArDrive.uploadAllEntities({
+			const customTags = {
+				['Custom Tag']: 'This Test Works',
+				['Custom Tag Array']: ['This Test Works', 'As Well :)']
+			};
+
+			const { created } = await v2ArDrive.uploadAllEntities({
 				entitiesToUpload: [
 					{
 						destFolderId: rootFolderId,
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
-							'application/fake'
+							'application/fake',
+							{ metaDataGqlTags: customTags, metaDataJson: customTags }
 						),
 						destName: 'custom_content_unique_stub'
 					}
@@ -466,6 +432,9 @@ describe('ArLocal Integration Tests', function () {
 
 			// We filter Unix Time from deep equal check because we cannot consistently predict the exact time of Tx creation
 			expect(metaDataTags.filter((t) => t.name !== 'Unix-Time')).to.deep.equal([
+				{ name: 'Custom Tag', value: 'This Test Works' },
+				{ name: 'Custom Tag Array', value: 'This Test Works' },
+				{ name: 'Custom Tag Array', value: 'As Well :)' },
 				{ name: 'Content-Type', value: 'application/json' },
 				{ name: 'Entity-Type', value: 'file' },
 				{ name: 'Drive-Id', value: `${driveId}` },
@@ -473,10 +442,7 @@ describe('ArLocal Integration Tests', function () {
 				{ name: 'Parent-Folder-Id', value: `${rootFolderId}` },
 				{ name: 'App-Name', value: 'ArLocal Integration Test' },
 				{ name: 'App-Version', value: '1.7' },
-				{ name: 'ArFS', value: '0.11' },
-				{ name: 'Custom Tag', value: 'This Test Works' },
-				{ name: 'Custom Tag Array', value: 'This Test Works' },
-				{ name: 'Custom Tag Array', value: 'As Well :)' }
+				{ name: 'ArFS', value: '0.11' }
 			]);
 
 			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));

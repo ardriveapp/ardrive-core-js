@@ -66,8 +66,7 @@ export function getPrepFileParams({
 	destDriveId,
 	destFolderId,
 	wrappedEntity: wrappedFile,
-	driveKey,
-	customMetaData
+	driveKey
 }: FileUploadStats): PartialPrepareFileParams {
 	if (driveKey) {
 		return {
@@ -84,8 +83,7 @@ export function getPrepFileParams({
 					fileId,
 					parentFolderId: destFolderId,
 					wrappedFile,
-					driveKey,
-					customMetaData
+					driveKey
 				});
 			}
 		};
@@ -108,8 +106,7 @@ export function getPrepFileParams({
 					parentFolderId: destFolderId,
 					fileId,
 					driveId: destDriveId,
-					dataTxId,
-					customMetaData
+					dataTxId
 				})
 			)
 	};

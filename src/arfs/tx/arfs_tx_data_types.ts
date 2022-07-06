@@ -133,7 +133,7 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
 		private readonly dataContentType: DataContentType,
-		private readonly customMetaData: CustomMetaDataTagInterface = {}
+		private readonly dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
 	) {
 		super();
 	}
@@ -147,7 +147,7 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 			dataContentType: this.dataContentType
 		};
 
-		const customMetaDataArray = Object.entries(this.customMetaData);
+		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
 		if (customMetaDataArray.length > 0) {
 			for (const [name, values] of customMetaDataArray) {
 				baseArFSDataJSON[name] = values;
@@ -177,7 +177,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataContentType: DataContentType,
 		fileId: FileID,
 		driveKey: DriveKey,
-		customMetaData: CustomMetaDataTagInterface = {}
+		dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
 		const baseArFSDataJSON: Record<string, unknown> = {
 			name: name,
@@ -187,7 +187,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 			dataContentType: dataContentType
 		};
 
-		const customMetaDataArray = Object.entries(customMetaData);
+		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
 		if (customMetaDataArray.length > 0) {
 			for (const [name, values] of customMetaDataArray) {
 				baseArFSDataJSON[name] = values;

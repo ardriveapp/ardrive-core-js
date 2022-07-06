@@ -21,18 +21,13 @@ export class ArFSTagAssembler {
 		return this.assembleTags(tags, feeMultiple, shouldAddTipTag);
 	}
 
-	public assembleArFSMetaDataTags(
+	public assembleArFSMetaDataGqlTags(
 		arFSPrototype: ArFSEntityMetaDataPrototype,
 		feeMultiple?: FeeMultiple
 	): GQLTagInterface[] {
 		const tags = arFSPrototype.gqlTags;
 
 		this.arFSTagSettings.baseArFSTags.forEach((t) => tags.push(t));
-
-		if (arFSPrototype.entityType === 'file') {
-			// Add any custom tags to a File MetaData Tx's GQL Tags
-			this.maybeCustomTags((t) => arFSPrototype.assertProtectedTags(t)).forEach((t) => tags.push(t));
-		}
 
 		return this.assembleTags(tags, feeMultiple);
 	}
@@ -52,33 +47,5 @@ export class ArFSTagAssembler {
 
 	private maybeTipTags(addTipTag: boolean): GQLTagInterface[] {
 		return addTipTag ? this.arFSTagSettings.getTipTags() : [];
-	}
-
-	private maybeCustomTags(assertProtectedTags: (tags: GQLTagInterface[]) => void): GQLTagInterface[] {
-		const customMetaData = this.arFSTagSettings.maybeCustomFileMetaDataGqlTags();
-		if (!customMetaData) {
-			return [];
-		}
-
-		const tagsAsArray = Object.entries(customMetaData);
-
-		const tags: GQLTagInterface[] = [];
-		for (const [name, values] of tagsAsArray) {
-			if (typeof values === 'string') {
-				tags.push({ name, value: values });
-			} else {
-				for (const value of values) {
-					// Push each unique value as its own tag
-					tags.push({ name, value });
-				}
-			}
-		}
-
-		if (tags.length > 0) {
-			assertProtectedTags(tags);
-			return tags;
-		}
-
-		return [];
 	}
 }

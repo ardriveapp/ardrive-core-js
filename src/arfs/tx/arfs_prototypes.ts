@@ -32,11 +32,40 @@ import { ArFSDataToUpload } from '../arfs_file_wrapper';
 import { WithDriveKey } from '../arfs_entity_result_factory';
 
 export abstract class ArFSObjectMetadataPrototype {
-	abstract gqlTags: GQLTagInterface[];
-	abstract objectData: ArFSObjectTransactionData;
+	public abstract readonly objectData: ArFSObjectTransactionData;
+	private readonly gqlTagCustomMetaData: GQLTagInterface[] = [];
+
+	public get gqlTags(): GQLTagInterface[] {
+		return this.gqlTagCustomMetaData;
+	}
+
+	constructor(protected readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface) {
+		this.gqlTagCustomMetaData = this.parseCustomGqlTags(customMetaDataGqlTagInterface);
+	}
+
+	private parseCustomGqlTags(customMetaDataGqlTagInterface: CustomMetaDataTagInterface): GQLTagInterface[] {
+		const tagsAsArray = Object.entries(customMetaDataGqlTagInterface);
+
+		const tags: GQLTagInterface[] = [];
+		for (const [name, values] of tagsAsArray) {
+			if (typeof values === 'string') {
+				tags.push({ name, value: values });
+			} else {
+				for (const value of values) {
+					// Push each unique value as its own tag
+					tags.push({ name, value });
+				}
+			}
+		}
+
+		if (tags.length > 0) {
+			this.assertProtectedTags(tags);
+		}
+		return tags;
+	}
 
 	// Implementation should throw if any protected tags are identified
-	assertProtectedTags(tags: GQLTagInterface[]): void {
+	private assertProtectedTags(tags: GQLTagInterface[]): void {
 		const protectedTags = this.gqlTags.map((t) => t.name);
 
 		tags.forEach((tag) => {
@@ -53,8 +82,8 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 	abstract readonly entityType: EntityType;
 	abstract readonly driveId: DriveID;
 
-	constructor() {
-		super();
+	constructor(protected readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface) {
+		super(customMetaDataGqlTagInterface);
 
 		// Get the current time so the app can display the "created" data later on
 		this.unixTime = new UnixTime(Math.round(Date.now() / 1000));
@@ -62,9 +91,10 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 
 	public get gqlTags(): GQLTagInterface[] {
 		return [
+			...super.gqlTags,
 			{ name: 'Content-Type', value: this.contentType },
 			{ name: 'Entity-Type', value: this.entityType },
-			{ name: 'Unix-Time', value: this.unixTime.toString() },
+			{ name: 'Unix-Time', value: `${this.unixTime}` },
 			{ name: 'Drive-Id', value: `${this.driveId}` }
 		];
 	}
@@ -85,8 +115,12 @@ export class ArFSPublicDriveMetaDataPrototype extends ArFSDriveMetaDataPrototype
 	readonly privacy: DrivePrivacy = 'public';
 	readonly contentType: ContentType = JSON_CONTENT_TYPE;
 
-	constructor(readonly objectData: ArFSPublicDriveTransactionData, readonly driveId: DriveID) {
-		super();
+	constructor(
+		readonly objectData: ArFSPublicDriveTransactionData,
+		readonly driveId: DriveID,
+		public readonly customMetaDataGqlTagInterface = {}
+	) {
+		super(customMetaDataGqlTagInterface);
 	}
 }
 
@@ -94,8 +128,12 @@ export class ArFSPrivateDriveMetaDataPrototype extends ArFSDriveMetaDataPrototyp
 	readonly privacy: DrivePrivacy = 'private';
 	readonly contentType: ContentType = PRIVATE_CONTENT_TYPE;
 
-	constructor(readonly driveId: DriveID, readonly objectData: ArFSPrivateDriveTransactionData) {
-		super();
+	constructor(
+		readonly driveId: DriveID,
+		readonly objectData: ArFSPrivateDriveTransactionData,
+		public readonly customMetaDataGqlTagInterface = {}
+	) {
+		super(customMetaDataGqlTagInterface);
 	}
 
 	public get gqlTags(): GQLTagInterface[] {
@@ -135,9 +173,10 @@ export class ArFSPublicFolderMetaDataPrototype extends ArFSFolderMetaDataPrototy
 		readonly objectData: ArFSPublicFolderTransactionData,
 		readonly driveId: DriveID,
 		readonly folderId: FolderID,
-		readonly parentFolderId?: FolderID
+		readonly parentFolderId?: FolderID,
+		public readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
 	) {
-		super();
+		super(customMetaDataGqlTagInterface);
 	}
 }
 
@@ -149,9 +188,10 @@ export class ArFSPrivateFolderMetaDataPrototype extends ArFSFolderMetaDataProtot
 		readonly driveId: DriveID,
 		readonly folderId: FolderID,
 		readonly objectData: ArFSPrivateFolderTransactionData,
-		readonly parentFolderId?: FolderID
+		readonly parentFolderId?: FolderID,
+		public readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
 	) {
-		super();
+		super(customMetaDataGqlTagInterface);
 	}
 
 	get gqlTags(): GQLTagInterface[] {
@@ -186,7 +226,6 @@ export interface ArFSPublicFileMetaDataPrototypeFromFileParams {
 	driveId: DriveID;
 	fileId: FileID;
 	parentFolderId: FolderID;
-	customMetaData?: CustomMetaDataTagInterface;
 }
 
 export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
@@ -196,9 +235,10 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		readonly objectData: ArFSPublicFileMetadataTransactionData,
 		readonly driveId: DriveID,
 		readonly fileId: FileID,
-		readonly parentFolderId: FolderID
+		readonly parentFolderId: FolderID,
+		readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
 	) {
-		super();
+		super(customMetaDataGqlTagInterface);
 	}
 
 	public static fromFile({
@@ -206,8 +246,7 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		dataTxId,
 		parentFolderId,
 		fileId,
-		driveId,
-		customMetaData = {}
+		driveId
 	}: ArFSPublicFileMetaDataPrototypeFromFileParams): ArFSPublicFileMetaDataPrototype {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 		return new ArFSPublicFileMetaDataPrototype(
@@ -217,11 +256,12 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 				lastModifiedDateMS,
 				dataTxId,
 				dataContentType,
-				customMetaData
+				wrappedFile.customMetaData?.metaDataJson
 			),
 			driveId,
 			fileId,
-			parentFolderId
+			parentFolderId,
+			wrappedFile.customMetaData?.metaDataGqlTags
 		);
 	}
 }
@@ -234,9 +274,10 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 		readonly objectData: ArFSPrivateFileMetadataTransactionData,
 		readonly driveId: DriveID,
 		readonly fileId: FileID,
-		readonly parentFolderId: FolderID
+		readonly parentFolderId: FolderID,
+		readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
 	) {
-		super();
+		super(customMetaDataGqlTagInterface);
 	}
 
 	get gqlTags(): GQLTagInterface[] {
@@ -253,8 +294,7 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 		parentFolderId,
 		fileId,
 		driveId,
-		driveKey,
-		customMetaData = {}
+		driveKey
 	}: ArFSPrivateFileMetaDataPrototypeFromFileParams): Promise<ArFSPrivateFileMetaDataPrototype> {
 		const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
 
@@ -267,11 +307,12 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 				dataContentType,
 				fileId,
 				driveKey,
-				customMetaData
+				wrappedFile.customMetaData?.metaDataJson
 			),
 			driveId,
 			fileId,
-			parentFolderId
+			parentFolderId,
+			wrappedFile.customMetaData?.metaDataGqlTags
 		);
 	}
 }
@@ -286,15 +327,23 @@ export abstract class ArFSFileDataPrototype extends ArFSObjectMetadataPrototype 
 }
 
 export class ArFSPublicFileDataPrototype extends ArFSFileDataPrototype {
-	constructor(readonly objectData: ArFSPublicFileDataTransactionData, readonly contentType: DataContentType) {
-		super();
+	constructor(
+		readonly objectData: ArFSPublicFileDataTransactionData,
+		readonly contentType: DataContentType,
+		public readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
+	) {
+		super(customMetaDataGqlTagInterface);
 	}
 }
 
 export class ArFSPrivateFileDataPrototype extends ArFSFileDataPrototype {
 	readonly contentType = PRIVATE_CONTENT_TYPE;
-	constructor(readonly objectData: ArFSPrivateFileDataTransactionData) {
-		super();
+
+	constructor(
+		readonly objectData: ArFSPrivateFileDataTransactionData,
+		public readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface = {}
+	) {
+		super(customMetaDataGqlTagInterface);
 	}
 
 	get gqlTags(): GQLTagInterface[] {
