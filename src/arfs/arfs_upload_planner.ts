@@ -60,11 +60,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	private async planFile(uploadStats: PlanFileParams, bundlePacker: BundlePacker): Promise<void> {
 		const { wrappedEntity: wrappedFile, isBulkUpload, driveKey } = uploadStats;
 		const isPrivate = driveKey !== undefined;
-		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(
-			wrappedFile,
-			isPrivate,
-			this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
-		);
+		const { fileDataByteCount, fileMetaDataPrototype } = await getFileEstimationInfo(wrappedFile, isPrivate);
 
 		const fileDataItemByteCount = byteCountAsDataItem(
 			fileDataByteCount,
@@ -72,7 +68,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		);
 		const metaDataByteCountAsDataItem = byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataTags(fileMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags(fileMetaDataPrototype)
 		);
 		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
 
@@ -127,7 +123,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			if (this.shouldBundle) {
 				const folderByteCountAsDataItem = byteCountAsDataItem(
 					folderMetaDataPrototype.objectData.sizeOf(),
-					this.tagAssembler.assembleArFSMetaDataTags(folderMetaDataPrototype)
+					this.tagAssembler.assembleArFSMetaDataGqlTags(folderMetaDataPrototype)
 				);
 
 				bundlePacker.packIntoBundle({
@@ -158,8 +154,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			await this.planFile(
 				{
 					...partialPlanParams,
-					wrappedEntity: file,
-					customMetaData: this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
+					wrappedEntity: file
 				},
 				bundlePacker
 			);
@@ -219,8 +214,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 					{
 						...uploadStat,
 						wrappedEntity,
-						isBulkUpload,
-						customMetaData: this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
+						isBulkUpload
 					},
 					bundlePacker
 				);
@@ -268,11 +262,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	}: EstimateCreateDriveParams): CreateDrivePlan {
 		const driveDataItemByteCount = byteCountAsDataItem(
 			driveMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataTags(driveMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags(driveMetaDataPrototype)
 		);
 		const rootFolderDataItemByteCount = byteCountAsDataItem(
 			rootFolderMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataTags(rootFolderMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags(rootFolderMetaDataPrototype)
 		);
 		const totalDataItemByteCount = driveDataItemByteCount.plus(rootFolderDataItemByteCount);
 

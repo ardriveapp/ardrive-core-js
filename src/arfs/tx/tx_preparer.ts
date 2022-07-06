@@ -38,7 +38,7 @@ export class TxPreparer {
 	}
 
 	public async prepareMetaDataDataItem({ objectMetaData }: ArFSPrepareMetaDataItemParams): Promise<DataItem> {
-		const tags = this.tagAssembler.assembleArFSMetaDataTags(objectMetaData);
+		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags(objectMetaData);
 
 		return this.prepareAndSignDataItem(objectMetaData.objectData, tags);
 	}
@@ -103,7 +103,7 @@ export class TxPreparer {
 		objectMetaData,
 		rewardSettings
 	}: ArFSPrepareMetaDataTxParams): Promise<Transaction> {
-		const tags = this.tagAssembler.assembleArFSMetaDataTags(objectMetaData, rewardSettings.feeMultiple);
+		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags(objectMetaData, rewardSettings.feeMultiple);
 
 		return this.prepareTx({ data: objectMetaData.objectData.asTransactionData(), tags, rewardSettings });
 	}

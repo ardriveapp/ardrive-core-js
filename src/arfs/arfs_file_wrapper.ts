@@ -18,7 +18,7 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, SourceUri } from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, CustomMetaData, SourceUri } from '../exports';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
@@ -62,15 +62,16 @@ export function resolveEntityPathToLocalSourceUri(entityPath: LocalEntityPath): 
  */
 export function wrapFileOrFolder(
 	fileOrFolderPath: LocalEntityPath,
-	customContentType?: DataContentType
+	customContentType?: DataContentType,
+	customMetaData?: CustomMetaData
 ): ArFSFileToUpload | ArFSFolderToUpload {
 	const entityStats = statSync(fileOrFolderPath);
 
 	if (entityStats.isDirectory()) {
-		return new ArFSFolderToUpload(fileOrFolderPath, entityStats);
+		return new ArFSFolderToUpload(fileOrFolderPath, entityStats, customMetaData);
 	}
 
-	return new ArFSFileToUpload(fileOrFolderPath, entityStats, customContentType);
+	return new ArFSFileToUpload(fileOrFolderPath, entityStats, customContentType, customMetaData);
 }
 
 /** Type-guard function to determine if returned class is a File or Folder */
@@ -85,6 +86,8 @@ export abstract class ArFSBaseEntityToUpload {
 	// Source URI is optional when an upload has no local or remote source (manifest use case). It remains
 	// non-abstract so classes can choose not have to implement it, which will default the value to undefined
 	readonly sourceUri?: SourceUri;
+
+	readonly customMetaData?: CustomMetaData;
 
 	destName?: string;
 	existingId?: EntityID;
@@ -114,7 +117,8 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 
 	constructor(
 		public readonly folderToGenManifest: (ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[],
-		public readonly destManifestName: string
+		public readonly destManifestName: string,
+		public readonly customMetaData?: CustomMetaData
 	) {
 		super();
 
@@ -217,7 +221,8 @@ export class ArFSFileToUpload extends ArFSDataToUpload {
 	constructor(
 		public readonly filePath: LocalEntityPath,
 		public readonly fileStats: Stats,
-		public readonly customContentType?: DataContentType
+		public readonly customContentType?: DataContentType,
+		public readonly customMetaData?: CustomMetaData
 	) {
 		super();
 		if (+this.fileStats.size > +maxFileSize) {
@@ -280,7 +285,11 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 	public readonly entityType = 'folder';
 	public readonly sourceUri = resolveEntityPathToLocalSourceUri(this.filePath);
 
-	constructor(public readonly filePath: LocalEntityPath, public readonly fileStats: Stats) {
+	constructor(
+		public readonly filePath: LocalEntityPath,
+		public readonly fileStats: Stats,
+		public readonly customMetaData?: CustomMetaData
+	) {
 		super();
 
 		const entitiesInFolder = readdirSync(this.filePath);

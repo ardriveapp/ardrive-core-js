@@ -10,8 +10,7 @@ import {
 	FileConflictPrompts,
 	FileNameConflictResolution,
 	FolderConflictPrompts,
-	DriveKey,
-	CustomMetaDataTagInterface
+	DriveKey
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
@@ -125,7 +124,7 @@ export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends 
 	owner: ArweaveAddress;
 }
 
-export type FileUploadStats = UploadStats<ArFSDataToUpload> & { customMetaData?: CustomMetaDataTagInterface };
+export type FileUploadStats = UploadStats<ArFSDataToUpload>;
 export type FolderUploadStats = UploadStats<ArFSFolderToUpload>;
 
 export interface UploadAllEntitiesParams {

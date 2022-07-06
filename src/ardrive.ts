@@ -825,10 +825,7 @@ export class ArDrive extends ArDriveAnonymous {
 	private async deriveAndAssertV2PublicFileMetaDataRewardSettings(
 		wrappedFile: ArFSFileToUpload
 	): Promise<RewardSettings> {
-		const fileEstimationPrototype = getPublicUploadFileEstimationPrototype(
-			wrappedFile,
-			this.arFSTagSettings.maybeCustomFileMetaDataJSONTags()
-		);
+		const fileEstimationPrototype = getPublicUploadFileEstimationPrototype(wrappedFile);
 
 		// prettier-ignore
 		const { metaDataRewardSettings, totalWinstonPrice } =

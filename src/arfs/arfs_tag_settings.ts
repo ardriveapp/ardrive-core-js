@@ -1,11 +1,4 @@
-import {
-	GQLTagInterface,
-	FeeMultiple,
-	TipType,
-	DataContentType,
-	CustomMetaDataTagInterface,
-	CustomMetaData
-} from '../types';
+import { GQLTagInterface, FeeMultiple, TipType, DataContentType, CustomMetaData } from '../types';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -26,18 +19,15 @@ export class ArFSTagSettings {
 	private readonly appName: string;
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
-	private readonly customMetaData: CustomMetaData;
 
 	constructor({
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
-		arFSVersion = CURRENT_ARFS_VERSION,
-		customMetaData = {}
+		arFSVersion = CURRENT_ARFS_VERSION
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
 		this.arFSVersion = arFSVersion;
-		this.customMetaData = customMetaData;
 	}
 
 	public get baseAppTags(): GQLTagInterface[] {
@@ -53,14 +43,6 @@ export class ArFSTagSettings {
 
 	public getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
 		return [{ name: 'Tip-Type', value: tipType }];
-	}
-
-	public maybeCustomFileMetaDataGqlTags(): CustomMetaDataTagInterface | undefined {
-		return this.customMetaData.tagsOnFileMetaDataGql;
-	}
-
-	public maybeCustomFileMetaDataJSONTags(): CustomMetaDataTagInterface | undefined {
-		return this.customMetaData.tagsOnFileMetaDataJson;
 	}
 
 	public get baseArFSTags(): GQLTagInterface[] {

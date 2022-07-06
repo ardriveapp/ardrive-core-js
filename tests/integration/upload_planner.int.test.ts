@@ -26,7 +26,7 @@ describe('UploadPlanner + TxPreparer -- integrated', () => {
 
 		const plannedBundleByteCount = bundlePlan.totalByteCount;
 
-		const prototypeFactories = getPrepFileParams({ ...uploadStats, customMetaData: {} });
+		const prototypeFactories = getPrepFileParams(uploadStats);
 
 		const fileDataItem = await txPreparer.prepareFileDataDataItem({
 			objectMetaData: await prototypeFactories.dataPrototypeFactoryFn(

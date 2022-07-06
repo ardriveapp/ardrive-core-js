@@ -14,7 +14,7 @@ import {
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
-import { CustomMetaData, FeeMultiple } from './types';
+import { FeeMultiple } from './types';
 import { WalletDAO } from './wallet_dao';
 import { ArFSUploadPlanner, UploadPlanner } from './arfs/arfs_upload_planner';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
@@ -46,7 +46,6 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
-	customMetaData?: CustomMetaData;
 }
 
 const defaultArweave = Arweave.init({
@@ -67,8 +66,7 @@ export function arDriveFactory({
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
-	customMetaData,
-	arFSTagSettings = new ArFSTagSettings({ appName, appVersion, customMetaData }),
+	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings

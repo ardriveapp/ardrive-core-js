@@ -1,5 +1,17 @@
 export type CustomMetaDataTagInterface = Record<string, string | string[]>;
 
+export interface CustomMetaData {
+	/** Include custom metadata on MetaData Tx Data JSON */
+	metaDataJson?: CustomMetaDataTagInterface;
+
+	/** Include custom metadata on MetaData Tx GQL Tags */
+	metaDataGqlTags?: CustomMetaDataTagInterface;
+
+	// TODO: Include dataTx GQL tags as an option (PE-1534)
+	/** Include custom metadata on File Data Tx GQL Tags */
+	// dataGqlTags?: CustomMetaDataTagInterface;
+}
+
 export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTagInterface {
 	if (typeof tags !== 'object' || tags === null) {
 		return false;
@@ -24,20 +36,6 @@ export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaD
 	}
 
 	return true;
-}
-
-export interface CustomMetaData {
-	tagsOnFileMetaDataJson?: CustomMetaDataTagInterface;
-	tagsOnFileMetaDataGql?: CustomMetaDataTagInterface;
-
-	// TODO: Include dataTx GQL tags as an option (PE-1534)
-	// tagsOnFileDataTxGql?: CustomMetaDataTagInterface;
-
-	// tagsOnFolderMetaDataJson?: CustomMetaDataTagInterface;
-	// tagsOnFolderMetaDataGql?: CustomMetaDataTagInterface;
-
-	// tagsOnDriveMetaDataJson?: CustomMetaDataTagInterface;
-	// tagsOnDriveMetaDataGql?: CustomMetaDataTagInterface;
 }
 
 export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
