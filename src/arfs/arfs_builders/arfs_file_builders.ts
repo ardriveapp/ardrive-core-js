@@ -43,20 +43,8 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	}
 
 	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
-		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node);
-		tags.forEach((tag: GQLTagInterface) => {
-			const key = tag.name;
-			// const { value } = tag;
-			switch (key) {
-				case 'File-Id':
-					break;
-				default:
-					unparsedTags.push(tag);
-					break;
-			}
-		});
-		return unparsedTags;
+		return tags.filter((tag) => tag.name !== 'File-Id');
 	}
 
 	parseCustomMetaData(dataJSON: FileMetaDataTransactionData): void {
