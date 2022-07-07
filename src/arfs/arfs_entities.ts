@@ -67,7 +67,7 @@ export class ArFSEntity {
 			return this as Record<string, unknown>;
 		}
 
-		const entity: [string, unknown][] = Object.entries(this).filter(([k]) => k !== 'customMetaData');
+		const entity: [string, unknown][] = Object.entries(this).filter(([key]) => key !== 'customMetaData');
 		return Object.assign(fromEntries(entity), customMetaData);
 	}
 }
@@ -186,10 +186,10 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 	lastModifiedDate: UnixTime; // the last modified date of the file or folder as seconds since unix epoch
 }
 
+// prettier-ignore
 export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
-	extends ArFSEntity
-	// eslint-disable-next-line prettier/prettier
-	implements ArFSFileFolderEntity {
+	extends ArFSEntity implements ArFSFileFolderEntity
+{
 	constructor(
 		appName: string,
 		appVersion: string,
