@@ -75,10 +75,16 @@ describe('ArLocal Integration Tests', function () {
 
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
 
-	const arfsDaoFact = (tagSettings: ArFSTagSettings = arFSTagSettings) =>
-		new ArFSDAO(wallet, arweave, false, undefined, undefined, tagSettings, undefined, fakeGatewayApi);
-
-	const arfsDao = arfsDaoFact();
+	const arfsDao = new ArFSDAO(
+		wallet,
+		arweave,
+		false,
+		undefined,
+		undefined,
+		arFSTagSettings,
+		undefined,
+		fakeGatewayApi
+	);
 
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
