@@ -124,11 +124,9 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	async build(node?: GQLNodeInterface): Promise<T> {
 		const extraTags = await this.parseFromArweaveNode(node, this.owner);
 		if (extraTags.length > 0) {
-			const customMetaData: CustomMetaDataTagInterface = {};
 			for (const { name, value } of extraTags) {
-				customMetaData[name] = value;
+				this.addToCustomMetaData({ [name]: value });
 			}
-			this.addToCustomMetaData(customMetaData);
 		}
 
 		return this.buildEntity();
