@@ -9,23 +9,23 @@ import {
 	TransactionID,
 	UnixTime,
 	EID,
-	ContentType,
 	GQLNodeInterface,
 	GQLTagInterface,
-	EntityMetaDataTransactionData
+	EntityMetaDataTransactionData,
+	DataContentType
 } from '../../types';
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';
 
-interface FileMetaDataTransactionData extends EntityMetaDataTransactionData {
+export interface FileMetaDataTransactionData extends EntityMetaDataTransactionData {
 	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
 	name: string;
 	size: number;
 	lastModifiedDate: number;
 	dataTxId: string;
-	dataContentType: ContentType;
+	dataContentType: DataContentType;
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
 	'file',
@@ -34,7 +34,7 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	size?: ByteCount;
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;
-	dataContentType?: ContentType;
+	dataContentType?: DataContentType;
 
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
