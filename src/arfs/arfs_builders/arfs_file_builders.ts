@@ -11,7 +11,8 @@ import {
 	EID,
 	ContentType,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	EntityMetaDataTransactionData
 } from '../../types';
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';

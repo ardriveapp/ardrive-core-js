@@ -24,6 +24,9 @@ export type DataContentType = string;
 export type SourceUri = string;
 export type EntityName = string;
 
+/** Data JSON of a MetaData Transaction */
+export type EntityMetaDataTransactionData = Record<string, unknown>;
+
 export interface ArDriveCommunityTip {
 	tipPercentage: number;
 	minWinstonFee: Winston;

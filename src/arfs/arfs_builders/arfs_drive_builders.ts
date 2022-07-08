@@ -1,5 +1,5 @@
 import { driveDecrypt } from '../../utils/crypto';
-import { EntityMetaDataTransactionData, PrivateKeyData } from '../private_key_data';
+import { PrivateKeyData } from '../private_key_data';
 import {
 	CipherIV,
 	DriveKey,
@@ -9,7 +9,8 @@ import {
 	DriveAuthMode,
 	DrivePrivacy,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	EntityMetaDataTransactionData
 } from '../../types';
 import { Utf8ArrayToStr } from '../../utils/common';
 import { fakeEntityId } from '../../utils/constants';

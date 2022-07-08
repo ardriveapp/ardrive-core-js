@@ -15,7 +15,8 @@ import {
 	GQLNodeInterface,
 	GQLTagInterface,
 	CustomMetaDataTagInterface,
-	isCustomMetaDataTagInterface
+	isCustomMetaDataTagInterface,
+	EntityMetaDataTransactionData
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
