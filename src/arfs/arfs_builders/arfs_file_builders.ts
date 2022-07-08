@@ -19,7 +19,7 @@ import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';
 
-interface FileMetaDataTransactionData {
+interface FileMetaDataTransactionData extends EntityMetaDataTransactionData {
 	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
 	name: string;
 	size: number;
@@ -48,28 +48,7 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 		return tags.filter((tag) => tag.name !== 'File-Id');
 	}
 
-	parseCustomMetaData(dataJSON: FileMetaDataTransactionData): void {
-		const arFSTagKeysInFileMetaDataJSON = [
-			'name',
-			'size',
-			'lastModifiedDate',
-			'dataTxId',
-			'dataContentType'
-		] as const;
-		const numOfArFSTagsInFileMetaDataJSON = arFSTagKeysInFileMetaDataJSON.length;
-		const fileJSONAsArray = Object.keys(dataJSON);
-		if (fileJSONAsArray.length > numOfArFSTagsInFileMetaDataJSON) {
-			this.addToCustomMetaData(
-				fileJSONAsArray.reduce(
-					(prev, curr) =>
-						// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-						// @ts-ignore TODO: Proper Types Here
-						arFSTagKeysInFileMetaDataJSON.includes(curr) ? prev : { ...prev, [curr]: dataJSON[curr] },
-					{}
-				)
-			);
-		}
-	}
+	protected readonly protectedDataJsonKeys = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'];
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
@@ -117,7 +96,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			) {
 				throw new Error('Invalid file state');
 			}
-			this.parseCustomMetaData(dataJSON);
+			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFile(
@@ -230,7 +209,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				throw new Error('Invalid file state');
 			}
 
-			this.parseCustomMetaData(decryptedFileJSON);
+			this.parseCustomMetaDataFromDataJson(decryptedFileJSON);
 
 			return new ArFSPrivateFile(
 				this.appName,

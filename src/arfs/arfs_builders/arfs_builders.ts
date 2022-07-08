@@ -134,14 +134,53 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		return this.buildEntity();
 	}
 
-	protected addToCustomMetaData(tags: Record<string, unknown>): void {
-		if (isCustomMetaDataTagInterface(tags)) {
-			Object.assign(this.customMetaData, tags);
+	protected addToCustomMetaData(customMetaData: Record<string, unknown>): void {
+		if (isCustomMetaDataTagInterface(customMetaData)) {
+			for (const key of Object.keys(customMetaData)) {
+				let keyValue: string | string[];
+
+				const prevValue = this.customMetaData[key];
+				const newValue = customMetaData[key];
+
+				if (prevValue) {
+					keyValue = Array.isArray(prevValue) ? prevValue : [prevValue];
+
+					if (Array.isArray(newValue)) {
+						for (const val of newValue) {
+							keyValue.push(val);
+						}
+					} else {
+						keyValue.push(newValue);
+					}
+				} else {
+					keyValue = newValue;
+				}
+
+				this.customMetaData[key] = keyValue;
+			}
 		}
 	}
 
 	getDataForTxID(txId: TransactionID): Promise<Buffer> {
 		return this.gatewayApi.getTxData(txId);
+	}
+
+	protected abstract protectedDataJsonKeys: string[];
+
+	protected parseCustomMetaDataFromDataJson(dataJson: EntityMetaDataTransactionData): void {
+		const dataJsonEntries = Object.entries(dataJson);
+
+		if (dataJsonEntries.length > this.protectedDataJsonKeys.length) {
+			const customMetaData: Record<string, string | string[]> = {};
+
+			for (const [key, val] of dataJsonEntries) {
+				if (!this.protectedDataJsonKeys.includes(key)) {
+					Object.assign(customMetaData, { [key]: val });
+				}
+			}
+
+			this.addToCustomMetaData(customMetaData);
+		}
 	}
 }
 

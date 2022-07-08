@@ -28,7 +28,11 @@ interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	rootFolderId: FolderID;
 }
 
-export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublicDrive> {
+abstract class ArFSDriveBuilder<T extends ArFSDriveEntity> extends ArFSMetadataEntityBuilder<T> {
+	protected readonly protectedDataJsonKeys = ['name', 'rootFolderId'];
+}
+
+export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 
@@ -92,6 +96,8 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 				throw new Error('Invalid drive state');
 			}
 
+			this.parseCustomMetaDataFromDataJson(dataJSON);
+
 			return new ArFSPublicDrive(
 				this.appName,
 				this.appVersion,
@@ -103,7 +109,8 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 				this.txId,
 				this.unixTime,
 				this.drivePrivacy,
-				this.rootFolderId
+				this.rootFolderId,
+				this.customMetaData
 			);
 		}
 
@@ -111,7 +118,7 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 	}
 }
 
-export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPrivateDrive> {
+export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 	driveAuthMode?: DriveAuthMode;
@@ -197,6 +204,8 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 			this.name = decryptedDriveJSON.name;
 			this.rootFolderId = decryptedDriveJSON.rootFolderId;
 
+			this.parseCustomMetaDataFromDataJson(decryptedDriveJSON);
+
 			return new ArFSPrivateDrive(
 				this.appName,
 				this.appVersion,
@@ -212,7 +221,8 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 				this.driveAuthMode,
 				this.cipher,
 				this.cipherIV,
-				this.driveKey
+				this.driveKey,
+				this.customMetaData
 			);
 		}
 
@@ -232,7 +242,7 @@ export interface SafeArFSPrivateMetadataEntityBuilderParams extends ArFSMetadata
 	privateKeyData: PrivateKeyData;
 }
 
-export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEntity> {
+export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 	driveAuthMode?: DriveAuthMode;
@@ -342,6 +352,8 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			this.name = dataJSON.name;
 			this.rootFolderId = dataJSON.rootFolderId;
 
+			this.parseCustomMetaDataFromDataJson(dataJSON);
+
 			if (isPrivate) {
 				if (!this.driveAuthMode || !this.cipher || !this.cipherIV) {
 					throw new Error(`Unexpectedly null privacy data for private drive with ID ${this.driveId}!`);
@@ -383,7 +395,8 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 					this.rootFolderId,
 					this.driveAuthMode,
 					this.cipher,
-					this.cipherIV
+					this.cipherIV,
+					this.customMetaData
 				);
 			}
 			return new ArFSPublicDrive(
@@ -397,7 +410,8 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 				this.txId,
 				this.unixTime,
 				this.drivePrivacy,
-				this.rootFolderId
+				this.rootFolderId,
+				this.customMetaData
 			);
 		}
 		throw new Error('Invalid drive state');

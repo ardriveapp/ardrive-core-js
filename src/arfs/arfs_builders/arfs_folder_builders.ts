@@ -30,12 +30,19 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 	'folder',
 	T
 > {
+	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+		const tags = await super.parseFromArweaveNode(node);
+		return tags.filter((tag) => tag.name !== 'Folder-Id');
+	}
+
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
 			{ name: 'Folder-Id', value: `${this.entityId}` },
 			{ name: 'Entity-Type', value: 'folder' }
 		];
 	}
+
+	protected readonly protectedDataJsonKeys = ['name'];
 }
 
 export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder> {
@@ -77,6 +84,7 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			if (!this.name) {
 				throw new Error('Invalid public folder state: name not found!');
 			}
+			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFolder(
@@ -89,7 +97,8 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 					this.txId,
 					this.unixTime,
 					this.parentFolderId,
-					this.entityId
+					this.entityId,
+					this.customMetaData
 				)
 			);
 		}
@@ -179,6 +188,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				throw new Error('Invalid private folder state: name not found!');
 			}
 
+			this.parseCustomMetaDataFromDataJson(decryptedFolderJSON);
+
 			return new ArFSPrivateFolder(
 				this.appName,
 				this.appVersion,
@@ -192,7 +203,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.entityId,
 				this.cipher,
 				this.cipherIV,
-				this.driveKey
+				this.driveKey,
+				this.customMetaData
 			);
 		}
 		throw new Error('Invalid private folder state');
