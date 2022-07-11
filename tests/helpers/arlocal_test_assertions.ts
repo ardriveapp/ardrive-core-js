@@ -58,23 +58,14 @@ function assertBaseArFSEntityExpectations({
 }
 
 function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaDataTagInterface) {
-	console.log('entity', entity);
 	const customMetaDataEntries = Object.entries(customMetaData);
-	console.log('customMetaDataEntries', customMetaDataEntries);
 	for (const [key, value] of customMetaDataEntries) {
-		console.log('key', key);
-		console.log('value', value);
-		console.log('entity.customMetaData![key])', entity.customMetaData![key]);
 		// Without serialization, all custom metadata will be found on the customMetaData field
 		expect(entity.customMetaData![key]).to.deep.equal(value);
 	}
 
 	const serializedEntity: Record<string, string | string[]> = JSON.parse(JSON.stringify(entity));
-	console.log('serializedEntity', serializedEntity);
 	for (const [key, value] of customMetaDataEntries) {
-		console.log('key', key);
-		console.log('value', value);
-		console.log('serializedEntity[key]', serializedEntity[key]);
 		// After serialization, all custom metadata will be adjacent to ArFS metadata
 		expect(serializedEntity[key]).to.deep.equal(value);
 	}
