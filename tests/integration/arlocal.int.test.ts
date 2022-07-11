@@ -60,7 +60,9 @@ import {
 	assertPrivateFolderExpectations,
 	assertPrivateFileExpectations,
 	assertPrivateFolderWithPathsExpectations,
-	assertPrivateFileWithPathsExpectations
+	assertPrivateFileWithPathsExpectations,
+	assertFolderMetaDataJson,
+	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
 
 describe('ArLocal Integration Tests', function () {
@@ -464,6 +466,78 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		// TODO: Public folder upload test with custom tags on different entities
+		it('we can upload a public folder as a v2 transaction with a custom content type and custom metadata', async () => {
+			const folderName = 'custom_content_unique_folder';
+			const customContentType = 'application/fake';
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
+							customContentType,
+							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+						),
+						destName: folderName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { metadataTxId, entityId: folderId }: Required<ArFSEntityData> = created[0];
+
+			const metaDataJson = await getMetaDataJSONFromArLocal(arweave, metadataTxId);
+			assertFolderMetaDataJson(metaDataJson, {
+				name: folderName,
+				customMetaData
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFolderMetaDataGqlTags(metaDataTx, {
+				driveId,
+				folderId,
+				parentFolderId: rootFolderId,
+				customMetaData
+			});
+
+			const arFSFolderEntity = await v2ArDrive.getPublicFolder({ folderId });
+			assertPublicFolderExpectations({
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				folderId,
+				driveId,
+				entity: arFSFolderEntity,
+				entityName: folderName,
+				customMetaData: {
+					['Custom Tag']: ['This Test Works', 'This Test Works'],
+					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
+				}
+			});
+
+			// Check that nested file also has custom metadata
+			// @ts-ignore
+			const { metadataTxId: fileMetaDataTxId, entityId: fileId, dataTxId }: Required<ArFSEntityData> = created[1];
+			const expectedFileSize = 14;
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: folderId,
+				metaDataTxId: fileMetaDataTxId,
+				fileId,
+				entityName: 'file_in_grandchild.txt',
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: 'text/plain',
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData: {
+					['Custom Tag']: ['This Test Works', 'This Test Works'],
+					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
+				}
+			});
+		});
 
 		// TODO: Debug why this test doesn't work
 		it.skip('we can upload a bundled public file with a custom content type and custom metadata', async function () {

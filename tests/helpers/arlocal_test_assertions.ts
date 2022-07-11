@@ -230,9 +230,13 @@ export function assertPrivateFileWithPathsExpectations(
 	assertPrivateFileExpectations({ ...params, entity: params.entity as unknown as ArFSPrivateFile });
 }
 
-interface FileMetaDataJsonExpectations extends Omit<FileMetaDataTransactionData, 'lastModifiedDate'> {
+interface CustomMetaDataExpectation {
 	customMetaData: CustomMetaDataTagInterface;
 }
+
+interface FileMetaDataJsonExpectations
+	extends Omit<FileMetaDataTransactionData, 'lastModifiedDate'>,
+		CustomMetaDataExpectation {}
 
 export function assertFileMetaDataJson(
 	dataJson: EntityMetaDataTransactionData,
@@ -250,6 +254,21 @@ export function assertFileMetaDataJson(
 		size,
 		dataTxId: `${dataTxId}`,
 		dataContentType: dataContentType
+	});
+}
+
+interface FolderMetaDataJsonExpectations extends CustomMetaDataExpectation {
+	name: string;
+}
+
+export function assertFolderMetaDataJson(
+	dataJson: EntityMetaDataTransactionData,
+	expectations: FolderMetaDataJsonExpectations
+): void {
+	const { name, customMetaData } = expectations;
+	expect(dataJson).to.deep.equal({
+		...customMetaData,
+		name
 	});
 }
 
@@ -292,6 +311,34 @@ export function assertFileMetaDataGqlTags(
 		{ name: 'Entity-Type', value: 'file' },
 		{ name: 'Drive-Id', value: `${driveId}` },
 		{ name: 'File-Id', value: `${fileId}` },
+		{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+		{ name: 'App-Name', value: 'ArLocal Integration Test' },
+		{ name: 'App-Version', value: '1.7' },
+		{ name: 'ArFS', value: '0.11' }
+	]);
+}
+
+export function assertFolderMetaDataGqlTags(
+	metaDataTx: Transaction,
+	expectations: {
+		driveId: DriveID;
+		folderId: FolderID;
+		parentFolderId: DriveID;
+		customMetaData: CustomMetaDataTagInterface;
+	}
+): void {
+	const { driveId, folderId, parentFolderId, customMetaData } = expectations;
+	const expectedMetaData: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
+
+	const metaDataTags = getDecodedTags(metaDataTx.tags);
+
+	// We filter Unix Time from deep equal check because we cannot consistently predict the exact time of Tx creation
+	expect(metaDataTags.filter((t) => t.name !== 'Unix-Time')).to.deep.equal([
+		...expectedMetaData,
+		{ name: 'Content-Type', value: 'application/json' },
+		{ name: 'Entity-Type', value: 'folder' },
+		{ name: 'Drive-Id', value: `${driveId}` },
+		{ name: 'Folder-Id', value: `${folderId}` },
 		{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
 		{ name: 'App-Version', value: '1.7' },
