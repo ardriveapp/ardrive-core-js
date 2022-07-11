@@ -121,22 +121,31 @@ export async function getPrepFolderFactoryParams({
 }: FolderUploadStats): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
 	if (driveKey) {
 		// Return factory for private folder prototype
-		const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
+		const folderData = await ArFSPrivateFolderTransactionData.from(
+			wrappedFolder.destinationBaseName,
+			driveKey,
+			wrappedFolder.customMetaData?.metaDataJson
+		);
 		return (folderId) =>
 			new ArFSPrivateFolderMetaDataPrototype(
 				destDriveId,
 				wrappedFolder.existingId ?? folderId,
 				folderData,
-				destFolderId
+				destFolderId,
+				wrappedFolder.customMetaData?.metaDataGqlTags
 			);
 	}
 
 	return (folderId) =>
 		// Return factory for public folder prototype
 		new ArFSPublicFolderMetaDataPrototype(
-			new ArFSPublicFolderTransactionData(wrappedFolder.destinationBaseName),
+			new ArFSPublicFolderTransactionData(
+				wrappedFolder.destinationBaseName,
+				wrappedFolder.customMetaData?.metaDataJson
+			),
 			destDriveId,
 			wrappedFolder.existingId ?? folderId,
-			destFolderId
+			destFolderId,
+			wrappedFolder.customMetaData?.metaDataGqlTags
 		);
 }

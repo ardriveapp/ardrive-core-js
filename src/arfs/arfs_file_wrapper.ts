@@ -300,11 +300,11 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 
 			if (entityStats.isDirectory()) {
 				// Child is a folder, build a new folder which will construct it's own children
-				const childFolder = new ArFSFolderToUpload(absoluteEntityPath, entityStats);
+				const childFolder = new ArFSFolderToUpload(absoluteEntityPath, entityStats, customMetaData);
 				this.folders.push(childFolder);
 			} else {
 				// Child is a file, build a new file
-				const childFile = new ArFSFileToUpload(absoluteEntityPath, entityStats);
+				const childFile = new ArFSFileToUpload(absoluteEntityPath, entityStats, undefined, customMetaData);
 				if (childFile.getBaseName() !== '.DS_Store') {
 					this.files.push(childFile);
 				}

@@ -81,13 +81,24 @@ export abstract class ArFSFolderTransactionData implements ArFSObjectTransaction
 }
 
 export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
-	constructor(private readonly name: string) {
+	constructor(
+		private readonly name: string,
+		private readonly dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
+	) {
 		super();
 	}
 	asTransactionData(): string {
-		return JSON.stringify({
+		const baseArFSDataJSON: Record<string, unknown> = {
 			name: this.name
-		});
+		};
+
+		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
+		if (customMetaDataArray.length > 0) {
+			for (const [name, values] of customMetaDataArray) {
+				baseArFSDataJSON[name] = values;
+			}
+		}
+		return JSON.stringify(baseArFSDataJSON);
 	}
 }
 
@@ -102,7 +113,22 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 		super();
 	}
 
-	static async from(name: string, driveKey: DriveKey): Promise<ArFSPrivateFolderTransactionData> {
+	static async from(
+		name: string,
+		driveKey: DriveKey,
+		dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
+	): Promise<ArFSPrivateFolderTransactionData> {
+		const baseArFSDataJSON: Record<string, unknown> = {
+			name: name
+		};
+
+		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
+		if (customMetaDataArray.length > 0) {
+			for (const [name, values] of customMetaDataArray) {
+				baseArFSDataJSON[name] = values;
+			}
+		}
+
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
 			driveKey,
 			Buffer.from(

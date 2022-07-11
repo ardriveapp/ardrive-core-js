@@ -116,7 +116,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const { wrappedEntity: wrappedFolder, driveKey } = uploadStats;
 		const isPrivate = driveKey !== undefined;
 
-		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
+		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder, isPrivate);
 
 		if (!wrappedFolder.existingId) {
 			// We will only create a new folder here if there is no existing folder on chain
@@ -225,7 +225,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				}
 
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
-					wrappedEntity.destinationBaseName,
+					wrappedEntity,
 					driveKey !== undefined
 				);
 
