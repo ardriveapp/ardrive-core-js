@@ -33,14 +33,19 @@ import { WithDriveKey } from '../arfs_entity_result_factory';
 
 export abstract class ArFSObjectMetadataPrototype {
 	public abstract readonly objectData: ArFSObjectTransactionData;
-	private readonly gqlTagCustomMetaData: GQLTagInterface[] = [];
+
+	protected abstract readonly protectedTags: GQLTagInterface[];
+
+	constructor(protected readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface) {}
 
 	public get gqlTags(): GQLTagInterface[] {
-		return this.gqlTagCustomMetaData;
-	}
+		const tags = this.parseCustomGqlTags(this.customMetaDataGqlTagInterface);
 
-	constructor(protected readonly customMetaDataGqlTagInterface: CustomMetaDataTagInterface) {
-		this.gqlTagCustomMetaData = this.parseCustomGqlTags(customMetaDataGqlTagInterface);
+		for (const tag of this.protectedTags) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 
 	private parseCustomGqlTags(customMetaDataGqlTagInterface: CustomMetaDataTagInterface): GQLTagInterface[] {
@@ -65,8 +70,8 @@ export abstract class ArFSObjectMetadataPrototype {
 	}
 
 	// Implementation should throw if any protected tags are identified
-	assertProtectedTags(tags: GQLTagInterface[]): void {
-		const protectedTags = this.gqlTags.map((t) => t.name);
+	public assertProtectedTags(tags: GQLTagInterface[]): void {
+		const protectedTags = this.protectedTags.map((t) => t.name);
 
 		tags.forEach((tag) => {
 			if (protectedTags.includes(tag.name)) {
@@ -89,9 +94,8 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 		this.unixTime = new UnixTime(Math.round(Date.now() / 1000));
 	}
 
-	public get gqlTags(): GQLTagInterface[] {
+	protected get protectedTags(): GQLTagInterface[] {
 		return [
-			...super.gqlTags,
 			{ name: 'Content-Type', value: this.contentType },
 			{ name: 'Entity-Type', value: this.entityType },
 			{ name: 'Unix-Time', value: `${this.unixTime}` },
@@ -106,8 +110,14 @@ export abstract class ArFSDriveMetaDataPrototype extends ArFSEntityMetaDataProto
 	abstract readonly privacy: DrivePrivacy;
 	readonly entityType: EntityType = 'drive';
 
-	public get gqlTags(): GQLTagInterface[] {
-		return [...super.gqlTags, { name: 'Drive-Privacy', value: this.privacy }];
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [{ name: 'Drive-Privacy', value: this.privacy }]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 }
 
@@ -135,14 +145,18 @@ export class ArFSPrivateDriveMetaDataPrototype extends ArFSDriveMetaDataPrototyp
 	) {
 		super(customMetaDataGqlTagInterface);
 	}
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
 
-	public get gqlTags(): GQLTagInterface[] {
-		return [
-			...super.gqlTags,
+		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV },
 			{ name: 'Drive-Auth-Mode', value: this.objectData.driveAuthMode }
-		];
+		]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 }
 
@@ -154,8 +168,12 @@ export abstract class ArFSFolderMetaDataPrototype extends ArFSEntityMetaDataProt
 	abstract readonly contentType: ContentType;
 	readonly entityType: EntityType = 'folder';
 
-	public get gqlTags(): GQLTagInterface[] {
-		const tags = [...super.gqlTags, { name: 'Folder-Id', value: `${this.folderId}` }];
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [{ name: 'Folder-Id', value: `${this.folderId}` }]) {
+			tags.push(tag);
+		}
 
 		if (this.parentFolderId) {
 			// Root folder transactions do not have Parent-Folder-Id
@@ -194,12 +212,17 @@ export class ArFSPrivateFolderMetaDataPrototype extends ArFSFolderMetaDataProtot
 		super(customMetaDataGqlTagInterface);
 	}
 
-	get gqlTags(): GQLTagInterface[] {
-		return [
-			...super.gqlTags,
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV }
-		];
+		]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 }
 
@@ -211,12 +234,17 @@ export abstract class ArFSFileMetaDataPrototype extends ArFSEntityMetaDataProtot
 	abstract contentType: ContentType;
 	readonly entityType: EntityType = 'file';
 
-	public get gqlTags(): GQLTagInterface[] {
-		return [
-			...super.gqlTags,
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [
 			{ name: 'File-Id', value: `${this.fileId}` },
 			{ name: 'Parent-Folder-Id', value: `${this.parentFolderId}` }
-		];
+		]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 }
 
@@ -280,12 +308,17 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 		super(customMetaDataGqlTagInterface);
 	}
 
-	get gqlTags(): GQLTagInterface[] {
-		return [
-			...super.gqlTags,
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV }
-		];
+		]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 
 	public static async fromFile({
@@ -321,7 +354,7 @@ export abstract class ArFSFileDataPrototype extends ArFSObjectMetadataPrototype 
 	abstract readonly objectData: ArFSFileDataTransactionData;
 	abstract readonly contentType: DataContentType | typeof PRIVATE_CONTENT_TYPE;
 
-	get gqlTags(): GQLTagInterface[] {
+	protected get protectedTags(): GQLTagInterface[] {
 		return [{ name: 'Content-Type', value: this.contentType }];
 	}
 }
@@ -346,11 +379,16 @@ export class ArFSPrivateFileDataPrototype extends ArFSFileDataPrototype {
 		super(customMetaDataGqlTagInterface);
 	}
 
-	get gqlTags(): GQLTagInterface[] {
-		return [
-			...super.gqlTags,
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV }
-		];
+		]) {
+			tags.push(tag);
+		}
+
+		return tags;
 	}
 }
