@@ -131,11 +131,7 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
 			driveKey,
-			Buffer.from(
-				JSON.stringify({
-					name: name
-				})
-			)
+			Buffer.from(JSON.stringify(baseArFSDataJSON))
 		);
 		return new ArFSPrivateFolderTransactionData(name, cipher, cipherIV, data, driveKey);
 	}
