@@ -17,7 +17,7 @@ import {
 import * as mnemonicKeys from 'arweave-mnemonic-keys';
 import { Wallet } from './wallet';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
-import { TagAssertions } from './arfs/tags/tag_assertions';
+import assertTagLimits from './arfs/tags/tag_assertions';
 
 export type ARTransferResult = {
 	txID: TransactionID;
@@ -122,7 +122,7 @@ export class WalletDAO {
 			transaction.addTag(tag.name, tag.value);
 		});
 
-		new TagAssertions().assertTagLimits(transaction.tags);
+		assertTagLimits(transaction.tags);
 
 		// Sign file
 		await this.arweave.transactions.sign(transaction, jwkWallet.getPrivateKey());

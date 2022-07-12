@@ -1,6 +1,6 @@
 import { FeeMultiple, GQLTagInterface } from '../../exports';
 import { ArFSEntityMetaDataPrototype, ArFSFileDataPrototype } from '../tx/arfs_prototypes';
-import { TagAssertions } from './tag_assertions';
+import assertTagLimits from './tag_assertions';
 import { ArFSTagSettings } from '../arfs_tag_settings';
 
 export class ArFSTagAssembler {
@@ -36,7 +36,7 @@ export class ArFSTagAssembler {
 		this.maybeBoostTags(feeMultiple).forEach((t) => tags.push(t));
 		this.maybeTipTags(shouldAddTipTag).forEach((t) => tags.push(t));
 
-		new TagAssertions().assertTagLimits(tags);
+		assertTagLimits(tags);
 
 		return tags;
 	}

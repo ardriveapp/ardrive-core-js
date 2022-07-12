@@ -11,7 +11,7 @@ const TAG_KEY_LIMIT = 2;
 /** Layer 1 transaction total byte limit on gql tags */
 const GQL_TAGS_TOTAL_BYTE_LIMIT = 2048;
 
-export class TagAssertions {
+class TagAssertions {
 	public assertTagLimits(tags: GQLTagInterface[]): void {
 		if (tags.length > MAX_TAG_LIMIT) {
 			throw new Error(
@@ -65,4 +65,8 @@ export class TagAssertions {
 			);
 		}
 	}
+}
+
+export default function assertTagLimits(tags: GQLTagInterface[]): void {
+	new TagAssertions().assertTagLimits(tags);
 }
