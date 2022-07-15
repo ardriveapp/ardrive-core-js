@@ -74,14 +74,16 @@ describe('ArLocal Integration Tests', function () {
 		protocol: 'http'
 	});
 
+	const fakeVersion = 'FAKE_VERSION';
+
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
 	const communityOracle = new ArDriveCommunityOracle(arweave);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
-	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
+	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', fakeVersion);
 
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
 
-	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: fakeVersion });
 
 	const arfsDao = new ArFSDAO(
 		wallet,
@@ -793,7 +795,7 @@ describe('ArLocal Integration Tests', function () {
 					expectedCommunityTip: W(154_544_268_902),
 					expectedDataTxReward: W(1_030_295_126_016),
 					// We expect a metaData reward to exist
-					expectedMetaDataTxReward: W(5_468_962_356)
+					expectedMetaDataTxReward: W(5_504_334_732)
 				});
 
 				// File MetaData should now be valid

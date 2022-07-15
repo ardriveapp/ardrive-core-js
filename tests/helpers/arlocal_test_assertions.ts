@@ -45,7 +45,7 @@ function assertBaseArFSEntityExpectations({
 	customMetaData
 }: AssertEntityExpectationsParams): void {
 	expect(entity.appName).to.equal('ArLocal Integration Test');
-	expect(entity.appVersion).to.equal('1.7');
+	expect(entity.appVersion).to.equal('FAKE_VERSION');
 	expect(entity.arFS).to.equal('0.11');
 	expect(`${entity.driveId}`, 'drive ID').to.equal(`${driveId}`);
 	expect(entity.unixTime).to.be.an.instanceOf(UnixTime);
@@ -313,7 +313,7 @@ export function assertFileMetaDataGqlTags(
 		{ name: 'File-Id', value: `${fileId}` },
 		{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
-		{ name: 'App-Version', value: '1.7' },
+		{ name: 'App-Version', value: 'FAKE_VERSION' },
 		{ name: 'ArFS', value: '0.11' }
 	]);
 }
@@ -341,7 +341,7 @@ export function assertFolderMetaDataGqlTags(
 		{ name: 'Folder-Id', value: `${folderId}` },
 		{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
-		{ name: 'App-Version', value: '1.7' },
+		{ name: 'App-Version', value: 'FAKE_VERSION' },
 		{ name: 'ArFS', value: '0.11' }
 	]);
 }
@@ -358,7 +358,7 @@ export function assertFileDataTxGqlTags(
 	expect(dataTxTags).to.deep.equal([
 		{ name: 'Content-Type', value: contentType },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
-		{ name: 'App-Version', value: '1.7' },
+		{ name: 'App-Version', value: 'FAKE_VERSION' },
 		{ name: 'Tip-Type', value: 'data upload' }
 	]);
 }
