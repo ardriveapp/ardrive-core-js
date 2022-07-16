@@ -6,12 +6,9 @@ import { DataItemCreateOptions } from "./ar-data-base";
 import { createData } from "./ar-data-create";
 import { verifyAndIndexStream } from "../stream";
 import { ArweaveSigner } from "./signing";
-import SolanaSigner from "./signing/chains/SolanaSigner";
-import EthereumSigner from "./signing/chains/ethereumSigner";
 export { MIN_BINARY_SIZE, Bundle, DataItem, createData, bundleAndSignData, unbundleData, deepHash, DataItemCreateOptions, verifyAndIndexStream, };
 declare const signers: {
-    ArweaveSigner: typeof ArweaveSigner;
-    SolanaSigner: typeof SolanaSigner;
-    EthereumSigner: typeof EthereumSigner;
+	ArweaveSigner: typeof ArweaveSigner;
+
 };
 export { signers };

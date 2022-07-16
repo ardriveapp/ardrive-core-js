@@ -1,25 +1,25 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
+	if (k2 === undefined) k2 = k;
+	Object.defineProperty(o, k2, { enumerable: true, get: function () { return m[k]; } });
+}) : (function (o, m, k, k2) {
+	if (k2 === undefined) k2 = k;
+	o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
+	Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function (o, v) {
+	o["default"] = v;
 });
 var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
+	if (mod && mod.__esModule) return mod;
+	var result = {};
+	if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+	__setModuleDefault(result, mod);
+	return result;
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+	return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.signers = exports.verifyAndIndexStream = exports.deepHash = exports.unbundleData = exports.bundleAndSignData = exports.createData = exports.DataItem = exports.Bundle = exports.MIN_BINARY_SIZE = void 0;
@@ -38,12 +38,8 @@ Object.defineProperty(exports, "createData", { enumerable: true, get: function (
 const stream_1 = require("../stream");
 Object.defineProperty(exports, "verifyAndIndexStream", { enumerable: true, get: function () { return stream_1.verifyAndIndexStream; } });
 const signing_1 = require("./signing");
-const SolanaSigner_1 = __importDefault(require("./signing/chains/SolanaSigner"));
-const ethereumSigner_1 = __importDefault(require("./signing/chains/ethereumSigner"));
 const signers = {
-    ArweaveSigner: signing_1.ArweaveSigner,
-    SolanaSigner: SolanaSigner_1.default,
-    EthereumSigner: ethereumSigner_1.default,
+	ArweaveSigner: signing_1.ArweaveSigner
 };
 exports.signers = signers;
 //# sourceMappingURL=index.js.map
