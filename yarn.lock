@@ -1520,9 +1520,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arbundles@npm:^0.5.5":
+"arbundles@file:./arbundles/::locator=ardrive-core-js%40workspace%3A.":
   version: 0.5.5
-  resolution: "arbundles@npm:0.5.5"
+  resolution: "arbundles@file:./arbundles/#./arbundles/::hash=4a9ee0&locator=ardrive-core-js%40workspace%3A."
   dependencies:
     "@akiroz/size-chunker-stream": ^0.0.1
     "@noble/ed25519": ^1.3.0
@@ -1550,7 +1550,7 @@ __metadata:
     tmp: ^0.2.1
     tmp-promise: ^3.0.2
     tslib: ^2.3.0
-  checksum: db1cb2f92541a2f652d4762fe9c623d7408efbf31fb0b4f366fff653244599eca5a87de2839bae5d4b830cc0680c66a6a1c02e6401c4b50f0f1641c595f9e2d0
+  checksum: 92b1a693af458563810df44610552891d645ba91ffa5fee46d6809d134785c780765f4d7870f0d683836328c3b248446fe2a1eb53eef9a81031cf303c40aa046
   languageName: node
   linkType: hard
 
@@ -1591,7 +1591,7 @@ __metadata:
     "@types/uuid": ^8.3.0
     "@typescript-eslint/eslint-plugin": ^4.18.0
     "@typescript-eslint/parser": ^4.18.0
-    arbundles: ^0.5.5
+    arbundles: ./arbundles/
     arweave: 1.10.18
     arweave-mnemonic-keys: ^0.0.9
     axios: ^0.21.1

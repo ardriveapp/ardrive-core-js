@@ -54,7 +54,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
-            ["arbundles", "npm:0.5.5"],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=4a9ee0&locator=ardrive-core-js%40workspace%3A."],
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
             ["axios", "npm:0.21.4"],
@@ -1880,10 +1880,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]
       ]],
       ["arbundles", [
-        ["npm:0.5.5", {
-          "packageLocation": "./.yarn/cache/arbundles-npm-0.5.5-936f4d05f2-db1cb2f925.zip/node_modules/arbundles/",
+        ["file:./arbundles/#./arbundles/::hash=4a9ee0&locator=ardrive-core-js%40workspace%3A.", {
+          "packageLocation": "./.yarn/cache/arbundles-file-3a2bdd2191-92b1a693af.zip/node_modules/arbundles/",
           "packageDependencies": [
-            ["arbundles", "npm:0.5.5"],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=4a9ee0&locator=ardrive-core-js%40workspace%3A."],
             ["@akiroz/size-chunker-stream", "npm:0.0.1"],
             ["@noble/ed25519", "npm:1.3.0"],
             ["@toruslabs/eccrypto", "npm:1.1.8"],
@@ -1955,7 +1955,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
-            ["arbundles", "npm:0.5.5"],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=4a9ee0&locator=ardrive-core-js%40workspace%3A."],
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
             ["axios", "npm:0.21.4"],
