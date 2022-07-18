@@ -6,4 +6,3 @@ interface SignatureMeta {
 	pubLength: number;
 }
 export declare const SIG_CONFIG: Record<SignatureConfig, SignatureMeta>;
-export { };

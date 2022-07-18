@@ -39,9 +39,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [
             ["@alexsasharegan/simple-cache", "npm:3.3.3"],
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],
+            ["@types/bn.js", "npm:5.1.0"],
             ["@types/chai", "npm:4.2.21"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
+            ["@types/keccak", "npm:3.0.1"],
             ["@types/lodash", "npm:4.14.176"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
@@ -54,12 +56,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
-            ["arbundles", "file:./arbundles/#./arbundles/::hash=344830&locator=ardrive-core-js%40workspace%3A."],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=e1452f&locator=ardrive-core-js%40workspace%3A."],
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
+            ["asn1.js", "npm:5.4.1"],
             ["axios", "npm:0.21.4"],
             ["base64-js", "npm:1.5.1"],
+            ["base64url", "npm:3.0.1"],
             ["bignumber.js", "npm:9.0.1"],
+            ["bn.js", "npm:5.2.1"],
             ["chai", "npm:4.3.4"],
             ["eslint", "npm:7.23.0"],
             ["eslint-config-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:8.1.0"],
@@ -68,6 +73,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["futoin-hkdf", "npm:1.3.3"],
             ["husky", "npm:6.0.0"],
             ["jwk-to-pem", "npm:2.0.4"],
+            ["keccak", "npm:3.0.2"],
             ["lint-staged", "npm:11.0.0"],
             ["lodash", "npm:4.17.21"],
             ["mime-types", "npm:2.1.29"],
@@ -705,6 +711,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD",
         }]
       ]],
+      ["@types/bn.js", [
+        ["npm:5.1.0", {
+          "packageLocation": "./.yarn/cache/@types-bn.js-npm-5.1.0-4a0335ff4f-e33009f99b.zip/node_modules/@types/bn.js/",
+          "packageDependencies": [
+            ["@types/bn.js", "npm:5.1.0"],
+            ["@types/node", "npm:16.11.7"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
       ["@types/chai", [
         ["npm:4.2.21", {
           "packageLocation": "./.yarn/cache/@types-chai-npm-4.2.21-22c1ed2cef-fc7d32fbae.zip/node_modules/@types/chai/",
@@ -788,6 +804,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-jwk-to-pem-npm-2.0.0-85a9aabd67-647e62d347.zip/node_modules/@types/jwk-to-pem/",
           "packageDependencies": [
             ["@types/jwk-to-pem", "npm:2.0.0"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["@types/keccak", [
+        ["npm:3.0.1", {
+          "packageLocation": "./.yarn/cache/@types-keccak-npm-3.0.1-5763a04e62-12b6bb9543.zip/node_modules/@types/keccak/",
+          "packageDependencies": [
+            ["@types/keccak", "npm:3.0.1"],
+            ["@types/node", "npm:16.11.7"]
           ],
           "linkType": "HARD",
         }]
@@ -1371,10 +1397,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]
       ]],
       ["arbundles", [
-        ["file:./arbundles/#./arbundles/::hash=344830&locator=ardrive-core-js%40workspace%3A.", {
-          "packageLocation": "./.yarn/cache/arbundles-file-e1747bd165-d212edb415.zip/node_modules/arbundles/",
+        ["file:./arbundles/#./arbundles/::hash=e1452f&locator=ardrive-core-js%40workspace%3A.", {
+          "packageLocation": "./.yarn/cache/arbundles-file-8bed4b6a2d-9fb00c2d2b.zip/node_modules/arbundles/",
           "packageDependencies": [
-            ["arbundles", "file:./arbundles/#./arbundles/::hash=344830&locator=ardrive-core-js%40workspace%3A."],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=e1452f&locator=ardrive-core-js%40workspace%3A."],
             ["@types/axios", "npm:0.14.0"],
             ["@types/multistream", "npm:2.1.1"],
             ["@types/tmp", "npm:0.2.2"],
@@ -1416,9 +1442,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["ardrive-core-js", "workspace:."],
             ["@alexsasharegan/simple-cache", "npm:3.3.3"],
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],
+            ["@types/bn.js", "npm:5.1.0"],
             ["@types/chai", "npm:4.2.21"],
             ["@types/fs-extra", "npm:9.0.8"],
             ["@types/jwk-to-pem", "npm:2.0.0"],
+            ["@types/keccak", "npm:3.0.1"],
             ["@types/lodash", "npm:4.14.176"],
             ["@types/mime-types", "npm:2.1.0"],
             ["@types/mocha", "npm:8.2.1"],
@@ -1431,12 +1459,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/uuid", "npm:8.3.0"],
             ["@typescript-eslint/eslint-plugin", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:4.18.0"],
-            ["arbundles", "file:./arbundles/#./arbundles/::hash=344830&locator=ardrive-core-js%40workspace%3A."],
+            ["arbundles", "file:./arbundles/#./arbundles/::hash=e1452f&locator=ardrive-core-js%40workspace%3A."],
             ["arweave", "npm:1.10.18"],
             ["arweave-mnemonic-keys", "npm:0.0.9"],
+            ["asn1.js", "npm:5.4.1"],
             ["axios", "npm:0.21.4"],
             ["base64-js", "npm:1.5.1"],
+            ["base64url", "npm:3.0.1"],
             ["bignumber.js", "npm:9.0.1"],
+            ["bn.js", "npm:5.2.1"],
             ["chai", "npm:4.3.4"],
             ["eslint", "npm:7.23.0"],
             ["eslint-config-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:8.1.0"],
@@ -1445,6 +1476,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["futoin-hkdf", "npm:1.3.3"],
             ["husky", "npm:6.0.0"],
             ["jwk-to-pem", "npm:2.0.4"],
+            ["keccak", "npm:3.0.2"],
             ["lint-staged", "npm:11.0.0"],
             ["lodash", "npm:4.17.21"],
             ["mime-types", "npm:2.1.29"],
@@ -1783,6 +1815,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/bn.js-npm-4.12.0-3ec6c884f6-cfe7494de9.zip/node_modules/bn.js/",
           "packageDependencies": [
             ["bn.js", "npm:4.12.0"]
+          ],
+          "linkType": "HARD",
+        }],
+        ["npm:5.2.1", {
+          "packageLocation": "./.yarn/cache/bn.js-npm-5.2.1-dc952b1965-4693b52187.zip/node_modules/bn.js/",
+          "packageDependencies": [
+            ["bn.js", "npm:5.2.1"]
           ],
           "linkType": "HARD",
         }]
@@ -4539,6 +4578,19 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["asn1.js", "npm:5.4.1"],
             ["elliptic", "npm:6.5.4"],
             ["safe-buffer", "npm:5.2.1"]
+          ],
+          "linkType": "HARD",
+        }]
+      ]],
+      ["keccak", [
+        ["npm:3.0.2", {
+          "packageLocation": "./.yarn/unplugged/keccak-npm-3.0.2-6e9dec8765/node_modules/keccak/",
+          "packageDependencies": [
+            ["keccak", "npm:3.0.2"],
+            ["node-addon-api", "npm:2.0.2"],
+            ["node-gyp", "npm:7.1.2"],
+            ["node-gyp-build", "npm:4.3.0"],
+            ["readable-stream", "npm:3.6.0"]
           ],
           "linkType": "HARD",
         }]

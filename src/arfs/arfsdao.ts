@@ -114,7 +114,7 @@ import { JWKWallet } from '../jwk_wallet';
 import { ArFSEntityCache } from './arfs_entity_cache';
 
 import { bundleAndSignData, createData, DataItem } from 'arbundles';
-import { ArweaveSigner } from 'arbundles/src/signing';
+import ArweaveSigner from '../signing/ArweaveSigner';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -171,7 +171,7 @@ import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
-	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
+	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) { }
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
@@ -817,8 +817,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const logProgress = () => {
 			if (this.shouldProgressLog && totalFileAndBundleUploads > 1) {
 				console.error(
-					`Uploading file transaction ${
-						uploadsCompleted + 1
+					`Uploading file transaction ${uploadsCompleted + 1
 					} of total ${totalFileAndBundleUploads} transactions...`
 				);
 			}
@@ -1152,18 +1151,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					gatewayApi: this.gatewayApi,
 					progressCallback: shouldProgressLog
 						? (pct: number) => {
-								// TODO: Test if this is still progress logging, otherwise lift this var into above scope 👍
-								let progressLogDebounce = false;
+							// TODO: Test if this is still progress logging, otherwise lift this var into above scope 👍
+							let progressLogDebounce = false;
 
-								if (!progressLogDebounce || pct === 100) {
-									console.error(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
-									progressLogDebounce = true;
+							if (!progressLogDebounce || pct === 100) {
+								console.error(`Transaction ${transaction.id} Upload Progress: ${pct}%`);
+								progressLogDebounce = true;
 
-									setTimeout(() => {
-										progressLogDebounce = false;
-									}, 500); // .5 sec debounce
-								}
-						  }
+								setTimeout(() => {
+									progressLogDebounce = false;
+								}, 500); // .5 sec debounce
+							}
+						}
 						: undefined
 				};
 
@@ -1185,10 +1184,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const newMetaDataInfo = createMetaDataPlan
 			? await this.createV2PublicFileMetaData({
-					wrappedFile,
-					arFSDataTxId,
-					createMetaDataPlan
-			  })
+				wrappedFile,
+				arFSDataTxId,
+				createMetaDataPlan
+			})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);

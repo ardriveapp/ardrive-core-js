@@ -5,7 +5,7 @@ import axios, { AxiosResponse } from 'axios';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 export class GatewayOracle implements ArweaveOracle {
-	constructor(private readonly gateway = new URL(defaultArweaveGatewayPath)) {}
+	constructor(private readonly gateway = new URL(defaultArweaveGatewayPath)) { }
 
 	async getWinstonPriceForByteCount(byteCount: ByteCount): Promise<Winston> {
 		const response: AxiosResponse = await axios.get(`${this.gateway.href}price/${byteCount}`);

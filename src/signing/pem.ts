@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as asn from 'asn1.js';
 
 const Version = asn.define('Version', function (this: any) {

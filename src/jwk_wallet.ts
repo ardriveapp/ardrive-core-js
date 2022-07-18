@@ -1,6 +1,7 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import * as crypto from 'crypto';
 import jwkToPem, { JWK } from 'jwk-to-pem';
+//import jwkToPem, { JWK } from './signing/pem';
 import { PublicKey, ArweaveAddress, ADDR } from './types';
 import { b64UrlToBuffer, bufferTob64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
