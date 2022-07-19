@@ -18,7 +18,7 @@ import {
 	DriveKey,
 	EntityKey,
 	EntityIDTypeForEntityType,
-	CustomMetaDataTagInterface
+	CustomMetaDataTags
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 
@@ -34,7 +34,7 @@ export class ArFSEntity {
 	readonly txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI
 	readonly unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
 
-	customMetaData?: CustomMetaDataTagInterface;
+	customMetaData?: CustomMetaDataTags;
 
 	constructor(
 		appName: string,
@@ -46,7 +46,7 @@ export class ArFSEntity {
 		name: string,
 		txId: TransactionID,
 		unixTime: UnixTime,
-		customMetaData: CustomMetaDataTagInterface = {}
+		customMetaData: CustomMetaDataTags = {}
 	) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -103,7 +103,7 @@ export class ArFSPublicDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly unixTime: UnixTime,
 		readonly drivePrivacy: DrivePrivacy,
 		readonly rootFolderId: FolderID,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
@@ -126,7 +126,7 @@ export class ArFSPrivateDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
 		readonly driveKey: DriveKey,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
@@ -150,7 +150,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 		driveAuthMode: DriveAuthMode,
 		cipher: string,
 		cipherIV: CipherIV,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(
 			appName,
@@ -206,7 +206,7 @@ export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 		public dataContentType: DataContentType,
 		readonly parentFolderId: FolderID,
 		readonly entityId: EntityIDTypeForEntityType<T>,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(appName, appVersion, arFS, contentType, driveId, entityType, name, txId, unixTime, customMetaData);
 	}
@@ -264,7 +264,7 @@ export class ArFSPublicFile extends ArFSFileOrFolderEntity<'file'> {
 		lastModifiedDate: UnixTime,
 		dataTxId: TransactionID,
 		dataContentType: DataContentType,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(
 			appName,
@@ -337,7 +337,7 @@ export class ArFSPrivateFile extends ArFSFileOrFolderEntity<'file'> {
 		readonly cipherIV: CipherIV,
 		readonly fileKey: FileKey,
 		readonly driveKey: DriveKey,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(
 			appName,
@@ -453,7 +453,7 @@ export class ArFSPublicFolder extends ArFSFileOrFolderEntity<'folder'> {
 		unixTime: UnixTime,
 		parentFolderId: FolderID,
 		readonly folderId: FolderID,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(
 			appName,
@@ -517,7 +517,7 @@ export class ArFSPrivateFolder extends ArFSFileOrFolderEntity<'folder'> {
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
 		readonly driveKey: DriveKey,
-		readonly customMetaData: CustomMetaDataTagInterface = {}
+		readonly customMetaData: CustomMetaDataTags = {}
 	) {
 		super(
 			appName,

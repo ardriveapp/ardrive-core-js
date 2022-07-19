@@ -14,7 +14,7 @@ import {
 	EntityType,
 	GQLNodeInterface,
 	GQLTagInterface,
-	CustomMetaDataTagInterface,
+	CustomMetaDataTags,
 	isCustomMetaDataTagInterface,
 	EntityMetaDataTransactionData
 } from '../../types';
@@ -50,7 +50,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
 
-	customMetaData: CustomMetaDataTagInterface = {};
+	customMetaData: CustomMetaDataTags = {};
 
 	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;

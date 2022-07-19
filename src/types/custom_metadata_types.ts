@@ -9,21 +9,21 @@ const customMetaDataShape = `{ metaDataJson?: ${customMetaDataTagInterfaceShapeO
 
 export const invalidCustomMetaDataErrorMessage = `s${invalidSchemaErrorMessage}${customMetaDataShape}`;
 
-export type CustomMetaDataTagInterface = Record<string, string | string[]>;
+export type CustomMetaDataTags = Record<string, string | string[]>;
 
 export interface CustomMetaData {
 	/** Include custom metadata on MetaData Tx Data JSON */
-	metaDataJson?: CustomMetaDataTagInterface;
+	metaDataJson?: CustomMetaDataTags;
 
 	/** Include custom metadata on MetaData Tx GQL Tags */
-	metaDataGqlTags?: CustomMetaDataTagInterface;
+	metaDataGqlTags?: CustomMetaDataTags;
 
 	// TODO: Include dataTx GQL tags as an option (PE-1534)
 	/** Include custom metadata on File Data Tx GQL Tags */
 	// dataGqlTags?: CustomMetaDataTagInterface;
 }
 
-export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTagInterface {
+export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTags {
 	if (typeof tags !== 'object' || tags === null) {
 		return false;
 	}
@@ -73,7 +73,7 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 	return true;
 }
 
-export function assertCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTagInterface {
+export function assertCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTags {
 	if (!isCustomMetaDataTagInterface(tags)) {
 		console.log('invalidCustomMetaDataTagInterfaceErrorMessage', invalidCustomMetaDataTagInterfaceErrorMessage);
 		throw Error(invalidCustomMetaDataTagInterfaceErrorMessage);

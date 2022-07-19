@@ -12,7 +12,7 @@ import {
 	ArFSEncryptedData,
 	CipherType,
 	DriveAuthMode,
-	CustomMetaDataTagInterface
+	CustomMetaDataTags
 } from '../../types';
 
 export interface ArFSObjectTransactionData {
@@ -81,10 +81,7 @@ export abstract class ArFSFolderTransactionData implements ArFSObjectTransaction
 }
 
 export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
-	constructor(
-		private readonly name: string,
-		private readonly dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
-	) {
+	constructor(private readonly name: string, private readonly dataJsonCustomMetaData: CustomMetaDataTags = {}) {
 		super();
 	}
 	asTransactionData(): string {
@@ -116,7 +113,7 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 	static async from(
 		name: string,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
+		dataJsonCustomMetaData: CustomMetaDataTags = {}
 	): Promise<ArFSPrivateFolderTransactionData> {
 		const baseArFSDataJSON: Record<string, unknown> = {
 			name: name
@@ -155,7 +152,7 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
 		private readonly dataContentType: DataContentType,
-		private readonly dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
+		private readonly dataJsonCustomMetaData: CustomMetaDataTags = {}
 	) {
 		super();
 	}
@@ -199,7 +196,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataContentType: DataContentType,
 		fileId: FileID,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataTagInterface = {}
+		dataJsonCustomMetaData: CustomMetaDataTags = {}
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
 		const baseArFSDataJSON: Record<string, unknown> = {
 			name: name,

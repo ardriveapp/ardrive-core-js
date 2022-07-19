@@ -18,7 +18,7 @@ import {
 import {
 	DriveID,
 	TransactionID,
-	CustomMetaDataTagInterface,
+	CustomMetaDataTags,
 	UnixTime,
 	FolderID,
 	FileID,
@@ -34,7 +34,7 @@ interface AssertEntityExpectationsParams<T = ArFSEntity> {
 	driveId: DriveID;
 	metaDataTxId: TransactionID;
 	entityName: string;
-	customMetaData?: CustomMetaDataTagInterface;
+	customMetaData?: CustomMetaDataTags;
 }
 
 function assertBaseArFSEntityExpectations({
@@ -57,7 +57,7 @@ function assertBaseArFSEntityExpectations({
 	}
 }
 
-function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaDataTagInterface) {
+function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaDataTags) {
 	const customMetaDataEntries = Object.entries(customMetaData);
 	for (const [key, value] of customMetaDataEntries) {
 		// Without serialization, all custom metadata will be found on the customMetaData field
@@ -231,7 +231,7 @@ export function assertPrivateFileWithPathsExpectations(
 }
 
 interface CustomMetaDataExpectation {
-	customMetaData: CustomMetaDataTagInterface;
+	customMetaData: CustomMetaDataTags;
 }
 
 interface FileMetaDataJsonExpectations
@@ -272,9 +272,7 @@ export function assertFolderMetaDataJson(
 	});
 }
 
-export function mapMetaDataTagInterfaceToGqlTagInterface(
-	customMetaData: CustomMetaDataTagInterface
-): GQLTagInterface[] {
+export function mapMetaDataTagInterfaceToGqlTagInterface(customMetaData: CustomMetaDataTags): GQLTagInterface[] {
 	const gqlTagInterfaceArray = [];
 	const metaDataEntries = Object.entries(customMetaData);
 
@@ -296,7 +294,7 @@ export function assertFileMetaDataGqlTags(
 		driveId: DriveID;
 		fileId: FileID;
 		parentFolderId: DriveID;
-		customMetaData: CustomMetaDataTagInterface;
+		customMetaData: CustomMetaDataTags;
 	}
 ): void {
 	const { driveId, fileId, parentFolderId, customMetaData } = expectations;
@@ -324,7 +322,7 @@ export function assertFolderMetaDataGqlTags(
 		driveId: DriveID;
 		folderId: FolderID;
 		parentFolderId: DriveID;
-		customMetaData: CustomMetaDataTagInterface;
+		customMetaData: CustomMetaDataTags;
 	}
 ): void {
 	const { driveId, folderId, parentFolderId, customMetaData } = expectations;
