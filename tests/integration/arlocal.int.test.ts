@@ -1089,7 +1089,6 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a private file as a v2 transaction with a custom content type and custom metadata', async function () {
-			this.timeout(600000);
 			const fileName = 'custom_content_unique_stub';
 			const customContentType = 'application/fake';
 
