@@ -288,8 +288,10 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		);
 	}
 }
+
 export type ArFSPrivateFileMetaDataPrototypeFromFileParams = ArFSPublicFileMetaDataPrototypeFromFileParams &
 	WithDriveKey;
+
 export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 	readonly contentType: ContentType = PRIVATE_CONTENT_TYPE;
 
