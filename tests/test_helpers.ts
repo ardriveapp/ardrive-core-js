@@ -1,7 +1,7 @@
 import Arweave from 'arweave';
 import { Tag } from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
-import { GQLTagInterface, TransactionID } from '../src/types';
+import { EntityMetaDataTransactionData, GQLTagInterface, TransactionID } from '../src/types';
 import { Utf8ArrayToStr } from '../src/utils/common';
 import { Wallet } from '../src/wallet';
 
@@ -65,7 +65,7 @@ export async function getTxDataFromGateway(arweave: Arweave, txId: TransactionID
 export async function getMetaDataJSONFromGateway(
 	arweave: Arweave,
 	txId: TransactionID
-): Promise<Record<string, unknown>> {
+): Promise<EntityMetaDataTransactionData> {
 	const dataBuffer = await getTxDataFromGateway(arweave, txId);
 	const dataString = await Utf8ArrayToStr(dataBuffer);
 	return JSON.parse(dataString);

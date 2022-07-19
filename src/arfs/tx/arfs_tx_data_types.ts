@@ -12,7 +12,8 @@ import {
 	ArFSEncryptedData,
 	CipherType,
 	DriveAuthMode,
-	CustomMetaDataTags
+	CustomMetaDataTags,
+	EntityMetaDataTransactionData
 } from '../../types';
 
 export interface ArFSObjectTransactionData {
@@ -85,7 +86,7 @@ export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
 		super();
 	}
 	asTransactionData(): string {
-		const baseArFSDataJSON: Record<string, unknown> = {
+		const baseArFSDataJSON: EntityMetaDataTransactionData = {
 			name: this.name
 		};
 
@@ -115,7 +116,7 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 		driveKey: DriveKey,
 		dataJsonCustomMetaData: CustomMetaDataTags = {}
 	): Promise<ArFSPrivateFolderTransactionData> {
-		const baseArFSDataJSON: Record<string, unknown> = {
+		const baseArFSDataJSON: EntityMetaDataTransactionData = {
 			name: name
 		};
 
@@ -158,7 +159,7 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 	}
 
 	asTransactionData(): string {
-		const baseArFSDataJSON: Record<string, unknown> = {
+		const baseArFSDataJSON: EntityMetaDataTransactionData = {
 			name: this.name,
 			size: this.size,
 			lastModifiedDate: this.lastModifiedDate,
@@ -198,7 +199,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		driveKey: DriveKey,
 		dataJsonCustomMetaData: CustomMetaDataTags = {}
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
-		const baseArFSDataJSON: Record<string, unknown> = {
+		const baseArFSDataJSON: EntityMetaDataTransactionData = {
 			name: name,
 			size: size,
 			lastModifiedDate: lastModifiedDate,

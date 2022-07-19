@@ -24,8 +24,10 @@ export type DataContentType = string;
 export type SourceUri = string;
 export type EntityName = string;
 
+export type UnknownRecord = Record<string, unknown>;
+
 /** Data JSON of a MetaData Transaction */
-export type EntityMetaDataTransactionData = Record<string, unknown>;
+export type EntityMetaDataTransactionData = UnknownRecord;
 
 export interface ArDriveCommunityTip {
 	tipPercentage: number;

@@ -18,7 +18,8 @@ import {
 	DriveKey,
 	EntityKey,
 	EntityIDTypeForEntityType,
-	CustomMetaDataTags
+	CustomMetaDataTags,
+	UnknownRecord
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 
@@ -78,7 +79,7 @@ export class ArFSEntity {
  * TODO(PE-1252): Remove this and use node implementation
  */
 function fromEntries(iterable: [string, unknown][]) {
-	return [...iterable].reduce((obj: Record<string, unknown>, [key, val]) => {
+	return [...iterable].reduce((obj: UnknownRecord, [key, val]) => {
 		obj[key] = val;
 		return obj;
 	}, {});
