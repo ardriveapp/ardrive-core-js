@@ -113,9 +113,7 @@ export abstract class ArFSDriveMetaDataPrototype extends ArFSEntityMetaDataProto
 	protected get protectedTags(): GQLTagInterface[] {
 		const tags = super.protectedTags;
 
-		for (const tag of [{ name: 'Drive-Privacy', value: this.privacy }]) {
-			tags.push(tag);
-		}
+		tags.push({ name: 'Drive-Privacy', value: this.privacy });
 
 		return tags;
 	}
@@ -171,9 +169,7 @@ export abstract class ArFSFolderMetaDataPrototype extends ArFSEntityMetaDataProt
 	protected get protectedTags(): GQLTagInterface[] {
 		const tags = super.protectedTags;
 
-		for (const tag of [{ name: 'Folder-Id', value: `${this.folderId}` }]) {
-			tags.push(tag);
-		}
+		tags.push({ name: 'Folder-Id', value: `${this.folderId}` });
 
 		if (this.parentFolderId) {
 			// Root folder transactions do not have Parent-Folder-Id
