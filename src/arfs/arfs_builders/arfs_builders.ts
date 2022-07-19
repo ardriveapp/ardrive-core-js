@@ -134,30 +134,33 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		}
 	}
 
-	protected addToCustomMetaData(customMetaData: Record<string, unknown>): void {
-		if (isCustomMetaDataTagInterface(customMetaData)) {
-			for (const key of Object.keys(customMetaData)) {
-				let keyValue: string | string[];
+	protected addToCustomMetaData(customMetaData: EntityMetaDataTransactionData): void {
+		if (!isCustomMetaDataTagInterface(customMetaData)) {
+			console.error(`Parsed an invalid custom metadata shape from MetaData Tx Data JSON: ${customMetaData}`);
+			return;
+		}
 
-				const prevValue = this.customMetaData[key];
-				const newValue = customMetaData[key];
+		for (const key of Object.keys(customMetaData)) {
+			let keyValue: string | string[];
 
-				if (prevValue) {
-					keyValue = Array.isArray(prevValue) ? prevValue : [prevValue];
+			const prevValue = this.customMetaData[key];
+			const newValue = customMetaData[key];
 
-					if (Array.isArray(newValue)) {
-						for (const val of newValue) {
-							keyValue.push(val);
-						}
-					} else {
-						keyValue.push(newValue);
+			if (prevValue) {
+				keyValue = Array.isArray(prevValue) ? prevValue : [prevValue];
+
+				if (Array.isArray(newValue)) {
+					for (const val of newValue) {
+						keyValue.push(val);
 					}
 				} else {
-					keyValue = newValue;
+					keyValue.push(newValue);
 				}
-
-				this.customMetaData[key] = keyValue;
+			} else {
+				keyValue = newValue;
 			}
+
+			this.customMetaData[key] = keyValue;
 		}
 	}
 
@@ -169,7 +172,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 
 	protected parseCustomMetaDataFromDataJson(dataJson: EntityMetaDataTransactionData): void {
 		const dataJsonEntries = Object.entries(dataJson).filter(([key]) => !this.protectedDataJsonKeys.includes(key));
-		const customMetaData: Record<string, string | string[]> = {};
+		const customMetaData: CustomMetaDataTags = {};
 
 		for (const [key, val] of dataJsonEntries) {
 			Object.assign(customMetaData, { [key]: val });
