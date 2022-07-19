@@ -33,19 +33,19 @@ export class ArFSTagAssembler {
 	}
 
 	private assembleTags(tags: GQLTagInterface[], feeMultiple?: FeeMultiple, shouldAddTipTag = false) {
-		this.maybeBoostTags(feeMultiple).forEach((t) => tags.push(t));
-		this.maybeTipTags(shouldAddTipTag).forEach((t) => tags.push(t));
+		this.getBoostTags(feeMultiple).forEach((t) => tags.push(t));
+		this.getTipTags(shouldAddTipTag).forEach((t) => tags.push(t));
 
 		assertTagLimits(tags);
 
 		return tags;
 	}
 
-	private maybeBoostTags(feeMultiple?: FeeMultiple): GQLTagInterface[] {
+	private getBoostTags(feeMultiple?: FeeMultiple): GQLTagInterface[] {
 		return feeMultiple && +feeMultiple > 1 ? this.arFSTagSettings.getBoostTags(feeMultiple) : [];
 	}
 
-	private maybeTipTags(addTipTag: boolean): GQLTagInterface[] {
+	private getTipTags(addTipTag: boolean): GQLTagInterface[] {
 		return addTipTag ? this.arFSTagSettings.getTipTags() : [];
 	}
 }
