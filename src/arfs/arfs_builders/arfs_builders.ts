@@ -129,10 +129,8 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	private parseCustomMetaDataFromGqlTags(gqlTags: GQLTagInterface[]): void {
-		if (gqlTags.length > 0) {
-			for (const { name, value } of gqlTags) {
-				this.addToCustomMetaData({ [name]: value });
-			}
+		for (const { name, value } of gqlTags) {
+			this.addToCustomMetaData({ [name]: value });
 		}
 	}
 
