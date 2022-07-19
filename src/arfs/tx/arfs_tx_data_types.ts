@@ -91,10 +91,9 @@ export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
 		};
 
 		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
-		if (customMetaDataArray.length > 0) {
-			for (const [name, values] of customMetaDataArray) {
-				baseArFSDataJSON[name] = values;
-			}
+
+		for (const [name, values] of customMetaDataArray) {
+			baseArFSDataJSON[name] = values;
 		}
 		return JSON.stringify(baseArFSDataJSON);
 	}
@@ -121,10 +120,9 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 		};
 
 		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
-		if (customMetaDataArray.length > 0) {
-			for (const [name, values] of customMetaDataArray) {
-				baseArFSDataJSON[name] = values;
-			}
+
+		for (const [name, values] of customMetaDataArray) {
+			baseArFSDataJSON[name] = values;
 		}
 
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
@@ -168,10 +166,9 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		};
 
 		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
-		if (customMetaDataArray.length > 0) {
-			for (const [name, values] of customMetaDataArray) {
-				baseArFSDataJSON[name] = values;
-			}
+
+		for (const [name, values] of customMetaDataArray) {
+			baseArFSDataJSON[name] = values;
 		}
 
 		return JSON.stringify(baseArFSDataJSON);
@@ -208,10 +205,9 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		};
 
 		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
-		if (customMetaDataArray.length > 0) {
-			for (const [name, values] of customMetaDataArray) {
-				baseArFSDataJSON[name] = values;
-			}
+
+		for (const [name, values] of customMetaDataArray) {
+			baseArFSDataJSON[name] = values;
 		}
 
 		const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
