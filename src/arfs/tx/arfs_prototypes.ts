@@ -141,6 +141,7 @@ export class ArFSPrivateDriveMetaDataPrototype extends ArFSDriveMetaDataPrototyp
 	) {
 		super(customMetaDataTags);
 	}
+
 	protected get protectedTags(): GQLTagInterface[] {
 		const tags = super.protectedTags;
 
