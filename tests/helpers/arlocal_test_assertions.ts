@@ -177,6 +177,7 @@ export function assertPublicFileExpectations(params: AssertFileExpectationsParam
 	assertArFSPublicExpectations(params);
 	assertFileExpectations(params);
 }
+
 export function assertPrivateFileExpectations(params: AssertFileExpectationsParams<ArFSPrivateFile>): void {
 	assertArFSPrivateExpectations(params);
 	assertFileExpectations(params);
