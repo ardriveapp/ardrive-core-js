@@ -168,19 +168,13 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	protected abstract protectedDataJsonKeys: string[];
 
 	protected parseCustomMetaDataFromDataJson(dataJson: EntityMetaDataTransactionData): void {
-		const dataJsonEntries = Object.entries(dataJson);
+		const dataJsonEntries = Object.entries(dataJson).filter(([key]) => !this.protectedDataJsonKeys.includes(key));
+		const customMetaData: Record<string, string | string[]> = {};
 
-		if (dataJsonEntries.length > this.protectedDataJsonKeys.length) {
-			const customMetaData: Record<string, string | string[]> = {};
-
-			for (const [key, val] of dataJsonEntries) {
-				if (!this.protectedDataJsonKeys.includes(key)) {
-					Object.assign(customMetaData, { [key]: val });
-				}
-			}
-
-			this.addToCustomMetaData(customMetaData);
+		for (const [key, val] of dataJsonEntries) {
+			Object.assign(customMetaData, { [key]: val });
 		}
+		this.addToCustomMetaData(customMetaData);
 	}
 }
 
