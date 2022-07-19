@@ -63,9 +63,7 @@ export abstract class ArFSObjectMetadataPrototype {
 			}
 		}
 
-		if (tags.length > 0) {
-			this.assertProtectedTags(tags);
-		}
+		this.assertProtectedTags(tags);
 		return tags;
 	}
 
