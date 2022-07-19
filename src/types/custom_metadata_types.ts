@@ -38,13 +38,11 @@ export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaD
 			return false;
 		}
 
-		if (value.length > 1) {
-			for (const item of value) {
-				if (typeof item !== 'string') {
-					return false;
-				}
-				assertCharacterLength(item);
+		for (const item of value) {
+			if (typeof item !== 'string') {
+				return false;
 			}
+			assertCharacterLength(item);
 		}
 	}
 
