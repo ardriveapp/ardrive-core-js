@@ -61,7 +61,7 @@ function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaData
 	const customMetaDataEntries = Object.entries(customMetaData);
 	for (const [key, value] of customMetaDataEntries) {
 		// Without serialization, all custom metadata will be found on the customMetaData field
-		expect(entity.customMetaData![key]).to.deep.equal(value);
+		expect(entity.customMetaData?.[key]).to.deep.equal(value);
 	}
 
 	const serializedEntity: Record<string, string | string[]> = JSON.parse(JSON.stringify(entity));
