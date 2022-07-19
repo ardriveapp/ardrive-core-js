@@ -11,6 +11,7 @@
 		/* Additional Checks */
 		"pretty": true,
 		"sourceMap": true,
+		"strictPropertyInitialization": false,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noImplicitReturns": true,

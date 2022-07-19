@@ -162,8 +162,7 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	extends ArFSEntity
 	// eslint-disable-next-line prettier/prettier
-	implements ArFSFileFolderEntity
-{
+	implements ArFSFileFolderEntity {
 	constructor(
 		appName: string,
 		appVersion: string,
