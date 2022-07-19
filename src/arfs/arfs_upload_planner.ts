@@ -68,7 +68,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		);
 		const metaDataByteCountAsDataItem = byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataGqlTags(fileMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: fileMetaDataPrototype })
 		);
 		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
 
@@ -123,7 +123,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 			if (this.shouldBundle) {
 				const folderByteCountAsDataItem = byteCountAsDataItem(
 					folderMetaDataPrototype.objectData.sizeOf(),
-					this.tagAssembler.assembleArFSMetaDataGqlTags(folderMetaDataPrototype)
+					this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: folderMetaDataPrototype })
 				);
 
 				bundlePacker.packIntoBundle({
@@ -255,11 +255,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	}: EstimateCreateDriveParams): CreateDrivePlan {
 		const driveDataItemByteCount = byteCountAsDataItem(
 			driveMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataGqlTags(driveMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: driveMetaDataPrototype })
 		);
 		const rootFolderDataItemByteCount = byteCountAsDataItem(
 			rootFolderMetaDataPrototype.objectData.sizeOf(),
-			this.tagAssembler.assembleArFSMetaDataGqlTags(rootFolderMetaDataPrototype)
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: rootFolderMetaDataPrototype })
 		);
 		const totalDataItemByteCount = driveDataItemByteCount.plus(rootFolderDataItemByteCount);
 

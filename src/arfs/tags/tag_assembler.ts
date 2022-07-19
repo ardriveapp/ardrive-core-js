@@ -1,30 +1,41 @@
 import { FeeMultiple, GQLTagInterface } from '../../exports';
-import { ArFSEntityMetaDataPrototype, ArFSFileDataPrototype } from '../tx/arfs_prototypes';
+import { ArFSEntityMetaDataPrototype, ArFSFileDataPrototype, ArFSObjectMetadataPrototype } from '../tx/arfs_prototypes';
 import assertTagLimits from './tag_assertions';
 import { ArFSTagSettings } from '../arfs_tag_settings';
+
+interface WithPrototype<T extends ArFSObjectMetadataPrototype> {
+	arFSPrototype: T;
+}
+interface WithFeeMultiple {
+	feeMultiple?: FeeMultiple;
+}
+interface WithTipBoolean {
+	shouldAddTipTag?: boolean;
+}
+
+type AssembleBundleTagsParams = WithFeeMultiple & WithTipBoolean;
+type AssembleFileDataTagsParams = WithPrototype<ArFSFileDataPrototype> & WithFeeMultiple & WithTipBoolean;
+type AssembleMetaDataTagsParams = WithPrototype<ArFSEntityMetaDataPrototype> & WithFeeMultiple;
 
 export class ArFSTagAssembler {
 	constructor(private readonly arFSTagSettings: ArFSTagSettings) {}
 
-	public assembleBundleTags(feeMultiple?: FeeMultiple, shouldAddTipTag = false): GQLTagInterface[] {
+	public assembleBundleTags({ feeMultiple, shouldAddTipTag }: AssembleBundleTagsParams): GQLTagInterface[] {
 		return this.assembleTags(this.arFSTagSettings.baseBundleTags, feeMultiple, shouldAddTipTag);
 	}
 
-	public assembleArFSFileDataTags(
-		arFSPrototype: ArFSFileDataPrototype,
-		feeMultiple?: FeeMultiple,
+	public assembleArFSFileDataTags({
+		arFSPrototype,
+		feeMultiple,
 		shouldAddTipTag = false
-	): GQLTagInterface[] {
+	}: AssembleFileDataTagsParams): GQLTagInterface[] {
 		const tags = arFSPrototype.gqlTags;
 		this.arFSTagSettings.baseAppTags.forEach((t) => tags.push(t));
 
 		return this.assembleTags(tags, feeMultiple, shouldAddTipTag);
 	}
 
-	public assembleArFSMetaDataGqlTags(
-		arFSPrototype: ArFSEntityMetaDataPrototype,
-		feeMultiple?: FeeMultiple
-	): GQLTagInterface[] {
+	public assembleArFSMetaDataGqlTags({ arFSPrototype, feeMultiple }: AssembleMetaDataTagsParams): GQLTagInterface[] {
 		const tags = arFSPrototype.gqlTags;
 
 		this.arFSTagSettings.baseArFSTags.forEach((t) => tags.push(t));

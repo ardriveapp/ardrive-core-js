@@ -32,13 +32,13 @@ export class TxPreparer {
 	}
 
 	public async prepareFileDataDataItem({ objectMetaData }: ArFSPrepareFileDataItemParams): Promise<DataItem> {
-		const tags = this.tagAssembler.assembleArFSFileDataTags(objectMetaData);
+		const tags = this.tagAssembler.assembleArFSFileDataTags({ arFSPrototype: objectMetaData });
 
 		return this.prepareAndSignDataItem(objectMetaData.objectData, tags);
 	}
 
 	public async prepareMetaDataDataItem({ objectMetaData }: ArFSPrepareMetaDataItemParams): Promise<DataItem> {
-		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags(objectMetaData);
+		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: objectMetaData });
 
 		return this.prepareAndSignDataItem(objectMetaData.objectData, tags);
 	}
@@ -70,7 +70,10 @@ export class TxPreparer {
 			throw new Error('Bundle format could not be verified!');
 		}
 
-		const tags = this.tagAssembler.assembleBundleTags(rewardSettings.feeMultiple, !!communityTipSettings);
+		const tags = this.tagAssembler.assembleBundleTags({
+			feeMultiple: rewardSettings.feeMultiple,
+			shouldAddTipTag: !!communityTipSettings
+		});
 
 		return this.prepareTx({
 			data: bundle.getRaw(),
@@ -85,11 +88,11 @@ export class TxPreparer {
 		rewardSettings,
 		communityTipSettings
 	}: ArFSPrepareFileDataTxParams): Promise<Transaction> {
-		const tags = this.tagAssembler.assembleArFSFileDataTags(
-			objectMetaData,
-			rewardSettings.feeMultiple,
-			!!communityTipSettings
-		);
+		const tags = this.tagAssembler.assembleArFSFileDataTags({
+			arFSPrototype: objectMetaData,
+			feeMultiple: rewardSettings.feeMultiple,
+			shouldAddTipTag: !!communityTipSettings
+		});
 
 		return this.prepareTx({
 			data: objectMetaData.objectData.asTransactionData(),
@@ -103,7 +106,10 @@ export class TxPreparer {
 		objectMetaData,
 		rewardSettings
 	}: ArFSPrepareMetaDataTxParams): Promise<Transaction> {
-		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags(objectMetaData, rewardSettings.feeMultiple);
+		const tags = this.tagAssembler.assembleArFSMetaDataGqlTags({
+			arFSPrototype: objectMetaData,
+			feeMultiple: rewardSettings.feeMultiple
+		});
 
 		return this.prepareTx({ data: objectMetaData.objectData.asTransactionData(), tags, rewardSettings });
 	}
