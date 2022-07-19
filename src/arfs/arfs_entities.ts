@@ -72,6 +72,11 @@ export class ArFSEntity {
 	}
 }
 
+/**
+ * This private helper function re-implements `Object.fromEntries` which is added in Node 16
+ *
+ * TODO(1252): Remove this and use node implementation
+ */
 function fromEntries(iterable: [string, unknown][]) {
 	return [...iterable].reduce((obj: Record<string, unknown>, [key, val]) => {
 		obj[key] = val;
