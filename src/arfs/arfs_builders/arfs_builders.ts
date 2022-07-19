@@ -141,26 +141,26 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		}
 
 		for (const key of Object.keys(customMetaData)) {
-			let keyValue: string | string[];
+			let customMetaDataValue: string | string[];
 
 			const prevValue = this.customMetaData[key];
 			const newValue = customMetaData[key];
 
 			if (prevValue) {
-				keyValue = Array.isArray(prevValue) ? prevValue : [prevValue];
+				customMetaDataValue = Array.isArray(prevValue) ? prevValue : [prevValue];
 
 				if (Array.isArray(newValue)) {
 					for (const val of newValue) {
-						keyValue.push(val);
+						customMetaDataValue.push(val);
 					}
 				} else {
-					keyValue.push(newValue);
+					customMetaDataValue.push(newValue);
 				}
 			} else {
-				keyValue = newValue;
+				customMetaDataValue = newValue;
 			}
 
-			this.customMetaData[key] = keyValue;
+			this.customMetaData[key] = customMetaDataValue;
 		}
 	}
 
