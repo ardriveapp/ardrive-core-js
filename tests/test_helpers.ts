@@ -54,7 +54,7 @@ export async function mineArLocalBlock(arweave: Arweave): Promise<void> {
 	await arweave.api.get('mine');
 }
 
-export async function getTxDataFromArLocal(arweave: Arweave, txId: TransactionID): Promise<Buffer> {
+export async function getTxDataFromGateway(arweave: Arweave, txId: TransactionID): Promise<Buffer> {
 	return (
 		await arweave.api.get<Buffer>(`${txId}`, {
 			responseType: 'arraybuffer'
@@ -62,11 +62,11 @@ export async function getTxDataFromArLocal(arweave: Arweave, txId: TransactionID
 	).data;
 }
 
-export async function getMetaDataJSONFromArLocal(
+export async function getMetaDataJSONFromGateway(
 	arweave: Arweave,
 	txId: TransactionID
 ): Promise<Record<string, unknown>> {
-	const dataBuffer = await getTxDataFromArLocal(arweave, txId);
+	const dataBuffer = await getTxDataFromGateway(arweave, txId);
 	const dataString = await Utf8ArrayToStr(dataBuffer);
 	return JSON.parse(dataString);
 }

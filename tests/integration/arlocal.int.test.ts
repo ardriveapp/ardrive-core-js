@@ -40,8 +40,8 @@ import { assertRetryExpectations } from '../test_assertions';
 import {
 	expectAsyncErrorThrow,
 	fundArLocalWallet,
-	getMetaDataJSONFromArLocal,
-	getTxDataFromArLocal,
+	getMetaDataJSONFromGateway,
+	getTxDataFromGateway,
 	mineArLocalBlock
 } from '../test_helpers';
 import GQLResultInterface from '../../src/types/gql_Types';
@@ -433,7 +433,7 @@ describe('ArLocal Integration Tests', function () {
 			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
 			const expectedFileSize = 12;
 
-			const metaDataJson = await getMetaDataJSONFromArLocal(arweave, metadataTxId);
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
 			assertFileMetaDataJson(metaDataJson, {
 				name: fileName,
 				size: expectedFileSize,
@@ -488,7 +488,7 @@ describe('ArLocal Integration Tests', function () {
 			// @ts-ignore
 			const { metadataTxId, entityId: folderId }: Required<ArFSEntityData> = created[0];
 
-			const metaDataJson = await getMetaDataJSONFromArLocal(arweave, metadataTxId);
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
 			assertFolderMetaDataJson(metaDataJson, {
 				name: folderName,
 				customMetaData
@@ -564,7 +564,7 @@ describe('ArLocal Integration Tests', function () {
 			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
 			const expectedFileSize = 12;
 
-			const metaDataJson = await getMetaDataJSONFromArLocal(arweave, metadataTxId);
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
 			assertFileMetaDataJson(metaDataJson, {
 				name: fileName,
 				size: expectedFileSize,
@@ -644,7 +644,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -655,7 +655,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(524_288);
@@ -710,7 +710,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -721,7 +721,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(786_432);
@@ -772,7 +772,7 @@ describe('ArLocal Integration Tests', function () {
 				restore();
 
 				// Ensure data is incomplete
-				const incompleteData = await getTxDataFromArLocal(arweave, dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -783,7 +783,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getTxDataFromArLocal(arweave, dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(264_192);
