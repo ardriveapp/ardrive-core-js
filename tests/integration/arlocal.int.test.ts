@@ -523,13 +523,14 @@ describe('ArLocal Integration Tests', function () {
 			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
 			const expectedFileSize = 12;
 			const expectedCustomMetaData = Object.assign(customMetaData, { ['NaN']: null, ['Infinity']: null });
+			const dataContentType = 'text/plain';
 
 			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
 			assertFileMetaDataJson(metaDataJson, {
 				name: fileName,
 				size: expectedFileSize,
 				dataTxId: `${dataTxId}`,
-				dataContentType: 'text/plain',
+				dataContentType,
 				customMetaData: expectedCustomMetaData
 			});
 
@@ -541,11 +542,9 @@ describe('ArLocal Integration Tests', function () {
 			});
 
 			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
-			assertFileDataTxGqlTags(dataTx, { contentType: 'text/plain' });
+			assertFileDataTxGqlTags(dataTx, { contentType: dataContentType });
 
 			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
-			console.log('arFSFileEntity', JSON.stringify(arFSFileEntity, null, 4));
-
 			assertPublicFileExpectations({
 				size: new ByteCount(expectedFileSize),
 				parentFolderId: rootFolderId,
@@ -555,8 +554,7 @@ describe('ArLocal Integration Tests', function () {
 				entity: arFSFileEntity,
 				driveId,
 				dataTxId,
-				dataContentType: 'text/plain',
-				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				dataContentType,
 				customMetaData: expectedCustomMetaData
 			});
 		});
