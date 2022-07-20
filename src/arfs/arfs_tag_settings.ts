@@ -19,6 +19,17 @@ export class ArFSTagSettings {
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
 
+	public static protectedArFSGqlTagNames = [
+		'ArFS',
+		'App-Name',
+		'App-Version',
+		'Tip-Type',
+		'Content-Type',
+		'Boost',
+		'Bundle-Format',
+		'Bundle-Version'
+	];
+
 	constructor({
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,

@@ -1,3 +1,4 @@
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { EntityMetaDataTransactionData, JsonSerializable } from './types';
 
 const invalidSchemaErrorMessage = `Invalid custom metadata schema. Please submit a valid JSON object with an example shape of `;
@@ -49,7 +50,14 @@ export function isCustomMetaDataGqlTags(customGqlTags: unknown): customGqlTags i
 		return false;
 	}
 
-	for (const value of Object.values(customGqlTags)) {
+	for (const [name, value] of Object.entries(customGqlTags)) {
+		if (ArFSTagSettings.protectedArFSGqlTagNames.includes(name)) {
+			console.error(
+				`Provided custom metadata GQL tag name collides with a protected ArFS protected tag: ${name}`
+			);
+			return false;
+		}
+
 		if (typeof value === 'string') {
 			assertCharacterLength(value);
 			continue;
