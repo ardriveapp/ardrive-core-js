@@ -26,7 +26,7 @@ import {
 	GQLTagInterface,
 	EntityType,
 	TransactionID,
-	CustomMetaDataTags
+	CustomMetaDataGqlTags
 } from '../../types';
 import { ArFSDataToUpload } from '../arfs_file_wrapper';
 import { WithDriveKey } from '../arfs_entity_result_factory';
@@ -36,7 +36,7 @@ export abstract class ArFSObjectMetadataPrototype {
 
 	protected abstract readonly protectedTags: GQLTagInterface[];
 
-	constructor(protected readonly customMetaDataTags: CustomMetaDataTags) {}
+	constructor(protected readonly customMetaDataTags: CustomMetaDataGqlTags) {}
 
 	public get gqlTags(): GQLTagInterface[] {
 		const tags = this.parseCustomGqlTags(this.customMetaDataTags);
@@ -48,7 +48,7 @@ export abstract class ArFSObjectMetadataPrototype {
 		return tags;
 	}
 
-	private parseCustomGqlTags(customMetaDataGqlTagInterface: CustomMetaDataTags): GQLTagInterface[] {
+	private parseCustomGqlTags(customMetaDataGqlTagInterface: CustomMetaDataGqlTags): GQLTagInterface[] {
 		const tagsAsArray = Object.entries(customMetaDataGqlTagInterface);
 
 		const tags: GQLTagInterface[] = [];
@@ -85,7 +85,7 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 	abstract readonly entityType: EntityType;
 	abstract readonly driveId: DriveID;
 
-	constructor(protected readonly customMetaDataTags: CustomMetaDataTags) {
+	constructor(protected readonly customMetaDataTags: CustomMetaDataGqlTags) {
 		super(customMetaDataTags);
 
 		// Get the current time so the app can display the "created" data later on
@@ -187,7 +187,7 @@ export class ArFSPublicFolderMetaDataPrototype extends ArFSFolderMetaDataPrototy
 		readonly driveId: DriveID,
 		readonly folderId: FolderID,
 		readonly parentFolderId?: FolderID,
-		public readonly customMetaDataTags: CustomMetaDataTags = {}
+		public readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}
@@ -202,7 +202,7 @@ export class ArFSPrivateFolderMetaDataPrototype extends ArFSFolderMetaDataProtot
 		readonly folderId: FolderID,
 		readonly objectData: ArFSPrivateFolderTransactionData,
 		readonly parentFolderId?: FolderID,
-		public readonly customMetaDataTags: CustomMetaDataTags = {}
+		public readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}
@@ -259,7 +259,7 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 		readonly driveId: DriveID,
 		readonly fileId: FileID,
 		readonly parentFolderId: FolderID,
-		readonly customMetaDataTags: CustomMetaDataTags = {}
+		readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}
@@ -300,7 +300,7 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 		readonly driveId: DriveID,
 		readonly fileId: FileID,
 		readonly parentFolderId: FolderID,
-		readonly customMetaDataTags: CustomMetaDataTags = {}
+		readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}
@@ -360,7 +360,7 @@ export class ArFSPublicFileDataPrototype extends ArFSFileDataPrototype {
 	constructor(
 		readonly objectData: ArFSPublicFileDataTransactionData,
 		readonly contentType: DataContentType,
-		public readonly customMetaDataTags: CustomMetaDataTags = {}
+		public readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}
@@ -371,7 +371,7 @@ export class ArFSPrivateFileDataPrototype extends ArFSFileDataPrototype {
 
 	constructor(
 		readonly objectData: ArFSPrivateFileDataTransactionData,
-		public readonly customMetaDataTags: CustomMetaDataTags = {}
+		public readonly customMetaDataTags: CustomMetaDataGqlTags = {}
 	) {
 		super(customMetaDataTags);
 	}

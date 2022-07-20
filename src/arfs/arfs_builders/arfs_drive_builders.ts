@@ -13,8 +13,8 @@ import {
 	EntityMetaDataTransactionData
 } from '../../types';
 import { Utf8ArrayToStr } from '../../utils/common';
-import { fakeEntityId } from '../../utils/constants';
-import { ArFSPublicDrive, ArFSPrivateDrive, ENCRYPTED_DATA_PLACEHOLDER, ArFSDriveEntity } from '../arfs_entities';
+import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId } from '../../utils/constants';
+import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
 	ArFSMetadataEntityBuilder,
 	ArFSMetadataEntityBuilderParams,
@@ -23,9 +23,9 @@ import {
 import { ArFSPrivateDriveKeyless } from '../../exports';
 import { GatewayAPI } from '../../utils/gateway_api';
 
-interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
+export interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
-	rootFolderId: FolderID;
+	rootFolderId: string;
 }
 
 abstract class ArFSDriveBuilder<T extends ArFSDriveEntity> extends ArFSMetadataEntityBuilder<T> {
@@ -202,7 +202,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 
 			this.name = decryptedDriveJSON.name;
-			this.rootFolderId = decryptedDriveJSON.rootFolderId;
+			this.rootFolderId = EID(decryptedDriveJSON.rootFolderId);
 
 			this.parseCustomMetaDataFromDataJson(decryptedDriveJSON);
 
@@ -333,7 +333,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 					if (this.cipher?.length && this.driveAuthMode?.length && this.cipherIV?.length) {
 						const placeholderDriveData = {
 							name: ENCRYPTED_DATA_PLACEHOLDER,
-							rootFolderId: new EncryptedEntityID()
+							rootFolderId: ENCRYPTED_DATA_PLACEHOLDER
 						};
 						return this.privateKeyData.safelyDecryptToJson<DriveMetaDataTransactionData>(
 							this.cipherIV,
@@ -350,7 +350,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 			})();
 
 			this.name = dataJSON.name;
-			this.rootFolderId = dataJSON.rootFolderId;
+			this.rootFolderId = EID(dataJSON.rootFolderId);
 
 			this.parseCustomMetaDataFromDataJson(dataJSON);
 

@@ -1,34 +1,55 @@
+import { EntityMetaDataTransactionData, JsonSerializable } from './types';
+
 const invalidSchemaErrorMessage = `Invalid custom metadata schema. Please submit a valid JSON object with an example shape of `;
 
-const customMetaDataTagInterfaceShapeOne = '{ "TAG_NAME": "TAG_VALUE" }';
-const customMetaDataTagInterfaceShapeTwo = '{ "TAG_NAME": ["VAL 1", "VAL 2" ]}';
+const customMetaDataGqlTagShapeOne = '{ "TAG_NAME": "TAG_VALUE" }';
+const customMetaDataGqlTagShapeTwo = '{ "TAG_NAME": ["VAL 1", "VAL 2" ] }';
+const customMetaDataJsonShape = '{ "TAG_NAME": { "Any": [ "Valid", "JSON" ] } }';
+const customMetaDataShape = `{ metaDataJson?: ${customMetaDataGqlTagShapeOne}, metaDataGql?: ${customMetaDataGqlTagShapeTwo} }`;
 
-export const invalidCustomMetaDataTagInterfaceErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataTagInterfaceShapeOne} or ${customMetaDataTagInterfaceShapeTwo}`;
-
-const customMetaDataShape = `{ metaDataJson?: ${customMetaDataTagInterfaceShapeOne}, metaDataGql?: ${customMetaDataTagInterfaceShapeTwo} }`;
-
+export const invalidCustomMetaDataGqlTagErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataGqlTagShapeOne} or ${customMetaDataGqlTagShapeTwo}`;
+export const invalidCustomMetaDataJsonErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataJsonShape}`;
 export const invalidCustomMetaDataErrorMessage = `s${invalidSchemaErrorMessage}${customMetaDataShape}`;
 
-export type CustomMetaDataTags = Record<string, string | string[]>;
+export type CustomMetaDataGqlTags = Record<string, string | string[]>;
+export type CustomMetaDataJsonFields = EntityMetaDataTransactionData;
 
 export interface CustomMetaData {
 	/** Include custom metadata on MetaData Tx Data JSON */
-	metaDataJson?: CustomMetaDataTags;
+	metaDataJson?: CustomMetaDataJsonFields;
 
 	/** Include custom metadata on MetaData Tx GQL Tags */
-	metaDataGqlTags?: CustomMetaDataTags;
+	metaDataGqlTags?: CustomMetaDataGqlTags;
 
 	// TODO: Include dataTx GQL tags as an option (PE-1534)
 	/** Include custom metadata on File Data Tx GQL Tags */
 	// dataGqlTags?: CustomMetaDataTagInterface;
 }
 
-export function isCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTags {
-	if (typeof tags !== 'object' || tags === null) {
+export function isCustomMetaDataJsonFields(customDataJson: unknown): customDataJson is CustomMetaDataJsonFields {
+	return isJsonSerializable(customDataJson);
+}
+
+/** Type guard that checks if the provided JSON will parse */
+export function isJsonSerializable(json: unknown): json is JsonSerializable {
+	try {
+		JSON.parse(JSON.stringify(json));
+	} catch {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Type guard that checks for Record<string, string | string[]> shape and
+ * asserts that each key and value string has at least one character
+ */
+export function isCustomMetaDataGqlTags(customGqlTags: unknown): customGqlTags is CustomMetaDataGqlTags {
+	if (typeof customGqlTags !== 'object' || customGqlTags === null) {
 		return false;
 	}
 
-	for (const value of Object.values(tags)) {
+	for (const value of Object.values(customGqlTags)) {
 		if (typeof value === 'string') {
 			assertCharacterLength(value);
 			continue;
@@ -55,33 +76,39 @@ function assertCharacterLength(value: string): void {
 	}
 }
 
+/** Type guard that checks the shape of a CustomMetaData input object */
 export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 	if (typeof tags !== 'object' || tags === null) {
 		return false;
 	}
 
-	for (const [key, val] of Object.entries(tags)) {
-		if (key !== 'metaDataJson' && key !== 'metaDataGqlTags') {
+	for (const [key, metaData] of Object.entries(tags)) {
+		if (key === 'metaDataJson' && !isCustomMetaDataJsonFields(metaData)) {
 			return false;
 		}
-		if (!isCustomMetaDataTagInterface(val)) {
+		if (key !== 'metaDataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-export function assertCustomMetaDataTagInterface(tags: unknown): tags is CustomMetaDataTags {
-	if (!isCustomMetaDataTagInterface(tags)) {
-		console.log('invalidCustomMetaDataTagInterfaceErrorMessage', invalidCustomMetaDataTagInterfaceErrorMessage);
-		throw Error(invalidCustomMetaDataTagInterfaceErrorMessage);
+export function assertCustomMetaDataGqlTags(tags: unknown): tags is CustomMetaDataGqlTags {
+	if (!isCustomMetaDataGqlTags(tags)) {
+		throw Error(invalidCustomMetaDataGqlTagErrorMessage);
+	}
+	return true;
+}
+
+export function assertCustomMetaDataJsonFields(tags: unknown): tags is CustomMetaDataJsonFields {
+	if (!isCustomMetaDataJsonFields(tags)) {
+		throw Error(invalidCustomMetaDataJsonErrorMessage);
 	}
 	return true;
 }
 
 export function assertCustomMetaData(tags: unknown): tags is CustomMetaData {
 	if (!isCustomMetaData(tags)) {
-		console.log('invalidCustomMetaDataErrorMessage', invalidCustomMetaDataErrorMessage);
 		throw Error(invalidCustomMetaDataErrorMessage);
 	}
 	return true;

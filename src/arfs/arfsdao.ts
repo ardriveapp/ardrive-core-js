@@ -13,7 +13,6 @@ import {
 	ArFSPrivateFile,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
-	ENCRYPTED_DATA_PLACEHOLDER,
 	ArFSPrivateFileWithPaths,
 	ArFSPrivateFolderWithPaths,
 	privateEntityWithPathsKeylessFactory
@@ -74,7 +73,13 @@ import {
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, authTagLength, defaultMaxConcurrentChunks } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	authTagLength,
+	defaultMaxConcurrentChunks,
+	ENCRYPTED_DATA_PLACEHOLDER
+} from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,

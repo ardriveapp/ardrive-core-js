@@ -18,7 +18,13 @@ import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, CustomMetaData, SourceUri } from '../exports';
+import {
+	ArFSPublicFileWithPaths,
+	ArFSPublicFolderWithPaths,
+	assertCustomMetaData,
+	CustomMetaData,
+	SourceUri
+} from '../exports';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);
@@ -94,6 +100,12 @@ export abstract class ArFSBaseEntityToUpload {
 
 	public get destinationBaseName(): string {
 		return this.destName ?? this.getBaseName();
+	}
+
+	constructor() {
+		if (this.customMetaData !== undefined) {
+			assertCustomMetaData(this.customMetaData);
+		}
 	}
 }
 

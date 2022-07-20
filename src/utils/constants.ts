@@ -3,6 +3,9 @@ const { version: DEFAULT_APP_VERSION } = require('../../package.json');
 import { ByteCount, EID, JSON_CONTENT_TYPE, PRIVATE_CONTENT_TYPE, TxID } from '../types';
 import { CipherType } from '../types/type_guards';
 
+export const ENCRYPTED_DATA_PLACEHOLDER = 'ENCRYPTED';
+export type ENCRYPTED_DATA_PLACEHOLDER_TYPE = 'ENCRYPTED';
+
 export const ArFS_O_11 = '0.11';
 export const CURRENT_ARFS_VERSION = ArFS_O_11;
 export const DEFAULT_APP_NAME = 'ArDrive-Core';

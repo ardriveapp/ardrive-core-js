@@ -14,9 +14,10 @@ import {
 	EntityType,
 	GQLNodeInterface,
 	GQLTagInterface,
-	CustomMetaDataTags,
-	isCustomMetaDataTagInterface,
-	EntityMetaDataTransactionData
+	CustomMetaDataGqlTags,
+	EntityMetaDataTransactionData,
+	JsonSerializable,
+	isCustomMetaDataJsonFields
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -50,7 +51,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
 
-	customMetaData: CustomMetaDataTags = {};
+	customMetaData: EntityMetaDataTransactionData = {};
 
 	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;
@@ -135,13 +136,13 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	protected addToCustomMetaData(customMetaData: EntityMetaDataTransactionData): void {
-		if (!isCustomMetaDataTagInterface(customMetaData)) {
+		if (!isCustomMetaDataJsonFields(customMetaData)) {
 			console.error(`Parsed an invalid custom metadata shape from MetaData Tx Data JSON: ${customMetaData}`);
 			return;
 		}
 
 		for (const key of Object.keys(customMetaData)) {
-			let customMetaDataValue: string | string[];
+			let customMetaDataValue: JsonSerializable | JsonSerializable[];
 
 			const prevValue = this.customMetaData[key];
 			const newValue = customMetaData[key];
@@ -172,7 +173,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 
 	protected parseCustomMetaDataFromDataJson(dataJson: EntityMetaDataTransactionData): void {
 		const dataJsonEntries = Object.entries(dataJson).filter(([key]) => !this.protectedDataJsonKeys.includes(key));
-		const customMetaData: CustomMetaDataTags = {};
+		const customMetaData: CustomMetaDataGqlTags = {};
 
 		for (const [key, val] of dataJsonEntries) {
 			Object.assign(customMetaData, { [key]: val });
