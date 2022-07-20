@@ -32,13 +32,26 @@ export abstract class ArFSObjectTransactionData {
 		dataJsonCustomMetaData: CustomMetaDataJsonFields
 	): EntityMetaDataTransactionData {
 		assertCustomMetaDataJsonFields(dataJsonCustomMetaData);
+		const fullDataJson = Object.assign({}, baseDataJson);
 
 		for (const [name, jsonSerializable] of Object.entries(dataJsonCustomMetaData)) {
 			this.assertProtectedDataJsonField(name);
-			Object.assign(baseDataJson, { [name]: jsonSerializable });
+
+			const prevValue = fullDataJson[name];
+			let newValue = jsonSerializable;
+
+			if (prevValue !== undefined) {
+				if (Array.isArray(prevValue)) {
+					newValue = [...prevValue, jsonSerializable];
+				} else {
+					newValue = [prevValue, jsonSerializable];
+				}
+			}
+
+			Object.assign(fullDataJson, { [name]: newValue });
 		}
 
-		return baseDataJson;
+		return fullDataJson;
 	}
 
 	protected static assertProtectedDataJsonField(tagName: string): void {
