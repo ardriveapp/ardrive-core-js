@@ -35,7 +35,13 @@ import {
 } from '../../src/arfs/arfs_entities';
 import { GatewayAPI } from '../../src/utils/gateway_api';
 import { restore, stub } from 'sinon';
-import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload, stubArweaveAddress } from '../stubs';
+import {
+	stub258KiBFileToUpload,
+	stub2ChunkFileToUpload,
+	stub3ChunkFileToUpload,
+	stubArweaveAddress,
+	stubCommunityContract
+} from '../stubs';
 import { assertRetryExpectations } from '../test_assertions';
 import {
 	expectAsyncErrorThrow,
@@ -64,6 +70,7 @@ import {
 	assertFolderMetaDataJson,
 	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
+import { VertoContractReader } from '../../src/exports';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -77,7 +84,10 @@ describe('ArLocal Integration Tests', function () {
 	const fakeVersion = 'FAKE_VERSION';
 
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
-	const communityOracle = new ArDriveCommunityOracle(arweave);
+	const fakeContractReader = new VertoContractReader();
+	stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
+
+	const communityOracle = new ArDriveCommunityOracle(arweave, [fakeContractReader]);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', fakeVersion);
 
@@ -464,6 +474,88 @@ describe('ArLocal Integration Tests', function () {
 					['Custom Tag']: ['This Test Works', 'This Test Works'],
 					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
 				}
+			});
+		});
+
+		it('we can upload a file as a v2 transaction with custom metadata to the Data JSON containing all valid JSON shapes', async () => {
+			const fileName = 'json_shapes_unique_name';
+			const customMetaData = {
+				['boolean']: true,
+				['number']: 420,
+				['string']: 'value',
+				['null']: null,
+				['NaN']: NaN,
+				['Infinity']: Number.POSITIVE_INFINITY,
+				['array']: [
+					'containing',
+					'all',
+					'types',
+					1337,
+					false,
+					['not', 'too', 'deep'],
+					{ ['nested']: 'Object' }
+				],
+				['object']: {
+					['with']: 'very',
+					['many']: 42,
+					['types']: true,
+					['to']: [false],
+					['check']: { ['nest']: 'it' }
+				}
+			};
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							undefined,
+							{ metaDataJson: customMetaData }
+						),
+						destName: fileName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
+			const expectedFileSize = 12;
+			const expectedCustomMetaData = Object.assign(customMetaData, { ['NaN']: null, ['Infinity']: null });
+			const dataContentType = 'text/plain';
+
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
+			assertFileMetaDataJson(metaDataJson, {
+				name: fileName,
+				size: expectedFileSize,
+				dataTxId: `${dataTxId}`,
+				dataContentType,
+				customMetaData: expectedCustomMetaData
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFileMetaDataGqlTags(metaDataTx, {
+				driveId,
+				fileId,
+				parentFolderId: rootFolderId
+			});
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			assertFileDataTxGqlTags(dataTx, { contentType: dataContentType });
+
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				fileId,
+				entityName: fileName,
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType,
+				customMetaData: expectedCustomMetaData
 			});
 		});
 
