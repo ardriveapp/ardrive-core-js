@@ -12,32 +12,80 @@ import {
 	ArFSEncryptedData,
 	CipherType,
 	DriveAuthMode,
-	CustomMetaDataTags,
-	EntityMetaDataTransactionData
+	EntityMetaDataTransactionData,
+	CustomMetaDataJsonFields,
+	assertCustomMetaDataJsonFields
 } from '../../types';
+import { DriveMetaDataTransactionData } from '../arfs_builders/arfs_drive_builders';
+import { FileMetaDataTransactionData } from '../arfs_builders/arfs_file_builders';
 
-export interface ArFSObjectTransactionData {
-	asTransactionData(): string | Buffer;
-	sizeOf(): ByteCount;
+/** Base class of an ArFS MetaData Tx's Data JSON */
+export abstract class ArFSObjectTransactionData {
+	public abstract asTransactionData(): string | Buffer;
+
+	public sizeOf(): ByteCount {
+		return new ByteCount(this.asTransactionData().length);
+	}
+
+	protected static parseCustomDataJsonFields(
+		baseDataJson: EntityMetaDataTransactionData,
+		dataJsonCustomMetaData: CustomMetaDataJsonFields
+	): EntityMetaDataTransactionData {
+		assertCustomMetaDataJsonFields(dataJsonCustomMetaData);
+
+		for (const [name, jsonSerializable] of Object.entries(dataJsonCustomMetaData)) {
+			this.assertProtectedDataJsonField(name);
+			Object.assign(baseDataJson, { [name]: jsonSerializable });
+		}
+
+		return baseDataJson;
+	}
+
+	protected static assertProtectedDataJsonField(tagName: string): void {
+		if (this.protectedDataJsonFields.includes(tagName)) {
+			throw Error(`Provided data JSON custom metadata conflicts with an ArFS protected field name: ${tagName}`);
+		}
+	}
+
+	protected static get protectedDataJsonFields(): string[] {
+		return ['name'];
+	}
 }
 
-export abstract class ArFSDriveTransactionData implements ArFSObjectTransactionData {
-	abstract asTransactionData(): string | Buffer;
-	// TODO: Share repeated sizeOf() function to all classes
-	sizeOf(): ByteCount {
-		return new ByteCount(this.asTransactionData().length);
+export abstract class ArFSDriveTransactionData extends ArFSObjectTransactionData {
+	protected static get protectedDataJsonFields(): string[] {
+		const dataJsonFields = super.protectedDataJsonFields;
+
+		dataJsonFields.push('rootFolderId');
+
+		return dataJsonFields;
 	}
 }
 
 export class ArFSPublicDriveTransactionData extends ArFSDriveTransactionData {
-	constructor(private readonly name: string, private readonly rootFolderId: FolderID) {
+	private baseDataJson: DriveMetaDataTransactionData;
+	private fullDataJson: EntityMetaDataTransactionData;
+
+	constructor(
+		private readonly name: string,
+		private readonly rootFolderId: FolderID,
+		protected readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+	) {
 		super();
-	}
-	asTransactionData(): string {
-		return JSON.stringify({
+
+		this.baseDataJson = {
 			name: this.name,
-			rootFolderId: this.rootFolderId
-		});
+			rootFolderId: `${this.rootFolderId}`
+		};
+
+		this.fullDataJson = ArFSPublicDriveTransactionData.parseCustomDataJsonFields(
+			this.baseDataJson,
+			this.dataJsonCustomMetaData
+		);
+	}
+
+	public asTransactionData(): string {
+		return JSON.stringify(this.fullDataJson);
 	}
 }
 
@@ -55,18 +103,21 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 	static async from(
 		name: string,
 		rootFolderId: FolderID,
-		driveKey: DriveKey
+		driveKey: DriveKey,
+		dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
 	): Promise<ArFSPrivateDriveTransactionData> {
-		const { cipher, cipherIV, data } = await driveEncrypt(
-			driveKey,
-			Buffer.from(
-				JSON.stringify({
-					name: name,
-					rootFolderId: rootFolderId
-				})
-			)
+		const baseDataJson = {
+			name: name,
+			rootFolderId: `${rootFolderId}`
+		};
+		const fullDataJson = ArFSPrivateDriveTransactionData.parseCustomDataJsonFields(
+			baseDataJson,
+			dataJsonCustomMetaData
 		);
-		return new ArFSPrivateDriveTransactionData(cipher, cipherIV, data, driveKey);
+
+		const { cipher, cipherIV, data } = await driveEncrypt(driveKey, Buffer.from(JSON.stringify(fullDataJson)));
+
+		return new ArFSPrivateDriveTransactionData(cipher, cipherIV, data, driveKey, 'password');
 	}
 
 	asTransactionData(): Buffer {
@@ -74,28 +125,30 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 	}
 }
 
-export abstract class ArFSFolderTransactionData implements ArFSObjectTransactionData {
-	abstract asTransactionData(): string | Buffer;
-	sizeOf(): ByteCount {
-		return new ByteCount(this.asTransactionData().length);
-	}
-}
+export abstract class ArFSFolderTransactionData extends ArFSObjectTransactionData {}
 
 export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
-	constructor(private readonly name: string, private readonly dataJsonCustomMetaData: CustomMetaDataTags = {}) {
+	private baseDataJson: { name: string };
+	private fullDataJson: EntityMetaDataTransactionData;
+
+	constructor(
+		private readonly name: string,
+		protected readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+	) {
 		super();
-	}
-	asTransactionData(): string {
-		const baseArFSDataJSON: EntityMetaDataTransactionData = {
+
+		this.baseDataJson = {
 			name: this.name
 		};
 
-		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
+		this.fullDataJson = ArFSPublicFolderTransactionData.parseCustomDataJsonFields(
+			this.baseDataJson,
+			this.dataJsonCustomMetaData
+		);
+	}
 
-		for (const [name, values] of customMetaDataArray) {
-			baseArFSDataJSON[name] = values;
-		}
-		return JSON.stringify(baseArFSDataJSON);
+	asTransactionData(): string {
+		return JSON.stringify(this.fullDataJson);
 	}
 }
 
@@ -113,21 +166,19 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 	static async from(
 		name: string,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataTags = {}
+		dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
 	): Promise<ArFSPrivateFolderTransactionData> {
-		const baseArFSDataJSON: EntityMetaDataTransactionData = {
+		const baseDataJson = {
 			name: name
 		};
-
-		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
-
-		for (const [name, values] of customMetaDataArray) {
-			baseArFSDataJSON[name] = values;
-		}
+		const fullDataJson = ArFSPrivateFolderTransactionData.parseCustomDataJsonFields(
+			baseDataJson,
+			dataJsonCustomMetaData
+		);
 
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
 			driveKey,
-			Buffer.from(JSON.stringify(baseArFSDataJSON))
+			Buffer.from(JSON.stringify(fullDataJson))
 		);
 		return new ArFSPrivateFolderTransactionData(name, cipher, cipherIV, data, driveKey);
 	}
@@ -137,41 +188,49 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 	}
 }
 
-export abstract class ArFSFileMetadataTransactionData implements ArFSObjectTransactionData {
-	abstract asTransactionData(): string | Buffer;
-	sizeOf(): ByteCount {
-		return new ByteCount(this.asTransactionData().length);
+export abstract class ArFSFileMetadataTransactionData extends ArFSObjectTransactionData {
+	protected static get protectedDataJsonFields(): string[] {
+		const dataJsonFields = super.protectedDataJsonFields;
+
+		dataJsonFields.push('size');
+		dataJsonFields.push('lastModifiedDate');
+		dataJsonFields.push('dataTxId');
+		dataJsonFields.push('dataContentType');
+
+		return dataJsonFields;
 	}
 }
 
 export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTransactionData {
+	private baseDataJson: FileMetaDataTransactionData;
+	private fullDataJson: EntityMetaDataTransactionData;
+
 	constructor(
 		private readonly name: string,
 		private readonly size: ByteCount,
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
 		private readonly dataContentType: DataContentType,
-		private readonly dataJsonCustomMetaData: CustomMetaDataTags = {}
+		private readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
 	) {
 		super();
-	}
 
-	asTransactionData(): string {
-		const baseArFSDataJSON: EntityMetaDataTransactionData = {
+		this.baseDataJson = {
 			name: this.name,
-			size: this.size,
-			lastModifiedDate: this.lastModifiedDate,
-			dataTxId: this.dataTxId,
+			size: +this.size,
+			lastModifiedDate: +this.lastModifiedDate,
+			dataTxId: `${this.dataTxId}`,
 			dataContentType: this.dataContentType
 		};
 
-		const customMetaDataArray = Object.entries(this.dataJsonCustomMetaData);
+		this.fullDataJson = ArFSPublicFileMetadataTransactionData.parseCustomDataJsonFields(
+			this.baseDataJson,
+			this.dataJsonCustomMetaData
+		);
+	}
 
-		for (const [name, values] of customMetaDataArray) {
-			baseArFSDataJSON[name] = values;
-		}
-
-		return JSON.stringify(baseArFSDataJSON);
+	asTransactionData(): string {
+		return JSON.stringify(this.fullDataJson);
 	}
 }
 
@@ -194,26 +253,24 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataContentType: DataContentType,
 		fileId: FileID,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataTags = {}
+		dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
-		const baseArFSDataJSON: EntityMetaDataTransactionData = {
+		const baseDataJson = {
 			name: name,
-			size: size,
-			lastModifiedDate: lastModifiedDate,
-			dataTxId: dataTxId,
+			size: +size,
+			lastModifiedDate: +lastModifiedDate,
+			dataTxId: `${dataTxId}`,
 			dataContentType: dataContentType
 		};
-
-		const customMetaDataArray = Object.entries(dataJsonCustomMetaData);
-
-		for (const [name, values] of customMetaDataArray) {
-			baseArFSDataJSON[name] = values;
-		}
+		const fullDataJson = ArFSPrivateFileMetadataTransactionData.parseCustomDataJsonFields(
+			baseDataJson,
+			dataJsonCustomMetaData
+		);
 
 		const fileKey: FileKey = await deriveFileKey(`${fileId}`, driveKey);
 		const { cipher, cipherIV, data }: ArFSEncryptedData = await fileEncrypt(
 			fileKey,
-			Buffer.from(JSON.stringify(baseArFSDataJSON))
+			Buffer.from(JSON.stringify(fullDataJson))
 		);
 		return new ArFSPrivateFileMetadataTransactionData(cipher, cipherIV, data, fileKey);
 	}
@@ -223,12 +280,7 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 	}
 }
 
-export abstract class ArFSFileDataTransactionData implements ArFSObjectTransactionData {
-	abstract asTransactionData(): string | Buffer;
-	sizeOf(): ByteCount {
-		return new ByteCount(this.asTransactionData().length);
-	}
-}
+export abstract class ArFSFileDataTransactionData extends ArFSObjectTransactionData {}
 export class ArFSPublicFileDataTransactionData extends ArFSFileDataTransactionData {
 	constructor(private readonly fileData: Buffer) {
 		super();
