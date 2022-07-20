@@ -295,11 +295,13 @@ export function assertFileMetaDataGqlTags(
 		driveId: DriveID;
 		fileId: FileID;
 		parentFolderId: DriveID;
-		customMetaData: CustomMetaDataGqlTags;
+		customMetaData?: CustomMetaDataGqlTags;
 	}
 ): void {
 	const { driveId, fileId, parentFolderId, customMetaData } = expectations;
-	const expectedMetaData: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
+	const expectedMetaData: GQLTagInterface[] = customMetaData
+		? mapMetaDataTagInterfaceToGqlTagInterface(customMetaData)
+		: [];
 
 	const metaDataTags = getDecodedTags(metaDataTx.tags);
 
