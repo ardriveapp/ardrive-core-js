@@ -229,7 +229,7 @@ Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 100%
 
 To avoid redundant requests to the Arweave network for immutable ArFS entity metadata, a persistent file cache is created and maintained at:
 
-```
+```shell
 Windows: <os.homedir()>/ardrive-caches/metadata
 Non-Windows: <os.homedir()>/.ardrive/caches/metadata
 ```
@@ -247,6 +247,11 @@ The cache can be manually cleared safely at any time that any integrating app is
 Custom metadata can be attached to ArFS File Transactions. Metadata can be applied to either the GQL tags on the MetaData Transaction, the MetaData Transaction's Data JSON, or both.
 
 All custom tags can be accessed by using by using `ArDrive` class read methods such as `getPublicFile`, `getPrivateFile`, `listPrivateFolder`, etc.
+
+```ts
+const arDrive = arDriveAnonymousFactory({});
+const fileInfo = await arDrive.getPublicFile({ fileId });
+```
 
 When the custom metadata is attached to the MetaData Transaction's GQL tags, they will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
 
