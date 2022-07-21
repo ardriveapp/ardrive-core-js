@@ -244,7 +244,7 @@ The cache can be manually cleared safely at any time that any integrating app is
 
 ### Applying Custom MetaData to ArFS File Transactions
 
-ArDrive Core has the capability of attaching custom metadata to ArFS File Transactions. This metadata can be applied to either the GQL tags on the MetaData Transaction or into the MetaData Transaction's Data JSON.
+Custom metadata can be attached to ArFS File Transactions. Metadata can be applied to either the GQL tags on the MetaData Transaction, the MetaData Transaction's Data JSON, or both.
 
 All custom tags can be accessed by using by using `ArDrive` class read methods such as `getPublicFile`, `getPrivateFile`, `listPrivateFolder`, etc.
 
