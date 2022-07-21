@@ -250,7 +250,7 @@ All custom tags can be accessed by using by using `ArDrive` class read methods s
 
 When the custom metadata is attached to the MetaData Transaction's GQL tags, they will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
 
-When these tags are added to the MetaData Transaction's Data JSON they can be read by downloading the JSON data directly from `https://arweave.net/METADATA_TX_ID`.
+When these tags are added to the MetaData Transaction's Data JSON they can be read by downloading the JSON data directly from `https://arweave.net/<metadata tx id>`.
 
 To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags when wrapping content to upload:
 
