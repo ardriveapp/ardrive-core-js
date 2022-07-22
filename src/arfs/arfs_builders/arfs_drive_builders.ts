@@ -110,7 +110,9 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 				this.unixTime,
 				this.drivePrivacy,
 				this.rootFolderId,
-				this.customMetaData
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 
@@ -222,7 +224,9 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 				this.cipher,
 				this.cipherIV,
 				this.driveKey,
-				this.customMetaData
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 
@@ -396,7 +400,9 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 					this.driveAuthMode,
 					this.cipher,
 					this.cipherIV,
-					this.customMetaData
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				);
 			}
 			return new ArFSPublicDrive(
@@ -411,7 +417,9 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 				this.unixTime,
 				this.drivePrivacy,
 				this.rootFolderId,
-				this.customMetaData
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid drive state');

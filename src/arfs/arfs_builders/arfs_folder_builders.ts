@@ -98,7 +98,9 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 					this.unixTime,
 					this.parentFolderId,
 					this.entityId,
-					this.customMetaData
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				)
 			);
 		}
@@ -204,7 +206,9 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.cipher,
 				this.cipherIV,
 				this.driveKey,
-				this.customMetaData
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid private folder state');

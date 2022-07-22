@@ -114,7 +114,9 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 					this.lastModifiedDate,
 					this.dataTxId,
 					this.dataContentType,
-					this.customMetaData
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				)
 			);
 		}
@@ -230,7 +232,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.cipherIV,
 				fileKey,
 				this.driveKey,
-				this.customMetaData
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid file state');
