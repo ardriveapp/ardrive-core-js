@@ -70,7 +70,7 @@ import {
 	assertFolderMetaDataJson,
 	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
-import { VertoContractReader } from '../../src/exports';
+import { CustomMetaData, CustomMetaDataJsonFields, VertoContractReader } from '../../src/exports';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -147,9 +147,16 @@ describe('ArLocal Integration Tests', function () {
 		bundledUploadPlanner
 	);
 
-	const customMetaData = {
-		['Custom Tag']: 'This Test Works',
-		['Custom Tag Array']: ['This Test Works', 'As Well :)']
+	const customMetaData: CustomMetaData = {
+		metaDataGqlTags: {
+			['Custom Tag']: 'This Test Works',
+			['Custom Tag Array']: ['This Test Works', 'As Well :)']
+		},
+		metaDataJson: {
+			['Json Tag']: { ['Nested Tag Name']: true },
+			['Null Tag']: null,
+			['More Tag']: 'Hello Test'
+		}
 	};
 
 	before(async () => {
@@ -431,7 +438,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
 							customContentType,
-							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+							customMetaData
 						),
 						destName: fileName
 					}
@@ -449,11 +456,16 @@ describe('ArLocal Integration Tests', function () {
 				size: expectedFileSize,
 				dataTxId: `${dataTxId}`,
 				dataContentType: customContentType,
-				customMetaData
+				customMetaData: customMetaData.metaDataJson
 			});
 
 			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
-			assertFileMetaDataGqlTags(metaDataTx, { driveId, fileId, parentFolderId: rootFolderId, customMetaData });
+			assertFileMetaDataGqlTags(metaDataTx, {
+				driveId,
+				fileId,
+				parentFolderId: rootFolderId,
+				customMetaData: customMetaData.metaDataGqlTags
+			});
 
 			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
 			assertFileDataTxGqlTags(dataTx, { contentType: customContentType });
@@ -470,16 +482,13 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId,
 				dataContentType: customContentType,
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 		});
 
 		it('we can upload a file as a v2 transaction with custom metadata to the Data JSON containing all valid JSON shapes', async () => {
 			const fileName = 'json_shapes_unique_name';
-			const customMetaData = {
+			const customMetaDataJson: CustomMetaDataJsonFields = {
 				['boolean']: true,
 				['number']: 420,
 				['string']: 'value',
@@ -511,7 +520,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
 							undefined,
-							{ metaDataJson: customMetaData }
+							{ metaDataJson: customMetaDataJson }
 						),
 						destName: fileName
 					}
@@ -522,7 +531,7 @@ describe('ArLocal Integration Tests', function () {
 			// @ts-ignore
 			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
 			const expectedFileSize = 12;
-			const expectedCustomMetaData = Object.assign(customMetaData, { ['NaN']: null, ['Infinity']: null });
+			const expectedCustomMetaDataJson = Object.assign(customMetaDataJson, { ['NaN']: null, ['Infinity']: null });
 			const dataContentType = 'text/plain';
 
 			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
@@ -531,7 +540,7 @@ describe('ArLocal Integration Tests', function () {
 				size: expectedFileSize,
 				dataTxId: `${dataTxId}`,
 				dataContentType,
-				customMetaData: expectedCustomMetaData
+				customMetaData: expectedCustomMetaDataJson
 			});
 
 			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
@@ -555,7 +564,7 @@ describe('ArLocal Integration Tests', function () {
 				driveId,
 				dataTxId,
 				dataContentType,
-				customMetaData: expectedCustomMetaData
+				customMetaData: { metaDataJson: expectedCustomMetaDataJson }
 			});
 		});
 
@@ -569,7 +578,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
 							undefined,
-							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+							customMetaData
 						),
 						destName: folderName
 					}
@@ -583,7 +592,7 @@ describe('ArLocal Integration Tests', function () {
 			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
 			assertFolderMetaDataJson(metaDataJson, {
 				name: folderName,
-				customMetaData
+				customMetaData: customMetaData.metaDataJson
 			});
 
 			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
@@ -591,7 +600,7 @@ describe('ArLocal Integration Tests', function () {
 				driveId,
 				folderId,
 				parentFolderId: rootFolderId,
-				customMetaData
+				customMetaData: customMetaData.metaDataGqlTags
 			});
 
 			const arFSFolderEntity = await v2ArDrive.getPublicFolder({ folderId });
@@ -602,10 +611,7 @@ describe('ArLocal Integration Tests', function () {
 				driveId,
 				entity: arFSFolderEntity,
 				entityName: folderName,
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 
 			// Check that nested file also has custom metadata
@@ -624,10 +630,7 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId,
 				dataContentType: 'text/plain',
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 		});
 
@@ -644,7 +647,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
 							customContentType,
-							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+							customMetaData
 						),
 						destName: fileName
 					}
@@ -662,7 +665,7 @@ describe('ArLocal Integration Tests', function () {
 				size: expectedFileSize,
 				dataTxId: `${dataTxId}`,
 				dataContentType: customContentType,
-				customMetaData
+				customMetaData: customMetaData.metaDataJson
 			});
 
 			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
@@ -670,7 +673,7 @@ describe('ArLocal Integration Tests', function () {
 				driveId,
 				fileId,
 				parentFolderId: rootFolderId,
-				customMetaData
+				customMetaData: customMetaData.metaDataGqlTags
 			});
 
 			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
@@ -688,10 +691,7 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId,
 				dataContentType: customContentType,
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 		});
 
@@ -1191,7 +1191,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
 							customContentType,
-							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+							customMetaData
 						),
 						destName: fileName,
 						driveKey
@@ -1216,10 +1216,7 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId,
 				dataContentType: customContentType,
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 		});
 
@@ -1233,7 +1230,7 @@ describe('ArLocal Integration Tests', function () {
 						wrappedEntity: wrapFileOrFolder(
 							'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
 							undefined,
-							{ metaDataGqlTags: customMetaData, metaDataJson: customMetaData }
+							customMetaData
 						),
 						destName: folderName,
 						driveKey
@@ -1253,10 +1250,7 @@ describe('ArLocal Integration Tests', function () {
 				driveId,
 				entity: arFSFolderEntity,
 				entityName: folderName,
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 
 			// Check that nested file also has custom metadata
@@ -1275,10 +1269,7 @@ describe('ArLocal Integration Tests', function () {
 				dataTxId,
 				dataContentType: 'text/plain',
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
-				customMetaData: {
-					['Custom Tag']: ['This Test Works', 'This Test Works'],
-					['Custom Tag Array']: ['This Test Works', 'As Well :)', 'This Test Works', 'As Well :)']
-				}
+				customMetaData
 			});
 		});
 

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import Transaction from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
-import { FileMetaDataTransactionData } from '../../src/arfs/arfs_builders/arfs_file_builders';
 import {
 	ArFSEntity,
 	ArFSPrivateDrive,
@@ -25,7 +24,9 @@ import {
 	DataContentType,
 	ByteCount,
 	EntityMetaDataTransactionData,
-	GQLTagInterface
+	GQLTagInterface,
+	CustomMetaData,
+	CustomMetaDataJsonFields
 } from '../../src/types';
 import { getDecodedTags } from '../test_helpers';
 
@@ -34,7 +35,7 @@ interface AssertEntityExpectationsParams<T = ArFSEntity> {
 	driveId: DriveID;
 	metaDataTxId: TransactionID;
 	entityName: string;
-	customMetaData?: CustomMetaDataGqlTags;
+	customMetaData?: CustomMetaData;
 }
 
 function assertBaseArFSEntityExpectations({
@@ -57,18 +58,14 @@ function assertBaseArFSEntityExpectations({
 	}
 }
 
-function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaDataGqlTags) {
-	const customMetaDataEntries = Object.entries(customMetaData);
-	for (const [key, value] of customMetaDataEntries) {
-		// Without serialization, all custom metadata will be found on the customMetaData field
-		expect(entity.customMetaData?.[key]).to.deep.equal(value);
-	}
+function assertCustomMetaData(entity: ArFSEntity, customMetaData: CustomMetaData) {
+	expect(entity.customMetaDataGqlTags).to.deep.equal(customMetaData.metaDataGqlTags);
+	expect(entity.customMetaDataJson).to.deep.equal(customMetaData.metaDataJson);
 
-	const serializedEntity: Record<string, string | string[]> = JSON.parse(JSON.stringify(entity));
-	for (const [key, value] of customMetaDataEntries) {
-		// After serialization, all custom metadata will be adjacent to ArFS metadata
-		expect(serializedEntity[key]).to.deep.equal(value);
-	}
+	// Assert that MetaData stays consistent after JSON serialization
+	const serializedEntity = JSON.parse(JSON.stringify(entity));
+	expect(serializedEntity.customMetaDataGqlTags).to.deep.equal(customMetaData.metaDataGqlTags);
+	expect(serializedEntity.customMetaDataJson).to.deep.equal(customMetaData.metaDataJson);
 }
 
 function assertArFSPublicExpectations(
@@ -231,13 +228,11 @@ export function assertPrivateFileWithPathsExpectations(
 	assertPrivateFileExpectations({ ...params, entity: params.entity as unknown as ArFSPrivateFile });
 }
 
-interface CustomMetaDataExpectation {
-	customMetaData: CustomMetaDataGqlTags;
+interface FileMetaDataJsonExpectations extends FolderMetaDataJsonExpectations {
+	size: number;
+	dataTxId: string;
+	dataContentType: string;
 }
-
-interface FileMetaDataJsonExpectations
-	extends Omit<FileMetaDataTransactionData, 'lastModifiedDate'>,
-		CustomMetaDataExpectation {}
 
 export function assertFileMetaDataJson(
 	dataJson: EntityMetaDataTransactionData,
@@ -258,7 +253,8 @@ export function assertFileMetaDataJson(
 	});
 }
 
-interface FolderMetaDataJsonExpectations extends CustomMetaDataExpectation {
+interface FolderMetaDataJsonExpectations {
+	customMetaData?: CustomMetaDataJsonFields;
 	name: string;
 }
 
@@ -273,8 +269,12 @@ export function assertFolderMetaDataJson(
 	});
 }
 
-export function mapMetaDataTagInterfaceToGqlTagInterface(customMetaData: CustomMetaDataGqlTags): GQLTagInterface[] {
-	const gqlTagInterfaceArray = [];
+export function mapMetaDataTagInterfaceToGqlTagInterface(customMetaData?: CustomMetaDataGqlTags): GQLTagInterface[] {
+	const gqlTagInterfaceArray: GQLTagInterface[] = [];
+	if (!customMetaData) {
+		return gqlTagInterfaceArray;
+	}
+
 	const metaDataEntries = Object.entries(customMetaData);
 
 	for (const [name, value] of metaDataEntries) {
@@ -325,7 +325,7 @@ export function assertFolderMetaDataGqlTags(
 		driveId: DriveID;
 		folderId: FolderID;
 		parentFolderId: DriveID;
-		customMetaData: CustomMetaDataGqlTags;
+		customMetaData?: CustomMetaDataGqlTags;
 	}
 ): void {
 	const { driveId, folderId, parentFolderId, customMetaData } = expectations;
