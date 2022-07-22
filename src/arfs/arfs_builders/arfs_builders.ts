@@ -15,9 +15,11 @@ import {
 	GQLNodeInterface,
 	GQLTagInterface,
 	CustomMetaDataGqlTags,
-	EntityMetaDataTransactionData,
-	JsonSerializable,
-	isCustomMetaDataJsonFields
+	isCustomMetaDataJsonFields,
+	CustomMetaData,
+	CustomMetaDataJsonFields,
+	isCustomMetaDataGqlTags,
+	FeeMultiple
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -47,11 +49,12 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	name?: string;
 	txId?: TransactionID;
 	unixTime?: UnixTime;
+	boost?: FeeMultiple;
 	protected readonly entityId: AnyEntityID;
 	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
 
-	customMetaData: EntityMetaDataTransactionData = {};
+	customMetaData: CustomMetaData = {};
 
 	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;
@@ -61,6 +64,10 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 
 	abstract getGqlQueryParameters(): GQLTagInterface[];
 	protected abstract buildEntity(): Promise<T>;
+
+	public getDataForTxID(txId: TransactionID): Promise<Buffer> {
+		return this.gatewayApi.getTxData(txId);
+	}
 
 	/**
 	 * Parses data for builder fields from either the provided GQL tags, or from a fresh request to Arweave for tag data
@@ -113,6 +120,9 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 				case 'Unix-Time':
 					this.unixTime = new UnixTime(+value);
 					break;
+				case 'Boost':
+					this.boost = new FeeMultiple(+value);
+					break;
 				default:
 					unparsedTags.push(tag);
 					break;
@@ -122,7 +132,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		return unparsedTags;
 	}
 
-	async build(node?: GQLNodeInterface): Promise<T> {
+	public async build(node?: GQLNodeInterface): Promise<T> {
 		const extraTags = await this.parseFromArweaveNode(node, this.owner);
 		this.parseCustomMetaDataFromGqlTags(extraTags);
 
@@ -130,55 +140,50 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	}
 
 	private parseCustomMetaDataFromGqlTags(gqlTags: GQLTagInterface[]): void {
-		for (const { name, value } of gqlTags) {
-			this.addToCustomMetaData({ [name]: value });
-		}
-	}
+		const customMetaDataGqlTags: CustomMetaDataGqlTags = {};
 
-	protected addToCustomMetaData(customMetaData: EntityMetaDataTransactionData): void {
-		if (!isCustomMetaDataJsonFields(customMetaData)) {
-			console.error(`Parsed an invalid custom metadata shape from MetaData Tx Data JSON: ${customMetaData}`);
+		for (const { name, value: newValue } of gqlTags) {
+			const prevValue = customMetaDataGqlTags[name];
+
+			// Accumulate any duplicated GQL tags into string[]
+			const nextValue = prevValue
+				? Array.isArray(prevValue)
+					? [...prevValue, newValue]
+					: [prevValue, newValue]
+				: newValue;
+
+			Object.assign(customMetaDataGqlTags, { [name]: nextValue });
+		}
+
+		if (!isCustomMetaDataGqlTags(customMetaDataGqlTags)) {
+			console.error(
+				`Parsed an invalid custom metadata shape from MetaData Tx GQL Tags: ${customMetaDataGqlTags}`
+			);
 			return;
 		}
 
-		for (const key of Object.keys(customMetaData)) {
-			let customMetaDataValue: JsonSerializable | JsonSerializable[];
-
-			const prevValue = this.customMetaData[key];
-			const newValue = customMetaData[key];
-
-			if (prevValue) {
-				customMetaDataValue = Array.isArray(prevValue) ? prevValue : [prevValue];
-
-				if (Array.isArray(newValue)) {
-					for (const val of newValue) {
-						customMetaDataValue.push(val);
-					}
-				} else {
-					customMetaDataValue.push(newValue);
-				}
-			} else {
-				customMetaDataValue = newValue;
-			}
-
-			this.customMetaData[key] = customMetaDataValue;
+		if (Object.keys(customMetaDataGqlTags).length > 0) {
+			this.customMetaData.metaDataGqlTags = customMetaDataGqlTags;
 		}
-	}
-
-	getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		return this.gatewayApi.getTxData(txId);
 	}
 
 	protected abstract protectedDataJsonKeys: string[];
 
-	protected parseCustomMetaDataFromDataJson(dataJson: EntityMetaDataTransactionData): void {
+	protected parseCustomMetaDataFromDataJson(dataJson: CustomMetaDataJsonFields): void {
+		if (!isCustomMetaDataJsonFields(dataJson)) {
+			console.error(`Parsed an invalid custom metadata shape from MetaData Tx Data JSON: ${dataJson}`);
+			return;
+		}
 		const dataJsonEntries = Object.entries(dataJson).filter(([key]) => !this.protectedDataJsonKeys.includes(key));
-		const customMetaData: CustomMetaDataGqlTags = {};
+		const customMetaDataJson: CustomMetaDataJsonFields = {};
 
 		for (const [key, val] of dataJsonEntries) {
-			Object.assign(customMetaData, { [key]: val });
+			Object.assign(customMetaDataJson, { [key]: val });
 		}
-		this.addToCustomMetaData(customMetaData);
+
+		if (Object.keys(customMetaDataJson).length > 0) {
+			this.customMetaData.metaDataJson = customMetaDataJson;
+		}
 	}
 }
 
