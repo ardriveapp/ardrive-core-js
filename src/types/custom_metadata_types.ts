@@ -24,7 +24,6 @@ export interface CustomMetaData {
 	/** Include custom metadata on MetaData Tx GQL Tags */
 	metaDataGqlTags?: CustomMetaDataGqlTags;
 
-	// TODO: Include dataTx GQL tags as an option (PE-1534)
 	/** Include custom metadata on File Data Tx GQL Tags */
 	dataGqlTags?: CustomMetaDataTagInterface;
 }
