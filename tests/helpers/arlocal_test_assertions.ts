@@ -30,6 +30,8 @@ import {
 } from '../../src/types';
 import { getDecodedTags } from '../test_helpers';
 
+const defaultDataContentType = 'text/plain';
+
 interface AssertEntityExpectationsParams<T = ArFSEntity> {
 	entity: T;
 	driveId: DriveID;
@@ -361,7 +363,7 @@ export function assertFileDataTxGqlTags(
 
 	expect(dataTxTags).to.deep.equal([
 		...expectedData,
-		{ name: 'Content-Type', value: contentType },
+		{ name: 'Content-Type', value: contentType ?? defaultDataContentType },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
 		{ name: 'App-Version', value: 'FAKE_VERSION' },
 		{ name: 'Tip-Type', value: 'data upload' }
