@@ -350,13 +350,17 @@ export function assertFolderMetaDataGqlTags(
 export function assertFileDataTxGqlTags(
 	dataTx: Transaction,
 	expectations: {
-		contentType: DataContentType;
+		contentType?: DataContentType;
+		customMetaData?: CustomMetaDataGqlTags;
 	}
 ): void {
-	const { contentType } = expectations;
+	const { contentType, customMetaData } = expectations;
 	const dataTxTags = getDecodedTags(dataTx.tags);
 
+	const expectedData: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
+
 	expect(dataTxTags).to.deep.equal([
+		...expectedData,
 		{ name: 'Content-Type', value: contentType },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
 		{ name: 'App-Version', value: 'FAKE_VERSION' },
