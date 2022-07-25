@@ -251,7 +251,8 @@ All custom tags can be accessed by using by using `ArDrive` class read methods s
 ```ts
 const arDrive = arDriveAnonymousFactory({});
 const fileInfo = await arDrive.getPublicFile({ fileId });
-const myMetaData = fileInfo.customMetaData;
+const myMetaDataGqlTags = fileInfo.customMetaDataGqlTags;
+const myMetaDataJsonFields = fileInfo.customMetaDataJson;
 ```
 
 When the custom metadata is attached to the MetaData Transaction's GQL tags, they will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
