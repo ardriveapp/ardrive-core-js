@@ -10,7 +10,7 @@ const customMetaDataShape = `{ metaDataJson?: ${customMetaDataGqlTagShapeOne}, m
 
 export const invalidCustomMetaDataGqlTagErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataGqlTagShapeOne} or ${customMetaDataGqlTagShapeTwo}`;
 export const invalidCustomMetaDataJsonErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataJsonShape}`;
-export const invalidCustomMetaDataErrorMessage = `s${invalidSchemaErrorMessage}${customMetaDataShape}`;
+export const invalidCustomMetaDataErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataShape}`;
 
 export type CustomMetaDataGqlTags = Record<string, string | string[]>;
 export type CustomMetaDataJsonFields = EntityMetaDataTransactionData;
@@ -94,7 +94,7 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 		if (key === 'metaDataJson' && !isCustomMetaDataJsonFields(metaData)) {
 			return false;
 		}
-		if (key !== 'metaDataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
+		if (key === 'metaDataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
 			return false;
 		}
 	}
