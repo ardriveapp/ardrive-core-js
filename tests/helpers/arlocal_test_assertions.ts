@@ -363,7 +363,7 @@ export function assertFileDataTxGqlTags(
 
 	const expectedCustomTags: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
 
-	const cipherIv = dataTxTags.find((tag) => tag.name === 'Cipher')?.value;
+	const cipherIv = dataTxTags.find((tag) => tag.name === 'Cipher-IV')?.value;
 	const isPublic = !cipherIv;
 	if (isPublic) {
 		expect(dataTxTags).to.deep.equal([
