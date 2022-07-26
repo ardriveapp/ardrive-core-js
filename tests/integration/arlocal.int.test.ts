@@ -486,7 +486,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		it('upload a public file as a v2 transaction with custom data gql tags', async () => {
+		it('we can upload a public file as a v2 transaction with custom data gql tags', async () => {
 			const fileName = 'custom_content_unique_stub';
 			const customMetaData: CustomMetaData = {
 				dataGqlTags: {
@@ -1249,6 +1249,38 @@ describe('ArLocal Integration Tests', function () {
 				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
 				customMetaData
 			});
+		});
+
+		it('we can upload a private file as a v2 transaction with custom data gql tags', async () => {
+			const fileName = 'custom_content_unique_stub';
+			const customMetaData: CustomMetaData = {
+				dataGqlTags: {
+					'My-Tag-1': 'My awesome value',
+					'My-Tag-2': ['hello', 'world!']
+				}
+			};
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							undefined,
+							customMetaData
+						),
+						destName: fileName,
+						driveKey
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId }: Required<ArFSEntityData> = created[0];
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			assertFileDataTxGqlTags(dataTx, { customMetaData: customMetaData.dataGqlTags });
 		});
 
 		it('we can upload a private folder as a v2 transaction with custom metadata', async () => {
