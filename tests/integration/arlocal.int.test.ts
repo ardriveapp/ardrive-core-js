@@ -487,7 +487,6 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a public file as a v2 transaction with custom data gql tags', async () => {
-			const fileName = 'custom_content_unique_stub';
 			const customMetaData: CustomMetaData = {
 				dataGqlTags: {
 					'My-Tag-1': 'My awesome value',
@@ -503,8 +502,7 @@ describe('ArLocal Integration Tests', function () {
 							'tests/stub_files/bulk_root_folder/file_in_root.txt',
 							undefined,
 							customMetaData
-						),
-						destName: fileName
+						)
 					}
 				]
 			});
@@ -1252,11 +1250,10 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		it('we can upload a private file as a v2 transaction with custom data gql tags', async () => {
-			const fileName = 'custom_content_unique_stub';
 			const customMetaData: CustomMetaData = {
 				dataGqlTags: {
-					'My-Tag-1': 'My awesome value',
-					'My-Tag-2': ['hello', 'world!']
+					'My-Tag-1': 'The best value ever for a tag',
+					'My-Tag-2': ['foo', 'var']
 				}
 			};
 
@@ -1265,11 +1262,10 @@ describe('ArLocal Integration Tests', function () {
 					{
 						destFolderId: rootFolderId,
 						wrappedEntity: wrapFileOrFolder(
-							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							'tests/stub_files/bulk_root_folder/parent_folder/file_in_parent.txt',
 							undefined,
 							customMetaData
 						),
-						destName: fileName,
 						driveKey
 					}
 				]
