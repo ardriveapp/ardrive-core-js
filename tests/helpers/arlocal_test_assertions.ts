@@ -359,10 +359,10 @@ export function assertFileDataTxGqlTags(
 	const { contentType, customMetaData } = expectations;
 	const dataTxTags = getDecodedTags(dataTx.tags);
 
-	const expectedData: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
+	const expectedCustomTags: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
 
 	expect(dataTxTags).to.deep.equal([
-		...expectedData,
+		...expectedCustomTags,
 		{ name: 'Content-Type', value: contentType ?? defaultDataContentType },
 		{ name: 'App-Name', value: 'ArLocal Integration Test' },
 		{ name: 'App-Version', value: 'FAKE_VERSION' },
