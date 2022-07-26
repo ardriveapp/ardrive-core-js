@@ -374,7 +374,6 @@ export function assertFileDataTxGqlTags(
 			{ name: 'Tip-Type', value: 'data upload' }
 		]);
 	} else {
-		expect(cipherIv!.length).to.equal(16);
 		expect(dataTxTags).to.deep.equal([
 			...expectedCustomTags,
 			{ name: 'Content-Type', value: contentType ?? defaultPrivateDataContentType },
