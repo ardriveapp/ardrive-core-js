@@ -103,6 +103,9 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 				if (!isCustomMetaDataGqlTags(metaData)) {
 					return false;
 				}
+				break;
+			default:
+				break;
 		}
 	}
 	return true;
