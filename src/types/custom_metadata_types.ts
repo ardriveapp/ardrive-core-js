@@ -92,15 +92,17 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 	}
 
 	for (const [key, metaData] of Object.entries(tags)) {
-		// consider using a sqwitch..case
-		if (key === 'metaDataJson' && !isCustomMetaDataJsonFields(metaData)) {
-			return false;
-		}
-		if (key === 'metaDataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
-			return false;
-		}
-		if (key === 'dataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
-			return false;
+		switch (key) {
+			case 'metaDataJson':
+				if (!isCustomMetaDataJsonFields(metaData)) {
+					return false;
+				}
+				break;
+			case 'metaDataGqlTags':
+			case 'dataGqlTags':
+				if (!isCustomMetaDataGqlTags(metaData)) {
+					return false;
+				}
 		}
 	}
 	return true;
