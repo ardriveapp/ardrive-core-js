@@ -26,11 +26,13 @@ import {
 	EntityMetaDataTransactionData,
 	GQLTagInterface,
 	CustomMetaData,
-	CustomMetaDataJsonFields
+	CustomMetaDataJsonFields,
+	PRIVATE_CONTENT_TYPE
 } from '../../src/types';
 import { getDecodedTags } from '../test_helpers';
 
-const defaultDataContentType = 'text/plain';
+const defaultPublicDataContentType = 'text/plain';
+const defaultPrivateDataContentType = PRIVATE_CONTENT_TYPE;
 
 interface AssertEntityExpectationsParams<T = ArFSEntity> {
 	entity: T;
@@ -361,11 +363,26 @@ export function assertFileDataTxGqlTags(
 
 	const expectedCustomTags: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
 
-	expect(dataTxTags).to.deep.equal([
-		...expectedCustomTags,
-		{ name: 'Content-Type', value: contentType ?? defaultDataContentType },
-		{ name: 'App-Name', value: 'ArLocal Integration Test' },
-		{ name: 'App-Version', value: 'FAKE_VERSION' },
-		{ name: 'Tip-Type', value: 'data upload' }
-	]);
+	const cipherIv = dataTxTags.find((tag) => tag.name === 'Cipher')?.value;
+	const isPublic = !cipherIv;
+	if (isPublic) {
+		expect(dataTxTags).to.deep.equal([
+			...expectedCustomTags,
+			{ name: 'Content-Type', value: contentType ?? defaultPublicDataContentType },
+			{ name: 'App-Name', value: 'ArLocal Integration Test' },
+			{ name: 'App-Version', value: 'FAKE_VERSION' },
+			{ name: 'Tip-Type', value: 'data upload' }
+		]);
+	} else {
+		expect(cipherIv!.length).to.equal(16);
+		expect(dataTxTags).to.deep.equal([
+			...expectedCustomTags,
+			{ name: 'Content-Type', value: contentType ?? defaultPrivateDataContentType },
+			{ name: 'Cipher', value: 'AES256-GCM' },
+			{ name: 'Cipher-IV', value: cipherIv },
+			{ name: 'App-Name', value: 'ArLocal Integration Test' },
+			{ name: 'App-Version', value: 'FAKE_VERSION' },
+			{ name: 'Tip-Type', value: 'data upload' }
+		]);
+	}
 }
