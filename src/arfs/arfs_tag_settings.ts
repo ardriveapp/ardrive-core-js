@@ -5,7 +5,8 @@ import {
 	CURRENT_ARFS_VERSION,
 	privateOctetContentTypeTag,
 	privateCipherTag,
-	fakePrivateCipherIVTag
+	fakePrivateCipherIVTag,
+	gqlTagNameArray
 } from '../utils/constants';
 
 interface ArFSTagSettingsParams {
@@ -19,16 +20,7 @@ export class ArFSTagSettings {
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
 
-	public static protectedArFSGqlTagNames = [
-		'ArFS',
-		'App-Name',
-		'App-Version',
-		'Tip-Type',
-		'Content-Type',
-		'Boost',
-		'Bundle-Format',
-		'Bundle-Version'
-	];
+	public static protectedArFSGqlTagNames = gqlTagNameArray;
 
 	constructor({
 		appName = DEFAULT_APP_NAME,
