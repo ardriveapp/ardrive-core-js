@@ -69,3 +69,27 @@ export const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'chunk_proof_ratio_not_attractive',
 	'invalid_proof'
 ];
+
+export const gqlTagNameRecord = {
+	appName: 'App-Name',
+	appVersion: 'App-Version',
+	arFS: 'ArFS',
+	tipType: 'Tip-Type',
+	contentType: 'Content-Type',
+	boost: 'Boost',
+	bundleFormat: 'Bundle-Format',
+	bundleVersion: 'Bundle-Version',
+	entityType: 'Entity-Type',
+	unitTime: 'Unix-Time',
+	driveId: 'Drive-Id',
+	folderId: 'Folder-Id',
+	fileId: 'File-Id',
+	parentFolderId: 'Parent-Folder-Id',
+	drivePrivacy: 'Drive-Privacy',
+	cipher: 'Cipher',
+	cipherIv: 'Cipher-IV',
+	driveAuthMode: 'Drive-Auth-Mode'
+} as const;
+
+export const gqlTagNameArray = Object.values(gqlTagNameRecord);
+export type GqlTagName = typeof gqlTagNameArray[number];
