@@ -1,4 +1,5 @@
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
+import { GqlTagName } from '../utils/constants';
 import { EntityMetaDataTransactionData, JsonSerializable } from './types';
 
 const invalidSchemaErrorMessage = `Invalid custom metadata schema. Please submit a valid JSON object with an example shape of `;
@@ -51,7 +52,8 @@ export function isCustomMetaDataGqlTags(customGqlTags: unknown): customGqlTags i
 	}
 
 	for (const [name, value] of Object.entries(customGqlTags)) {
-		if (ArFSTagSettings.protectedArFSGqlTagNames.includes(name)) {
+		// prettier-ignore
+		if (ArFSTagSettings.protectedArFSGqlTagNames.includes(name as unknown as GqlTagName)) {
 			console.error(
 				`Provided custom metadata GQL tag name collides with a protected ArFS protected tag: ${name}`
 			);
