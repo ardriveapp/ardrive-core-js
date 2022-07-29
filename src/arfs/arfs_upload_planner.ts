@@ -1,5 +1,4 @@
 import { serializeTags } from 'arbundles/src/parser';
-import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ByteCount, EID, FeeMultiple, GQLTagInterface, UploadStats } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
@@ -17,6 +16,8 @@ import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
+import { ArFSTagSettings } from './arfs_tag_settings';
+import { ArFSTagAssembler } from './tags/tag_assembler';
 
 export interface UploadPlanner {
 	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
@@ -28,6 +29,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePackerFactory;
+	private readonly tagAssembler: ArFSTagAssembler;
 
 	/** @deprecated No longer used in the Planner, moved to ArFSCostCalculator */
 	protected readonly feeMultiple?: FeeMultiple;
@@ -44,6 +46,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		this.shouldBundle = shouldBundle;
 		this.arFSTagSettings = arFSTagSettings;
 		this.bundlePacker = bundlePacker;
+		this.tagAssembler = new ArFSTagAssembler(arFSTagSettings);
 	}
 
 	/**
@@ -61,11 +64,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 		const fileDataItemByteCount = byteCountAsDataItem(
 			fileDataByteCount,
-			this.arFSTagSettings.getFileDataTags(isPrivate, wrappedFile.contentType)
+			this.arFSTagSettings.getFileDataItemTags(isPrivate, wrappedFile.contentType)
 		);
 		const metaDataByteCountAsDataItem = byteCountAsDataItem(
 			fileMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: fileMetaDataPrototype.gqlTags })
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: fileMetaDataPrototype })
 		);
 		const totalByteCountOfFileDataItems = fileDataItemByteCount.plus(metaDataByteCountAsDataItem);
 
@@ -113,14 +116,14 @@ export class ArFSUploadPlanner implements UploadPlanner {
 		const { wrappedEntity: wrappedFolder, driveKey } = uploadStats;
 		const isPrivate = driveKey !== undefined;
 
-		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder.destinationBaseName, isPrivate);
+		const { folderMetaDataPrototype } = await getFolderEstimationInfo(wrappedFolder, isPrivate);
 
 		if (!wrappedFolder.existingId) {
 			// We will only create a new folder here if there is no existing folder on chain
 			if (this.shouldBundle) {
 				const folderByteCountAsDataItem = byteCountAsDataItem(
 					folderMetaDataPrototype.objectData.sizeOf(),
-					this.arFSTagSettings.baseArFSTagsIncluding({ tags: folderMetaDataPrototype.gqlTags })
+					this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: folderMetaDataPrototype })
 				);
 
 				bundlePacker.packIntoBundle({
@@ -222,7 +225,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				}
 
 				const { folderMetaDataPrototype } = await getFolderEstimationInfo(
-					wrappedEntity.destinationBaseName,
+					wrappedEntity,
 					driveKey !== undefined
 				);
 
@@ -252,11 +255,11 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	}: EstimateCreateDriveParams): CreateDrivePlan {
 		const driveDataItemByteCount = byteCountAsDataItem(
 			driveMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: driveMetaDataPrototype.gqlTags })
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: driveMetaDataPrototype })
 		);
 		const rootFolderDataItemByteCount = byteCountAsDataItem(
 			rootFolderMetaDataPrototype.objectData.sizeOf(),
-			this.arFSTagSettings.baseArFSTagsIncluding({ tags: rootFolderMetaDataPrototype.gqlTags })
+			this.tagAssembler.assembleArFSMetaDataGqlTags({ arFSPrototype: rootFolderMetaDataPrototype })
 		);
 		const totalDataItemByteCount = driveDataItemByteCount.plus(rootFolderDataItemByteCount);
 

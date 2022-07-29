@@ -9,24 +9,28 @@ import {
 	ArFSPrivateFile
 } from '../src/arfs/arfs_entities';
 import {
+	ArFSPublicFileMetaDataPrototype,
+	ArFSPrivateFileMetaDataPrototype,
+	ArFSPublicDriveMetaDataPrototype,
+	ArFSPrivateDriveMetaDataPrototype,
+	ArFSPublicFolderMetaDataPrototype,
+	ArFSPrivateFolderMetaDataPrototype,
+	ArFSPublicFileDataPrototype,
+	ArFSPrivateFileDataPrototype
+} from '../src/arfs/tx/arfs_prototypes';
+import {
+	ArFSPublicFileMetadataTransactionData,
+	ArFSPrivateFileMetadataTransactionData,
+	ArFSPublicDriveTransactionData,
+	ArFSPrivateDriveTransactionData,
+	ArFSPublicFolderTransactionData,
+	ArFSPrivateFolderTransactionData,
+	ArFSPublicFileDataTransactionData,
+	ArFSPrivateFileDataTransactionData
+} from '../src/arfs/tx/arfs_tx_data_types';
+import {
 	ArFSFileToUpload,
 	ArFSFolderToUpload,
-	ArFSPrivateDriveMetaDataPrototype,
-	ArFSPrivateDriveTransactionData,
-	ArFSPrivateFileDataPrototype,
-	ArFSPrivateFileDataTransactionData,
-	ArFSPrivateFileMetaDataPrototype,
-	ArFSPrivateFileMetadataTransactionData,
-	ArFSPrivateFolderMetaDataPrototype,
-	ArFSPrivateFolderTransactionData,
-	ArFSPublicDriveMetaDataPrototype,
-	ArFSPublicDriveTransactionData,
-	ArFSPublicFileDataPrototype,
-	ArFSPublicFileDataTransactionData,
-	ArFSPublicFileMetaDataPrototype,
-	ArFSPublicFileMetadataTransactionData,
-	ArFSPublicFolderMetaDataPrototype,
-	ArFSPublicFolderTransactionData,
 	CommunityTipSettings,
 	deriveDriveKey,
 	FolderHierarchy,
