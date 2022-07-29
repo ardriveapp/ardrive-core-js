@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-// import ArLocal from 'arlocal';
 import Arweave from 'arweave';
 import { expect } from 'chai';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
@@ -9,14 +9,12 @@ import {
 	FolderID,
 	TransactionID,
 	DriveID,
-	UnixTime,
 	DriveKey,
-	FileID,
-	DataContentType,
 	ByteCount,
 	ArweaveAddress,
 	W,
-	TxID
+	TxID,
+	ArFSEntityData
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
@@ -30,26 +28,49 @@ import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArFSFileToUpload, ArFSFolderToUpload, wrapFileOrFolder } from '../../src/arfs/arfs_file_wrapper';
 import { alphabeticalOrder } from '../../src/utils/sort_functions';
 import {
-	ArFSEntity,
-	ArFSPrivateDrive,
-	ArFSPrivateFile,
 	ArFSPrivateFileWithPaths,
-	ArFSPrivateFolder,
 	ArFSPrivateFolderWithPaths,
-	ArFSPublicDrive,
-	ArFSPublicFile,
 	ArFSPublicFileWithPaths,
-	ArFSPublicFolder,
 	ArFSPublicFolderWithPaths
 } from '../../src/arfs/arfs_entities';
 import { GatewayAPI } from '../../src/utils/gateway_api';
 import { restore, stub } from 'sinon';
-import { stub258KiBFileToUpload, stub2ChunkFileToUpload, stub3ChunkFileToUpload, stubArweaveAddress } from '../stubs';
-import axios from 'axios';
+import {
+	stub258KiBFileToUpload,
+	stub2ChunkFileToUpload,
+	stub3ChunkFileToUpload,
+	stubArweaveAddress,
+	stubCommunityContract
+} from '../stubs';
 import { assertRetryExpectations } from '../test_assertions';
-import { expectAsyncErrorThrow, fundArLocalWallet, mineArLocalBlock } from '../test_helpers';
+import {
+	expectAsyncErrorThrow,
+	fundArLocalWallet,
+	getMetaDataJSONFromGateway,
+	getTxDataFromGateway,
+	mineArLocalBlock
+} from '../test_helpers';
 import GQLResultInterface from '../../src/types/gql_Types';
 import { buildQuery } from '../../src/utils/query';
+import Transaction from 'arweave/node/lib/transaction';
+import {
+	assertPublicDriveExpectations,
+	assertPublicFolderExpectations,
+	assertPublicFileExpectations,
+	assertPublicFolderWithPathsExpectations,
+	assertPublicFileWithPathsExpectations,
+	assertFileMetaDataJson,
+	assertFileMetaDataGqlTags,
+	assertFileDataTxGqlTags,
+	assertPrivateDriveExpectations,
+	assertPrivateFolderExpectations,
+	assertPrivateFileExpectations,
+	assertPrivateFolderWithPathsExpectations,
+	assertPrivateFileWithPathsExpectations,
+	assertFolderMetaDataJson,
+	assertFolderMetaDataGqlTags
+} from '../helpers/arlocal_test_assertions';
+import { CustomMetaData, CustomMetaDataJsonFields, VertoContractReader } from '../../src/exports';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -60,12 +81,20 @@ describe('ArLocal Integration Tests', function () {
 		protocol: 'http'
 	});
 
+	const fakeVersion = 'FAKE_VERSION';
+
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
-	const communityOracle = new ArDriveCommunityOracle(arweave);
+	const fakeContractReader = new VertoContractReader();
+	stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
+
+	const communityOracle = new ArDriveCommunityOracle(arweave, [fakeContractReader]);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
-	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', '1.7');
-	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: '1.7' });
+	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', fakeVersion);
+
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) });
+
+	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArLocal Integration Test', appVersion: fakeVersion });
+
 	const arfsDao = new ArFSDAO(
 		wallet,
 		arweave,
@@ -117,6 +146,18 @@ describe('ArLocal Integration Tests', function () {
 		arFSTagSettings,
 		bundledUploadPlanner
 	);
+
+	const customMetaData: CustomMetaData = {
+		metaDataGqlTags: {
+			['Custom Tag']: 'This Test Works',
+			['Custom Tag Array']: ['This Test Works', 'As Well :)']
+		},
+		metaDataJson: {
+			['Json Tag']: { ['Nested Tag Name']: true },
+			['Null Tag']: null,
+			['More Tag']: 'Hello Test'
+		}
+	};
 
 	before(async () => {
 		await fundArLocalWallet(arweave, wallet);
@@ -386,14 +427,275 @@ describe('ArLocal Integration Tests', function () {
 			});
 		});
 
-		describe('with a v2 public file transaction that has incomplete chunks', () => {
-			const getFileData = async (txId: TransactionID): Promise<Buffer> =>
-				(
-					await axios.get(`${gatewayUrlForArweave(arweave).href}${txId}`, {
-						responseType: 'arraybuffer'
-					})
-				).data;
+		it('we can upload a public file as a v2 transaction with a custom content type and custom metadata', async () => {
+			const fileName = 'custom_content_unique_stub';
+			const customContentType = 'application/fake';
 
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							customContentType,
+							customMetaData
+						),
+						destName: fileName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
+			const expectedFileSize = 12;
+
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
+			assertFileMetaDataJson(metaDataJson, {
+				name: fileName,
+				size: expectedFileSize,
+				dataTxId: `${dataTxId}`,
+				dataContentType: customContentType,
+				customMetaData: customMetaData.metaDataJson
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFileMetaDataGqlTags(metaDataTx, {
+				driveId,
+				fileId,
+				parentFolderId: rootFolderId,
+				customMetaData: customMetaData.metaDataGqlTags
+			});
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			assertFileDataTxGqlTags(dataTx, { contentType: customContentType });
+
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				fileId,
+				entityName: fileName,
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: customContentType,
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData
+			});
+		});
+
+		it('we can upload a file as a v2 transaction with custom metadata to the Data JSON containing all valid JSON shapes', async () => {
+			const fileName = 'json_shapes_unique_name';
+			const customMetaDataJson: CustomMetaDataJsonFields = {
+				['boolean']: true,
+				['number']: 420,
+				['string']: 'value',
+				['null']: null,
+				['NaN']: NaN,
+				['Infinity']: Number.POSITIVE_INFINITY,
+				['array']: [
+					'containing',
+					'all',
+					'types',
+					1337,
+					false,
+					['not', 'too', 'deep'],
+					{ ['nested']: 'Object' }
+				],
+				['object']: {
+					['with']: 'very',
+					['many']: 42,
+					['types']: true,
+					['to']: [false],
+					['check']: { ['nest']: 'it' }
+				}
+			};
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							undefined,
+							{ metaDataJson: customMetaDataJson }
+						),
+						destName: fileName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
+			const expectedFileSize = 12;
+			const expectedCustomMetaDataJson = Object.assign(customMetaDataJson, { ['NaN']: null, ['Infinity']: null });
+			const dataContentType = 'text/plain';
+
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
+			assertFileMetaDataJson(metaDataJson, {
+				name: fileName,
+				size: expectedFileSize,
+				dataTxId: `${dataTxId}`,
+				dataContentType,
+				customMetaData: expectedCustomMetaDataJson
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFileMetaDataGqlTags(metaDataTx, {
+				driveId,
+				fileId,
+				parentFolderId: rootFolderId
+			});
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			assertFileDataTxGqlTags(dataTx, { contentType: dataContentType });
+
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				fileId,
+				entityName: fileName,
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType,
+				customMetaData: { metaDataJson: expectedCustomMetaDataJson }
+			});
+		});
+
+		it('we can upload a public folder as a v2 transaction with custom metadata', async () => {
+			const folderName = 'custom_content_unique_folder';
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
+							undefined,
+							customMetaData
+						),
+						destName: folderName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { metadataTxId, entityId: folderId }: Required<ArFSEntityData> = created[0];
+
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
+			assertFolderMetaDataJson(metaDataJson, {
+				name: folderName,
+				customMetaData: customMetaData.metaDataJson
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFolderMetaDataGqlTags(metaDataTx, {
+				driveId,
+				folderId,
+				parentFolderId: rootFolderId,
+				customMetaData: customMetaData.metaDataGqlTags
+			});
+
+			const arFSFolderEntity = await v2ArDrive.getPublicFolder({ folderId });
+			assertPublicFolderExpectations({
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				folderId,
+				driveId,
+				entity: arFSFolderEntity,
+				entityName: folderName,
+				customMetaData
+			});
+
+			// Check that nested file also has custom metadata
+			// @ts-ignore
+			const { metadataTxId: fileMetaDataTxId, entityId: fileId, dataTxId }: Required<ArFSEntityData> = created[1];
+			const expectedFileSize = 14;
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: folderId,
+				metaDataTxId: fileMetaDataTxId,
+				fileId,
+				entityName: 'file_in_grandchild.txt',
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: 'text/plain',
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData
+			});
+		});
+
+		// TODO: Debug why this bundled test doesn't work
+		it.skip('we can upload a bundled public file with a custom content type and custom metadata', async function () {
+			this.timeout(600000);
+			const fileName = 'custom_content_unique_stub';
+			const customContentType = 'application/fake';
+
+			const { created } = await bundledArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							customContentType,
+							customMetaData
+						),
+						destName: fileName
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
+			const expectedFileSize = 12;
+
+			const metaDataJson = await getMetaDataJSONFromGateway(arweave, metadataTxId);
+			assertFileMetaDataJson(metaDataJson, {
+				name: fileName,
+				size: expectedFileSize,
+				dataTxId: `${dataTxId}`,
+				dataContentType: customContentType,
+				customMetaData: customMetaData.metaDataJson
+			});
+
+			const metaDataTx = new Transaction(await fakeGatewayApi.getTransaction(metadataTxId));
+			assertFileMetaDataGqlTags(metaDataTx, {
+				driveId,
+				fileId,
+				parentFolderId: rootFolderId,
+				customMetaData: customMetaData.metaDataGqlTags
+			});
+
+			const dataTx = new Transaction(await fakeGatewayApi.getTransaction(dataTxId));
+			assertFileDataTxGqlTags(dataTx, { contentType: customContentType });
+
+			const arFSFileEntity = await v2ArDrive.getPublicFile({ fileId });
+			assertPublicFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				fileId,
+				entityName: fileName,
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: customContentType,
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData
+			});
+		});
+
+		describe('with a v2 public file transaction that has incomplete chunks', () => {
 			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
@@ -434,7 +736,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -445,7 +747,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(524_288);
@@ -500,7 +802,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 
 				// Ensure that the data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -511,7 +813,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(786_432);
@@ -562,7 +864,7 @@ describe('ArLocal Integration Tests', function () {
 				restore();
 
 				// Ensure data is incomplete
-				const incompleteData = await getFileData(dataTxId);
+				const incompleteData = await getTxDataFromGateway(arweave, dataTxId);
 				expect(incompleteData.byteLength).to.equal(0);
 
 				// Retry this file
@@ -573,7 +875,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				const repairedData = await getFileData(dataTxId);
+				const repairedData = await getTxDataFromGateway(arweave, dataTxId);
 
 				// ByteLength matching is disabled because of issues in GitHub CI, this commented line should work locally
 				// expect(repairedData.byteLength).to.equal(264_192);
@@ -585,7 +887,7 @@ describe('ArLocal Integration Tests', function () {
 					expectedCommunityTip: W(154_544_268_902),
 					expectedDataTxReward: W(1_030_295_126_016),
 					// We expect a metaData reward to exist
-					expectedMetaDataTxReward: W(5_468_962_356)
+					expectedMetaDataTxReward: W(5_504_334_732)
 				});
 
 				// File MetaData should now be valid
@@ -877,186 +1179,100 @@ describe('ArLocal Integration Tests', function () {
 				size: new ByteCount(5242880)
 			});
 		});
+
+		it('we can upload a private file as a v2 transaction with a custom content type and custom metadata', async function () {
+			const fileName = 'custom_content_unique_stub';
+			const customContentType = 'application/fake';
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/file_in_root.txt',
+							customContentType,
+							customMetaData
+						),
+						destName: fileName,
+						driveKey
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { dataTxId, metadataTxId, entityId: fileId }: Required<ArFSEntityData> = created[0];
+			const expectedFileSize = 12;
+
+			const arFSFileEntity = await v2ArDrive.getPrivateFile({ fileId, driveKey });
+			assertPrivateFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				fileId,
+				entityName: fileName,
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: customContentType,
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData
+			});
+		});
+
+		it('we can upload a private folder as a v2 transaction with custom metadata', async () => {
+			const folderName = 'custom_content_unique_folder';
+
+			const { created } = await v2ArDrive.uploadAllEntities({
+				entitiesToUpload: [
+					{
+						destFolderId: rootFolderId,
+						wrappedEntity: wrapFileOrFolder(
+							'tests/stub_files/bulk_root_folder/parent_folder/child_folder/grandchild_folder',
+							undefined,
+							customMetaData
+						),
+						destName: folderName,
+						driveKey
+					}
+				]
+			});
+			await mineArLocalBlock(arweave);
+
+			// @ts-ignore
+			const { metadataTxId, entityId: folderId }: Required<ArFSEntityData> = created[0];
+
+			const arFSFolderEntity = await v2ArDrive.getPrivateFolder({ folderId, driveKey });
+			assertPrivateFolderExpectations({
+				parentFolderId: rootFolderId,
+				metaDataTxId: metadataTxId,
+				folderId,
+				driveId,
+				entity: arFSFolderEntity,
+				entityName: folderName,
+				customMetaData
+			});
+
+			// Check that nested file also has custom metadata
+			// @ts-ignore
+			const { metadataTxId: fileMetaDataTxId, entityId: fileId, dataTxId }: Required<ArFSEntityData> = created[1];
+			const expectedFileSize = 14;
+			const arFSFileEntity = await v2ArDrive.getPrivateFile({ fileId, driveKey });
+			assertPrivateFileExpectations({
+				size: new ByteCount(expectedFileSize),
+				parentFolderId: folderId,
+				metaDataTxId: fileMetaDataTxId,
+				fileId,
+				entityName: 'file_in_grandchild.txt',
+				entity: arFSFileEntity,
+				driveId,
+				dataTxId,
+				dataContentType: 'text/plain',
+				/** We will expect these tags to be parsed back twice, once from dataJSON and once from GQL tags */
+				customMetaData
+			});
+		});
+
+		// TODO: Private bundled file upload test with custom metadata
 	});
 });
-
-interface AssertEntityExpectationsParams<T = ArFSEntity> {
-	entity: T;
-	driveId: DriveID;
-	metaDataTxId: TransactionID;
-	entityName: string;
-}
-
-function assertBaseArFSEntityExpectations({
-	entity,
-	driveId,
-	entityName,
-	metaDataTxId
-}: AssertEntityExpectationsParams): void {
-	expect(entity.appName).to.equal('ArLocal Integration Test');
-	expect(entity.appVersion).to.equal('1.7');
-	expect(entity.arFS).to.equal('0.11');
-	expect(`${entity.driveId}`, 'drive ID').to.equal(`${driveId}`);
-	expect(entity.unixTime).to.be.an.instanceOf(UnixTime);
-	expect(entity.name).to.equal(entityName);
-	expect(`${entity.txId}`).to.equal(`${metaDataTxId}`);
-}
-
-function assertArFSPublicExpectations(
-	params: AssertEntityExpectationsParams<ArFSPublicDrive | ArFSPublicFolder | ArFSPublicFile>
-): void {
-	expect(params.entity.contentType).to.equal('application/json');
-	assertBaseArFSEntityExpectations(params);
-}
-
-function assertArFSPrivateExpectations(
-	params: AssertEntityExpectationsParams<ArFSPrivateDrive | ArFSPrivateFolder | ArFSPrivateFile>
-): void {
-	expect(params.entity.contentType).to.equal('application/octet-stream');
-	expect(params.entity.cipher).to.equal('AES256-GCM');
-	expect(params.entity.cipherIV.length).to.equal(16);
-	assertBaseArFSEntityExpectations(params);
-}
-
-interface AssertDriveExpectationsParams {
-	rootFolderId: FolderID;
-}
-
-function assertDriveExpectations(
-	params: AssertEntityExpectationsParams<ArFSPublicDrive | ArFSPrivateDrive> & AssertDriveExpectationsParams
-) {
-	expect(params.entity.entityType).to.equal('drive');
-	expect(`${params.rootFolderId}`).to.equal(`${params.rootFolderId}`);
-}
-
-function assertPublicDriveExpectations(
-	params: AssertEntityExpectationsParams<ArFSPublicDrive> & AssertDriveExpectationsParams
-): void {
-	assertArFSPublicExpectations(params);
-	assertDriveExpectations(params);
-
-	expect(params.entity.drivePrivacy).to.equal('public');
-	expect(params.entity.contentType).to.equal('application/json');
-}
-
-function assertPrivateDriveExpectations(
-	params: AssertEntityExpectationsParams<ArFSPrivateDrive> & AssertDriveExpectationsParams
-): void {
-	assertArFSPrivateExpectations(params);
-	assertDriveExpectations(params);
-
-	expect(params.entity.drivePrivacy).to.equal('private');
-	expect(params.entity.driveAuthMode).to.equal('password');
-	expect(params.entity.contentType).to.equal('application/octet-stream');
-}
-
-interface AssertFolderExpectationsParams<T = ArFSPublicFolder | ArFSPrivateFolder>
-	extends AssertEntityExpectationsParams<T> {
-	folderId: FolderID;
-	parentFolderId?: FolderID;
-}
-
-function assertFolderExpectations(params: AssertFolderExpectationsParams): void {
-	const { entity, parentFolderId, folderId } = params;
-
-	expect(`${entity.entityId}`).to.equal(`${folderId}`);
-	expect(entity.entityType).to.equal('folder');
-
-	if (parentFolderId) {
-		// Root folders will have no parentFolderId defined
-		expect(`${entity.parentFolderId}`).to.equal(`${parentFolderId}`);
-	} else {
-		expect(`${entity.parentFolderId}`).to.equal(`root folder`);
-	}
-}
-
-function assertPublicFolderExpectations(params: AssertFolderExpectationsParams<ArFSPublicFolder>): void {
-	assertArFSPublicExpectations(params);
-	assertFolderExpectations(params);
-}
-
-function assertPrivateFolderExpectations(params: AssertFolderExpectationsParams<ArFSPrivateFolder>): void {
-	assertArFSPrivateExpectations(params);
-}
-
-interface AssertFileExpectationsParams<T = ArFSPublicFile | ArFSPrivateFile> extends AssertEntityExpectationsParams<T> {
-	fileId: FileID;
-	parentFolderId: FolderID;
-	dataContentType: DataContentType;
-	dataTxId: TransactionID;
-	size: ByteCount;
-}
-
-function assertFileExpectations({
-	entity: file,
-	fileId,
-	dataTxId,
-	dataContentType,
-	size,
-	parentFolderId
-}: AssertFileExpectationsParams): void {
-	expect(`${file.entityId}`).to.equal(`${fileId}`);
-	expect(file.entityType).to.equal('file');
-	expect(+file.size).to.equal(+size);
-	expect(file.lastModifiedDate).to.be.instanceOf(UnixTime);
-	expect(`${file.parentFolderId}`).to.equal(`${parentFolderId}`);
-	expect(`${file.dataTxId}`).to.equal(`${dataTxId}`);
-	expect(file.dataContentType).to.equal(dataContentType);
-}
-
-function assertPublicFileExpectations(params: AssertFileExpectationsParams<ArFSPublicFile>): void {
-	assertArFSPublicExpectations(params);
-	assertFileExpectations(params);
-}
-function assertPrivateFileExpectations(params: AssertFileExpectationsParams<ArFSPrivateFile>): void {
-	assertArFSPrivateExpectations(params);
-	assertFileExpectations(params);
-}
-
-interface AssertEntityWithPathsParams {
-	expectedPath: string;
-	expectedTxIdPath: string;
-	expectedEntityIdPath: string;
-	entity: ArFSPublicFileWithPaths | ArFSPrivateFileWithPaths | ArFSPublicFolderWithPaths | ArFSPrivateFolderWithPaths;
-}
-
-function assertPathExpectations({
-	expectedPath,
-	expectedTxIdPath,
-	expectedEntityIdPath,
-	entity
-}: AssertEntityWithPathsParams) {
-	expect(entity.path).to.equal(expectedPath);
-	expect(entity.entityIdPath).to.equal(expectedEntityIdPath);
-	expect(entity.txIdPath).to.equal(expectedTxIdPath);
-}
-
-function assertPublicFolderWithPathsExpectations(
-	params: AssertFolderExpectationsParams<ArFSPublicFolderWithPaths> & AssertEntityWithPathsParams
-): void {
-	assertPathExpectations(params);
-	assertPublicFolderExpectations({ ...params, entity: params.entity as ArFSPublicFolder });
-}
-
-function assertPrivateFolderWithPathsExpectations(
-	params: AssertFolderExpectationsParams<ArFSPrivateFolderWithPaths> & AssertEntityWithPathsParams
-): void {
-	assertPathExpectations(params);
-	assertPrivateFolderExpectations({ ...params, entity: params.entity as ArFSPrivateFolder });
-}
-
-function assertPublicFileWithPathsExpectations(
-	params: AssertFileExpectationsParams<ArFSPublicFileWithPaths> & AssertEntityWithPathsParams
-): void {
-	assertPathExpectations(params);
-	// eslint-disable-next-line prettier/prettier
-	assertPublicFileExpectations({ ...params, entity: params.entity as unknown as ArFSPublicFile });
-}
-
-function assertPrivateFileWithPathsExpectations(
-	params: AssertFileExpectationsParams<ArFSPrivateFileWithPaths> & AssertEntityWithPathsParams
-): void {
-	assertPathExpectations(params);
-	// eslint-disable-next-line prettier/prettier
-	assertPrivateFileExpectations({ ...params, entity: params.entity as unknown as ArFSPrivateFile });
-}

@@ -9,22 +9,23 @@ import {
 	TransactionID,
 	UnixTime,
 	EID,
-	ContentType,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	EntityMetaDataTransactionData,
+	DataContentType
 } from '../../types';
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';
 
-interface FileMetaDataTransactionData {
+export interface FileMetaDataTransactionData extends EntityMetaDataTransactionData {
 	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
 	name: string;
 	size: number;
 	lastModifiedDate: number;
 	dataTxId: string;
-	dataContentType: ContentType;
+	dataContentType: DataContentType;
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
 	'file',
@@ -33,7 +34,7 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	size?: ByteCount;
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;
-	dataContentType?: ContentType;
+	dataContentType?: DataContentType;
 
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
@@ -41,6 +42,13 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 			{ name: 'Entity-Type', value: 'file' }
 		];
 	}
+
+	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+		const tags = await super.parseFromArweaveNode(node);
+		return tags.filter((tag) => tag.name !== 'File-Id');
+	}
+
+	protected readonly protectedDataJsonKeys = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'];
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
@@ -88,6 +96,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			) {
 				throw new Error('Invalid file state');
 			}
+			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFile(
@@ -104,7 +113,10 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 					this.size,
 					this.lastModifiedDate,
 					this.dataTxId,
-					this.dataContentType
+					this.dataContentType,
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				)
 			);
 		}
@@ -199,6 +211,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				throw new Error('Invalid file state');
 			}
 
+			this.parseCustomMetaDataFromDataJson(decryptedFileJSON);
+
 			return new ArFSPrivateFile(
 				this.appName,
 				this.appVersion,
@@ -217,7 +231,10 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.cipher,
 				this.cipherIV,
 				fileKey,
-				this.driveKey
+				this.driveKey,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid file state');

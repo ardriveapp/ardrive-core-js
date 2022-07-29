@@ -1,33 +1,22 @@
 import { expect } from 'chai';
-import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
-import {
-	ArDriveCommunityOracle,
-	ArFSDAO,
-	UploadStats,
-	ArFSFileToUpload,
-	getPrepFileParams,
-	TxID,
-	W,
-	readJWKFile
-} from '../../src/exports';
-import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
-import { GatewayOracle } from '../../src/pricing/gateway_oracle';
+import { ArFSTagAssembler } from '../../src/arfs/tags/tag_assembler';
+import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
+import { TxPreparer } from '../../src/arfs/tx/tx_preparer';
+import { UploadStats, ArFSFileToUpload, getPrepFileParams, TxID, W, readJWKFile, JWKWallet } from '../../src/exports';
 import { fakeArweave, stubFileUploadStats, stubEntityID } from '../stubs';
 
-describe('ArFSDAO Class -- integrated', () => {
-	const wallet = readJWKFile('./test_wallet.json');
+describe('UploadPlanner + TxPreparer -- integrated', () => {
+	const wallet = readJWKFile('./test_wallet.json') as JWKWallet;
 
-	const arweaveOracle = new GatewayOracle();
-	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
-	const priceEstimator = new ARDataPriceRegressionEstimator(true, arweaveOracle);
 	const arFSTagSettings = new ArFSTagSettings({ appName: 'ArFSDAO Integration Test', appVersion: '1.2' });
-	const arfsDao = new ArFSDAO(wallet, fakeArweave, true, 'Integration Test', '1.2', arFSTagSettings);
-
+	const txPreparer = new TxPreparer({
+		arweave: fakeArweave,
+		wallet,
+		arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
+	});
 	const bundledUploadPlanner = new ArFSUploadPlanner({
-		arFSTagSettings: arFSTagSettings,
-		priceEstimator,
-		communityOracle
+		arFSTagSettings: arFSTagSettings
 	});
 
 	it('bundled byte count of a file upload matches the predicted byte count from the Upload Planner', async () => {
@@ -39,17 +28,16 @@ describe('ArFSDAO Class -- integrated', () => {
 
 		const prototypeFactories = getPrepFileParams(uploadStats);
 
-		const fileDataItem = await arfsDao.prepareArFSDataItem({
+		const fileDataItem = await txPreparer.prepareFileDataDataItem({
 			objectMetaData: await prototypeFactories.dataPrototypeFactoryFn(
 				uploadStats.wrappedEntity.getFileDataBuffer(),
 				stubEntityID
-			),
-			excludedTagNames: ['ArFS']
+			)
 		});
-		const metaDataItem = await arfsDao.prepareArFSDataItem({
+		const metaDataItem = await txPreparer.prepareMetaDataDataItem({
 			objectMetaData: await prototypeFactories.metadataTxDataFactoryFn(stubEntityID, TxID(fileDataItem.id))
 		});
-		const bundle = await arfsDao.prepareArFSObjectBundle({
+		const bundle = await txPreparer.prepareBundleTx({
 			dataItems: [fileDataItem, metaDataItem],
 			rewardSettings: { reward: W(1) }
 		});

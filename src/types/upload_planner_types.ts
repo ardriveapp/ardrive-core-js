@@ -5,7 +5,7 @@ import {
 	ArFSDriveMetaDataPrototype,
 	ArFSFileMetaDataPrototype,
 	ArFSFolderMetaDataPrototype
-} from '../arfs/arfs_prototypes';
+} from '../arfs/tx/arfs_prototypes';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { CommunityOracle } from '../community/community_oracle';
 import { FileUploadStats, FolderUploadStats, UploadStats } from '../exports';

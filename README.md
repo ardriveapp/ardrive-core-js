@@ -229,7 +229,7 @@ Transaction nA1stCdTkuf290k0qsqvmJ78isEC0bwgrAi3D8Cl1LU Upload Progress: 100%
 
 To avoid redundant requests to the Arweave network for immutable ArFS entity metadata, a persistent file cache is created and maintained at:
 
-```
+```shell
 Windows: <os.homedir()>/ardrive-caches/metadata
 Non-Windows: <os.homedir()>/.ardrive/caches/metadata
 ```
@@ -241,6 +241,38 @@ Metadata cache logging to stderr can be enabled by setting the `ARDRIVE_CACHE_LO
 Cache performance is UNDEFINED for multi-process scenarios, but is presumed to be generally usable.
 
 The cache can be manually cleared safely at any time that any integrating app is not in operation.
+
+### Applying Custom MetaData to ArFS File Transactions
+
+Custom metadata can be attached to ArFS File Transactions. Metadata can be applied to either the GQL tags on the MetaData Transaction, the MetaData Transaction's Data JSON, or both.
+
+All custom tags can be accessed by using by using `ArDrive` class read methods such as `getPublicFile`, `getPrivateFile`, `listPrivateFolder`, etc.
+
+```ts
+const arDrive = arDriveAnonymousFactory({});
+const fileInfo = await arDrive.getPublicFile({ fileId });
+const myMetaDataGqlTags = fileInfo.customMetaDataGqlTags;
+const myMetaDataJsonFields = fileInfo.customMetaDataJson;
+```
+
+When the custom metadata is attached to the MetaData Transaction's GQL tags, they will become visible on any Arweave GQL gateway and also third party tools that read GQL data.
+
+When these tags are added to the MetaData Transaction's Data JSON they can be read by downloading the JSON data directly from `https://arweave.net/<metadata tx id>`.
+
+To add this custom metadata to your file metadata transactions, users can pass an object containing custom tags when wrapping content to upload:
+
+```ts
+const fileToUpload = wrapFileOrFolder(
+    'path/to/file/on/system', // File or Folder Path
+    'application/custom-content-type', // Custom Content Type
+    customMetaData: { // Custom MetaData
+        metaDataJson: { ['My-Custom-Tag-Name']: 'Single-Custom-Value' },
+        metaDataGqlTags: {
+            ['Another-Custom-Tag']: ['First-Custom-Value', 'Second-Custom-Value', 'Third-Custom-Value']
+        }
+    }
+);
+```
 
 [yarn-install]: https://yarnpkg.com/getting-started/install
 [nvm-install]: https://github.com/nvm-sh/nvm#installing-and-updating

@@ -5,7 +5,7 @@ import {
 	ArFSPublicDriveTransactionData,
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData
-} from './arfs/arfs_tx_data_types';
+} from './arfs/tx/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { ArDriveCommunityOracle } from './community/ardrive_community_oracle';
 import { CommunityOracle } from './community/community_oracle';

@@ -3,6 +3,13 @@ import Arweave from 'arweave';
 import {
 	getStubDriveKey,
 	stubEntityID,
+	stubArweaveAddress,
+	stubPrivateDrive,
+	stubPrivateFile,
+	stubPrivateFolder,
+	stubFolderUploadStats,
+	stubFileUploadStats,
+	stubCommunityTipSettings,
 	stubEntityIDAlt,
 	stubEntityIDAltTwo,
 	stubPrivateDriveMetaDataTx,
@@ -14,13 +21,6 @@ import {
 	stubPublicFileMetaDataTx,
 	stubPublicFolderMetaDataTx,
 	stubRootFolderMetaData,
-	stubArweaveAddress,
-	stubPrivateDrive,
-	stubPrivateFile,
-	stubPrivateFolder,
-	stubFolderUploadStats,
-	stubFileUploadStats,
-	stubCommunityTipSettings,
 	stubTxID,
 	stubSmallFileToUpload,
 	stubSignedTransaction,
@@ -99,6 +99,7 @@ describe('The ArFSDAO class', () => {
 		stubDriveKey = await getStubDriveKey();
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareObjectTransaction function', () => {
 		it('produces an ArFS compliant public drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
@@ -372,18 +373,6 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(10);
 		});
 
-		it('excludes the boost tag when boosted and boost tag is excluded', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) },
-				excludedTagNames: ['Boost']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'Boost')).to.be.undefined;
-			expect(tags.length).to.equal(9);
-		});
-
 		it('excludes ArFS tag if its within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
 				objectMetaData: stubPublicFileMetaDataTx,
@@ -396,37 +385,8 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(8);
 		});
 
-		it('can exclude multiple tags if provided within the exclusion array', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['ArFS', 'App-Version', 'App-Name']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'ArFS')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'App-Name')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'App-Version')).to.be.undefined;
-
-			expect(tags.length).to.equal(6);
-		});
-
-		it('can exclude tags from an ArFS object prototypes', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['Drive-Id', 'Content-Type', 'Parent-Folder-Id']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'Drive-Id')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'Content-Type')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'Parent-Folder-Id')).to.be.undefined;
-
-			expect(tags.length).to.equal(6);
-		});
-
-		it('throws an error error if provided otherTags collide with protected tags from an ArFS object prototypes', async () => {
+		// TODO: Move this test to TagAssembler class, where we test this against the `customTags` on the tag settings
+		it.skip('throws an error error if provided otherTags collide with protected tags from an ArFS object prototypes', async () => {
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.prepareArFSObjectTransaction({
 					objectMetaData: stubPublicFileMetaDataTx,
@@ -438,6 +398,7 @@ describe('The ArFSDAO class', () => {
 		});
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareDataItems function', () => {
 		it('includes the base ArFS tags by default', async () => {
 			const dataItem = await arfsDao.prepareArFSDataItem({
@@ -451,22 +412,9 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.length).to.equal(9);
 		});
-
-		it('can exclude tags from data item', async () => {
-			const dataItem = await arfsDao.prepareArFSDataItem({
-				objectMetaData: stubPublicFileMetaDataTx,
-				excludedTagNames: ['ArFS', 'App-Name']
-			});
-			const tags = dataItem.tags;
-
-			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.not.exist;
-
-			expect(tags.length).to.equal(7);
-		});
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareArFSObjectBundle function', async () => {
 		let dataItems: DataItem[];
 
@@ -497,22 +445,6 @@ describe('The ArFSDAO class', () => {
 			expect(tags.find((t) => t.name === 'ArFS')?.value).to.not.exist;
 
 			expect(tags.length).to.equal(4);
-		});
-
-		it('can exclude tags from bundled transaction', async () => {
-			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
-				dataItems,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['Bundle-Format', 'App-Name']
-			});
-			const tags = getDecodedTags(bundleTransaction.tags);
-
-			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'Bundle-Format')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'Bundle-Version')?.value).to.equal('2.0.0');
-
-			expect(tags.length).to.equal(2);
 		});
 
 		it('will include a boost tag and correctly multiply reward', async () => {

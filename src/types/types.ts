@@ -24,6 +24,17 @@ export type DataContentType = string;
 export type SourceUri = string;
 export type EntityName = string;
 
+export type JsonSerializable =
+	| string
+	| number
+	| boolean
+	| null
+	| { [member: string]: JsonSerializable }
+	| JsonSerializable[];
+
+/** Data JSON of a MetaData Transaction */
+export type EntityMetaDataTransactionData = Record<string, JsonSerializable>;
+
 export interface ArDriveCommunityTip {
 	tipPercentage: number;
 	minWinstonFee: Winston;

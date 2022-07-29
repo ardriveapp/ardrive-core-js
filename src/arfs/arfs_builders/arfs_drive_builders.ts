@@ -1,5 +1,5 @@
 import { driveDecrypt } from '../../utils/crypto';
-import { EntityMetaDataTransactionData, PrivateKeyData } from '../private_key_data';
+import { PrivateKeyData } from '../private_key_data';
 import {
 	CipherIV,
 	DriveKey,
@@ -9,11 +9,12 @@ import {
 	DriveAuthMode,
 	DrivePrivacy,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	EntityMetaDataTransactionData
 } from '../../types';
 import { Utf8ArrayToStr } from '../../utils/common';
-import { fakeEntityId } from '../../utils/constants';
-import { ArFSPublicDrive, ArFSPrivateDrive, ENCRYPTED_DATA_PLACEHOLDER, ArFSDriveEntity } from '../arfs_entities';
+import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId } from '../../utils/constants';
+import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
 	ArFSMetadataEntityBuilder,
 	ArFSMetadataEntityBuilderParams,
@@ -22,12 +23,16 @@ import {
 import { ArFSPrivateDriveKeyless } from '../../exports';
 import { GatewayAPI } from '../../utils/gateway_api';
 
-interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
+export interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
 	name: string;
-	rootFolderId: FolderID;
+	rootFolderId: string;
 }
 
-export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublicDrive> {
+abstract class ArFSDriveBuilder<T extends ArFSDriveEntity> extends ArFSMetadataEntityBuilder<T> {
+	protected readonly protectedDataJsonKeys = ['name', 'rootFolderId'];
+}
+
+export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 
@@ -91,6 +96,8 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 				throw new Error('Invalid drive state');
 			}
 
+			this.parseCustomMetaDataFromDataJson(dataJSON);
+
 			return new ArFSPublicDrive(
 				this.appName,
 				this.appVersion,
@@ -102,7 +109,10 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 				this.txId,
 				this.unixTime,
 				this.drivePrivacy,
-				this.rootFolderId
+				this.rootFolderId,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 
@@ -110,7 +120,7 @@ export class ArFSPublicDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPublic
 	}
 }
 
-export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPrivateDrive> {
+export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 	driveAuthMode?: DriveAuthMode;
@@ -194,7 +204,9 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 
 			this.name = decryptedDriveJSON.name;
-			this.rootFolderId = decryptedDriveJSON.rootFolderId;
+			this.rootFolderId = EID(decryptedDriveJSON.rootFolderId);
+
+			this.parseCustomMetaDataFromDataJson(decryptedDriveJSON);
 
 			return new ArFSPrivateDrive(
 				this.appName,
@@ -211,7 +223,10 @@ export class ArFSPrivateDriveBuilder extends ArFSMetadataEntityBuilder<ArFSPriva
 				this.driveAuthMode,
 				this.cipher,
 				this.cipherIV,
-				this.driveKey
+				this.driveKey,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 
@@ -231,7 +246,7 @@ export interface SafeArFSPrivateMetadataEntityBuilderParams extends ArFSMetadata
 	privateKeyData: PrivateKeyData;
 }
 
-export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEntity> {
+export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 	drivePrivacy?: DrivePrivacy;
 	rootFolderId?: FolderID;
 	driveAuthMode?: DriveAuthMode;
@@ -322,7 +337,7 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 					if (this.cipher?.length && this.driveAuthMode?.length && this.cipherIV?.length) {
 						const placeholderDriveData = {
 							name: ENCRYPTED_DATA_PLACEHOLDER,
-							rootFolderId: new EncryptedEntityID()
+							rootFolderId: ENCRYPTED_DATA_PLACEHOLDER
 						};
 						return this.privateKeyData.safelyDecryptToJson<DriveMetaDataTransactionData>(
 							this.cipherIV,
@@ -339,7 +354,9 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 			})();
 
 			this.name = dataJSON.name;
-			this.rootFolderId = dataJSON.rootFolderId;
+			this.rootFolderId = EID(dataJSON.rootFolderId);
+
+			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			if (isPrivate) {
 				if (!this.driveAuthMode || !this.cipher || !this.cipherIV) {
@@ -382,7 +399,10 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 					this.rootFolderId,
 					this.driveAuthMode,
 					this.cipher,
-					this.cipherIV
+					this.cipherIV,
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				);
 			}
 			return new ArFSPublicDrive(
@@ -396,7 +416,10 @@ export class SafeArFSDriveBuilder extends ArFSMetadataEntityBuilder<ArFSDriveEnt
 				this.txId,
 				this.unixTime,
 				this.drivePrivacy,
-				this.rootFolderId
+				this.rootFolderId,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid drive state');
