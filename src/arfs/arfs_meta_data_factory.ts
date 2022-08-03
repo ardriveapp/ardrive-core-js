@@ -74,7 +74,8 @@ export function getPrepFileParams({
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
 				new ArFSPrivateFileDataPrototype(
-					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
+					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey),
+					wrappedFile.customMetaData?.dataGqlTags
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
 				return ArFSPrivateFileMetaDataPrototype.fromFile({
@@ -96,7 +97,8 @@ export function getPrepFileParams({
 			Promise.resolve(
 				new ArFSPublicFileDataPrototype(
 					new ArFSPublicFileDataTransactionData(fileData),
-					wrappedFile.contentType
+					wrappedFile.contentType,
+					wrappedFile.customMetaData?.dataGqlTags
 				)
 			),
 		metadataTxDataFactoryFn: (fileId, dataTxId) =>

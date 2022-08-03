@@ -7,14 +7,16 @@ const invalidSchemaErrorMessage = `Invalid custom metadata schema. Please submit
 const customMetaDataGqlTagShapeOne = '{ "TAG_NAME": "TAG_VALUE" }';
 const customMetaDataGqlTagShapeTwo = '{ "TAG_NAME": ["VAL 1", "VAL 2" ] }';
 const customMetaDataJsonShape = '{ "TAG_NAME": { "Any": [ "Valid", "JSON" ] } }';
-const customMetaDataShape = `{ metaDataJson?: ${customMetaDataGqlTagShapeOne}, metaDataGql?: ${customMetaDataGqlTagShapeTwo} }`;
+const customMetaDataShape = `{ metaDataJson?: ${customMetaDataGqlTagShapeOne}, metaDataGql?: ${customMetaDataGqlTagShapeTwo}, dataGqlTags?: ${customMetaDataGqlTagShapeTwo} }`;
 
 export const invalidCustomMetaDataGqlTagErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataGqlTagShapeOne} or ${customMetaDataGqlTagShapeTwo}`;
+export const invalidCustomDataGqlTagErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataGqlTagShapeOne} or ${customMetaDataGqlTagShapeTwo}`;
 export const invalidCustomMetaDataJsonErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataJsonShape}`;
 export const invalidCustomMetaDataErrorMessage = `${invalidSchemaErrorMessage}${customMetaDataShape}`;
 
 export type CustomMetaDataGqlTags = Record<string, string | string[]>;
 export type CustomMetaDataJsonFields = EntityMetaDataTransactionData;
+export type CustomMetaDataTagInterface = CustomMetaDataGqlTags;
 
 export interface CustomMetaData {
 	/** Include custom metadata on MetaData Tx Data JSON */
@@ -23,9 +25,8 @@ export interface CustomMetaData {
 	/** Include custom metadata on MetaData Tx GQL Tags */
 	metaDataGqlTags?: CustomMetaDataGqlTags;
 
-	// TODO: Include dataTx GQL tags as an option (PE-1534)
 	/** Include custom metadata on File Data Tx GQL Tags */
-	// dataGqlTags?: CustomMetaDataTagInterface;
+	dataGqlTags?: CustomMetaDataTagInterface;
 }
 
 export function isCustomMetaDataJsonFields(customDataJson: unknown): customDataJson is CustomMetaDataJsonFields {
@@ -93,11 +94,20 @@ export function isCustomMetaData(tags: unknown): tags is CustomMetaData {
 	}
 
 	for (const [key, metaData] of Object.entries(tags)) {
-		if (key === 'metaDataJson' && !isCustomMetaDataJsonFields(metaData)) {
-			return false;
-		}
-		if (key === 'metaDataGqlTags' && !isCustomMetaDataGqlTags(metaData)) {
-			return false;
+		switch (key) {
+			case 'metaDataJson':
+				if (!isCustomMetaDataJsonFields(metaData)) {
+					return false;
+				}
+				break;
+			case 'metaDataGqlTags':
+			case 'dataGqlTags':
+				if (!isCustomMetaDataGqlTags(metaData)) {
+					return false;
+				}
+				break;
+			default:
+				break;
 		}
 	}
 	return true;
@@ -119,6 +129,7 @@ export function assertCustomMetaDataJsonFields(tags: unknown): tags is CustomMet
 
 export function assertCustomMetaData(tags: unknown): tags is CustomMetaData {
 	if (!isCustomMetaData(tags)) {
+		// TODO: throw the error for data ones as well.
 		throw Error(invalidCustomMetaDataErrorMessage);
 	}
 	return true;
