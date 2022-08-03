@@ -26,9 +26,13 @@ import {
 	EntityMetaDataTransactionData,
 	GQLTagInterface,
 	CustomMetaData,
-	CustomMetaDataJsonFields
+	CustomMetaDataJsonFields,
+	PRIVATE_CONTENT_TYPE
 } from '../../src/types';
 import { getDecodedTags } from '../test_helpers';
+
+const defaultPublicDataContentType = 'text/plain';
+const defaultPrivateDataContentType = PRIVATE_CONTENT_TYPE;
 
 interface AssertEntityExpectationsParams<T = ArFSEntity> {
 	entity: T;
@@ -350,16 +354,34 @@ export function assertFolderMetaDataGqlTags(
 export function assertFileDataTxGqlTags(
 	dataTx: Transaction,
 	expectations: {
-		contentType: DataContentType;
+		contentType?: DataContentType;
+		customMetaData?: CustomMetaDataGqlTags;
 	}
 ): void {
-	const { contentType } = expectations;
+	const { contentType, customMetaData } = expectations;
 	const dataTxTags = getDecodedTags(dataTx.tags);
 
-	expect(dataTxTags).to.deep.equal([
-		{ name: 'Content-Type', value: contentType },
-		{ name: 'App-Name', value: 'ArLocal Integration Test' },
-		{ name: 'App-Version', value: 'FAKE_VERSION' },
-		{ name: 'Tip-Type', value: 'data upload' }
-	]);
+	const expectedCustomTags: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
+
+	const cipherIv = dataTxTags.find((tag) => tag.name === 'Cipher-IV')?.value;
+	const isPublic = !cipherIv;
+	if (isPublic) {
+		expect(dataTxTags).to.deep.equal([
+			...expectedCustomTags,
+			{ name: 'Content-Type', value: contentType ?? defaultPublicDataContentType },
+			{ name: 'App-Name', value: 'ArLocal Integration Test' },
+			{ name: 'App-Version', value: 'FAKE_VERSION' },
+			{ name: 'Tip-Type', value: 'data upload' }
+		]);
+	} else {
+		expect(dataTxTags).to.deep.equal([
+			...expectedCustomTags,
+			{ name: 'Content-Type', value: contentType ?? defaultPrivateDataContentType },
+			{ name: 'Cipher', value: 'AES256-GCM' },
+			{ name: 'Cipher-IV', value: cipherIv },
+			{ name: 'App-Name', value: 'ArLocal Integration Test' },
+			{ name: 'App-Version', value: 'FAKE_VERSION' },
+			{ name: 'Tip-Type', value: 'data upload' }
+		]);
+	}
 }
