@@ -1,4 +1,4 @@
-import { ArweaveAddress, TransactionID } from '../types';
+import { ArweaveAddress, TransactionID, GQLQueryTagInterface } from '../types';
 
 const ownerFragment = `
 	owner {
@@ -40,7 +40,7 @@ const pageLimit = 100;
 type Sort = typeof ASCENDING_ORDER | typeof DESCENDING_ORDER;
 
 export interface BuildGQLQueryParams {
-	tags: { name: string; value: string | string[] }[];
+	tags: GQLQueryTagInterface[];
 	cursor?: string;
 	owner?: ArweaveAddress;
 	sort?: Sort;

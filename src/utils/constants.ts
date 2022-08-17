@@ -3,6 +3,9 @@ const { version: DEFAULT_APP_VERSION } = require('../../package.json');
 import { ByteCount, EID, JSON_CONTENT_TYPE, PRIVATE_CONTENT_TYPE, TxID } from '../types';
 import { CipherType } from '../types/type_guards';
 
+export const ENCRYPTED_DATA_PLACEHOLDER = 'ENCRYPTED';
+export type ENCRYPTED_DATA_PLACEHOLDER_TYPE = 'ENCRYPTED';
+
 export const ArFS_O_11 = '0.11';
 export const CURRENT_ARFS_VERSION = ArFS_O_11;
 export const DEFAULT_APP_NAME = 'ArDrive-Core';
@@ -66,3 +69,27 @@ export const FATAL_CHUNK_UPLOAD_ERRORS = [
 	'chunk_proof_ratio_not_attractive',
 	'invalid_proof'
 ];
+
+export const gqlTagNameRecord = {
+	appName: 'App-Name',
+	appVersion: 'App-Version',
+	arFS: 'ArFS',
+	tipType: 'Tip-Type',
+	contentType: 'Content-Type',
+	boost: 'Boost',
+	bundleFormat: 'Bundle-Format',
+	bundleVersion: 'Bundle-Version',
+	entityType: 'Entity-Type',
+	unitTime: 'Unix-Time',
+	driveId: 'Drive-Id',
+	folderId: 'Folder-Id',
+	fileId: 'File-Id',
+	parentFolderId: 'Parent-Folder-Id',
+	drivePrivacy: 'Drive-Privacy',
+	cipher: 'Cipher',
+	cipherIv: 'Cipher-IV',
+	driveAuthMode: 'Drive-Auth-Mode'
+} as const;
+
+export const gqlTagNameArray = Object.values(gqlTagNameRecord);
+export type GqlTagName = typeof gqlTagNameArray[number];

@@ -14,6 +14,7 @@ export * from './type_guards';
 export * from './types';
 export * from './ardrive_types';
 export * from './arfsdao_types';
-export { CipherIVQueryResult } from './cipher_iv_query_result';
+export * from './cipher_iv_query_result';
 export * from './upload_conflict_types';
 export * from './entity_key';
+export * from './custom_metadata_types';

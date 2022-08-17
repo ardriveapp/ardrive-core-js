@@ -3,6 +3,13 @@ import Arweave from 'arweave';
 import {
 	getStubDriveKey,
 	stubEntityID,
+	stubArweaveAddress,
+	stubPrivateDrive,
+	stubPrivateFile,
+	stubPrivateFolder,
+	stubFolderUploadStats,
+	stubFileUploadStats,
+	stubCommunityTipSettings,
 	stubEntityIDAlt,
 	stubEntityIDAltTwo,
 	stubPrivateDriveMetaDataTx,
@@ -14,16 +21,10 @@ import {
 	stubPublicFileMetaDataTx,
 	stubPublicFolderMetaDataTx,
 	stubRootFolderMetaData,
-	stubArweaveAddress,
-	stubPrivateDrive,
-	stubPrivateFile,
-	stubPrivateFolder,
-	stubFolderUploadStats,
-	stubFileUploadStats,
-	stubCommunityTipSettings,
 	stubTxID,
 	stubSmallFileToUpload,
-	stubSignedTransaction
+	stubSignedTransaction,
+	stub3073CharString
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
 import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
@@ -41,13 +42,15 @@ import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
-import { DataItem } from 'arbundles';
+import { createData, DataItem } from 'arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
 import { emptyV2TxPlans } from '../types/upload_planner_types';
 import { GatewayAPI } from '../utils/gateway_api';
 import Transaction from 'arweave/node/lib/transaction';
+import { ArweaveSigner } from 'arbundles/src/signing';
+import { JWKWallet } from '../jwk_wallet';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -96,6 +99,7 @@ describe('The ArFSDAO class', () => {
 		stubDriveKey = await getStubDriveKey();
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareObjectTransaction function', () => {
 		it('produces an ArFS compliant public drive metadata transaction', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
@@ -369,18 +373,6 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(10);
 		});
 
-		it('excludes the boost tag when boosted and boost tag is excluded', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10), feeMultiple: new FeeMultiple(1.5) },
-				excludedTagNames: ['Boost']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'Boost')).to.be.undefined;
-			expect(tags.length).to.equal(9);
-		});
-
 		it('excludes ArFS tag if its within the exclusion array', async () => {
 			const transaction = await arfsDao.prepareArFSObjectTransaction({
 				objectMetaData: stubPublicFileMetaDataTx,
@@ -393,37 +385,8 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(8);
 		});
 
-		it('can exclude multiple tags if provided within the exclusion array', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['ArFS', 'App-Version', 'App-Name']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'ArFS')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'App-Name')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'App-Version')).to.be.undefined;
-
-			expect(tags.length).to.equal(6);
-		});
-
-		it('can exclude tags from an ArFS object prototypes', async () => {
-			const transaction = await arfsDao.prepareArFSObjectTransaction({
-				objectMetaData: stubPublicFileMetaDataTx,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['Drive-Id', 'Content-Type', 'Parent-Folder-Id']
-			});
-			const tags = getDecodedTags(transaction.tags);
-
-			expect(tags.find((t) => t.name === 'Drive-Id')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'Content-Type')).to.be.undefined;
-			expect(tags.find((t) => t.name === 'Parent-Folder-Id')).to.be.undefined;
-
-			expect(tags.length).to.equal(6);
-		});
-
-		it('throws an error error if provided otherTags collide with protected tags from an ArFS object prototypes', async () => {
+		// TODO: Move this test to TagAssembler class, where we test this against the `customTags` on the tag settings
+		it.skip('throws an error error if provided otherTags collide with protected tags from an ArFS object prototypes', async () => {
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.prepareArFSObjectTransaction({
 					objectMetaData: stubPublicFileMetaDataTx,
@@ -435,6 +398,7 @@ describe('The ArFSDAO class', () => {
 		});
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareDataItems function', () => {
 		it('includes the base ArFS tags by default', async () => {
 			const dataItem = await arfsDao.prepareArFSDataItem({
@@ -448,22 +412,9 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.length).to.equal(9);
 		});
-
-		it('can exclude tags from data item', async () => {
-			const dataItem = await arfsDao.prepareArFSDataItem({
-				objectMetaData: stubPublicFileMetaDataTx,
-				excludedTagNames: ['ArFS', 'App-Name']
-			});
-			const tags = dataItem.tags;
-
-			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.not.exist;
-
-			expect(tags.length).to.equal(7);
-		});
 	});
 
+	// TODO: Move this test to the TxPreparer and TagAssembler classes when fully deprecated. Keeping here for backwards compatibility
 	describe('prepareArFSObjectBundle function', async () => {
 		let dataItems: DataItem[];
 
@@ -496,22 +447,6 @@ describe('The ArFSDAO class', () => {
 			expect(tags.length).to.equal(4);
 		});
 
-		it('can exclude tags from bundled transaction', async () => {
-			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
-				dataItems,
-				rewardSettings: { reward: W(10) },
-				excludedTagNames: ['Bundle-Format', 'App-Name']
-			});
-			const tags = getDecodedTags(bundleTransaction.tags);
-
-			expect(tags.find((t) => t.name === 'App-Name')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'Bundle-Format')?.value).to.not.exist;
-			expect(tags.find((t) => t.name === 'Bundle-Version')?.value).to.equal('2.0.0');
-
-			expect(tags.length).to.equal(2);
-		});
-
 		it('will include a boost tag and correctly multiply reward', async () => {
 			const bundleTransaction = await arfsDao.prepareArFSObjectBundle({
 				dataItems,
@@ -527,11 +462,21 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('throws an error when bundle cannot be verified', async () => {
-			dataItems[0].id = 'fake ID so verify will return false';
+			const signer = new ArweaveSigner((wallet as JWKWallet).getPrivateKey());
+
+			// Create data item with a tag that exceeds ANS 104 Limits
+			const dataItemWithHugeTagValue = createData(
+				stubPublicFileMetaDataTx.objectData.asTransactionData(),
+				signer,
+				{
+					tags: [{ name: stub3073CharString, value: stub3073CharString }]
+				}
+			);
+			await dataItemWithHugeTagValue.sign(signer);
 
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.prepareArFSObjectBundle({
-					dataItems,
+					dataItems: [dataItemWithHugeTagValue],
 					rewardSettings: { reward: W(10) }
 				}),
 				errorMessage: 'Bundle format could not be verified!'

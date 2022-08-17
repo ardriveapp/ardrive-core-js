@@ -1,19 +1,13 @@
-import { DataContentType, GQLTagInterface, TipType } from '../types';
+import { GQLTagInterface, FeeMultiple, TipType, DataContentType } from '../types';
 import {
-	CURRENT_ARFS_VERSION,
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
-	fakePrivateCipherIVTag,
+	CURRENT_ARFS_VERSION,
+	privateOctetContentTypeTag,
 	privateCipherTag,
-	privateOctetContentTypeTag
+	fakePrivateCipherIVTag,
+	gqlTagNameArray
 } from '../utils/constants';
-
-// Tag Limits to be in compliance with ANS-104:
-// https://github.com/joshbenaron/arweave-standards/blob/ans104/ans/ANS-104.md#21-verifying-a-dataitem
-const MAX_TAG_LIMIT = 128;
-const TAG_NAME_BYTE_LIMIT = 1024;
-const TAG_VALUE_BYTE_LIMIT = 3072;
-const TAG_KEY_LIMIT = 2;
 
 interface ArFSTagSettingsParams {
 	appName?: string;
@@ -26,6 +20,8 @@ export class ArFSTagSettings {
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
 
+	public static protectedArFSGqlTagNames = gqlTagNameArray;
+
 	constructor({
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
@@ -34,22 +30,28 @@ export class ArFSTagSettings {
 		this.appName = appName;
 		this.appVersion = appVersion;
 		this.arFSVersion = arFSVersion;
-
-		this.assertTagLimits(this.baseArFSTags);
 	}
 
-	get baseAppTags(): GQLTagInterface[] {
+	public get baseAppTags(): GQLTagInterface[] {
 		return [
 			{ name: 'App-Name', value: this.appName },
 			{ name: 'App-Version', value: this.appVersion }
 		];
 	}
 
-	get baseArFSTags(): GQLTagInterface[] {
+	public getBoostTags(feeMultiple: FeeMultiple): GQLTagInterface[] {
+		return [{ name: 'Boost', value: feeMultiple.toString() }];
+	}
+
+	public getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
+		return [{ name: 'Tip-Type', value: tipType }];
+	}
+
+	public get baseArFSTags(): GQLTagInterface[] {
 		return [...this.baseAppTags, { name: 'ArFS', value: this.arFSVersion }];
 	}
 
-	get baseBundleTags(): GQLTagInterface[] {
+	public get baseBundleTags(): GQLTagInterface[] {
 		return [
 			...this.baseAppTags,
 			{ name: 'Bundle-Format', value: 'binary' },
@@ -57,80 +59,25 @@ export class ArFSTagSettings {
 		];
 	}
 
-	getTipTagsWithAppTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
-		return [...this.baseAppTags, ...this.getTipTags(tipType)];
+	/** @deprecated Used for the deprecated flow of sending a separate community tip tx */
+	public getTipTagsWithAppTags(): GQLTagInterface[] {
+		return [...this.baseAppTags, ...this.getTipTags()];
 	}
 
-	getTipTags(tipType: TipType = 'data upload'): GQLTagInterface[] {
-		return [{ name: 'Tip-Type', value: tipType }];
-	}
+	/**
+	 * Used for estimating byte count of data items to bypass storing the Buffer from ArFSFileDataPrototype
+	 *
+	 * TODO: Don't use the file data Buffer in ArFSFileDataPrototype so it can be used in estimation without memory concerns
+	 */
+	public getFileDataItemTags(isPrivate: boolean, dataContentType: DataContentType): GQLTagInterface[] {
+		const tags = this.baseAppTags;
 
-	baseAppTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		return this.assembleTags({ tags: [...this.baseAppTags, ...tags], excludedTagNames });
-	}
-
-	baseArFSTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		return this.assembleTags({ tags: [...this.baseArFSTags, ...tags], excludedTagNames });
-	}
-
-	baseBundleTagsIncluding({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		return this.assembleTags({ tags: [...this.baseBundleTags, ...tags], excludedTagNames });
-	}
-
-	getFileDataTags(isPrivate: boolean, dataContentType: DataContentType): GQLTagInterface[] {
-		const tags = isPrivate
-			? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
-			: [{ name: 'Content-Type', value: dataContentType }];
-
-		return this.assembleTags({ tags: [...this.baseAppTags, ...tags] });
-	}
-
-	private assembleTags({ tags, excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		tags = this.filterExcludedTagNames({ tags, excludedTagNames });
-		this.assertTagLimits(tags);
+		tags.push(
+			...(isPrivate
+				? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
+				: [{ name: 'Content-Type', value: dataContentType }])
+		);
 
 		return tags;
 	}
-
-	assertTagLimits(tags: GQLTagInterface[]): void {
-		if (tags.length > MAX_TAG_LIMIT) {
-			throw new Error(
-				`Amount of GQL Tags (${tags.length}) exceeds the maximum limit allowed (${MAX_TAG_LIMIT})!`
-			);
-		}
-		for (const tag of tags) {
-			if (Object.keys(tag).length > TAG_KEY_LIMIT) {
-				throw new Error('GQL tag has too many keys, tags must only have "name" and "value" fields!');
-			}
-
-			if (tag.name.length > TAG_NAME_BYTE_LIMIT) {
-				throw new Error(
-					`GQL tag "name" field byte size (${tag.name.length}) has exceeded the maximum byte limit allowed of ${TAG_NAME_BYTE_LIMIT}!`
-				);
-			}
-
-			if (tag.value.length > TAG_VALUE_BYTE_LIMIT) {
-				throw new Error(
-					`GQL tag "value" field byte size (${tag.value.length}) has exceeded the maximum byte limit allowed of ${TAG_VALUE_BYTE_LIMIT}!`
-				);
-			}
-
-			if (tag.name.length < 1 || typeof tag.name !== 'string') {
-				throw new Error('GQL tag "name" must be a non-empty string!');
-			}
-
-			if (tag.value.length < 1 || typeof tag.value !== 'string') {
-				throw new Error('GQL tag "value" must be a non-empty string!');
-			}
-		}
-	}
-
-	private filterExcludedTagNames({ tags = [], excludedTagNames = [] }: TagAssembleParams): GQLTagInterface[] {
-		return tags.filter((tag) => !excludedTagNames.includes(tag.name));
-	}
-}
-
-interface TagAssembleParams {
-	tags?: GQLTagInterface[];
-	excludedTagNames?: string[];
 }

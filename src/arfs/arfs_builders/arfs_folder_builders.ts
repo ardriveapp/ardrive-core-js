@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import {
 	ArweaveAddress,
@@ -15,6 +14,7 @@ import { Utf8ArrayToStr } from '../../utils/common';
 
 import { ArFSPublicFolder, ArFSPrivateFolder } from '../arfs_entities';
 import { fakeEntityId } from '../../utils/constants';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 export const ROOT_FOLDER_ID_PLACEHOLDER = 'root folder';
 
@@ -30,22 +30,29 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 	'folder',
 	T
 > {
+	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+		const tags = await super.parseFromArweaveNode(node);
+		return tags.filter((tag) => tag.name !== 'Folder-Id');
+	}
+
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
 			{ name: 'Folder-Id', value: `${this.entityId}` },
 			{ name: 'Entity-Type', value: 'folder' }
 		];
 	}
+
+	protected readonly protectedDataJsonKeys = ['name'];
 }
 
 export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder> {
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave): ArFSPublicFolderBuilder {
+	static fromArweaveNode(node: GQLNodeInterface, gatewayApi: GatewayAPI): ArFSPublicFolderBuilder {
 		const { tags } = node;
 		const folderId = tags.find((tag) => tag.name === 'Folder-Id')?.value;
 		if (!folderId) {
 			throw new Error('Folder-ID tag missing!');
 		}
-		const folderBuilder = new ArFSPublicFolderBuilder({ entityId: EID(folderId), arweave });
+		const folderBuilder = new ArFSPublicFolderBuilder({ entityId: EID(folderId), gatewayApi });
 		return folderBuilder;
 	}
 
@@ -77,6 +84,7 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			if (!this.name) {
 				throw new Error('Invalid public folder state: name not found!');
 			}
+			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFolder(
@@ -89,7 +97,10 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 					this.txId,
 					this.unixTime,
 					this.parentFolderId,
-					this.entityId
+					this.entityId,
+					this.boost,
+					this.customMetaData.metaDataGqlTags,
+					this.customMetaData.metaDataJson
 				)
 			);
 		}
@@ -103,20 +114,24 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 
 	constructor(
 		readonly folderId: FolderID,
-		readonly arweave: Arweave,
+		readonly gatewayApi: GatewayAPI,
 		protected readonly driveKey: DriveKey,
 		readonly owner?: ArweaveAddress
 	) {
-		super({ entityId: folderId, arweave, owner });
+		super({ entityId: folderId, owner, gatewayApi });
 	}
 
-	static fromArweaveNode(node: GQLNodeInterface, arweave: Arweave, driveKey: DriveKey): ArFSPrivateFolderBuilder {
+	static fromArweaveNode(
+		node: GQLNodeInterface,
+		gatewayApi: GatewayAPI,
+		driveKey: DriveKey
+	): ArFSPrivateFolderBuilder {
 		const { tags } = node;
 		const folderId = tags.find((tag) => tag.name === 'Folder-Id')?.value;
 		if (!folderId) {
 			throw new Error('Folder-ID tag missing!');
 		}
-		const folderBuilder = new ArFSPrivateFolderBuilder(EID(folderId), arweave, driveKey);
+		const folderBuilder = new ArFSPrivateFolderBuilder(EID(folderId), gatewayApi, driveKey);
 		return folderBuilder;
 	}
 
@@ -175,6 +190,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				throw new Error('Invalid private folder state: name not found!');
 			}
 
+			this.parseCustomMetaDataFromDataJson(decryptedFolderJSON);
+
 			return new ArFSPrivateFolder(
 				this.appName,
 				this.appVersion,
@@ -188,7 +205,10 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.entityId,
 				this.cipher,
 				this.cipherIV,
-				this.driveKey
+				this.driveKey,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
 		}
 		throw new Error('Invalid private folder state');

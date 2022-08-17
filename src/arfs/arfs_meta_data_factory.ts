@@ -10,15 +10,14 @@ import {
 	ArFSPublicFileDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
 	ArFSPublicFolderMetaDataPrototype
-} from './arfs_prototypes';
+} from './tx/arfs_prototypes';
 import {
 	ArFSFileMetadataTransactionData,
 	ArFSPrivateFileDataTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPublicFolderTransactionData
-} from './arfs_tx_data_types';
+} from './tx/arfs_tx_data_types';
 
 import {
 	DataContentType,
@@ -69,31 +68,24 @@ export function getPrepFileParams({
 	wrappedEntity: wrappedFile,
 	driveKey
 }: FileUploadStats): PartialPrepareFileParams {
-	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
 	if (driveKey) {
 		return {
 			// Return factories for private prototypes
 			wrappedFile,
 			dataPrototypeFactoryFn: async (fileData, fileId) =>
 				new ArFSPrivateFileDataPrototype(
-					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey)
+					await ArFSPrivateFileDataTransactionData.from(fileData, fileId, driveKey),
+					wrappedFile.customMetaData?.dataGqlTags
 				),
 			metadataTxDataFactoryFn: async (fileId, dataTxId) => {
-				return new ArFSPrivateFileMetaDataPrototype(
-					await ArFSPrivateFileMetadataTransactionData.from(
-						wrappedFile.destinationBaseName,
-						fileSize,
-						lastModifiedDateMS,
-						dataTxId,
-						dataContentType,
-						fileId,
-						driveKey
-					),
-					destDriveId,
+				return ArFSPrivateFileMetaDataPrototype.fromFile({
+					dataTxId,
+					driveId: destDriveId,
 					fileId,
-					destFolderId
-				);
+					parentFolderId: destFolderId,
+					wrappedFile,
+					driveKey
+				});
 			}
 		};
 	}
@@ -103,7 +95,11 @@ export function getPrepFileParams({
 		wrappedFile,
 		dataPrototypeFactoryFn: (fileData) =>
 			Promise.resolve(
-				new ArFSPublicFileDataPrototype(new ArFSPublicFileDataTransactionData(fileData), dataContentType)
+				new ArFSPublicFileDataPrototype(
+					new ArFSPublicFileDataTransactionData(fileData),
+					wrappedFile.contentType,
+					wrappedFile.customMetaData?.dataGqlTags
+				)
 			),
 		metadataTxDataFactoryFn: (fileId, dataTxId) =>
 			Promise.resolve(
@@ -127,22 +123,31 @@ export async function getPrepFolderFactoryParams({
 }: FolderUploadStats): Promise<(folderId: FolderID) => ArFSFolderMetaDataPrototype> {
 	if (driveKey) {
 		// Return factory for private folder prototype
-		const folderData = await ArFSPrivateFolderTransactionData.from(wrappedFolder.destinationBaseName, driveKey);
+		const folderData = await ArFSPrivateFolderTransactionData.from(
+			wrappedFolder.destinationBaseName,
+			driveKey,
+			wrappedFolder.customMetaData?.metaDataJson
+		);
 		return (folderId) =>
 			new ArFSPrivateFolderMetaDataPrototype(
 				destDriveId,
 				wrappedFolder.existingId ?? folderId,
 				folderData,
-				destFolderId
+				destFolderId,
+				wrappedFolder.customMetaData?.metaDataGqlTags
 			);
 	}
 
 	return (folderId) =>
 		// Return factory for public folder prototype
 		new ArFSPublicFolderMetaDataPrototype(
-			new ArFSPublicFolderTransactionData(wrappedFolder.destinationBaseName),
+			new ArFSPublicFolderTransactionData(
+				wrappedFolder.destinationBaseName,
+				wrappedFolder.customMetaData?.metaDataJson
+			),
 			destDriveId,
 			wrappedFolder.existingId ?? folderId,
-			destFolderId
+			destFolderId,
+			wrappedFolder.customMetaData?.metaDataGqlTags
 		);
 }

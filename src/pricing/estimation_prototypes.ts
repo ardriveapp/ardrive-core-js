@@ -3,12 +3,12 @@ import {
 	ArFSFolderMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype
-} from '../arfs/arfs_prototypes';
+} from '../arfs/tx/arfs_prototypes';
 import {
 	ArFSDataToUpload,
+	ArFSFolderToUpload,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
-	ArFSPrivateFileMetadataTransactionData,
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateFolderTransactionData,
 	ArFSPublicDriveMetaDataPrototype,
@@ -18,6 +18,7 @@ import {
 	ByteCount,
 	CreatePrivateDriveParams,
 	CreatePublicDriveParams,
+	CustomMetaData,
 	DriveKey,
 	encryptedDataSize
 } from '../exports';
@@ -37,11 +38,17 @@ export const getFakeDriveKey = async (): Promise<DriveKey> => {
  * Constructs a fake public folder metadata prototype from stubbed entity
  * IDs for estimation and planning purposes
  */
-export function getPublicFolderEstimationPrototype(folderName: string): ArFSPublicFolderMetaDataPrototype {
+
+export function getPublicFolderEstimationPrototype(
+	folderName: string,
+	customMetaData?: CustomMetaData
+): ArFSPublicFolderMetaDataPrototype {
 	return new ArFSPublicFolderMetaDataPrototype(
-		new ArFSPublicFolderTransactionData(folderName),
+		new ArFSPublicFolderTransactionData(folderName, customMetaData?.metaDataJson),
 		fakeEntityId,
-		fakeEntityId
+		fakeEntityId,
+		undefined,
+		customMetaData?.metaDataGqlTags
 	);
 }
 
@@ -50,12 +57,15 @@ export function getPublicFolderEstimationPrototype(folderName: string): ArFSPubl
  * IDs and a stub drive key for estimation and planning purposes
  */
 export async function getPrivateFolderEstimationPrototype(
-	folderName: string
+	folderName: string,
+	customMetaData?: CustomMetaData
 ): Promise<ArFSPrivateFolderMetaDataPrototype> {
 	return new ArFSPrivateFolderMetaDataPrototype(
 		fakeEntityId,
 		fakeEntityId,
-		await ArFSPrivateFolderTransactionData.from(folderName, await getFakeDriveKey())
+		await ArFSPrivateFolderTransactionData.from(folderName, await getFakeDriveKey(), customMetaData?.metaDataJson),
+		undefined,
+		customMetaData?.metaDataGqlTags
 	);
 }
 
@@ -114,22 +124,14 @@ export function getPublicUploadFileEstimationPrototype(wrappedFile: ArFSDataToUp
 export async function getPrivateUploadFileEstimationPrototype(
 	wrappedFile: ArFSDataToUpload
 ): Promise<ArFSPrivateFileMetaDataPrototype> {
-	const { fileSize, dataContentType, lastModifiedDateMS } = wrappedFile.gatherFileInfo();
-
-	return new ArFSPrivateFileMetaDataPrototype(
-		await ArFSPrivateFileMetadataTransactionData.from(
-			wrappedFile.destinationBaseName,
-			fileSize,
-			lastModifiedDateMS,
-			fakeTxID,
-			dataContentType,
-			fakeEntityId,
-			await getFakeDriveKey()
-		),
-		fakeEntityId,
-		fakeEntityId,
-		fakeEntityId
-	);
+	return ArFSPrivateFileMetaDataPrototype.fromFile({
+		dataTxId: fakeTxID,
+		driveId: fakeEntityId,
+		fileId: fakeEntityId,
+		parentFolderId: fakeEntityId,
+		wrappedFile,
+		driveKey: await getFakeDriveKey()
+	});
 }
 
 /**
@@ -162,12 +164,12 @@ export async function getFileEstimationInfo(
  * 	the returned prototype is public or private
  */
 export async function getFolderEstimationInfo(
-	destinationBaseName: string,
+	wrappedFolder: ArFSFolderToUpload,
 	isPrivate: boolean
 ): Promise<{ folderMetaDataPrototype: ArFSFolderMetaDataPrototype }> {
 	const folderMetaDataPrototype = isPrivate
-		? await getPrivateFolderEstimationPrototype(destinationBaseName)
-		: getPublicFolderEstimationPrototype(destinationBaseName);
+		? await getPrivateFolderEstimationPrototype(wrappedFolder.destinationBaseName, wrappedFolder.customMetaData)
+		: getPublicFolderEstimationPrototype(wrappedFolder.destinationBaseName, wrappedFolder.customMetaData);
 
 	return { folderMetaDataPrototype };
 }

@@ -19,8 +19,8 @@ export * from './arfs/arfs_entities';
 export * from './arfs/arfs_entity_result_factory';
 export * from './arfs/arfs_file_wrapper';
 export * from './arfs/arfs_meta_data_factory';
-export * from './arfs/arfs_prototypes';
-export * from './arfs/arfs_tx_data_types';
+export * from './arfs/tx/arfs_prototypes';
+export * from './arfs/tx/arfs_tx_data_types';
 export * from './arfs/folder_hierarchy';
 export * from './arfs/arfs_builders/arfs_builders';
 export * from './arfs/arfs_builders/arfs_drive_builders';
@@ -48,11 +48,12 @@ export * from './pricing/gateway_oracle';
 
 // Utils
 export * from './utils/common';
+export * from './utils/crypto';
 export * from './utils/error_message';
 export * from './utils/filter_methods';
+export * from './utils/gateway_api';
 export * from './utils/mapper_functions';
 export * from './utils/query';
-export * from './utils/crypto';
 export * from './utils/sort_functions';
-export * from './utils/wallet_utils';
 export * from './utils/upload_conflict_resolution';
+export * from './utils/wallet_utils';

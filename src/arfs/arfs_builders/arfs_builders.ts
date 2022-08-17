@@ -1,4 +1,3 @@
-import Arweave from 'arweave';
 import { ArFSEntity, ArFSFileOrFolderEntity } from '../arfs_entities';
 import { buildQuery } from '../../utils/query';
 import {
@@ -15,14 +14,18 @@ import {
 	EntityType,
 	GQLNodeInterface,
 	GQLTagInterface,
-	GQLTransactionsResultInterface
+	CustomMetaDataGqlTags,
+	isCustomMetaDataJsonFields,
+	CustomMetaData,
+	CustomMetaDataJsonFields,
+	isCustomMetaDataGqlTags,
+	FeeMultiple
 } from '../../types';
-import { gatewayGqlEndpoint } from '../../utils/constants';
-import { getDataForTxID } from '../../utils/get_tx_data';
+import { GatewayAPI } from '../../utils/gateway_api';
 
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
-	arweave: Arweave;
+	gatewayApi: GatewayAPI;
 	owner?: ArweaveAddress;
 }
 export type ArFSPublicMetadataEntityBuilderParams = ArFSMetadataEntityBuilderParams;
@@ -46,18 +49,25 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	name?: string;
 	txId?: TransactionID;
 	unixTime?: UnixTime;
+	boost?: FeeMultiple;
 	protected readonly entityId: AnyEntityID;
-	protected readonly arweave: Arweave;
+	protected readonly gatewayApi: GatewayAPI;
 	protected readonly owner?: ArweaveAddress;
 
-	constructor({ entityId, arweave, owner }: ArFSMetadataEntityBuilderParams) {
+	customMetaData: CustomMetaData = {};
+
+	constructor({ entityId, gatewayApi, owner }: ArFSMetadataEntityBuilderParams) {
 		this.entityId = entityId;
-		this.arweave = arweave;
+		this.gatewayApi = gatewayApi;
 		this.owner = owner;
 	}
 
 	abstract getGqlQueryParameters(): GQLTagInterface[];
 	protected abstract buildEntity(): Promise<T>;
+
+	public getDataForTxID(txId: TransactionID): Promise<Buffer> {
+		return this.gatewayApi.getTxData(txId);
+	}
 
 	/**
 	 * Parses data for builder fields from either the provided GQL tags, or from a fresh request to Arweave for tag data
@@ -73,10 +83,8 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		if (!node) {
 			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
 
-			const response = await this.arweave.api.post(gatewayGqlEndpoint, gqlQuery);
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
-			const { data } = response.data;
-			const transactions: GQLTransactionsResultInterface = data.transactions;
 			const { edges } = transactions;
 
 			if (!edges.length) {
@@ -112,6 +120,9 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 				case 'Unix-Time':
 					this.unixTime = new UnixTime(+value);
 					break;
+				case 'Boost':
+					this.boost = new FeeMultiple(+value);
+					break;
 				default:
 					unparsedTags.push(tag);
 					break;
@@ -121,13 +132,58 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		return unparsedTags;
 	}
 
-	async build(node?: GQLNodeInterface): Promise<T> {
-		await this.parseFromArweaveNode(node, this.owner);
+	public async build(node?: GQLNodeInterface): Promise<T> {
+		const extraTags = await this.parseFromArweaveNode(node, this.owner);
+		this.parseCustomMetaDataFromGqlTags(extraTags);
+
 		return this.buildEntity();
 	}
 
-	getDataForTxID(txId: TransactionID): Promise<Buffer> {
-		return getDataForTxID(txId, this.arweave);
+	private parseCustomMetaDataFromGqlTags(gqlTags: GQLTagInterface[]): void {
+		const customMetaDataGqlTags: CustomMetaDataGqlTags = {};
+
+		for (const { name, value: newValue } of gqlTags) {
+			const prevValue = customMetaDataGqlTags[name];
+
+			// Accumulate any duplicated GQL tags into string[]
+			const nextValue = prevValue
+				? Array.isArray(prevValue)
+					? [...prevValue, newValue]
+					: [prevValue, newValue]
+				: newValue;
+
+			Object.assign(customMetaDataGqlTags, { [name]: nextValue });
+		}
+
+		if (!isCustomMetaDataGqlTags(customMetaDataGqlTags)) {
+			console.error(
+				`Parsed an invalid custom metadata shape from MetaData Tx GQL Tags: ${customMetaDataGqlTags}`
+			);
+			return;
+		}
+
+		if (Object.keys(customMetaDataGqlTags).length > 0) {
+			this.customMetaData.metaDataGqlTags = customMetaDataGqlTags;
+		}
+	}
+
+	protected abstract protectedDataJsonKeys: string[];
+
+	protected parseCustomMetaDataFromDataJson(dataJson: CustomMetaDataJsonFields): void {
+		if (!isCustomMetaDataJsonFields(dataJson)) {
+			console.error(`Parsed an invalid custom metadata shape from MetaData Tx Data JSON: ${dataJson}`);
+			return;
+		}
+		const dataJsonEntries = Object.entries(dataJson).filter(([key]) => !this.protectedDataJsonKeys.includes(key));
+		const customMetaDataJson: CustomMetaDataJsonFields = {};
+
+		for (const [key, val] of dataJsonEntries) {
+			Object.assign(customMetaDataJson, { [key]: val });
+		}
+
+		if (Object.keys(customMetaDataJson).length > 0) {
+			this.customMetaData.metaDataJson = customMetaDataJson;
+		}
 	}
 }
 

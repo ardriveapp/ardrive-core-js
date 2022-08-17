@@ -1,11 +1,9 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
-import { CipherIV, DriveID, DriveKey, EntityID } from '../types';
+import { CipherIV, DriveID, DriveKey, EntityMetaDataTransactionData } from '../types';
 import { Utf8ArrayToStr } from '../utils/common';
 import { JWKWallet } from '../jwk_wallet';
 
 type DriveIdKeyPair = { [key: string /* DriveID */]: DriveKey };
-
-export type EntityMetaDataTransactionData = { [key: string]: string | number | EntityID };
 
 // Users may optionally supply any drive keys, a password, or a wallet
 interface PrivateKeyDataParams {
