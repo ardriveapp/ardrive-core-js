@@ -1015,7 +1015,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async sendDataItemsToUploadService(dataItems: DataItem[]): Promise<void> {
 		for (const dataItem of dataItems) {
-			const resp = await axios.post('http://localhost:4891', dataItem.getRaw(), {
+			const resp = await axios.post('https://upload.ardrive.dev/v1/tx', dataItem.getRaw(), {
 				headers: {
 					'Content-Type': 'application/octet-stream'
 				},
