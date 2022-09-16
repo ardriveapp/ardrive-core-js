@@ -71,8 +71,6 @@ export const FATAL_CHUNK_UPLOAD_ERRORS = [
 ];
 
 export const gqlTagNameRecord = {
-	// appName: 'App-Name',
-	// appVersion: 'App-Version',
 	arFS: 'ArFS',
 	tipType: 'Tip-Type',
 	contentType: 'Content-Type',
