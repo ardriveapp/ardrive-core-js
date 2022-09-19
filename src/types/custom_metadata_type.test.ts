@@ -5,8 +5,6 @@ import { isCustomMetaDataGqlTags } from './custom_metadata_types';
 describe('isCustomMetaDataGqlTags type guard function', () => {
 	it('returns false if provided tag name collides with any protected ArFS GQL tag name', () => {
 		const testedTagNames = [
-			'App-Name',
-			'App-Version',
 			'ArFS',
 			'Tip-Type',
 			'Content-Type',
