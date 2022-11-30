@@ -23,6 +23,7 @@ export interface ArFSUploadPlannerConstructorParams {
 	bundlePacker?: BundlePackerFactory;
 	feeMultiple?: FeeMultiple;
 	shouldBundle?: boolean;
+	useBundler?: boolean;
 }
 
 export interface EstimateCreateDriveParams {
@@ -63,7 +64,7 @@ export interface CreateDriveV2TxRewardSettings {
 	rootFolderRewardSettings: RewardSettings;
 	driveRewardSettings: RewardSettings;
 }
-export type CreateDriveRewardSettings = CreateDriveV2TxRewardSettings | BundleRewardSettings;
+export type CreateDriveRewardSettings = CreateDriveV2TxRewardSettings | BundleRewardSettings | undefined;
 
 export interface CalculatedCreateDrivePlan {
 	totalWinstonPrice: Winston;

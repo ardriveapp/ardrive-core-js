@@ -14,6 +14,9 @@ export { DEFAULT_APP_VERSION };
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 
+export const turboProdBundlerUrl = new URL('https://upload.ardrive.io/');
+export const freeArfsDataAllowLimit = new ByteCount(102_400); // 100 KiB
+
 export const defaultGatewayHost = 'arweave.net';
 export const defaultGatewayProtocol = 'https';
 export const defaultGatewayPort = 443;
@@ -38,14 +41,14 @@ export const minArDriveCommunityARTip = 0.000_010_000_000;
 export const MAX_BUNDLE_SIZE = new ByteCount(524_288_000); // 500 MiB
 export const MAX_DATA_ITEM_LIMIT = 500; // 500 data items
 
-// ArDrive Profit Sharing Community Smart Contract
-export const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ';
+// ArDrive Profit Sharing Community Smart Contract // cspell:disable
+export const communityTxId = '-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ'; // cspell:enable
 
 export const publicJsonContentTypeTag = { name: 'Content-Type', value: JSON_CONTENT_TYPE };
 export const privateOctetContentTypeTag = { name: 'Content-Type', value: PRIVATE_CONTENT_TYPE };
 
-export const privateCipherTag = { name: 'Cipher', value: defaultCipher };
-export const fakePrivateCipherIVTag = { name: 'Cipher-IV', value: 'qwertyuiopasdfgh' }; // Cipher-IV is always 16 characters
+export const privateCipherTag = { name: 'Cipher', value: defaultCipher }; // cspell:disable
+export const fakePrivateCipherIVTag = { name: 'Cipher-IV', value: 'qwertyuiopasdfgh' }; // Cipher-IV is always 16 characters // cspell:enable
 
 export const authTagLength = 16;
 export const defaultMaxConcurrentChunks = 32;
