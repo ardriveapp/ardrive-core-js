@@ -26,7 +26,7 @@ export function isBundleResult(
 
 export interface ArFSWriteResult {
 	metaDataTxId: TransactionID;
-	metaDataTxReward: Winston;
+	metaDataTxReward?: Winston;
 }
 
 export interface ArFSUploadEntitiesResult {
@@ -34,6 +34,8 @@ export interface ArFSUploadEntitiesResult {
 	folderResults: FolderResult[];
 	bundleResults: BundleResult[];
 }
+
+export type RecursiveFolderUploadResult = Omit<ArFSUploadEntitiesResult, 'bundleResults'>;
 
 export interface BaseArFSUploadResult {
 	entityName: EntityName;
@@ -70,7 +72,7 @@ export interface ArFSDriveResult {
 }
 export type ArFSCreateBundledDriveResult = ArFSBundleWriteResult & ArFSDriveResult;
 export interface ArFSCreateDriveResult extends ArFSWriteResult, ArFSDriveResult {
-	rootFolderTxReward: Winston;
+	rootFolderTxReward?: Winston;
 }
 
 export interface ArFSV2PublicRetryResult {
