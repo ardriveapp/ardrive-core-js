@@ -78,7 +78,8 @@ import {
 	DEFAULT_APP_VERSION,
 	authTagLength,
 	defaultMaxConcurrentChunks,
-	ENCRYPTED_DATA_PLACEHOLDER
+	ENCRYPTED_DATA_PLACEHOLDER,
+	turboProdBundlerUrl
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -175,6 +176,7 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
+import { Bundler } from './bundler';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -235,7 +237,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			arweave: arweave,
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
-		})
+		}),
+		protected bundler = new Bundler({ bundlerUrl: turboProdBundlerUrl })
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -897,7 +900,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 		v2TxPlans.folderMetaDataPlans = [];
 
-		for (const { uploadStats, /*bundleRewardSettings, */ metaDataDataItems, communityTipSettings } of bundlePlans) {
+		for (const { uploadStats, bundleRewardSettings, metaDataDataItems, communityTipSettings } of bundlePlans) {
 			// The upload planner has planned to upload bundles, proceed with bundling
 			let dataItems: DataItem[] = [];
 
@@ -979,56 +982,36 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			// Add any metaData data items from over-sized files sent as v2
 			dataItems.push(...metaDataDataItems);
 
-			await this.sendDataItemsToUploadService(dataItems);
-
-			// const bundleTx = await this.prepareArFSObjectBundle({
-			// 	dataItems,
-			// 	rewardSettings: bundleRewardSettings,
-			// 	communityTipSettings
-			// });
+			const bundleTx = await this.prepareArFSObjectBundle({
+				dataItems,
+				rewardSettings: bundleRewardSettings,
+				communityTipSettings
+			});
 
 			// Drop data items from memory immediately after the bundle has been assembled
 			dataItems = [];
 
 			// This bundle is now complete, send it off before starting a new one
-			// await this.sendTransactionsAsChunks([bundleTx]);
+			await this.sendTransactionsAsChunks([bundleTx]);
 
 			uploadsCompleted++;
 
 			for (const res of currentBundleResults.fileResults) {
-				// res.bundledIn = TxID(bundleTx.id);
+				res.bundledIn = TxID(bundleTx.id);
 				results.fileResults.push(res);
 			}
 			for (const res of currentBundleResults.folderResults) {
-				// res.bundledIn = TxID(bundleTx.id);
+				res.bundledIn = TxID(bundleTx.id);
 				results.folderResults.push(res);
 			}
-			// results.bundleResults.push({
-			// bundleTxId: TxID(bundleTx.id),
-			// communityTipSettings,
-			// bundleReward: W(bundleTx.reward)
-			// });
+			results.bundleResults.push({
+				bundleTxId: TxID(bundleTx.id),
+				communityTipSettings,
+				bundleReward: W(bundleTx.reward)
+			});
 		}
 
 		return results;
-	}
-
-	async sendDataItemsToUploadService(dataItems: DataItem[]): Promise<void> {
-		for (const dataItem of dataItems) {
-			const resp = await axios.post('https://upload.ardrive.dev/v1/tx', dataItem.getRaw(), {
-				headers: {
-					'Content-Type': 'application/octet-stream'
-				},
-				timeout: 100000,
-				maxBodyLength: Infinity,
-				validateStatus: (status) => (status > 200 && status < 300) || status !== 402
-			});
-
-			console.log(dataItem.id);
-
-			console.log(resp.data);
-			console.log(resp.status);
-		}
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
