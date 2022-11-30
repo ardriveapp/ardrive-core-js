@@ -125,12 +125,14 @@ describe('ArDrive class - integrated', () => {
 		shouldBundle: false,
 		arFSTagSettings: arFSTagSettings,
 		priceEstimator,
-		communityOracle
+		communityOracle,
+		useBundler: false
 	});
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings: arFSTagSettings,
 		priceEstimator,
-		communityOracle
+		communityOracle,
+		useBundler: false
 	});
 
 	const arDrive = new ArDrive(

@@ -10,7 +10,8 @@ import {
 	defaultGatewayPort,
 	defaultGatewayProtocol,
 	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION
+	DEFAULT_APP_VERSION,
+	turboProdBundlerUrl
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
@@ -22,6 +23,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
+import { Bundler } from './arfs/bundler';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -43,9 +45,11 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
+	useBundler?: boolean;
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
+	bundlerUrl?: URL;
 }
 
 const defaultArweave = Arweave.init({
@@ -66,13 +70,27 @@ export function arDriveFactory({
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
+	useBundler = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
-		arFSTagSettings
+		arFSTagSettings,
+		useBundler
 	}),
 	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
-	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings)
+	bundlerUrl = turboProdBundlerUrl,
+	arfsDao = new ArFSDAO(
+		wallet,
+		arweave,
+		dryRun,
+		appName,
+		appVersion,
+		arFSTagSettings,
+		undefined,
+		undefined,
+		undefined,
+		new Bundler({ bundlerUrl })
+	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
