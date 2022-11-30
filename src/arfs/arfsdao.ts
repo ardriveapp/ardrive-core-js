@@ -95,7 +95,8 @@ import {
 	FileKey,
 	TransactionID,
 	CipherIV,
-	ADDR
+	ADDR,
+	UploadStats
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
 import {
@@ -174,6 +175,7 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
+import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
 import { Bundler } from './bundler';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -831,7 +833,154 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	async uploadAllEntities({ bundlePlans, v2TxPlans }: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
+	public async uploadAllEntitiesToBundler(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
+		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+
+		for (const { wrappedEntity, destDriveId, owner, destFolderId, driveKey } of uploadStats) {
+			if (wrappedEntity.entityType === 'folder') {
+				const recursiveFolderResults = await this.recursivelyUploadFolderToBundler({
+					wrappedEntity,
+					destDriveId,
+					destFolderId,
+					owner,
+					driveKey
+				});
+				results.fileResults.push(...recursiveFolderResults.fileResults);
+				results.folderResults.push(...recursiveFolderResults.folderResults);
+			} else {
+				const fileResult = await this.uploadFileToBundler({
+					destDriveId,
+					destFolderId,
+					wrappedEntity,
+					owner,
+					driveKey
+				});
+
+				results.fileResults.push(fileResult);
+			}
+		}
+
+		return results;
+	}
+
+	private async recursivelyUploadFolderToBundler({
+		wrappedEntity,
+		destDriveId,
+		owner,
+		destFolderId,
+		driveKey
+	}: UploadStats<ArFSFolderToUpload>): Promise<{ folderResults: FolderResult[]; fileResults: FileResult[] }> {
+		const results: { folderResults: FolderResult[]; fileResults: FileResult[] } = {
+			folderResults: [],
+			fileResults: []
+		};
+
+		if (!wrappedEntity.existingId) {
+			// Create the folder data item if it does not exist
+			wrappedEntity.existingId = EID(v4());
+			const folderResult = await this.uploadFolderToBundler({
+				destDriveId,
+				owner,
+				destFolderId,
+				driveKey,
+				wrappedEntity
+			});
+			results.folderResults.push(folderResult);
+		}
+
+		const fileDestFolderId = wrappedEntity.existingId;
+
+		for (const file of wrappedEntity.files) {
+			const fileResult = await this.uploadFileToBundler({
+				destDriveId,
+				destFolderId: fileDestFolderId,
+				wrappedEntity: file,
+				owner,
+				driveKey
+			});
+
+			results.fileResults.push(fileResult);
+		}
+
+		for (const folder of wrappedEntity.folders) {
+			const recursiveFolderResults = await this.recursivelyUploadFolderToBundler({
+				destDriveId,
+				destFolderId: fileDestFolderId,
+				wrappedEntity: folder,
+				owner,
+				driveKey
+			});
+
+			results.fileResults.push(...recursiveFolderResults.fileResults);
+			results.folderResults.push(...recursiveFolderResults.folderResults);
+		}
+
+		return results;
+	}
+
+	private async uploadFolderToBundler(uploadStats: UploadStats<ArFSFolderToUpload>): Promise<FolderResult> {
+		const { arFSObjects, folderId } = await this.prepareFolder({
+			folderPrototypeFactory: await getPrepFolderFactoryParams({
+				...uploadStats,
+				wrappedEntity: uploadStats.wrappedEntity
+			}),
+			prepareArFSObject: (objectMetaData) =>
+				this.txPreparer.prepareMetaDataDataItem({
+					objectMetaData
+				})
+		});
+		const folderDataItem = arFSObjects[0];
+		await this.bundler.sendDataItems([folderDataItem]);
+		return {
+			entityId: folderId,
+			folderTxId: TxID(folderDataItem.id),
+			driveKey: uploadStats.driveKey,
+			entityName: uploadStats.wrappedEntity.destinationBaseName,
+			sourceUri: uploadStats.wrappedEntity.sourceUri
+		};
+	}
+
+	private async uploadFileToBundler({
+		wrappedEntity,
+		destDriveId,
+		destFolderId,
+		owner
+	}: UploadStats<ArFSDataToUpload>): Promise<FileResult> {
+		// eslint-disable-next-line prettier/prettier
+		const { arFSObjects: dataItems, fileId, fileKey } = await this.prepareFile({
+			...getPrepFileParams({
+				wrappedEntity,
+				destFolderId,
+				destDriveId,
+				owner
+			}),
+			prepareArFSObject: (objectMetaData) =>
+				this.txPreparer.prepareFileDataDataItem({
+					objectMetaData
+				}),
+			prepareMetaDataArFSObject: (objectMetaData) =>
+				this.txPreparer.prepareMetaDataDataItem({
+					objectMetaData
+				})
+		});
+		await this.bundler.sendDataItems(dataItems);
+
+		const [fileDataDataItem, metaDataDataItem] = dataItems;
+
+		return {
+			sourceUri: wrappedEntity.sourceUri,
+			entityName: wrappedEntity.destinationBaseName,
+			fileDataTxId: TxID(fileDataDataItem.id),
+			entityId: fileId,
+			metaDataTxId: TxID(metaDataDataItem.id),
+			fileKey
+		};
+	}
+
+	public async uploadAllEntities({
+		bundlePlans,
+		v2TxPlans
+	}: CalculatedUploadPlan): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 		const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans: folderMetaDataPlan } = v2TxPlans;
 
