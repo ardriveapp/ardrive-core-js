@@ -238,7 +238,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
-		protected bundler = new Bundler({ bundlerUrl: turboProdBundlerUrl })
+		protected bundler = new Bundler({ bundlerUrl: turboProdBundlerUrl, isDryRun: dryRun })
 	) {
 		super(arweave, undefined, undefined, caches);
 	}

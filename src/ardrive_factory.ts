@@ -89,7 +89,7 @@ export function arDriveFactory({
 		undefined,
 		undefined,
 		undefined,
-		new Bundler({ bundlerUrl })
+		new Bundler({ bundlerUrl, isDryRun: dryRun })
 	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
