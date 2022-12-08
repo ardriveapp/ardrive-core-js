@@ -1365,6 +1365,72 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
+	async createPublicShortcut({
+		externalTxId,
+		fileId,
+		name
+	}: {
+		externalTxId: TransactionID;
+
+		// We need at least one of these
+		fileId: FileID; // TODO: make me nullable
+		name: string; // TODO: make me nullable
+	}): Promise<ArFSResult> {
+		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
+
+		// await this.assertOwnerAddress(owner);
+
+		const existantFile = await this.getPublicFile({ fileId, owner });
+		const file = new ArFSPublicFile(
+			existantFile.appName,
+			existantFile.appVersion,
+			existantFile.arFS,
+			existantFile.contentType,
+			existantFile.driveId,
+			name,
+			existantFile.txId,
+			existantFile.unixTime,
+			existantFile.parentFolderId,
+			existantFile.fileId,
+			existantFile.size,
+			existantFile.lastModifiedDate,
+			externalTxId,
+			existantFile.dataContentType,
+			existantFile.boost, // TODO: OVERRIDE ME!
+			existantFile.customMetaDataGqlTags,
+			existantFile.customMetaDataJson
+		);
+
+		assertValidArFSFileName(name);
+		await this.assertUniqueNameWithinPublicFolder(name, file.parentFolderId);
+		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
+			name,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType
+		);
+		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+		const metadataRewardSettings = { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+
+		const result = await this.arFsDao.createPublicShortcut({
+			file,
+			metadataRewardSettings: metadataRewardSettings
+		});
+
+		return {
+			created: [
+				{
+					type: 'file',
+					entityId: result.entityId,
+					metadataTxId: result.metaDataTxId
+				}
+			],
+			tips: [],
+			fees: { [`${result.metaDataTxId}`]: result.metaDataTxReward }
+		};
+	}
+
 	async renamePublicFile({ fileId, newName }: RenamePublicFileParams): Promise<ArFSResult> {
 		const owner = await this.arFsDao.getDriveOwnerForFileId(fileId);
 		await this.assertOwnerAddress(owner);

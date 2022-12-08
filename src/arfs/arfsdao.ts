@@ -1684,6 +1684,48 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
+	async createPublicShortcut({
+		file,
+		metadataRewardSettings
+	}: {
+		file: ArFSPublicFile;
+		metadataRewardSettings: RewardSettings;
+	}): Promise<ArFSRenamePublicFileResult> {
+		// Prepare meta data transaction
+		const metadataTxData = new ArFSPublicFileMetadataTransactionData(
+			file.name,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType
+			// TODO: add the 'Data-Owner' tag if different than the wallet owner
+		);
+		const fileMetadata = new ArFSPublicFileMetaDataPrototype(
+			metadataTxData,
+			file.driveId,
+			file.fileId,
+			file.parentFolderId
+		);
+		const metaDataTx = await this.txPreparer.prepareMetaDataTx({
+			objectMetaData: fileMetadata,
+			rewardSettings: metadataRewardSettings
+		});
+
+		// Upload meta data
+		if (!this.dryRun) {
+			const metaDataUploader = await this.arweave.transactions.getUploader(metaDataTx);
+			while (!metaDataUploader.isComplete) {
+				await metaDataUploader.uploadChunk();
+			}
+		}
+
+		return {
+			entityId: file.fileId,
+			metaDataTxId: TxID(metaDataTx.id),
+			metaDataTxReward: W(metaDataTx.reward)
+		};
+	}
+
 	async renamePublicFile({
 		file,
 		newName,
