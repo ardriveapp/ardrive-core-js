@@ -835,6 +835,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	public async uploadAllEntitiesToBundler(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
+		const totalDataItems = uploadStats
+			.map((u) => (u.wrappedEntity.entityType === 'file' ? 1 : u.wrappedEntity.getTotalDataItems()))
+			.reduce((a, b) => a + b, 0);
+		let uploadsCompleted = 0;
+
+		const logProgress = () => {
+			if (this.shouldProgressLog && totalDataItems > 1) {
+				console.error(
+					`Uploading file transaction ${uploadsCompleted + 1} of total ${totalDataItems} transactions...`
+				);
+			}
+		};
 
 		for (const { wrappedEntity, destDriveId, owner, destFolderId, driveKey } of uploadStats) {
 			if (wrappedEntity.entityType === 'folder') {
@@ -847,6 +859,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 				results.fileResults.push(...recursiveFolderResults.fileResults);
 				results.folderResults.push(...recursiveFolderResults.folderResults);
+				uploadsCompleted += wrappedEntity.getTotalDataItems();
 			} else {
 				const fileResult = await this.uploadFileToBundler({
 					destDriveId,
@@ -857,7 +870,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 
 				results.fileResults.push(fileResult);
+				uploadsCompleted++;
 			}
+			logProgress();
 		}
 
 		return results;
