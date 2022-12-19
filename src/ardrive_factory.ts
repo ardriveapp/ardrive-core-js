@@ -32,6 +32,10 @@ export interface ArDriveSettingsAnonymous {
 	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
 }
+
+export interface BundlerSettings {
+	bundlerUrl: URL;
+}
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
 	appVersion?: string;
@@ -45,11 +49,11 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	dryRun?: boolean;
 	arfsDao?: ArFSDAO;
 	shouldBundle?: boolean;
-	useBundler?: boolean;
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
-	bundlerUrl?: URL;
+	/** Provide false to forego using a bundler */
+	bundlerSettings?: BundlerSettings | false;
 }
 
 const defaultArweave = Arweave.init({
@@ -70,15 +74,14 @@ export function arDriveFactory({
 	appVersion = DEFAULT_APP_VERSION,
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
-	useBundler = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+	bundlerSettings = { bundlerUrl: turboProdBundlerUrl },
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings,
-		useBundler
+		useBundler: bundlerSettings === false ? false : true
 	}),
 	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
-	bundlerUrl = turboProdBundlerUrl,
 	arfsDao = new ArFSDAO(
 		wallet,
 		arweave,
@@ -89,7 +92,9 @@ export function arDriveFactory({
 		undefined,
 		undefined,
 		undefined,
-		new Bundler({ bundlerUrl, isDryRun: dryRun })
+		bundlerSettings === false
+			? undefined
+			: new Bundler({ bundlerUrl: bundlerSettings.bundlerUrl, isDryRun: dryRun })
 	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
