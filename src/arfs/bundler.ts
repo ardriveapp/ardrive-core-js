@@ -26,7 +26,6 @@ export class Bundler {
 					headers: {
 						'Content-Type': 'application/octet-stream'
 					},
-					timeout: 100000,
 					maxBodyLength: Infinity,
 					validateStatus: (status) => (status > 200 && status < 300) || status !== 402
 				});
