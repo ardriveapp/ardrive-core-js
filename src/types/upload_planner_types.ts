@@ -23,7 +23,7 @@ export interface ArFSUploadPlannerConstructorParams {
 	bundlePacker?: BundlePackerFactory;
 	feeMultiple?: FeeMultiple;
 	shouldBundle?: boolean;
-	useBundler?: boolean;
+	useTurbo?: boolean;
 }
 
 export interface EstimateCreateDriveParams {

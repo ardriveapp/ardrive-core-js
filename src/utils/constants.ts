@@ -14,7 +14,7 @@ export { DEFAULT_APP_VERSION };
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 
-export const turboProdBundlerUrl = new URL('https://upload.ardrive.io/');
+export const turboProdUrl = new URL('https://upload.ardrive.io/');
 export const freeArfsDataAllowLimit = new ByteCount(102_400); // 100 KiB
 
 export const defaultGatewayHost = 'arweave.net';

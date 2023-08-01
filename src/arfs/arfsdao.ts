@@ -76,7 +76,7 @@ import {
 	authTagLength,
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
-	turboProdBundlerUrl
+	turboProdUrl
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -176,7 +176,7 @@ import {
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
-import { Bundler } from './bundler';
+import { Turbo } from './turbo';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -238,7 +238,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
-		protected bundler = new Bundler({ bundlerUrl: turboProdBundlerUrl, isDryRun: dryRun })
+		protected bundler = new Turbo({ turboUrl: turboProdUrl, isDryRun: dryRun })
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -398,9 +398,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	/** Create drive and root folder together as bundled transaction */
-	private async createDriveToBundler(
-		sharedPrepDriveParams: PartialPrepareDriveParams
-	): Promise<ArFSCreateDriveResult> {
+	private async createDriveToTurbo(sharedPrepDriveParams: PartialPrepareDriveParams): Promise<ArFSCreateDriveResult> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
@@ -432,7 +430,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		rewardSettings: CreateDriveRewardSettings
 	): Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult> {
 		if (rewardSettings === undefined) {
-			return this.createDriveToBundler(sharedPrepDriveParams);
+			return this.createDriveToTurbo(sharedPrepDriveParams);
 		}
 
 		const { transactions, result } = isBundleRewardSetting(rewardSettings)
@@ -833,7 +831,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	public async uploadAllEntitiesToBundler(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
+	public async uploadAllEntitiesToTurbo(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 		const totalDataItems = uploadStats
 			.map((u) => (u.wrappedEntity.entityType === 'file' ? 1 : u.wrappedEntity.getTotalDataItems()))
@@ -850,7 +848,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		for (const { wrappedEntity, destDriveId, owner, destFolderId, driveKey } of uploadStats) {
 			if (wrappedEntity.entityType === 'folder') {
-				const recursiveFolderResults = await this.recursivelyUploadFolderToBundler({
+				const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo({
 					wrappedEntity,
 					destDriveId,
 					destFolderId,
@@ -861,7 +859,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				results.folderResults.push(...recursiveFolderResults.folderResults);
 				uploadsCompleted += wrappedEntity.getTotalDataItems();
 			} else {
-				const fileResult = await this.uploadFileToBundler({
+				const fileResult = await this.uploadFileToTurbo({
 					destDriveId,
 					destFolderId,
 					wrappedEntity,
@@ -878,7 +876,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return results;
 	}
 
-	private async recursivelyUploadFolderToBundler({
+	private async recursivelyUploadFolderToTurbo({
 		wrappedEntity,
 		destDriveId,
 		owner,
@@ -893,7 +891,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (!wrappedEntity.existingId) {
 			// Create the folder data item if it does not exist
 			wrappedEntity.existingId = EID(v4());
-			const folderResult = await this.uploadFolderToBundler({
+			const folderResult = await this.uploadFolderToTurbo({
 				destDriveId,
 				owner,
 				destFolderId,
@@ -906,7 +904,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const fileDestFolderId = wrappedEntity.existingId;
 
 		for (const file of wrappedEntity.files) {
-			const fileResult = await this.uploadFileToBundler({
+			const fileResult = await this.uploadFileToTurbo({
 				destDriveId,
 				destFolderId: fileDestFolderId,
 				wrappedEntity: file,
@@ -918,7 +916,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		for (const folder of wrappedEntity.folders) {
-			const recursiveFolderResults = await this.recursivelyUploadFolderToBundler({
+			const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo({
 				destDriveId,
 				destFolderId: fileDestFolderId,
 				wrappedEntity: folder,
@@ -933,7 +931,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return results;
 	}
 
-	private async uploadFolderToBundler(uploadStats: UploadStats<ArFSFolderToUpload>): Promise<FolderResult> {
+	private async uploadFolderToTurbo(uploadStats: UploadStats<ArFSFolderToUpload>): Promise<FolderResult> {
 		const { arFSObjects, folderId } = await this.prepareFolder({
 			folderPrototypeFactory: await getPrepFolderFactoryParams({
 				...uploadStats,
@@ -955,7 +953,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
-	private async uploadFileToBundler({
+	private async uploadFileToTurbo({
 		wrappedEntity,
 		destDriveId,
 		destFolderId,

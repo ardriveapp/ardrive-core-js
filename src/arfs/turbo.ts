@@ -1,22 +1,22 @@
 import { DataItem } from 'arbundles';
 import axios from 'axios';
 
-interface BundlerParams {
-	bundlerUrl: URL;
+interface TurboParams {
+	turboUrl: URL;
 	isDryRun: boolean;
 }
 
-export class Bundler {
-	private bundlerUrl: URL;
+export class Turbo {
+	private turboUrl: URL;
 	private isDryRun: boolean;
 
-	constructor({ bundlerUrl, isDryRun }: BundlerParams) {
-		this.bundlerUrl = bundlerUrl;
+	constructor({ turboUrl, isDryRun }: TurboParams) {
+		this.turboUrl = turboUrl;
 		this.isDryRun = isDryRun;
 	}
 
 	private get dataItemEndpoint(): string {
-		return `${this.bundlerUrl.href}v1/tx`;
+		return `${this.turboUrl.href}v1/tx`;
 	}
 
 	async sendDataItems(dataItems: DataItem[]): Promise<void> {

@@ -11,26 +11,25 @@ import {
 	BundlePackerFactory
 } from '../types/upload_planner_types';
 import { CommunityOracle } from '../community/community_oracle';
-import { freeArfsDataAllowLimit, MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
+import { MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT } from '../utils/constants';
 import { ARDataPriceEstimator } from '../pricing/ar_data_price_estimator';
 import { v4 } from 'uuid';
 import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estimation_prototypes';
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { ArFSTagAssembler } from './tags/tag_assembler';
-import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
 
 export interface UploadPlanner {
 	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
 	planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan;
-	isBundlerUpload(uploadStats: UploadStats[]): boolean;
-	useBundler: boolean;
+	isTurboUpload(): boolean;
+	useTurbo: boolean;
 }
 
 /** Utility class for planning an upload into an UploadPlan */
 export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
-	public readonly useBundler: boolean;
+	public readonly useTurbo: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePackerFactory;
 	private readonly tagAssembler: ArFSTagAssembler;
@@ -44,12 +43,12 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 	constructor({
 		shouldBundle = true,
-		useBundler = true,
+		useTurbo = true,
 		arFSTagSettings,
 		bundlePacker = () => new LowestIndexBundlePacker(MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT)
 	}: ArFSUploadPlannerConstructorParams) {
 		this.shouldBundle = shouldBundle;
-		this.useBundler = useBundler;
+		this.useTurbo = useTurbo;
 		this.arFSTagSettings = arFSTagSettings;
 		this.bundlePacker = bundlePacker;
 		this.tagAssembler = new ArFSTagAssembler(arFSTagSettings);
@@ -180,61 +179,41 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 	/**
 	 * Determines whether this batch of UploadStats is all within the
-	 * free ArFS data limit and if we will send it to the bundler
+	 * free ArFS data limit and if we will send it to the Turbo
 	 * */
-	public isBundlerUpload(uploadStats: UploadStats[]): boolean {
-		return (
-			this.shouldBundle &&
-			this.useBundler &&
-			(() => {
-				for (const uploadStat of uploadStats) {
-					const isPrivate = uploadStat.driveKey !== undefined;
-
-					if (uploadStat.wrappedEntity.entityType === 'file') {
-						if (!this.isFileWithinFreeArFSDataLimit(uploadStat.wrappedEntity, isPrivate)) {
-							return false;
-						}
-					} else {
-						if (!this.isFolderWithinFreeArFSDataLimit(uploadStat.wrappedEntity, isPrivate)) {
-							return false;
-						}
-					}
-				}
-
-				return true;
-			})()
-		);
+	public isTurboUpload(): boolean {
+		return this.shouldBundle && this.useTurbo;
 	}
 
-	private isFileWithinFreeArFSDataLimit(file: ArFSDataToUpload, isPrivate: boolean): boolean {
-		const fileDataItemByteCount = byteCountAsDataItem(
-			file.size,
-			this.arFSTagSettings.getFileDataItemTags(isPrivate, file.contentType)
-		);
+	// private isFileWithinFreeArFSDataLimit(file: ArFSDataToUpload, isPrivate: boolean): boolean {
+	// 	const fileDataItemByteCount = byteCountAsDataItem(
+	// 		file.size,
+	// 		this.arFSTagSettings.getFileDataItemTags(isPrivate, file.contentType)
+	// 	);
 
-		if (fileDataItemByteCount.isGreaterThan(freeArfsDataAllowLimit)) {
-			return false;
-		}
+	// 	if (fileDataItemByteCount.isGreaterThan(freeArfsDataAllowLimit)) {
+	// 		return false;
+	// 	}
 
-		return true;
-	}
+	// 	return true;
+	// }
 
-	private isFolderWithinFreeArFSDataLimit(folder: ArFSFolderToUpload, isPrivate: boolean): boolean {
-		for (const file of folder.files) {
-			if (!this.isFileWithinFreeArFSDataLimit(file, isPrivate)) {
-				return false;
-			}
-		}
+	// private isFolderWithinFreeArFSDataLimit(folder: ArFSFolderToUpload, isPrivate: boolean): boolean {
+	// 	for (const file of folder.files) {
+	// 		if (!this.isFileWithinFreeArFSDataLimit(file, isPrivate)) {
+	// 			return false;
+	// 		}
+	// 	}
 
-		for (const fold of folder.folders) {
-			// Recurse into folder to check each byte count
-			if (!this.isFolderWithinFreeArFSDataLimit(fold, isPrivate)) {
-				return false;
-			}
-		}
+	// 	for (const fold of folder.folders) {
+	// 		// Recurse into folder to check each byte count
+	// 		if (!this.isFolderWithinFreeArFSDataLimit(fold, isPrivate)) {
+	// 			return false;
+	// 		}
+	// 	}
 
-		return true;
-	}
+	// 	return true;
+	// }
 
 	/**
 	 *  Plans an upload using the `uploadAllEntities` ArDrive method
