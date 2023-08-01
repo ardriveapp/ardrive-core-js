@@ -84,7 +84,7 @@ export class GatewayAPI {
 
 			return data.data.transactions;
 		} catch (error) {
-			throw Error(`GQL Error: ${error.message}`);
+			throw Error(`GQL Error: ${(error as Error).message}`);
 		}
 	}
 
@@ -187,7 +187,7 @@ export class GatewayAPI {
 
 			this.lastError = resp.statusText ?? resp;
 		} catch (err) {
-			this.lastError = err instanceof Error ? err.message : err;
+			this.lastError = err instanceof Error ? err.message : ((err as unknown) as string);
 		}
 
 		return undefined;

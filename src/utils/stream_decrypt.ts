@@ -27,7 +27,7 @@ export class StreamDecrypt extends Transform {
 			this.push(decipherFinalData);
 			next();
 		} catch (err) {
-			next(err);
+			next(err as Error);
 		}
 	}
 }

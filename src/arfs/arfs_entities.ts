@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { FolderHierarchy } from './folder_hierarchy';
 import {
 	CipherIV,
@@ -193,6 +194,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			customMetaDataGqlTags,
 			customMetaDataJson
 		);
+		// @ts-expect-error
 		delete this.driveKey;
 	}
 }
@@ -441,7 +443,9 @@ export class ArFSPrivateFileWithPathsKeyless extends ArFSPrivateFileWithPaths {
 
 	constructor(entity: ArFSPrivateFile, hierarchy: FolderHierarchy) {
 		super(entity, hierarchy);
+		// @ts-expect-error
 		delete this.driveKey;
+		// @ts-expect-error
 		delete this.fileKey;
 	}
 }
@@ -475,7 +479,9 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		// @ts-expect-error
 		delete this.driveKey;
+		// @ts-expect-error
 		delete this.fileKey;
 	}
 }
@@ -625,6 +631,7 @@ export class ArFSPrivateFolderWithPathsKeyless extends ArFSPrivateFolderWithPath
 
 	constructor(entity: ArFSPrivateFolder, hierarchy: FolderHierarchy) {
 		super(entity, hierarchy);
+		// @ts-expect-error
 		delete this.driveKey;
 	}
 }
@@ -652,6 +659,7 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		// @ts-expect-error
 		delete this.driveKey;
 	}
 }
