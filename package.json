@@ -30,7 +30,7 @@
 		"@types/lodash": "^4",
 		"@types/mime-types": "^2.1.0",
 		"@types/mocha": "^8.2.1",
-		"@types/node": "^20.4.5",
+		"@types/node": "^18.17.2",
 		"@types/node-fetch": "^2.6.1",
 		"@types/power-assert": "^1",
 		"@types/regression": "^2",
