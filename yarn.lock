@@ -1224,7 +1224,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^20.4.5":
+"@types/node@npm:*, @types/node@npm:>=13.7.0":
   version: 20.4.5
   resolution: "@types/node@npm:20.4.5"
   checksum: 36a0304a8dc346a1b2d2edac4c4633eecf70875793d61a5274d0df052d7a7af7a8e34f29884eac4fbd094c4f0201477dcb39c0ecd3307ca141688806538d1138
@@ -1249,6 +1249,13 @@ __metadata:
   version: 14.17.5
   resolution: "@types/node@npm:14.17.5"
   checksum: 8fba22a8df7bcea75039f08e00fcff8e331f6d367739a9631d3457bc3e8e5ddfdd60e1a5d685d9420312e9ed7cf2f2146d37224ec9f7d578fe8dd32ce3821e62
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^18.17.2":
+  version: 18.17.2
+  resolution: "@types/node@npm:18.17.2"
+  checksum: 2e08acaeb30e05f96fbf3d974fc2203bf10ed9020cafd511018dbba8023044bb8758f9d5a2a8e68da3bca827ccef7628202de9b7ca3b515374a7b094b128930a
   languageName: node
   linkType: hard
 
@@ -1791,7 +1798,7 @@ __metadata:
     "@types/lodash": ^4
     "@types/mime-types": ^2.1.0
     "@types/mocha": ^8.2.1
-    "@types/node": ^20.4.5
+    "@types/node": ^18.17.2
     "@types/node-fetch": ^2.6.1
     "@types/power-assert": ^1
     "@types/regression": ^2
@@ -2323,9 +2330,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001219":
-  version: 1.0.30001246
-  resolution: "caniuse-lite@npm:1.0.30001246"
-  checksum: e811aa80e8e6e80e6ef053027176b71b2d0b99adf809ce00de8e4dcb8df70237378b49d111d1cfd7482d25d0cb4ab848e230d077ac6abb9b92c0fe99b74c6900
+  version: 1.0.30001519
+  resolution: "caniuse-lite@npm:1.0.30001519"
+  checksum: 66085133ede05d947e30b62fed2cbae18e5767afda8b0de38840883e1cfe5846bf1568ddbafd31647544e59112355abedaf9c867ac34541bfc20d69e7a19d94c
   languageName: node
   linkType: hard
 

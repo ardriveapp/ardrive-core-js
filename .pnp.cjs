@@ -36,7 +36,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/lodash", "npm:4.14.182"],\
             ["@types/mime-types", "npm:2.1.0"],\
             ["@types/mocha", "npm:8.2.1"],\
-            ["@types/node", "npm:20.4.5"],\
+            ["@types/node", "npm:18.17.2"],\
             ["@types/node-fetch", "npm:2.6.1"],\
             ["@types/power-assert", "npm:1.5.3"],\
             ["@types/regression", "npm:2.0.2"],\
@@ -1497,6 +1497,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "HARD"\
         }],\
+        ["npm:18.17.2", {\
+          "packageLocation": "./.yarn/cache/@types-node-npm-18.17.2-471d3f5212-2e08acaeb3.zip/node_modules/@types/node/",\
+          "packageDependencies": [\
+            ["@types/node", "npm:18.17.2"]\
+          ],\
+          "linkType": "HARD"\
+        }],\
         ["npm:20.4.5", {\
           "packageLocation": "./.yarn/cache/@types-node-npm-20.4.5-7555fad0d4-36a0304a8d.zip/node_modules/@types/node/",\
           "packageDependencies": [\
@@ -2209,7 +2216,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/lodash", "npm:4.14.182"],\
             ["@types/mime-types", "npm:2.1.0"],\
             ["@types/mocha", "npm:8.2.1"],\
-            ["@types/node", "npm:20.4.5"],\
+            ["@types/node", "npm:18.17.2"],\
             ["@types/node-fetch", "npm:2.6.1"],\
             ["@types/power-assert", "npm:1.5.3"],\
             ["@types/regression", "npm:2.0.2"],\
@@ -2684,7 +2691,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/browserslist-npm-4.16.6-a20cef1ca7-3dffc86892.zip/node_modules/browserslist/",\
           "packageDependencies": [\
             ["browserslist", "npm:4.16.6"],\
-            ["caniuse-lite", "npm:1.0.30001246"],\
+            ["caniuse-lite", "npm:1.0.30001519"],\
             ["colorette", "npm:1.2.2"],\
             ["electron-to-chromium", "npm:1.3.784"],\
             ["escalade", "npm:3.1.1"],\
@@ -2824,10 +2831,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["caniuse-lite", [\
-        ["npm:1.0.30001246", {\
-          "packageLocation": "./.yarn/cache/caniuse-lite-npm-1.0.30001246-07703ecf09-e811aa80e8.zip/node_modules/caniuse-lite/",\
+        ["npm:1.0.30001519", {\
+          "packageLocation": "./.yarn/cache/caniuse-lite-npm-1.0.30001519-1d6b5bc825-66085133ed.zip/node_modules/caniuse-lite/",\
           "packageDependencies": [\
-            ["caniuse-lite", "npm:1.0.30001246"]\
+            ["caniuse-lite", "npm:1.0.30001519"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -8565,7 +8572,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@tsconfig/node12", "npm:1.0.9"],\
             ["@tsconfig/node14", "npm:1.0.1"],\
             ["@tsconfig/node16", "npm:1.0.2"],\
-            ["@types/node", "npm:20.4.5"],\
+            ["@types/node", "npm:18.17.2"],\
             ["@types/swc__core", null],\
             ["@types/swc__wasm", null],\
             ["@types/typescript", null],\
