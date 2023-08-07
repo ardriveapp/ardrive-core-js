@@ -56,7 +56,7 @@ export class GatewayAPI {
 		maxRetriesPerRequest = 8,
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
-		validStatusCodes = [200],
+		validStatusCodes = [200, 202],
 		axiosInstance = axios.create({ validateStatus: undefined })
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;

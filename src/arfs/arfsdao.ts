@@ -110,7 +110,7 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { ArFSEntityCache } from './arfs_entity_cache';
 
-import { DataItem } from 'arbundles';
+import { DataItem, bundleAndSignData, createData } from 'arbundles';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -176,7 +176,8 @@ import {
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
-import { Turbo } from './turbo';
+import { Turbo, TurboCachesResponse } from './turbo';
+import { ArweaveSigner } from 'arbundles/src/signing';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -287,12 +288,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderData
 	}: ArFSPrivateCreateFolderParams): Promise<ArFSCreateFolderResult> {
 		const folderId = EID(v4());
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPrivateFolderMetaDataPrototype(driveId, folderId, folderData, parentFolderId),
 			rewardSettings
 		);
 
-		return { folderId, metaDataTxId, metaDataTxReward: rewardSettings?.reward };
+		return {
+			folderId,
+			metaDataTxId: id,
+			metaDataTxReward: rewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
 	}
 
 	/** Create a single public folder */
@@ -303,12 +310,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderData
 	}: ArFSPublicCreateFolderParams): Promise<ArFSCreateFolderResult> {
 		const folderId = EID(v4());
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPublicFolderMetaDataPrototype(folderData, driveId, folderId, parentFolderId),
 			rewardSettings
 		);
 
-		return { folderId, metaDataTxId, metaDataTxReward: rewardSettings?.reward };
+		return {
+			folderId,
+			metaDataTxId: id,
+			metaDataTxReward: rewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
 	}
 
 	/** Prepare an ArFS drive entity for upload */
@@ -397,6 +410,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
+	private async makeBdi(dataItems: DataItem[]): Promise<DataItem> {
+		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
+		const bundle = await bundleAndSignData(dataItems, signer);
+		const bdi = createData(bundle.getRaw(), signer, {
+			tags: [
+				{ name: 'Bundle-Format', value: 'binary' },
+				{ name: 'Bundle-Version', value: '2.0.0' }
+			]
+		});
+		await bdi.sign(signer);
+		return bdi;
+	}
+
 	/** Create drive and root folder together as bundled transaction */
 	private async createDriveToTurbo(sharedPrepDriveParams: PartialPrepareDriveParams): Promise<ArFSCreateDriveResult> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
@@ -407,14 +433,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
-		await this.bundler.sendDataItems(arFSObjects);
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(await this.makeBdi(arFSObjects));
 
 		const [rootFolderDataItem, driveDataItem] = arFSObjects;
 		return {
 			driveId,
 			metaDataTxId: TxID(driveDataItem.id),
 			rootFolderId,
-			rootFolderTxId: TxID(rootFolderDataItem.id)
+			rootFolderTxId: TxID(rootFolderDataItem.id),
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 	/**
@@ -500,7 +528,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
 		rewardSettings?: RewardSettings
-	): Promise<TransactionID> {
+	): Promise<{ id: TransactionID } & TurboCachesResponse> {
 		if (rewardSettings) {
 			const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 				objectMetaData,
@@ -508,15 +536,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			});
 			await this.sendTransactionsAsChunks([metaDataTx]);
 
-			return TxID(metaDataTx.id);
+			return { id: TxID(metaDataTx.id) };
 		}
 
 		const metaDataDataItem = await this.txPreparer.prepareMetaDataDataItem({
 			objectMetaData
 		});
-		await this.bundler.sendDataItems([metaDataDataItem]);
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(metaDataDataItem);
 
-		return TxID(metaDataDataItem.id);
+		return { id: TxID(metaDataDataItem.id), dataCaches, fastFinalityIndexes };
 	}
 
 	async movePublicFile({
@@ -525,7 +553,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPublicFile, ArFSPublicFileMetadataTransactionData>): Promise<ArFSMovePublicFileResult> {
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPublicFileMetaDataPrototype(
 				transactionData,
 				originalMetaData.driveId,
@@ -537,7 +565,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
 		this.caches.publicFileCache.remove({ fileId: originalMetaData.entityId, owner });
 
-		return { dataTxId: originalMetaData.dataTxId, metaDataTxId, metaDataTxReward: metaDataBaseReward?.reward };
+		return {
+			dataTxId: originalMetaData.dataTxId,
+			metaDataTxId: id,
+			metaDataTxReward: metaDataBaseReward?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
 	}
 
 	async movePrivateFile({
@@ -546,7 +580,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPrivateFile, ArFSPrivateFileMetadataTransactionData>): Promise<ArFSMovePrivateFileResult> {
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPrivateFileMetaDataPrototype(
 				transactionData,
 				originalMetaData.driveId,
@@ -564,9 +598,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return {
 			dataTxId: originalMetaData.dataTxId,
-			metaDataTxId,
+			metaDataTxId: id,
 			metaDataTxReward: metaDataBaseReward?.reward,
-			fileKey: transactionData.fileKey
+			fileKey: transactionData.fileKey,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -576,7 +612,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPublicFolder, ArFSPublicFolderTransactionData>): Promise<ArFSMovePublicFolderResult> {
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPublicFolderMetaDataPrototype(
 				transactionData,
 				originalMetaData.driveId,
@@ -588,7 +624,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const owner = await this.getDriveOwnerForFolderId(originalMetaData.entityId);
 		this.caches.publicFolderCache.remove({ folderId: originalMetaData.entityId, owner });
 
-		return { metaDataTxId, metaDataTxReward: metaDataBaseReward?.reward };
+		return { metaDataTxId: id, metaDataTxReward: metaDataBaseReward?.reward, dataCaches, fastFinalityIndexes };
 	}
 
 	async movePrivateFolder({
@@ -597,7 +633,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		transactionData,
 		newParentFolderId
 	}: ArFSMoveParams<ArFSPrivateFolder, ArFSPrivateFolderTransactionData>): Promise<ArFSMovePrivateFolderResult> {
-		const metaDataTxId = await this.uploadMetaData(
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
 			new ArFSPrivateFolderMetaDataPrototype(
 				originalMetaData.driveId,
 				originalMetaData.entityId,
@@ -613,7 +649,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			driveKey: transactionData.driveKey
 		});
 
-		return { metaDataTxId, metaDataTxReward: metaDataBaseReward?.reward, driveKey: transactionData.driveKey };
+		return {
+			metaDataTxId: id,
+			metaDataTxReward: metaDataBaseReward?.reward,
+			driveKey: transactionData.driveKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
 	}
 
 	async prepareFile<T extends DataItem | Transaction, U extends DataItem | Transaction>({
@@ -943,13 +985,15 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 		const folderDataItem = arFSObjects[0];
-		await this.bundler.sendDataItems([folderDataItem]);
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(folderDataItem);
 		return {
 			entityId: folderId,
 			folderTxId: TxID(folderDataItem.id),
 			driveKey: uploadStats.driveKey,
 			entityName: uploadStats.wrappedEntity.destinationBaseName,
-			sourceUri: uploadStats.wrappedEntity.sourceUri
+			sourceUri: uploadStats.wrappedEntity.sourceUri,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -976,7 +1020,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData
 				})
 		});
-		await this.bundler.sendDataItems(dataItems);
+
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(await this.makeBdi(dataItems));
 
 		const [fileDataDataItem, metaDataDataItem] = dataItems;
 
@@ -986,7 +1031,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			fileDataTxId: TxID(fileDataDataItem.id),
 			entityId: fileId,
 			metaDataTxId: TxID(metaDataDataItem.id),
-			fileKey
+			fileKey,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -1879,7 +1926,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			file.parentFolderId
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		// Invalidate any cached entry
 		const owner = await this.getDriveOwnerForFileId(entityId);
@@ -1887,8 +1937,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return {
 			entityId,
-			metaDataTxId,
-			metaDataTxReward: metadataRewardSettings?.reward
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -1914,7 +1966,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			file.parentFolderId
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		// Invalidate any cached entry
 		const owner = await this.getDriveOwnerForFileId(entityId);
@@ -1922,9 +1977,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		return {
 			entityId,
-			metaDataTxId,
+			metaDataTxId: id,
 			metaDataTxReward: metadataRewardSettings?.reward,
-			fileKey: file.fileKey
+			fileKey: file.fileKey,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -1940,12 +1997,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folder.parentFolderId
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		return {
 			entityId: folder.folderId,
-			metaDataTxId,
-			metaDataTxReward: metadataRewardSettings?.reward
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -1962,13 +2024,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folder.parentFolderId
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		return {
 			entityId: folder.folderId,
-			metaDataTxId,
+			metaDataTxId: id,
 			metaDataTxReward: metadataRewardSettings?.reward,
-			driveKey
+			driveKey,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -1982,12 +2049,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			drive.driveId
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		return {
 			entityId: drive.driveId,
-			metaDataTxId,
-			metaDataTxReward: metadataRewardSettings?.reward
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 
@@ -2002,13 +2074,18 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			await ArFSPrivateDriveTransactionData.from(newName, drive.rootFolderId, driveKey)
 		);
 
-		const metaDataTxId = await this.uploadMetaData(objectMetaData, metadataRewardSettings);
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
 
 		return {
 			entityId: drive.driveId,
-			metaDataTxId,
+			metaDataTxId: id,
 			metaDataTxReward: metadataRewardSettings?.reward,
-			driveKey
+			driveKey,
+			dataCaches,
+			fastFinalityIndexes
 		};
 	}
 

@@ -215,7 +215,13 @@ export class ArDrive extends ArDriveAnonymous {
 			  };
 
 		// Move file will create a new meta data tx with identical meta data except for a new parentFolderId
-		const moveFileResult = await this.arFsDao.movePublicFile({
+		const {
+			dataTxId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.movePublicFile({
 			originalMetaData: originalFileMetaData,
 			transactionData: fileTransactionData,
 			newParentFolderId,
@@ -226,19 +232,21 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTxId,
-					dataTxId: moveFileResult.dataTxId,
+					metadataTxId: metaDataTxId,
+					dataTxId: dataTxId,
 					entityId: fileId,
-					entityName: originalFileMetaData.name
+					entityName: originalFileMetaData.name,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (moveFileResult.metaDataTxReward) {
+		if (metaDataTxReward) {
 			result.fees = {
-				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			};
 		}
 		return result;
@@ -289,7 +297,14 @@ export class ArDrive extends ArDriveAnonymous {
 			  };
 
 		// Move file will create a new meta data tx with identical meta data except for a new parentFolderId
-		const moveFileResult = await this.arFsDao.movePrivateFile({
+		const {
+			dataTxId,
+			fileKey,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.movePrivateFile({
 			originalMetaData: originalFileMetaData,
 			transactionData: fileTransactionData,
 			newParentFolderId,
@@ -300,20 +315,22 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					metadataTxId: moveFileResult.metaDataTxId,
-					dataTxId: moveFileResult.dataTxId,
+					metadataTxId: metaDataTxId,
+					dataTxId: dataTxId,
 					entityId: fileId,
-					key: moveFileResult.fileKey,
-					entityName: originalFileMetaData.name
+					key: fileKey,
+					entityName: originalFileMetaData.name,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (moveFileResult.metaDataTxReward) {
+		if (metaDataTxReward) {
 			result.fees = {
-				[`${moveFileResult.metaDataTxId}`]: moveFileResult.metaDataTxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			};
 		}
 		return result;
@@ -365,29 +382,33 @@ export class ArDrive extends ArDriveAnonymous {
 			  };
 
 		// Move folder will create a new meta data tx with identical meta data except for a new parentFolderId
-		const moveFolderResult = await this.arFsDao.movePublicFolder({
-			originalMetaData: originalFolderMetaData,
-			transactionData: folderTransactionData,
-			newParentFolderId,
-			metaDataBaseReward: folderMetaDataBaseReward
-		});
+		const { metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } = await this.arFsDao.movePublicFolder(
+			{
+				originalMetaData: originalFolderMetaData,
+				transactionData: folderTransactionData,
+				newParentFolderId,
+				metaDataBaseReward: folderMetaDataBaseReward
+			}
+		);
 
 		const result: ArFSResult = {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					entityName: originalFolderMetaData.name
+					entityName: originalFolderMetaData.name,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (moveFolderResult.metaDataTxReward) {
+		if (metaDataTxReward) {
 			result.fees = {
-				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			};
 		}
 		return result;
@@ -451,7 +472,12 @@ export class ArDrive extends ArDriveAnonymous {
 			  };
 
 		// Move folder will create a new meta data tx with identical meta data except for a new parentFolderId
-		const moveFolderResult = await this.arFsDao.movePrivateFolder({
+		const {
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.movePrivateFolder({
 			originalMetaData: originalFolderMetaData,
 			transactionData: folderTransactionData,
 			newParentFolderId,
@@ -462,19 +488,21 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					metadataTxId: moveFolderResult.metaDataTxId,
+					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					key: moveFolderResult.driveKey,
-					entityName: originalFolderMetaData.name
+					key: driveKey,
+					entityName: originalFolderMetaData.name,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (moveFolderResult.metaDataTxReward) {
+		if (metaDataTxReward) {
 			arFSResult.fees = {
-				[`${moveFolderResult.metaDataTxId}`]: moveFolderResult.metaDataTxReward
+				[`${metaDataTxId}`]: metaDataTxReward
 			};
 		}
 		return arFSResult;
@@ -606,7 +634,9 @@ export class ArDrive extends ArDriveAnonymous {
 			folderMetaDataReward,
 			entityName,
 			bundledIn,
-			sourceUri
+			sourceUri,
+			dataCaches,
+			fastFinalityIndexes
 		} of results.folderResults) {
 			arFSResult.created.push({
 				type: 'folder',
@@ -615,7 +645,9 @@ export class ArDrive extends ArDriveAnonymous {
 				key: driveKey,
 				bundledIn,
 				entityName,
-				sourceUri
+				sourceUri,
+				dataCaches,
+				fastFinalityIndexes
 			});
 
 			if (folderMetaDataReward) {
@@ -634,7 +666,9 @@ export class ArDrive extends ArDriveAnonymous {
 			communityTipSettings,
 			bundledIn,
 			entityName,
-			sourceUri
+			sourceUri,
+			dataCaches,
+			fastFinalityIndexes
 		} of results.fileResults) {
 			arFSResult.created.push({
 				type: 'file',
@@ -644,7 +678,9 @@ export class ArDrive extends ArDriveAnonymous {
 				metadataTxId: metaDataTxId,
 				bundledIn,
 				sourceUri,
-				key: fileKey ? fileKey : undefined
+				key: fileKey ? fileKey : undefined,
+				dataCaches,
+				fastFinalityIndexes
 			});
 
 			if (communityTipSettings) {
@@ -1002,19 +1038,24 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Assert that there's enough AR available in the wallet
 		const folderData = new ArFSPublicFolderTransactionData(folderName);
-		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
+		const rewardSettings = this.uploadPlanner.useTurbo
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
 
 		// Create the folder and retrieve its folder ID
 		const {
 			metaDataTxId: metaDataTxId,
 			metaDataTxReward: metaDataTxReward,
-			folderId
+			folderId,
+			dataCaches,
+			fastFinalityIndexes
 		} = await this.arFsDao.createPublicFolder({
 			folderData,
 			driveId,
-			rewardSettings: this.uploadPlanner.useTurbo
-				? undefined
-				: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
+			rewardSettings,
 			parentFolderId
 		});
 
@@ -1024,7 +1065,9 @@ export class ArDrive extends ArDriveAnonymous {
 					type: 'folder',
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
-					entityName: folderName
+					entityName: folderName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
@@ -1061,19 +1104,24 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Assert that there's enough AR available in the wallet
 		const folderData = await ArFSPrivateFolderTransactionData.from(folderName, driveKey);
-		const { metaDataBaseReward } = await this.estimateAndAssertCostOfFolderUpload(folderData);
+		const rewardSettings = this.uploadPlanner.useTurbo
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
 
 		// Create the folder and retrieve its folder ID
 		const {
 			metaDataTxId: metaDataTxId,
 			metaDataTxReward: metaDataTxReward,
-			folderId
+			folderId,
+			dataCaches,
+			fastFinalityIndexes
 		} = await this.arFsDao.createPrivateFolder({
 			folderData,
 			driveId,
-			rewardSettings: this.uploadPlanner.useTurbo
-				? undefined
-				: { reward: metaDataBaseReward, feeMultiple: this.feeMultiple },
+			rewardSettings,
 			parentFolderId
 		});
 
@@ -1084,7 +1132,9 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: metaDataTxId,
 					entityId: folderId,
 					key: driveKey,
-					entityName: folderName
+					entityName: folderName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
@@ -1103,24 +1153,43 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const uploadPlan = this.uploadPlanner.planCreateDrive(arFSPrototypes);
-		const { rewardSettings, totalWinstonPrice } = await this.costCalculator.calculateCostForCreateDrive(uploadPlan);
+		const rewardSettings = this.uploadPlanner.useTurbo
+			? undefined
+			: await (async () => {
+					const uploadPlan = this.uploadPlanner.planCreateDrive(arFSPrototypes);
+					const { rewardSettings, totalWinstonPrice } = await this.costCalculator.calculateCostForCreateDrive(
+						uploadPlan
+					);
+					await this.assertWalletBalance(totalWinstonPrice);
+					return rewardSettings;
+			  })();
 
-		await this.assertWalletBalance(totalWinstonPrice);
+		const createDriveResult = await arFSCreateDrive(rewardSettings);
 
-		const createDriveResult = await arFSCreateDrive(this.uploadPlanner.useTurbo ? undefined : rewardSettings);
+		const {
+			driveId,
+			metaDataTxId,
+			rootFolderId,
+			rootFolderTxId,
+			dataCaches,
+			fastFinalityIndexes
+		} = createDriveResult;
 
 		const arFSResults: ArFSResult = {
 			created: [
 				{
 					type: 'drive',
-					metadataTxId: createDriveResult.metaDataTxId,
-					entityId: createDriveResult.driveId
+					metadataTxId: metaDataTxId,
+					entityId: driveId,
+					dataCaches,
+					fastFinalityIndexes
 				},
 				{
 					type: 'folder',
-					metadataTxId: createDriveResult.rootFolderTxId,
-					entityId: createDriveResult.rootFolderId
+					metadataTxId: rootFolderTxId,
+					entityId: rootFolderId,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
@@ -1426,11 +1495,21 @@ export class ArDrive extends ArDriveAnonymous {
 			file.dataTxId,
 			file.dataContentType
 		);
-		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
-		const result = await this.arFsDao.renamePublicFile({
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
+
+		const {
+			entityId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePublicFile({
 			file,
 			newName,
 			metadataRewardSettings
@@ -1440,17 +1519,19 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId,
-					entityName: newName
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;
@@ -1474,12 +1555,22 @@ export class ArDrive extends ArDriveAnonymous {
 			file.fileId,
 			driveKey
 		);
-		const reward = await this.estimateAndAssertCostOfFileRename(fileMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
 
-		const result = await this.arFsDao.renamePrivateFile({
+		const {
+			entityId,
+			fileKey,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePrivateFile({
 			file,
 			newName,
 			metadataRewardSettings,
@@ -1490,18 +1581,20 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'file',
-					entityId: result.entityId,
-					key: result.fileKey,
-					metadataTxId: result.metaDataTxId,
-					entityName: newName
+					entityId: entityId,
+					key: fileKey,
+					metadataTxId: metaDataTxId,
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;
@@ -1522,11 +1615,22 @@ export class ArDrive extends ArDriveAnonymous {
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
 		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName);
-		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
-		const result = await this.arFsDao.renamePublicFolder({
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
+
+		const {
+			entityId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePublicFolder({
 			folder,
 			newName,
 			metadataRewardSettings
@@ -1536,17 +1640,19 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId,
-					entityName: newName
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;
@@ -1567,11 +1673,22 @@ export class ArDrive extends ArDriveAnonymous {
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
 		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(newName, driveKey);
-		const reward = await this.estimateAndAssertCostOfFolderRename(folderMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
-		const result = await this.arFsDao.renamePrivateFolder({
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
+
+		const {
+			entityId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePrivateFolder({
 			folder,
 			newName,
 			metadataRewardSettings,
@@ -1582,18 +1699,20 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'folder',
-					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId,
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
 					key: driveKey,
-					entityName: newName
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;
@@ -1608,11 +1727,22 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		assertValidArFSDriveName(newName);
 		const driveMetadataTxDataStub = new ArFSPublicDriveTransactionData(newName, drive.rootFolderId);
-		const reward = await this.estimateAndAssertCostOfDriveRename(driveMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
-		const result = await this.arFsDao.renamePublicDrive({
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
+
+		const {
+			entityId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePublicDrive({
 			drive,
 			newName,
 			metadataRewardSettings
@@ -1622,17 +1752,19 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'drive',
-					entityId: result.entityId,
-					metadataTxId: result.metaDataTxId,
-					entityName: newName
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;
@@ -1651,11 +1783,22 @@ export class ArDrive extends ArDriveAnonymous {
 			drive.rootFolderId,
 			driveKey
 		);
-		const reward = await this.estimateAndAssertCostOfDriveRename(driveMetadataTxDataStub);
+
 		const metadataRewardSettings = this.uploadPlanner.useTurbo
 			? undefined
-			: { feeMultiple: this.feeMultiple, reward: reward.metaDataBaseReward };
-		const result = await this.arFsDao.renamePrivateDrive({
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+			  };
+
+		const {
+			entityId,
+			metaDataTxId,
+			dataCaches,
+			fastFinalityIndexes,
+			metaDataTxReward
+		} = await this.arFsDao.renamePrivateDrive({
 			drive,
 			newName,
 			metadataRewardSettings,
@@ -1666,18 +1809,20 @@ export class ArDrive extends ArDriveAnonymous {
 			created: [
 				{
 					type: 'drive',
-					entityId: result.entityId,
+					entityId: entityId,
 					key: driveKey,
-					metadataTxId: result.metaDataTxId,
-					entityName: newName
+					metadataTxId: metaDataTxId,
+					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
 				}
 			],
 			tips: [],
 			fees: {}
 		};
 
-		if (result.metaDataTxReward) {
-			arFSResult.fees = { [`${result.metaDataTxId}`]: result.metaDataTxReward };
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
 		}
 
 		return arFSResult;

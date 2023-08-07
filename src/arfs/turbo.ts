@@ -6,6 +6,16 @@ interface TurboParams {
 	isDryRun: boolean;
 }
 
+export interface TurboCachesResponse {
+	dataCaches?: string[];
+	fastFinalityIndexes?: string[];
+}
+
+export interface SendDataItemsResponse extends TurboCachesResponse {
+	id: string;
+	owner: string;
+}
+
 export class Turbo {
 	private turboUrl: URL;
 	private isDryRun: boolean;
@@ -19,17 +29,20 @@ export class Turbo {
 		return `${this.turboUrl.href}v1/tx`;
 	}
 
-	async sendDataItems(dataItems: DataItem[]): Promise<void> {
-		if (!this.isDryRun) {
-			for (const dataItem of dataItems) {
-				await axios.post(this.dataItemEndpoint, dataItem.getRaw(), {
-					headers: {
-						'Content-Type': 'application/octet-stream'
-					},
-					maxBodyLength: Infinity,
-					validateStatus: (status) => (status > 200 && status < 300) || status !== 402
-				});
-			}
+	async sendDataItem(dataItem: DataItem): Promise<SendDataItemsResponse> {
+		if (this.isDryRun) {
+			return {
+				id: dataItem.id,
+				owner: dataItem.owner
+			};
 		}
+		const { data } = await axios.post<SendDataItemsResponse>(this.dataItemEndpoint, dataItem.getRaw(), {
+			headers: {
+				'Content-Type': 'application/octet-stream'
+			},
+			maxBodyLength: Infinity,
+			validateStatus: (status) => (status > 200 && status < 300) || status !== 402
+		});
+		return data;
 	}
 }

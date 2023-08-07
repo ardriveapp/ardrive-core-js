@@ -11,8 +11,9 @@ import {
 	EntityName,
 	EntityID
 } from '../types';
+import { TurboCachesResponse } from './turbo';
 
-export interface ArFSBundleWriteResult {
+export interface ArFSBundleWriteResult extends TurboCachesResponse {
 	bundleTxId: TransactionID;
 	bundleTxReward: Winston;
 	metaDataTxId: TransactionID;
@@ -24,7 +25,7 @@ export function isBundleResult(
 	return Object.keys(arFSResult).includes('bundleTxId');
 }
 
-export interface ArFSWriteResult {
+export interface ArFSWriteResult extends TurboCachesResponse {
 	metaDataTxId: TransactionID;
 	metaDataTxReward?: Winston;
 }
@@ -37,7 +38,7 @@ export interface ArFSUploadEntitiesResult {
 
 export type RecursiveFolderUploadResult = Omit<ArFSUploadEntitiesResult, 'bundleResults'>;
 
-export interface BaseArFSUploadResult {
+export interface BaseArFSUploadResult extends TurboCachesResponse {
 	entityName: EntityName;
 	bundledIn?: TransactionID;
 	sourceUri?: SourceUri;
