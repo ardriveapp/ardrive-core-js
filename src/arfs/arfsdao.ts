@@ -909,19 +909,24 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				results.bundleResults.push(...recursiveFolderResults.bundleResults);
 				uploadsCompleted += wrappedEntity.getTotalDataItems();
 			} else {
-				const fileResult = await this.uploadFileToTurbo({
-					destDriveId,
-					destFolderId,
-					wrappedEntity,
-					owner,
-					driveKey
-				});
+				try {
+					const fileResult = await this.uploadFileToTurbo({
+						destDriveId,
+						destFolderId,
+						wrappedEntity,
+						owner,
+						driveKey
+					});
 
-				results.fileResults.push(fileResult);
-				if (fileResult.bundledIn) {
-					results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+					results.fileResults.push(fileResult);
+					if (fileResult.bundledIn) {
+						results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+					}
+					uploadsCompleted++;
+				} catch (error) {
+					console.error(`Error uploading file ${wrappedEntity.sourceUri}: ${error}`);
+					console.error(`Skipping and continuing...`);
 				}
-				uploadsCompleted++;
 			}
 			logProgress();
 		}
@@ -945,30 +950,41 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (!wrappedEntity.existingId) {
 			// Create the folder data item if it does not exist
 			wrappedEntity.existingId = EID(v4());
-			const folderResult = await this.uploadFolderToTurbo({
-				destDriveId,
-				owner,
-				destFolderId,
-				driveKey,
-				wrappedEntity
-			});
-			results.folderResults.push(folderResult);
+			try {
+				const folderResult = await this.uploadFolderToTurbo({
+					destDriveId,
+					owner,
+					destFolderId,
+					driveKey,
+					wrappedEntity
+				});
+				results.folderResults.push(folderResult);
+			} catch (error) {
+				console.error(`Error uploading folder ${wrappedEntity.sourceUri}: ${error}`);
+				console.error(`Skipping its contents and continuing...`);
+				return results;
+			}
 		}
 
 		const fileDestFolderId = wrappedEntity.existingId;
 
 		for (const file of wrappedEntity.files) {
-			const fileResult = await this.uploadFileToTurbo({
-				destDriveId,
-				destFolderId: fileDestFolderId,
-				wrappedEntity: file,
-				owner,
-				driveKey
-			});
+			try {
+				const fileResult = await this.uploadFileToTurbo({
+					destDriveId,
+					destFolderId: fileDestFolderId,
+					wrappedEntity: file,
+					owner,
+					driveKey
+				});
 
-			results.fileResults.push(fileResult);
-			if (fileResult.bundledIn) {
-				results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+				results.fileResults.push(fileResult);
+				if (fileResult.bundledIn) {
+					results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+				}
+			} catch (error) {
+				console.error(`Error uploading file ${file.sourceUri}: ${error}`);
+				console.error(`Skipping and continuing...`);
 			}
 		}
 

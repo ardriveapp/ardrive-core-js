@@ -36,13 +36,21 @@ export class Turbo {
 				owner: dataItem.owner
 			};
 		}
-		const { data } = await axios.post<SendDataItemsResponse>(this.dataItemEndpoint, dataItem.getRaw(), {
-			headers: {
-				'Content-Type': 'application/octet-stream'
-			},
-			maxBodyLength: Infinity,
-			validateStatus: (status) => (status > 200 && status < 300) || status !== 402
-		});
+		const { data, status, statusText } = await axios.post<SendDataItemsResponse>(
+			this.dataItemEndpoint,
+			dataItem.getRaw(),
+			{
+				headers: {
+					'Content-Type': 'application/octet-stream'
+				},
+				maxBodyLength: Infinity,
+				validateStatus: () => true
+			}
+		);
+
+		if (status !== 200) {
+			throw new Error(`Upload to Turbo Has Failed. Status: ${status} Text: ${statusText}`);
+		}
 		return data;
 	}
 }
