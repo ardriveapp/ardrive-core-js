@@ -52,7 +52,6 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
-	/** Provide false to forego using a turbo */
 	turboSettings?: TurboSettings;
 }
 
@@ -75,7 +74,7 @@ export function arDriveFactory({
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-	turboSettings = { turboUrl: turboProdUrl },
+	turboSettings = undefined,
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings,
