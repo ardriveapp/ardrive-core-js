@@ -709,7 +709,9 @@ export class ArDrive extends ArDriveAnonymous {
 				});
 			}
 
-			arFSResult.fees = { ...arFSResult.fees, [`${bundleTxId}`]: bundleReward };
+			if (bundleReward) {
+				arFSResult.fees = { ...arFSResult.fees, [`${bundleTxId}`]: bundleReward };
+			}
 		}
 
 		return arFSResult;
@@ -1197,7 +1199,7 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 
 		if (isBundleResult(createDriveResult)) {
-			// Add bundle entity and return direct to network bundled tx result
+			// Add bundle entity and bundled in
 			arFSResults.created.push({
 				type: 'bundle',
 				bundleTxId: createDriveResult.bundleTxId
@@ -1205,12 +1207,14 @@ export class ArDrive extends ArDriveAnonymous {
 			arFSResults.created[0].bundledIn = createDriveResult.bundleTxId;
 			arFSResults.created[1].bundledIn = createDriveResult.bundleTxId;
 
-			return {
-				...arFSResults,
-				fees: {
+			if (createDriveResult.bundleTxReward) {
+				//  direct to network bundled tx fee
+				arFSResults.fees = {
 					[`${createDriveResult.bundleTxId}`]: createDriveResult.bundleTxReward
-				}
-			};
+				};
+			}
+
+			return arFSResults;
 		}
 
 		if (createDriveResult.metaDataTxReward) {

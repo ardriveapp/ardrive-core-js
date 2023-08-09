@@ -39,7 +39,8 @@ import {
 	ArFSRenamePrivateDriveResult,
 	ArFSV2PublicRetryResult,
 	NewFileMetaDataCreated,
-	FolderResult
+	FolderResult,
+	ArFSCreateDriveToTurboResult
 } from './arfs_entity_result_factory';
 import {
 	ArFSFileToUpload,
@@ -424,7 +425,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	/** Create drive and root folder together as bundled transaction */
-	private async createDriveToTurbo(sharedPrepDriveParams: PartialPrepareDriveParams): Promise<ArFSCreateDriveResult> {
+	private async createDriveToTurbo(
+		sharedPrepDriveParams: PartialPrepareDriveParams
+	): Promise<ArFSCreateDriveToTurboResult> {
 		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
 			...sharedPrepDriveParams,
 			prepareArFSObject: (objectMetaData) =>
@@ -433,16 +436,20 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(await this.makeBdi(arFSObjects));
+		const bdi = await this.makeBdi(arFSObjects);
+
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(bdi);
 
 		const [rootFolderDataItem, driveDataItem] = arFSObjects;
+
 		return {
 			driveId,
 			metaDataTxId: TxID(driveDataItem.id),
 			rootFolderId,
 			rootFolderTxId: TxID(rootFolderDataItem.id),
 			dataCaches,
-			fastFinalityIndexes
+			fastFinalityIndexes,
+			bundleTxId: TxID(bdi.id)
 		};
 	}
 	/**
@@ -899,6 +906,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 				results.fileResults.push(...recursiveFolderResults.fileResults);
 				results.folderResults.push(...recursiveFolderResults.folderResults);
+				results.bundleResults.push(...recursiveFolderResults.bundleResults);
 				uploadsCompleted += wrappedEntity.getTotalDataItems();
 			} else {
 				const fileResult = await this.uploadFileToTurbo({
@@ -910,6 +918,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 
 				results.fileResults.push(fileResult);
+				if (fileResult.bundledIn) {
+					results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+				}
 				uploadsCompleted++;
 			}
 			logProgress();
@@ -924,10 +935,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		owner,
 		destFolderId,
 		driveKey
-	}: UploadStats<ArFSFolderToUpload>): Promise<{ folderResults: FolderResult[]; fileResults: FileResult[] }> {
-		const results: { folderResults: FolderResult[]; fileResults: FileResult[] } = {
+	}: UploadStats<ArFSFolderToUpload>): Promise<ArFSUploadEntitiesResult> {
+		const results: ArFSUploadEntitiesResult = {
 			folderResults: [],
-			fileResults: []
+			fileResults: [],
+			bundleResults: []
 		};
 
 		if (!wrappedEntity.existingId) {
@@ -955,6 +967,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			});
 
 			results.fileResults.push(fileResult);
+			if (fileResult.bundledIn) {
+				results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
+			}
 		}
 
 		for (const folder of wrappedEntity.folders) {
@@ -968,6 +983,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 			results.fileResults.push(...recursiveFolderResults.fileResults);
 			results.folderResults.push(...recursiveFolderResults.folderResults);
+			results.bundleResults.push(...recursiveFolderResults.bundleResults);
 		}
 
 		return results;
@@ -1021,7 +1037,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(await this.makeBdi(dataItems));
+		const bdi = await this.makeBdi(dataItems);
+		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(bdi);
 
 		const [fileDataDataItem, metaDataDataItem] = dataItems;
 
@@ -1033,7 +1050,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			metaDataTxId: TxID(metaDataDataItem.id),
 			fileKey,
 			dataCaches,
-			fastFinalityIndexes
+			fastFinalityIndexes,
+			bundledIn: TxID(bdi.id)
 		};
 	}
 
