@@ -1017,7 +1017,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		wrappedEntity,
 		destDriveId,
 		destFolderId,
-		owner
+		owner,
+		driveKey
 	}: UploadStats<ArFSDataToUpload>): Promise<FileResult> {
 		// eslint-disable-next-line prettier/prettier
 		const { arFSObjects: dataItems, fileId, fileKey } = await this.prepareFile({
@@ -1025,7 +1026,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				wrappedEntity,
 				destFolderId,
 				destDriveId,
-				owner
+				owner,
+				driveKey
 			}),
 			prepareArFSObject: (objectMetaData) =>
 				this.txPreparer.prepareFileDataDataItem({
