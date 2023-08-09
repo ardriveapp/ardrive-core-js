@@ -180,40 +180,10 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	/**
 	 * Determines whether this batch of UploadStats is all within the
 	 * free ArFS data limit and if we will send it to the Turbo
-	 * */
+	 */
 	public isTurboUpload(): boolean {
 		return this.shouldBundle && this.useTurbo;
 	}
-
-	// private isFileWithinFreeArFSDataLimit(file: ArFSDataToUpload, isPrivate: boolean): boolean {
-	// 	const fileDataItemByteCount = byteCountAsDataItem(
-	// 		file.size,
-	// 		this.arFSTagSettings.getFileDataItemTags(isPrivate, file.contentType)
-	// 	);
-
-	// 	if (fileDataItemByteCount.isGreaterThan(freeArfsDataAllowLimit)) {
-	// 		return false;
-	// 	}
-
-	// 	return true;
-	// }
-
-	// private isFolderWithinFreeArFSDataLimit(folder: ArFSFolderToUpload, isPrivate: boolean): boolean {
-	// 	for (const file of folder.files) {
-	// 		if (!this.isFileWithinFreeArFSDataLimit(file, isPrivate)) {
-	// 			return false;
-	// 		}
-	// 	}
-
-	// 	for (const fold of folder.folders) {
-	// 		// Recurse into folder to check each byte count
-	// 		if (!this.isFolderWithinFreeArFSDataLimit(fold, isPrivate)) {
-	// 			return false;
-	// 		}
-	// 	}
-
-	// 	return true;
-	// }
 
 	/**
 	 *  Plans an upload using the `uploadAllEntities` ArDrive method
