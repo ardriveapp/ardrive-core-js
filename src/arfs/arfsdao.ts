@@ -240,7 +240,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
-		protected bundler = new Turbo({ turboUrl: turboProdUrl, isDryRun: dryRun })
+		protected turbo = new Turbo({ turboUrl: turboProdUrl, isDryRun: dryRun })
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -438,7 +438,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const bdi = await this.makeBdi(arFSObjects);
 
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(bdi);
+		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(bdi);
 
 		const [rootFolderDataItem, driveDataItem] = arFSObjects;
 
@@ -528,9 +528,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	/**
-	 * Uploads a single metadata prototype as a layer one tx or sends to bundler as a data item
+	 * Uploads a single metadata prototype as a layer one tx or sends to turbo as a data item
 	 *
-	 * @remarks Uses an optional rewardSettings to determine whether to upload as layer one v2 or send as a data item to bundler
+	 * @remarks Uses an optional rewardSettings to determine whether to upload as layer one v2 or send as a data item to turbo
 	 */
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
@@ -546,10 +546,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			return { id: TxID(metaDataTx.id) };
 		}
 
+		// Absence of the rewardSettings implies we will send to turbo
 		const metaDataDataItem = await this.txPreparer.prepareMetaDataDataItem({
 			objectMetaData
 		});
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(metaDataDataItem);
+		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(metaDataDataItem);
 
 		return { id: TxID(metaDataDataItem.id), dataCaches, fastFinalityIndexes };
 	}
@@ -1032,7 +1033,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				})
 		});
 		const folderDataItem = arFSObjects[0];
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(folderDataItem);
+		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(folderDataItem);
 		return {
 			entityId: folderId,
 			folderTxId: TxID(folderDataItem.id),
@@ -1071,7 +1072,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		});
 
 		const bdi = await this.makeBdi(dataItems);
-		const { dataCaches, fastFinalityIndexes } = await this.bundler.sendDataItem(bdi);
+		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(bdi);
 
 		const [fileDataDataItem, metaDataDataItem] = dataItems;
 
