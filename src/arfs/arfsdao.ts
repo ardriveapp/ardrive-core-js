@@ -882,15 +882,27 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	public async uploadAllEntitiesToTurbo(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
-		const totalDataItems = uploadStats
-			.map((u) => (u.wrappedEntity.entityType === 'file' ? 1 : u.wrappedEntity.getTotalDataItems()))
-			.reduce((a, b) => a + b, 0);
-		let uploadsCompleted = 0;
+
+		const totalContentCountsToUpload: { numFiles: number; numFolders: number } = uploadStats.reduce(
+			({ numFiles, numFolders }, { wrappedEntity }) => {
+				if (wrappedEntity.entityType === 'file') {
+					return { numFiles: numFiles + 1, numFolders };
+				}
+				return {
+					numFiles,
+					numFolders: numFolders + 1
+				};
+			},
+			{ numFiles: 0, numFolders: 0 }
+		);
+		const { numFiles: totalNumFiles, numFolders: totalNumFolders } = totalContentCountsToUpload;
+		const contentCountUploaded = { numFiles: 0, numFolders: 0 };
+		const { numFiles, numFolders } = contentCountUploaded;
 
 		const logProgress = () => {
-			if (this.shouldProgressLog && totalDataItems > 1) {
+			if (this.shouldProgressLog && totalNumFiles + totalNumFolders > 1) {
 				console.error(
-					`Uploading file transaction ${uploadsCompleted + 1} of total ${totalDataItems} transactions...`
+					`Uploading to turbo...\n${numFiles} of ${totalNumFiles} Files Uploaded\n${numFolders} of total ${totalNumFolders} Folders Uploaded...`
 				);
 			}
 		};
@@ -907,7 +919,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				results.fileResults.push(...recursiveFolderResults.fileResults);
 				results.folderResults.push(...recursiveFolderResults.folderResults);
 				results.bundleResults.push(...recursiveFolderResults.bundleResults);
-				uploadsCompleted += wrappedEntity.getTotalDataItems();
+				const contentCounts = wrappedEntity.getContentToUploadCounts();
+				contentCountUploaded.numFiles += contentCounts.numFiles;
+				contentCountUploaded.numFolders += contentCounts.numFolders;
+				logProgress();
 			} else {
 				try {
 					const fileResult = await this.uploadFileToTurbo({
@@ -922,11 +937,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					if (fileResult.bundledIn) {
 						results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
 					}
-					uploadsCompleted++;
 				} catch (error) {
 					console.error(`Error uploading file ${wrappedEntity.sourceUri}: ${error}`);
 					console.error(`Skipping and continuing...`);
 				}
+				contentCountUploaded.numFiles++;
 			}
 			logProgress();
 		}

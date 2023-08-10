@@ -341,21 +341,25 @@ export class ArFSFolderToUpload extends ArFSBaseEntityToUpload {
 		return new ByteCount(totalByteCount);
 	}
 
-	getTotalDataItems(): number {
-		let totalDataItems = 0;
+	public getContentToUploadCounts(): { numFiles: number; numFolders: number } {
+		let numFiles = 0;
+		let numFolders = 0;
 
+		// There is no existing ID. We will create this folder
 		if (!this.existingId) {
-			totalDataItems++;
+			numFolders++;
 		}
 
 		for (let i = 0; i < this.files.length; i++) {
-			totalDataItems++;
+			numFiles++;
 		}
 		for (const folder of this.folders) {
-			totalDataItems += folder.getTotalDataItems();
+			const contentCounts = folder.getContentToUploadCounts();
+			numFiles += contentCounts.numFiles;
+			numFolders += contentCounts.numFolders;
 		}
 
-		return totalDataItems;
+		return { numFiles, numFolders };
 	}
 }
 
