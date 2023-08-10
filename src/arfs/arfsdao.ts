@@ -880,6 +880,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
+	/**
+	 * Uploads each file and recursive folder within the upload stats up to Turbo
+	 *
+	 * @remarks when one of the uploads fail, this method will continue to upload the rest of the files and folders
+	 */
 	public async uploadAllEntitiesToTurbo(uploadStats: UploadStats[]): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = { fileResults: [], folderResults: [], bundleResults: [] };
 
