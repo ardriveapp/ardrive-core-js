@@ -453,8 +453,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	/**
 	 * Create drive and root folder as a V2 transaction
 	 * OR a direct to network bundled transaction
+	 * OR upload data items to Turbo
 	 *
-	 * @remarks To bundle or not is determined during cost estimation,
+	 * @remarks To bundle or to go to turbo is determined during cost estimation,
 	 * and the provided rewardSettings will be type checked here to
 	 * determine the result type
 	 */
