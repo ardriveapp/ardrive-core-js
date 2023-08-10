@@ -36,8 +36,6 @@ export interface ArFSUploadEntitiesResult {
 	bundleResults: BundleResult[];
 }
 
-export type RecursiveFolderUploadResult = Omit<ArFSUploadEntitiesResult, 'bundleResults'>;
-
 export interface BaseArFSUploadResult extends TurboCachesResponse {
 	entityName: EntityName;
 	bundledIn?: TransactionID;
