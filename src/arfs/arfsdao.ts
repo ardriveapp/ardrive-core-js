@@ -565,7 +565,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				transactionData,
 				originalMetaData.driveId,
 				originalMetaData.fileId,
-				newParentFolderId
+				newParentFolderId,
+				originalMetaData.customMetaDataGqlTags
 			),
 			metaDataBaseReward
 		);
@@ -592,7 +593,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				transactionData,
 				originalMetaData.driveId,
 				originalMetaData.fileId,
-				newParentFolderId
+				newParentFolderId,
+				originalMetaData.customMetaDataGqlTags
 			),
 			metaDataBaseReward
 		);
@@ -624,7 +626,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				transactionData,
 				originalMetaData.driveId,
 				originalMetaData.entityId,
-				newParentFolderId
+				newParentFolderId,
+				originalMetaData.customMetaDataGqlTags
 			),
 			metaDataBaseReward
 		);
@@ -645,7 +648,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				originalMetaData.driveId,
 				originalMetaData.entityId,
 				transactionData,
-				newParentFolderId
+				newParentFolderId,
+				originalMetaData.customMetaDataGqlTags
 			),
 			metaDataBaseReward
 		);
@@ -1975,11 +1979,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				file.size,
 				file.lastModifiedDate,
 				file.dataTxId,
-				file.dataContentType
+				file.dataContentType,
+				file.customMetaDataJson
 			),
 			file.driveId,
 			entityId,
-			file.parentFolderId
+			file.parentFolderId,
+			file.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
@@ -2015,11 +2021,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				file.dataTxId,
 				file.dataContentType,
 				entityId,
-				driveKey
+				driveKey,
+				file.customMetaDataJson
 			),
 			file.driveId,
 			entityId,
-			file.parentFolderId
+			file.parentFolderId,
+			file.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
@@ -2047,10 +2055,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		metadataRewardSettings
 	}: ArFSRenamePublicFolderParams): Promise<ArFSRenamePublicFolderResult> {
 		const objectMetaData = new ArFSPublicFolderMetaDataPrototype(
-			new ArFSPublicFolderTransactionData(newName),
+			new ArFSPublicFolderTransactionData(newName, folder.customMetaDataJson),
 			folder.driveId,
 			folder.entityId,
-			folder.parentFolderId
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
@@ -2076,8 +2085,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const objectMetaData = new ArFSPrivateFolderMetaDataPrototype(
 			folder.driveId,
 			folder.entityId,
-			await ArFSPrivateFolderTransactionData.from(newName, driveKey),
-			folder.parentFolderId
+			await ArFSPrivateFolderTransactionData.from(newName, driveKey, folder.customMetaDataJson),
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
@@ -2101,8 +2111,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		metadataRewardSettings
 	}: ArFSRenamePublicDriveParams): Promise<ArFSRenamePublicDriveResult> {
 		const objectMetaData = new ArFSPublicDriveMetaDataPrototype(
-			new ArFSPublicDriveTransactionData(newName, drive.rootFolderId),
-			drive.driveId
+			new ArFSPublicDriveTransactionData(newName, drive.rootFolderId, drive.customMetaDataJson),
+			drive.driveId,
+			drive.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
@@ -2127,7 +2138,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}: ArFSRenamePrivateDriveParams): Promise<ArFSRenamePrivateDriveResult> {
 		const objectMetaData = new ArFSPrivateDriveMetaDataPrototype(
 			drive.driveId,
-			await ArFSPrivateDriveTransactionData.from(newName, drive.rootFolderId, driveKey)
+			await ArFSPrivateDriveTransactionData.from(newName, drive.rootFolderId, driveKey, drive.customMetaDataJson),
+			drive.customMetaDataGqlTags
 		);
 
 		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(

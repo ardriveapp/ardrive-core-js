@@ -183,6 +183,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		const originalFileMetaData = await this.getPublicFile({ fileId });
+		originalFileMetaData.customMetaDataGqlTags;
 
 		if (!destFolderDriveId.equals(originalFileMetaData.driveId)) {
 			throw new Error(errorMessage.cannotMoveToDifferentDrive);
@@ -204,7 +205,8 @@ export class ArDrive extends ArDriveAnonymous {
 			originalFileMetaData.size,
 			originalFileMetaData.lastModifiedDate,
 			originalFileMetaData.dataTxId,
-			originalFileMetaData.dataContentType
+			originalFileMetaData.dataContentType,
+			originalFileMetaData.customMetaDataJson
 		);
 
 		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
@@ -286,7 +288,8 @@ export class ArDrive extends ArDriveAnonymous {
 			originalFileMetaData.dataTxId,
 			originalFileMetaData.dataContentType,
 			fileId,
-			driveKey
+			driveKey,
+			originalFileMetaData.customMetaDataJson
 		);
 
 		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
@@ -373,7 +376,10 @@ export class ArDrive extends ArDriveAnonymous {
 			throw new Error(errorMessage.cannotMoveParentIntoChildFolder);
 		}
 
-		const folderTransactionData = new ArFSPublicFolderTransactionData(originalFolderMetaData.name);
+		const folderTransactionData = new ArFSPublicFolderTransactionData(
+			originalFolderMetaData.name,
+			originalFolderMetaData.customMetaDataJson
+		);
 		const folderMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
@@ -462,7 +468,8 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const folderTransactionData = await ArFSPrivateFolderTransactionData.from(
 			originalFolderMetaData.name,
-			driveKey
+			driveKey,
+			originalFolderMetaData.customMetaDataJson
 		);
 		const folderMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
@@ -1497,7 +1504,8 @@ export class ArDrive extends ArDriveAnonymous {
 			file.size,
 			file.lastModifiedDate,
 			file.dataTxId,
-			file.dataContentType
+			file.dataContentType,
+			file.customMetaDataJson
 		);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
@@ -1557,7 +1565,8 @@ export class ArDrive extends ArDriveAnonymous {
 			file.dataTxId,
 			file.dataContentType,
 			file.fileId,
-			driveKey
+			driveKey,
+			file.customMetaDataJson
 		);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
@@ -1618,7 +1627,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
-		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName);
+		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName, folder.customMetaDataJson);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
@@ -1676,7 +1685,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 		assertValidArFSFolderName(newName);
 		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
-		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(newName, driveKey);
+		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(
+			newName,
+			driveKey,
+			folder.customMetaDataJson
+		);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
@@ -1730,7 +1743,11 @@ export class ArDrive extends ArDriveAnonymous {
 			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
 		}
 		assertValidArFSDriveName(newName);
-		const driveMetadataTxDataStub = new ArFSPublicDriveTransactionData(newName, drive.rootFolderId);
+		const driveMetadataTxDataStub = new ArFSPublicDriveTransactionData(
+			newName,
+			drive.rootFolderId,
+			drive.customMetaDataJson
+		);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
@@ -1785,7 +1802,8 @@ export class ArDrive extends ArDriveAnonymous {
 		const driveMetadataTxDataStub = await ArFSPrivateDriveTransactionData.from(
 			newName,
 			drive.rootFolderId,
-			driveKey
+			driveKey,
+			drive.customMetaDataJson
 		);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
