@@ -47,6 +47,9 @@ export class Turbo {
 				validateStatus: () => true
 			}
 		);
+		if (status === 202) {
+			return { id: dataItem.id, owner: dataItem.owner };
+		}
 
 		if (status !== 200) {
 			throw new Error(`Upload to Turbo Has Failed. Status: ${status} Text: ${statusText}`);
