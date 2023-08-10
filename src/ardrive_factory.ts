@@ -36,6 +36,7 @@ export interface ArDriveSettingsAnonymous {
 export interface TurboSettings {
 	turboUrl?: URL;
 }
+
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
 	appVersion?: string;
