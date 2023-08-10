@@ -1,5 +1,5 @@
 import { DataItem } from 'arbundles';
-import axios from 'axios';
+import { createAxiosInstance } from '../utils/axiosClient';
 
 interface TurboParams {
 	turboUrl: URL;
@@ -36,7 +36,7 @@ export class Turbo {
 				owner: dataItem.owner
 			};
 		}
-		const { data, status, statusText } = await axios.post<SendDataItemsResponse>(
+		const { data, status, statusText } = await createAxiosInstance({}).post<SendDataItemsResponse>(
 			this.dataItemEndpoint,
 			dataItem.getRaw(),
 			{
