@@ -415,10 +415,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
 		const bundle = await bundleAndSignData(dataItems, signer);
 		const bdi = createData(bundle.getRaw(), signer, {
-			tags: [
-				{ name: 'Bundle-Format', value: 'binary' },
-				{ name: 'Bundle-Version', value: '2.0.0' }
-			]
+			// baseBundleTags includes:  Bundle Format/Version, App Name/Version
+			tags: this.arFSTagSettings.baseBundleTags
 		});
 		await bdi.sign(signer);
 		return bdi;
