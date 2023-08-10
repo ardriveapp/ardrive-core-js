@@ -23,13 +23,12 @@ export interface UploadPlanner {
 	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
 	planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan;
 	isTurboUpload(): boolean;
-	useTurbo: boolean;
 }
 
 /** Utility class for planning an upload into an UploadPlan */
 export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
-	public readonly useTurbo: boolean;
+	private readonly useTurbo: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePackerFactory;
 	private readonly tagAssembler: ArFSTagAssembler;

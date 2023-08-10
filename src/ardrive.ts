@@ -207,7 +207,7 @@ export class ArDrive extends ArDriveAnonymous {
 			originalFileMetaData.dataContentType
 		);
 
-		const fileMetaDataBaseReward = this.uploadPlanner.useTurbo
+		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
@@ -289,7 +289,7 @@ export class ArDrive extends ArDriveAnonymous {
 			driveKey
 		);
 
-		const fileMetaDataBaseReward = this.uploadPlanner.useTurbo
+		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
@@ -374,7 +374,7 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		const folderTransactionData = new ArFSPublicFolderTransactionData(originalFolderMetaData.name);
-		const folderMetaDataBaseReward = this.uploadPlanner.useTurbo
+		const folderMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderTransactionData)).metaDataBaseReward,
@@ -464,7 +464,7 @@ export class ArDrive extends ArDriveAnonymous {
 			originalFolderMetaData.name,
 			driveKey
 		);
-		const folderMetaDataBaseReward = this.uploadPlanner.useTurbo
+		const folderMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderTransactionData)).metaDataBaseReward,
@@ -1040,7 +1040,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Assert that there's enough AR available in the wallet
 		const folderData = new ArFSPublicFolderTransactionData(folderName);
-		const rewardSettings = this.uploadPlanner.useTurbo
+		const rewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
@@ -1106,7 +1106,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// Assert that there's enough AR available in the wallet
 		const folderData = await ArFSPrivateFolderTransactionData.from(folderName, driveKey);
-		const rewardSettings = this.uploadPlanner.useTurbo
+		const rewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
@@ -1155,7 +1155,7 @@ export class ArDrive extends ArDriveAnonymous {
 			rewardSettings: CreateDriveRewardSettings
 		) => Promise<ArFSCreateDriveResult | ArFSCreateBundledDriveResult>
 	): Promise<ArFSResult> {
-		const rewardSettings = this.uploadPlanner.useTurbo
+		const rewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: await (async () => {
 					const uploadPlan = this.uploadPlanner.planCreateDrive(arFSPrototypes);
@@ -1500,7 +1500,7 @@ export class ArDrive extends ArDriveAnonymous {
 			file.dataContentType
 		);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
@@ -1560,7 +1560,7 @@ export class ArDrive extends ArDriveAnonymous {
 			driveKey
 		);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
@@ -1620,7 +1620,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
 		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
@@ -1678,7 +1678,7 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
 		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(newName, driveKey);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
@@ -1732,7 +1732,7 @@ export class ArDrive extends ArDriveAnonymous {
 		assertValidArFSDriveName(newName);
 		const driveMetadataTxDataStub = new ArFSPublicDriveTransactionData(newName, drive.rootFolderId);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
@@ -1788,7 +1788,7 @@ export class ArDrive extends ArDriveAnonymous {
 			driveKey
 		);
 
-		const metadataRewardSettings = this.uploadPlanner.useTurbo
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
