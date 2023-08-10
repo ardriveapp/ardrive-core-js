@@ -177,8 +177,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	}
 
 	/**
-	 * Determines whether this batch of UploadStats is all within the
-	 * free ArFS data limit and if we will send it to the Turbo
+	 * Determines whether to send data items to Turbo
 	 */
 	public isTurboUpload(): boolean {
 		return this.shouldBundle && this.useTurbo;
