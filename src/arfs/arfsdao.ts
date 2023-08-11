@@ -897,41 +897,53 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				if (wrappedEntity.entityType === 'file') {
 					return { numFiles: numFiles + 1, numFolders };
 				}
+				const { numFiles: subFiles, numFolders: subFolders } = wrappedEntity.getContentToUploadCounts();
 				return {
-					numFiles,
-					numFolders: numFolders + 1
+					numFiles: numFiles + subFiles,
+					numFolders: numFolders + subFolders
 				};
 			},
 			{ numFiles: 0, numFolders: 0 }
 		);
 		const { numFiles: totalNumFiles, numFolders: totalNumFolders } = totalContentCountsToUpload;
 		const contentCountUploaded = { numFiles: 0, numFolders: 0 };
-		const { numFiles, numFolders } = contentCountUploaded;
 
-		const logProgress = () => {
+		if (this.shouldProgressLog) {
+			console.error(`\nUploading to Turbo at ${this.turbo.turboUrl}...\n`);
+		}
+
+		const logProgress = (entityType?: 'file' | 'folder') => {
+			if (entityType === 'file') {
+				contentCountUploaded.numFiles++;
+			} else if (entityType === 'folder') {
+				contentCountUploaded.numFolders++;
+			}
+
 			if (this.shouldProgressLog && totalNumFiles + totalNumFolders > 1) {
 				console.error(
-					`Uploading to turbo...\n${numFiles} of ${totalNumFiles} Files Uploaded\n${numFolders} of total ${totalNumFolders} Folders Uploaded...`
+					`Upload Progress: ${contentCountUploaded.numFiles}/${totalNumFiles} Files${
+						totalNumFolders > 0 ? `, ${contentCountUploaded.numFolders}/${totalNumFolders} Folders...` : ``
+					}`
 				);
 			}
 		};
+		logProgress();
 
 		for (const { wrappedEntity, destDriveId, owner, destFolderId, driveKey } of uploadStats) {
 			if (wrappedEntity.entityType === 'folder') {
-				const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo({
-					wrappedEntity,
-					destDriveId,
-					destFolderId,
-					owner,
-					driveKey
-				});
+				const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo(
+					{
+						wrappedEntity,
+						destDriveId,
+						destFolderId,
+						owner,
+						driveKey
+					},
+					logProgress
+				);
 				results.fileResults.push(...recursiveFolderResults.fileResults);
 				results.folderResults.push(...recursiveFolderResults.folderResults);
 				results.bundleResults.push(...recursiveFolderResults.bundleResults);
-				const contentCounts = wrappedEntity.getContentToUploadCounts();
-				contentCountUploaded.numFiles += contentCounts.numFiles;
-				contentCountUploaded.numFolders += contentCounts.numFolders;
-				logProgress();
 			} else {
 				try {
 					const fileResult = await this.uploadFileToTurbo({
@@ -952,19 +964,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 				contentCountUploaded.numFiles++;
 			}
-			logProgress();
+			logProgress('file');
 		}
 
 		return results;
 	}
 
-	private async recursivelyUploadFolderToTurbo({
-		wrappedEntity,
-		destDriveId,
-		owner,
-		destFolderId,
-		driveKey
-	}: UploadStats<ArFSFolderToUpload>): Promise<ArFSUploadEntitiesResult> {
+	private async recursivelyUploadFolderToTurbo(
+		{ wrappedEntity, destDriveId, owner, destFolderId, driveKey }: UploadStats<ArFSFolderToUpload>,
+		progressCallback?: (entityType: 'file' | 'folder') => void
+	): Promise<ArFSUploadEntitiesResult> {
 		const results: ArFSUploadEntitiesResult = {
 			folderResults: [],
 			fileResults: [],
@@ -983,6 +992,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedEntity
 				});
 				results.folderResults.push(folderResult);
+				progressCallback?.('folder');
 			} catch (error) {
 				console.error(`Error uploading folder ${wrappedEntity.sourceUri}: ${error}`);
 				console.error(`Skipping its contents and continuing...`);
@@ -1003,6 +1013,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				});
 
 				results.fileResults.push(fileResult);
+				progressCallback?.('file');
 				if (fileResult.bundledIn) {
 					results.bundleResults.push({ bundleTxId: fileResult.bundledIn });
 				}
@@ -1013,13 +1024,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		}
 
 		for (const folder of wrappedEntity.folders) {
-			const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo({
-				destDriveId,
-				destFolderId: fileDestFolderId,
-				wrappedEntity: folder,
-				owner,
-				driveKey
-			});
+			const recursiveFolderResults = await this.recursivelyUploadFolderToTurbo(
+				{
+					destDriveId,
+					destFolderId: fileDestFolderId,
+					wrappedEntity: folder,
+					owner,
+					driveKey
+				},
+				progressCallback
+			);
 
 			results.fileResults.push(...recursiveFolderResults.fileResults);
 			results.folderResults.push(...recursiveFolderResults.folderResults);

@@ -17,7 +17,7 @@ export interface SendDataItemsResponse extends TurboCachesResponse {
 }
 
 export class Turbo {
-	private turboUrl: URL;
+	public readonly turboUrl: URL;
 	private isDryRun: boolean;
 
 	constructor({ turboUrl, isDryRun }: TurboParams) {
