@@ -183,7 +183,6 @@ export class ArDrive extends ArDriveAnonymous {
 		await this.assertOwnerAddress(owner);
 
 		const originalFileMetaData = await this.getPublicFile({ fileId });
-		originalFileMetaData.customMetaDataGqlTags;
 
 		if (!destFolderDriveId.equals(originalFileMetaData.driveId)) {
 			throw new Error(errorMessage.cannotMoveToDifferentDrive);
