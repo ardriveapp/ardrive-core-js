@@ -2082,7 +2082,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 
 		// Invalidate any cached entry
-		const owner = await this.getDriveOwnerForFileId(folder.entityId);
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
 		this.caches.publicFolderCache.remove({ folderId: folder.entityId, owner });
 
 		return {
@@ -2114,7 +2114,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 
 		// Invalidate any cached entry
-		const owner = await this.getDriveOwnerForFileId(folder.entityId);
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
 		this.caches.privateFolderCache.remove({ folderId: folder.entityId, owner, driveKey });
 
 		return {
@@ -2144,7 +2144,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 
 		// Invalidate any cached entry
-		const owner = await this.getDriveOwnerForFileId(drive.driveId);
+		const owner = await this.getOwnerForDriveId(drive.driveId);
 		this.caches.publicDriveCache.remove({ driveId: drive.driveId, owner });
 
 		return {
@@ -2174,7 +2174,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 
 		// Invalidate any cached entry
-		const owner = await this.getDriveOwnerForFileId(drive.driveId);
+		const owner = await this.getOwnerForDriveId(drive.driveId);
 		this.caches.privateDriveCache.remove({ driveId: drive.driveId, owner, driveKey });
 
 		return {
