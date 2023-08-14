@@ -180,7 +180,7 @@ export class ArFSUploadPlanner implements UploadPlanner {
 	 * Determines whether to send data items to Turbo
 	 */
 	public isTurboUpload(): boolean {
-		return this.shouldBundle && this.useTurbo;
+		return this.useTurbo;
 	}
 
 	/**
