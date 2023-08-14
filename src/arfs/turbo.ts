@@ -1,9 +1,11 @@
 import { DataItem } from 'arbundles';
 import { createAxiosInstance } from '../utils/axiosClient';
+import { AxiosInstance } from 'axios';
 
 interface TurboParams {
 	turboUrl: URL;
 	isDryRun: boolean;
+	axios?: AxiosInstance;
 }
 
 export interface TurboCachesResponse {
@@ -19,10 +21,12 @@ export interface SendDataItemsResponse extends TurboCachesResponse {
 export class Turbo {
 	public readonly turboUrl: URL;
 	private isDryRun: boolean;
+	private axios: AxiosInstance;
 
-	constructor({ turboUrl, isDryRun }: TurboParams) {
+	constructor({ turboUrl, isDryRun, axios = createAxiosInstance({}) }: TurboParams) {
 		this.turboUrl = turboUrl;
 		this.isDryRun = isDryRun;
+		this.axios = axios;
 	}
 
 	private get dataItemEndpoint(): string {
@@ -35,7 +39,7 @@ export class Turbo {
 			return defaultResponse;
 		}
 
-		const { data, status, statusText } = await createAxiosInstance({}).post<SendDataItemsResponse>(
+		const { data, status, statusText } = await this.axios.post<SendDataItemsResponse>(
 			this.dataItemEndpoint,
 			dataItem.getRaw(),
 			{
