@@ -30,12 +30,11 @@ export class Turbo {
 	}
 
 	async sendDataItem(dataItem: DataItem): Promise<SendDataItemsResponse> {
+		const defaultResponse = { id: dataItem.id, owner: dataItem.owner };
 		if (this.isDryRun) {
-			return {
-				id: dataItem.id,
-				owner: dataItem.owner
-			};
+			return defaultResponse;
 		}
+
 		const { data, status, statusText } = await createAxiosInstance({}).post<SendDataItemsResponse>(
 			this.dataItemEndpoint,
 			dataItem.getRaw(),
@@ -47,13 +46,15 @@ export class Turbo {
 				validateStatus: () => true
 			}
 		);
+
 		if (status === 202) {
-			return { id: dataItem.id, owner: dataItem.owner };
+			return defaultResponse;
 		}
 
 		if (status !== 200) {
 			throw new Error(`Upload to Turbo Has Failed. Status: ${status} Text: ${statusText}`);
 		}
+
 		return data;
 	}
 }
