@@ -376,13 +376,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		return entitiesWithPath;
 	}
 
-	/**
-	 * Returns the data stream of a public file
-	 * @param fileTxId - the transaction ID of the data to be download
-	 * @returns {Promise<Readable>}
-	 */
-	async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
-		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${fileTxId}`;
+	private async getDataStream(dataTxUrl: string): Promise<Readable> {
 		const requestConfig: AxiosRequestConfig = {
 			method: 'get',
 			url: dataTxUrl,
@@ -390,6 +384,26 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		};
 		const response = await axios(requestConfig);
 		return response.data;
+	}
+
+	/**
+	 * Returns the data stream of a public file
+	 * @param fileTxId - the transaction ID of the data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	public async getPublicDataStream(fileTxId: TransactionID): Promise<Readable> {
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${fileTxId}`;
+		return this.getDataStream(dataTxUrl);
+	}
+
+	/**
+	 * Returns the data stream of a public manifest
+	 * @param fileTxId - the transaction ID of the manifest json data to be download
+	 * @returns {Promise<Readable>}
+	 */
+	public async getPublicRawManifestDataStream(fileTxId: TransactionID): Promise<Readable> {
+		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}raw/${fileTxId}`;
+		return this.getDataStream(dataTxUrl);
 	}
 
 	async downloadPublicFolder({
