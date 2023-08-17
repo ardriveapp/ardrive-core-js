@@ -63,6 +63,8 @@ export interface ArFSPrepareDriveParams<T> extends PartialPrepareDriveParams {
 	prepareArFSObject: PrepareArFSObject<T, ArFSFolderMetaDataPrototype | ArFSDriveMetaDataPrototype>;
 }
 
+export type ArFSFolderPrototypeFactory = (folderId: FolderID) => ArFSFolderMetaDataPrototype;
+
 export interface ArFSPrepareResult<T> {
 	arFSObjects: T[];
 }
@@ -84,7 +86,7 @@ export interface ArFSPrepareFileResult<T, U> {
 
 export interface ArFSCreateFolderParams<T extends ArFSFolderTransactionData> {
 	driveId: DriveID;
-	rewardSettings: RewardSettings;
+	rewardSettings?: RewardSettings;
 	parentFolderId: FolderID;
 	folderData: T;
 }
@@ -112,7 +114,7 @@ export interface ArFSMoveParams<
 > {
 	originalMetaData: O;
 	newParentFolderId: FolderID;
-	metaDataBaseReward: RewardSettings;
+	metaDataBaseReward?: RewardSettings;
 	transactionData: T;
 }
 
@@ -176,30 +178,29 @@ export interface ArFSGetPublicChildFolderIdsParams {
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
 
-export interface ArFSRenamePublicFileParams {
-	file: ArFSPublicFile;
+export interface ArFSRenameParams {
 	newName: string;
-	metadataRewardSettings: RewardSettings;
+	metadataRewardSettings?: RewardSettings;
+}
+
+export interface ArFSRenamePublicFileParams extends ArFSRenameParams {
+	file: ArFSPublicFile;
 }
 export type ArFSRenamePrivateFileParams = ArFSRenamePublicFileParams &
 	WithDriveKey & {
 		file: ArFSPrivateFile;
 	};
 
-export interface ArFSRenamePublicFolderParams {
+export interface ArFSRenamePublicFolderParams extends ArFSRenameParams {
 	folder: ArFSPublicFolder;
-	newName: string;
-	metadataRewardSettings: RewardSettings;
 }
 export type ArFSRenamePrivateFolderParams = ArFSRenamePublicFolderParams &
 	WithDriveKey & {
 		folder: ArFSPrivateFolder;
 	};
 
-export interface ArFSRenamePublicDriveParams {
+export interface ArFSRenamePublicDriveParams extends ArFSRenameParams {
 	drive: ArFSPublicDrive;
-	newName: string;
-	metadataRewardSettings: RewardSettings;
 }
 export type ArFSRenamePrivateDriveParams = ArFSRenamePublicDriveParams &
 	WithDriveKey & {

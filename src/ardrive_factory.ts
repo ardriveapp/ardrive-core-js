@@ -10,7 +10,8 @@ import {
 	defaultGatewayPort,
 	defaultGatewayProtocol,
 	DEFAULT_APP_NAME,
-	DEFAULT_APP_VERSION
+	DEFAULT_APP_VERSION,
+	turboProdUrl
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
@@ -22,6 +23,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
+import { Turbo } from './arfs/turbo';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -30,6 +32,11 @@ export interface ArDriveSettingsAnonymous {
 	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
 }
+
+export interface TurboSettings {
+	turboUrl?: URL;
+}
+
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	/** @deprecated App Version will be removed in a future release. Use ArFSTagSettings instead */
 	appVersion?: string;
@@ -46,6 +53,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	uploadPlanner?: UploadPlanner;
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
+	turboSettings?: TurboSettings;
 }
 
 const defaultArweave = Arweave.init({
@@ -67,12 +75,27 @@ export function arDriveFactory({
 	walletDao = new WalletDAO(arweave, appName, appVersion),
 	shouldBundle = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
+	turboSettings = undefined,
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
-		arFSTagSettings
+		arFSTagSettings,
+		useTurbo: turboSettings === undefined ? false : true
 	}),
 	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
-	arfsDao = new ArFSDAO(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings)
+	arfsDao = new ArFSDAO(
+		wallet,
+		arweave,
+		dryRun,
+		appName,
+		appVersion,
+		arFSTagSettings,
+		undefined,
+		undefined,
+		undefined,
+		turboSettings === undefined
+			? undefined
+			: new Turbo({ turboUrl: turboSettings.turboUrl ?? turboProdUrl, isDryRun: dryRun })
+	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,

@@ -109,14 +109,16 @@ describe('ArLocal Integration Tests', function () {
 	const bundledUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
 		priceEstimator,
-		communityOracle
+		communityOracle,
+		useTurbo: false
 	});
 
 	const v2TxUploadPlanner = new ArFSUploadPlanner({
 		arFSTagSettings,
 		priceEstimator,
 		communityOracle,
-		shouldBundle: false
+		shouldBundle: false,
+		useTurbo: false
 	});
 
 	const v2ArDrive = new ArDrive(
