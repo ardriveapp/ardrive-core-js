@@ -22,11 +22,13 @@ import { ArFSTagAssembler } from './tags/tag_assembler';
 export interface UploadPlanner {
 	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;
 	planCreateDrive(arFSPrototypes: EstimateCreateDriveParams): CreateDrivePlan;
+	isTurboUpload(): boolean;
 }
 
 /** Utility class for planning an upload into an UploadPlan */
 export class ArFSUploadPlanner implements UploadPlanner {
 	private readonly shouldBundle: boolean;
+	private readonly useTurbo: boolean;
 	private readonly arFSTagSettings: ArFSTagSettings;
 	private readonly bundlePacker: BundlePackerFactory;
 	private readonly tagAssembler: ArFSTagAssembler;
@@ -40,10 +42,12 @@ export class ArFSUploadPlanner implements UploadPlanner {
 
 	constructor({
 		shouldBundle = true,
+		useTurbo = true,
 		arFSTagSettings,
 		bundlePacker = () => new LowestIndexBundlePacker(MAX_BUNDLE_SIZE, MAX_DATA_ITEM_LIMIT)
 	}: ArFSUploadPlannerConstructorParams) {
 		this.shouldBundle = shouldBundle;
+		this.useTurbo = useTurbo;
 		this.arFSTagSettings = arFSTagSettings;
 		this.bundlePacker = bundlePacker;
 		this.tagAssembler = new ArFSTagAssembler(arFSTagSettings);
@@ -170,6 +174,13 @@ export class ArFSUploadPlanner implements UploadPlanner {
 				bundlePacker
 			);
 		}
+	}
+
+	/**
+	 * Determines whether to send data items to Turbo
+	 */
+	public isTurboUpload(): boolean {
+		return this.useTurbo;
 	}
 
 	/**

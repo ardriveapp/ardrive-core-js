@@ -11,10 +11,11 @@ import {
 	EntityName,
 	EntityID
 } from '../types';
+import { TurboCachesResponse } from './turbo';
 
-export interface ArFSBundleWriteResult {
+export interface ArFSBundleWriteResult extends TurboCachesResponse {
 	bundleTxId: TransactionID;
-	bundleTxReward: Winston;
+	bundleTxReward?: Winston;
 	metaDataTxId: TransactionID;
 }
 
@@ -24,9 +25,9 @@ export function isBundleResult(
 	return Object.keys(arFSResult).includes('bundleTxId');
 }
 
-export interface ArFSWriteResult {
+export interface ArFSWriteResult extends TurboCachesResponse {
 	metaDataTxId: TransactionID;
-	metaDataTxReward: Winston;
+	metaDataTxReward?: Winston;
 }
 
 export interface ArFSUploadEntitiesResult {
@@ -35,7 +36,7 @@ export interface ArFSUploadEntitiesResult {
 	bundleResults: BundleResult[];
 }
 
-export interface BaseArFSUploadResult {
+export interface BaseArFSUploadResult extends TurboCachesResponse {
 	entityName: EntityName;
 	bundledIn?: TransactionID;
 	sourceUri?: SourceUri;
@@ -59,7 +60,7 @@ export interface FileResult extends BaseArFSUploadResult {
 
 export interface BundleResult {
 	bundleTxId: TransactionID;
-	bundleReward: Winston;
+	bundleReward?: Winston;
 	communityTipSettings?: CommunityTipSettings;
 }
 
@@ -69,8 +70,9 @@ export interface ArFSDriveResult {
 	rootFolderId: FolderID;
 }
 export type ArFSCreateBundledDriveResult = ArFSBundleWriteResult & ArFSDriveResult;
+export type ArFSCreateDriveToTurboResult = Omit<ArFSCreateBundledDriveResult, 'bundleTxReward'>;
 export interface ArFSCreateDriveResult extends ArFSWriteResult, ArFSDriveResult {
-	rootFolderTxReward: Winston;
+	rootFolderTxReward?: Winston;
 }
 
 export interface ArFSV2PublicRetryResult {

@@ -56,7 +56,7 @@ export class GatewayAPI {
 		maxRetriesPerRequest = 8,
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
-		validStatusCodes = [200],
+		validStatusCodes = [200, 202],
 		axiosInstance = axios.create({ validateStatus: undefined })
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;
@@ -84,7 +84,7 @@ export class GatewayAPI {
 
 			return data.data.transactions;
 		} catch (error) {
-			throw Error(`GQL Error: ${error.message}`);
+			throw Error(`GQL Error: ${(error as Error).message}`);
 		}
 	}
 
@@ -187,7 +187,7 @@ export class GatewayAPI {
 
 			this.lastError = resp.statusText ?? resp;
 		} catch (err) {
-			this.lastError = err instanceof Error ? err.message : err;
+			this.lastError = err instanceof Error ? err.message : `${err}`; // stringify error if unknown type
 		}
 
 		return undefined;

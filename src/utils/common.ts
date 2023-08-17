@@ -422,6 +422,7 @@ export async function createPublicDriveSharingLink(driveToShare: types.ArFSDrive
 }
 
 // FIXME: set the correct type for this argument
+// eslint-disable-next-line
 export async function Utf8ArrayToStr(array: any): Promise<string> {
 	let out, i, c;
 	let char2, char3;

@@ -88,6 +88,16 @@ const uploadFileResult = await arDrive.uploadAllEntities({
 });
 ```
 
+```ts
+// Upload ArFS Entities To Turbo (BETA)
+// The presence of `turboSettings` in `arDriveFactory` enables sending to Turbo
+const arDrive = arDriveFactory({ wallet: myWallet, turboSettings: {} });
+
+const uploadFileResult = await arDrive.uploadAllEntities({
+    entitiesToUpload: [{ wrappedEntity, destFolderId }]
+});
+```
+
 ## Development Environment Setup
 
 We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.
@@ -95,8 +105,8 @@ We use nvm to manage our Node engine version and, if necessary, to install an np
 Note for Windows: **We recommend using WSL** for setting up NVM on Windows using the [instructions described here][wsl-install] then continue the steps below.
 
 1. Install nvm [using their instructions][nvm-install].
-2. Ensure that the correct Node version is installed and activated by performing `nvm install` and then `nvm use`
-3. We use Yarn 2.x please [follow the installation guidelines here][yarn-install]
+2. We use Node 18.x -- ensure that the correct Node version is installed and activated by performing `nvm install` and then `nvm use`
+3. We use Yarn 3.x please [follow the installation guidelines here][yarn-install]
 4. We use husky 6.x to manage the git commit hooks that help to improve the quality of our commits. Please run:
    `yarn husky install`
    to enable git hooks for this local repository. Without doing so, you risk committing non-compliant code to the repository.
