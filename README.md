@@ -89,7 +89,8 @@ const uploadFileResult = await arDrive.uploadAllEntities({
 ```
 
 ```ts
-// Upload To Turbo (BETA)
+// Upload ArFS Entities To Turbo (BETA)
+// The presence of `turboSettings` in `arDriveFactory` enables sending to Turbo
 const arDrive = arDriveFactory({ wallet: myWallet, turboSettings: {} });
 
 const uploadFileResult = await arDrive.uploadAllEntities({
