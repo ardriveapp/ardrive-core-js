@@ -88,6 +88,15 @@ const uploadFileResult = await arDrive.uploadAllEntities({
 });
 ```
 
+```ts
+// Upload To Turbo (BETA)
+const arDrive = arDriveFactory({ wallet: myWallet, turboSettings: {} });
+
+const uploadFileResult = await arDrive.uploadAllEntities({
+    entitiesToUpload: [{ wrappedEntity, destFolderId }]
+});
+```
+
 ## Development Environment Setup
 
 We use nvm to manage our Node engine version and, if necessary, to install an npm version that we can then use to install Yarn.
