@@ -1,16 +1,13 @@
 import { DataItem } from 'arbundles';
-import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
 import { Readable } from 'node:stream';
-import { TurboFactory, TurboUnauthenticatedClient, TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 
+import {TurboUnauthenticatedClient, TurboUploadDataItemResponse, TurboFactory } from '@ardrive/turbo-sdk';
 
 export interface TurboSettings {
 	turboUploadUrl: URL;
 	turboPaymentUrl: URL;
 	isDryRun: boolean;
 }
-
-
 
 export interface TurboCachesResponse {
 	dataCaches?: string[];
@@ -26,10 +23,10 @@ export class Turbo {
 		this.isDryRun = isDryRun;
 		this.turbo = TurboFactory.unauthenticated({
 			uploadServiceConfig: {
-				url: turboUploadUrl?.toString() ?? defaultTurboUploadUrl.toString()
+				url: turboUploadUrl.toString()
 			},
 			paymentServiceConfig: {
-				url: turboPaymentUrl?.toString() ?? defaultTurboPaymentUrl.toString()
+				url: turboPaymentUrl.toString()
 			}
 		});
 	}

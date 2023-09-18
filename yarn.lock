@@ -21,16 +21,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/turbo-sdk@npm:^1.0.0-alpha.13":
-  version: 1.0.0-alpha.13
-  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.13"
+"@ardrive/turbo-sdk@npm:^1.0.0-alpha.15":
+  version: 1.0.0-alpha.15
+  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.15"
   dependencies:
     arbundles: ^0.9.9
     arweave: ^1.14.4
     axios: ^1.4.0
-    retry-axios: 3.0.0
+    axios-retry: ^3.7.0
     winston: ^3.10.0
-  checksum: 22b291dba1c5baece40ea3c443eae20cb72667e4413475e5c7bb1e6157d4c89fb1b493c3b0cc339b8ea4e868bf5817dd8d9fa32293ea0f364a1d6381f844a2d1
+  checksum: 50ec85e19e1b5e00ad8067b37c5a9a9cdc13b86b772e3796aa79e6fe6abde601f277b40eb3c96130116742bda1d3c2ea19d81c96a2690b0796c4fd8a1e3664e2
   languageName: node
   linkType: hard
 
@@ -2223,7 +2223,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@alexsasharegan/simple-cache": ^3.3.3
-    "@ardrive/turbo-sdk": ^1.0.0-alpha.13
+    "@ardrive/turbo-sdk": ^1.0.0-alpha.15
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/bn.js": ^5
     "@types/chai": ^4.2.15
@@ -2491,6 +2491,16 @@ __metadata:
     "@babel/runtime": ^7.15.4
     is-retry-allowed: ^2.2.0
   checksum: 9ed0879453170a55960dea21116e7f732f1e78acb72eb49d80b1620583814d94bda78200d0767bae82d37cc2ab80752f0aec49717ce4b141858059c0c6b9921c
+  languageName: node
+  linkType: hard
+
+"axios-retry@npm:^3.7.0":
+  version: 3.7.0
+  resolution: "axios-retry@npm:3.7.0"
+  dependencies:
+    "@babel/runtime": ^7.15.4
+    is-retry-allowed: ^2.2.0
+  checksum: ef34b50a86b5cd65ce2bf933aaed422ffb1a17b8fe11a53e444437fb42be400b48271d1ff9fd23a051627b7f3b33bebdeb1d66556aae04d5d6bfbe57fecdfb64
   languageName: node
   linkType: hard
 
@@ -7163,15 +7173,6 @@ fsevents@~2.3.1:
     onetime: ^5.1.0
     signal-exit: ^3.0.2
   checksum: f877dd8741796b909f2a82454ec111afb84eb45890eb49ac947d87991379406b3b83ff9673a46012fca0d7844bb989f45cc5b788254cf1a39b6b5a9659de0630
-  languageName: node
-  linkType: hard
-
-"retry-axios@npm:3.0.0":
-  version: 3.0.0
-  resolution: "retry-axios@npm:3.0.0"
-  peerDependencies:
-    axios: "*"
-  checksum: 27675baf7b02163b3f9cfb608b8d9e6aa7ce9dffeca502c87523c0ac438235fd14fbff38802ad18d7929bb65762d62961d6cf35866c369ac767aeb93dbe3a8a1
   languageName: node
   linkType: hard
 
