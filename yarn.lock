@@ -21,16 +21,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/turbo-sdk@npm:^1.0.0-alpha.11":
-  version: 1.0.0-alpha.11
-  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.11"
+"@ardrive/turbo-sdk@npm:^1.0.0-alpha.13":
+  version: 1.0.0-alpha.13
+  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.13"
   dependencies:
     arbundles: ^0.9.9
     arweave: ^1.14.4
     axios: ^1.4.0
-    retry-axios: ^3.0.0
+    retry-axios: 3.0.0
     winston: ^3.10.0
-  checksum: 0b372998e72280d8d1b002acc5f51457b1ace1c5b835d003e2571c050f90a1ed17face034003129691e1ec0f746c75c1f247fb12dbb2c00e64b67c8ce9ba3464
+  checksum: 22b291dba1c5baece40ea3c443eae20cb72667e4413475e5c7bb1e6157d4c89fb1b493c3b0cc339b8ea4e868bf5817dd8d9fa32293ea0f364a1d6381f844a2d1
   languageName: node
   linkType: hard
 
@@ -2223,7 +2223,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@alexsasharegan/simple-cache": ^3.3.3
-    "@ardrive/turbo-sdk": ^1.0.0-alpha.11
+    "@ardrive/turbo-sdk": ^1.0.0-alpha.13
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/bn.js": ^5
     "@types/chai": ^4.2.15
@@ -7166,12 +7166,12 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"retry-axios@npm:^3.0.0":
-  version: 3.1.0
-  resolution: "retry-axios@npm:3.1.0"
+"retry-axios@npm:3.0.0":
+  version: 3.0.0
+  resolution: "retry-axios@npm:3.0.0"
   peerDependencies:
     axios: "*"
-  checksum: 5c185e5d396f4eec96d4dfe910413ed11472e425b6403b7ad313227883b4b7e29f3b00f36fce54f24f39cb1760f7994512085640d226ad15f7ed17b88cc1750c
+  checksum: 27675baf7b02163b3f9cfb608b8d9e6aa7ce9dffeca502c87523c0ac438235fd14fbff38802ad18d7929bb65762d62961d6cf35866c369ac767aeb93dbe3a8a1
   languageName: node
   linkType: hard
 

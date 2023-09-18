@@ -24,7 +24,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
-import { TurboFactory } from '@ardrive/turbo-sdk/node';
+import { Turbo, TurboSettings } from './arfs/turbo';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -32,11 +32,6 @@ export interface ArDriveSettingsAnonymous {
 	appVersion?: string;
 	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
-}
-
-export interface TurboSettings {
-	turboUploadUrl: URL;
-	turboPaymentUrl: URL;
 }
 
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
@@ -65,13 +60,10 @@ const defaultArweave = Arweave.init({
 	timeout: 600000
 });
 
-const defaultTurbo = TurboFactory.unauthenticated({
-	uploadServiceConfig: {
-		url: defaultTurboUploadUrl.toString()
-	},
-	paymentServiceConfig: {
-		url: defaultTurboPaymentUrl.toString()
-	}
+const defaultTurbo = new Turbo({
+	turboUploadUrl: defaultTurboUploadUrl,
+	turboPaymentUrl: defaultTurboPaymentUrl,
+	isDryRun: false
 });
 
 export function arDriveFactory({
@@ -105,15 +97,11 @@ export function arDriveFactory({
 		undefined,
 		turboSettings === undefined
 			? defaultTurbo
-			: TurboFactory.unauthenticated({
-					uploadServiceConfig: {
-						url: turboSettings.turboUploadUrl.toString()
-					},
-					paymentServiceConfig: {
-						url: turboSettings.turboPaymentUrl.toString()
-					}
-					// TODO: add private key
-			  })
+			: new Turbo({
+				turboUploadUrl: turboSettings.turboUploadUrl,
+				turboPaymentUrl: turboSettings.turboPaymentUrl,
+				isDryRun: turboSettings.isDryRun
+			})
 	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(

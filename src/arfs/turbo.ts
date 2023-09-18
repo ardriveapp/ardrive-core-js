@@ -1,11 +1,20 @@
 import { DataItem } from 'arbundles';
-import { TurboSettings } from '../ardrive_factory';
 import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
 import { Readable } from 'node:stream';
 import { TurboFactory, TurboUnauthenticatedClient, TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 
-interface TurboParams extends TurboSettings {
+
+export interface TurboSettings {
+	turboUploadUrl: URL;
+	turboPaymentUrl: URL;
 	isDryRun: boolean;
+}
+
+
+
+export interface TurboCachesResponse {
+	dataCaches?: string[];
+	fastFinalityIndexes?: string[];
 }
 
 // Note: this class is a wrapper of the TurboSDk - it's helpful for things like dry run and other tests, but could be removed in the future
@@ -13,7 +22,7 @@ export class Turbo {
 	private isDryRun: boolean;
 	private turbo: TurboUnauthenticatedClient;
 
-	constructor({ turboUploadUrl, turboPaymentUrl, isDryRun = false }: TurboParams) {
+	constructor({ turboUploadUrl, turboPaymentUrl, isDryRun = false }: TurboSettings) {
 		this.isDryRun = isDryRun;
 		this.turbo = TurboFactory.unauthenticated({
 			uploadServiceConfig: {

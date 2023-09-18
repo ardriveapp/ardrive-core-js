@@ -540,7 +540,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
 		rewardSettings?: RewardSettings
-	): Promise<{ id: TransactionID } & Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>> {
+	): Promise<{ id: TransactionID } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>> {
 		if (rewardSettings) {
 			const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 				objectMetaData,
@@ -915,7 +915,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const contentCountUploaded = { numFiles: 0, numFolders: 0 };
 
 		if (this.shouldProgressLog) {
-			console.error(`\nUploading to Turbo at ${this.turbo.turboUrl}...\n`);
+			console.error(`\nUploading to Turbo at...\n`);
 		}
 
 		const logProgress = (entityType?: 'file' | 'folder') => {
