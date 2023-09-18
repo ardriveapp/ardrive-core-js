@@ -15,15 +15,15 @@ import {
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
+import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import { PrivateKeyData } from '../arfs/private_key_data';
-import { TurboCachesResponse } from '../arfs/turbo';
 import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
 import { EntityKey } from './entity_key';
 import { EntityName, SourceUri } from './types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
-export interface ArFSEntityData extends TurboCachesResponse {
+export type ArFSEntityData = Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'> & {
 	type: ArFSEntityDataType;
 	sourceUri?: SourceUri;
 	entityName?: EntityName;
@@ -33,7 +33,7 @@ export interface ArFSEntityData extends TurboCachesResponse {
 	dataTxId?: TransactionID;
 	entityId?: AnyEntityID;
 	key?: EntityKey;
-}
+};
 
 export type ListPublicFolderParams = MakeOptional<ArFSListPublicFolderParams, 'maxDepth' | 'includeRoot' | 'owner'>;
 export type ListPrivateFolderParams = ListPublicFolderParams & WithDriveKey;

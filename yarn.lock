@@ -21,17 +21,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/turbo-sdk@file:../turbo/turbo-sdk/ardrive-turbo-sdk-v0.0.1.tgz::locator=ardrive-core-js%40workspace%3A.":
-  version: 0.0.1
-  resolution: "@ardrive/turbo-sdk@file:../turbo/turbo-sdk/ardrive-turbo-sdk-v0.0.1.tgz::locator=ardrive-core-js%40workspace%3A."
+"@ardrive/turbo-sdk@npm:^1.0.0-alpha.10":
+  version: 1.0.0-alpha.10
+  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.10"
   dependencies:
     arbundles: ^0.9.9
     arweave: ^1.14.4
     axios: ^1.4.0
-    husky: ^8.0.3
     retry-axios: ^3.0.0
     winston: ^3.10.0
-  checksum: 5052f2d6b4469fec7b02f2e2baafc6a9621c4189100933bf4abea24e41b41ae3f9cc1b3fece86ab3dddb17a8f153609baf60374f6f69cb95e95b5112693857c2
+  checksum: 326106555643c042ce26211db300795d96be05fffedaff13d97be17d0dea27378a79b32f9a937a0005d3999957eafae220073effa11f4318bc1d4d465229e173
   languageName: node
   linkType: hard
 
@@ -2224,7 +2223,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@alexsasharegan/simple-cache": ^3.3.3
-    "@ardrive/turbo-sdk": ../turbo/turbo-sdk/ardrive-turbo-sdk-v0.0.1.tgz
+    "@ardrive/turbo-sdk": ^1.0.0-alpha.10
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/bn.js": ^5
     "@types/chai": ^4.2.15
@@ -2272,7 +2271,7 @@ __metadata:
     source-map-support: ^0.5.19
     ts-node: ^10.1.0
     ts-sinon: ^2.0.1
-    typescript: ^5.1.6
+    typescript: ^5.2.2
     utf8: ^3.0.0
     uuid: ^8.3.2
   languageName: unknown
@@ -8162,23 +8161,23 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.1.6":
-  version: 5.1.6
-  resolution: "typescript@npm:5.1.6"
+"typescript@npm:^5.2.2":
+  version: 5.2.2
+  resolution: "typescript@npm:5.2.2"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: b2f2c35096035fe1f5facd1e38922ccb8558996331405eb00a5111cc948b2e733163cc22fab5db46992aba7dd520fff637f2c1df4996ff0e134e77d3249a7350
+  checksum: 7912821dac4d962d315c36800fe387cdc0a6298dba7ec171b350b4a6e988b51d7b8f051317786db1094bd7431d526b648aba7da8236607febb26cf5b871d2d3c
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^5.1.6#~builtin<compat/typescript>":
-  version: 5.1.6
-  resolution: "typescript@patch:typescript@npm%3A5.1.6#~builtin<compat/typescript>::version=5.1.6&hash=5da071"
+"typescript@patch:typescript@^5.2.2#~builtin<compat/typescript>":
+  version: 5.2.2
+  resolution: "typescript@patch:typescript@npm%3A5.2.2#~builtin<compat/typescript>::version=5.2.2&hash=14eedb"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: f53bfe97f7c8b2b6d23cf572750d4e7d1e0c5fff1c36d859d0ec84556a827b8785077bc27676bf7e71fae538e517c3ecc0f37e7f593be913d884805d931bc8be
+  checksum: 07106822b4305de3f22835cbba949a2b35451cad50888759b6818421290ff95d522b38ef7919e70fb381c5fe9c1c643d7dea22c8b31652a717ddbd57b7f4d554
   languageName: node
   linkType: hard
 

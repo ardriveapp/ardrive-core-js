@@ -1,9 +1,8 @@
 import { DataItem } from 'arbundles';
-import { TurboFactory, TurboUnauthenticatedClient } from '@ardrive/turbo-sdk/node';
 import { TurboSettings } from '../ardrive_factory';
 import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
 import { Readable } from 'node:stream';
-import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
+import { TurboFactory, TurboUnauthenticatedClient, TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 
 interface TurboParams extends TurboSettings {
 	isDryRun: boolean;
@@ -31,7 +30,7 @@ export class Turbo {
 			id: dataItem.id,
 			owner: dataItem.owner,
 			dataCaches: [],
-			fastFinalityIndexes: [],
+			fastFinalityIndexes: []
 		};
 		if (this.isDryRun) {
 			return defaultResponse;
