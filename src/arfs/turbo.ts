@@ -23,10 +23,10 @@ export class Turbo {
 		this.isDryRun = isDryRun;
 		this.turbo = TurboFactory.unauthenticated({
 			uploadServiceConfig: {
-				url: turboUploadUrl.toString()
+				url: turboUploadUrl.origin
 			},
 			paymentServiceConfig: {
-				url: turboPaymentUrl.toString()
+				url: turboPaymentUrl.origin
 			}
 		});
 	}
