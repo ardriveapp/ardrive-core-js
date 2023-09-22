@@ -30,16 +30,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/turbo-sdk@npm:1.0.0-alpha.22":
-  version: 1.0.0-alpha.22
-  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.22"
+"@ardrive/turbo-sdk@npm:1.0.0-alpha.23":
+  version: 1.0.0-alpha.23
+  resolution: "@ardrive/turbo-sdk@npm:1.0.0-alpha.23"
   dependencies:
     arbundles: ^0.9.9
     arweave: ^1.14.4
     axios: ^1.4.0
     axios-retry: ^3.7.0
     winston: ^3.10.0
-  checksum: 292c1b72e41bd6d73a21ebdc7ceeb2aa92551e2c83056c5ca7647e869aa0312b189f7ed15bf693acef0b4034cf552e73d52e0e25fa5022ef640157e34c3b4be3
+  checksum: af3ac546f95e3677a5316f74ba3a14d5d88aaedf3e1f3bcd434145b148dba58d9d105e08df180e4045129229c8d17b124082b3476f7ee1419938eb2ff7be3af3
   languageName: node
   linkType: hard
 
@@ -2232,7 +2232,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@ardrive/ardrive-promise-cache": ^1.1.4
-    "@ardrive/turbo-sdk": 1.0.0-alpha.22
+    "@ardrive/turbo-sdk": 1.0.0-alpha.23
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/bn.js": ^5
     "@types/chai": ^4.2.15
