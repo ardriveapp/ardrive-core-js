@@ -48,7 +48,8 @@ export class Turbo {
 
 		// convert the data item Buffer to a Readable
 		return this.turbo.uploadSignedDataItem({
-			dataItemStreamFactory: () => Readable.from(dataItem.getRaw())
+			dataItemStreamFactory: () => Readable.from(dataItem.getRaw()),
+			dataItemSizeFactory: () => dataItem.getRaw().length
 		});
 	}
 }

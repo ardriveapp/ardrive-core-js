@@ -60,11 +60,10 @@ const defaultArweave = Arweave.init({
 	timeout: 600000
 });
 
-const defaultTurbo = new Turbo({
+const defaultTurboSettings = {
 	turboUploadUrl: defaultTurboUploadUrl,
-	turboPaymentUrl: defaultTurboPaymentUrl,
-	isDryRun: false
-});
+	turboPaymentUrl: defaultTurboPaymentUrl
+};
 
 export function arDriveFactory({
 	wallet,
@@ -95,8 +94,11 @@ export function arDriveFactory({
 		undefined,
 		undefined,
 		undefined,
-		turboSettings === undefined
-			? defaultTurbo
+		!turboSettings
+			? new Turbo({
+					...defaultTurboSettings,
+					isDryRun: dryRun
+			  })
 			: new Turbo({
 					turboUploadUrl: turboSettings.turboUploadUrl,
 					turboPaymentUrl: turboSettings.turboPaymentUrl,
