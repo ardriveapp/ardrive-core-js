@@ -8,7 +8,8 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"@alexsasharegan/simple-cache": "^3.3.3",
+		"@ardrive/ardrive-promise-cache": "^1.1.4",
+		"@ardrive/turbo-sdk": "1.0.0-beta.2",
 		"arbundles": "^0.6.19",
 		"arweave": "^1.11.4",
 		"arweave-mnemonic-keys": "^0.0.9",
@@ -49,7 +50,7 @@
 		"eslint-config-prettier": "^8.1.0",
 		"eslint-plugin-prettier": "latest",
 		"espower-typescript": "^10.0.0",
-		"husky": "^=6",
+		"husky": "^8.0.3",
 		"lint-staged": "^11.0.0",
 		"mocha": "^8.3.1",
 		"nyc": "^15.1.0",
@@ -60,10 +61,10 @@
 		"source-map-support": "^0.5.19",
 		"ts-node": "^10.1.0",
 		"ts-sinon": "^2.0.1",
-		"typescript": "^5.1.6"
+		"typescript": "^5.2.2"
 	},
 	"scripts": {
-		"clean": "rimraf [ lib .nyc_output node_modules coverage ]",
+		"clean": "rimraf [ lib .nyc_output coverage ]",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",

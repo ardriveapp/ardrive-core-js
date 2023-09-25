@@ -77,7 +77,8 @@ import {
 	authTagLength,
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
-	turboProdUrl
+	defaultTurboPaymentUrl,
+	defaultTurboUploadUrl
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -177,8 +178,9 @@ import {
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
-import { Turbo, TurboCachesResponse } from './turbo';
+import { Turbo } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
+import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -240,7 +242,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
-		protected turbo = new Turbo({ turboUrl: turboProdUrl, isDryRun: dryRun })
+		protected turbo = new Turbo({
+			turboPaymentUrl: defaultTurboPaymentUrl,
+			turboUploadUrl: defaultTurboUploadUrl,
+			isDryRun: dryRun
+		})
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -534,7 +540,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
 		rewardSettings?: RewardSettings
-	): Promise<{ id: TransactionID } & TurboCachesResponse> {
+	): Promise<{ id: TransactionID } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>> {
 		if (rewardSettings) {
 			const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 				objectMetaData,
@@ -909,7 +915,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const contentCountUploaded = { numFiles: 0, numFolders: 0 };
 
 		if (this.shouldProgressLog) {
-			console.error(`\nUploading to Turbo at ${this.turbo.turboUrl}...\n`);
+			console.error(`\nUploading to Turbo at...\n`);
 		}
 
 		const logProgress = (entityType?: 'file' | 'folder') => {
