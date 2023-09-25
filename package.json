@@ -8,7 +8,7 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"@ardrive/ardrive-promise-cache": "^1.1.4",
+		"@alexsasharegan/simple-cache": "^3.3.3",
 		"@ardrive/turbo-sdk": "1.0.0-beta.2",
 		"arbundles": "^0.6.19",
 		"arweave": "^1.11.4",
