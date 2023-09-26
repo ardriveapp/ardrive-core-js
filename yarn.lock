@@ -21,15 +21,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/ardrive-promise-cache@npm:^1.1.4":
-  version: 1.1.4
-  resolution: "@ardrive/ardrive-promise-cache@npm:1.1.4"
-  dependencies:
-    "@alexsasharegan/simple-cache": ^3.3.3
-  checksum: c92f3f745c2138b2d62c53d6a394900f1691dfe696106cf99d1ca3e71fc284c34cf2c84ceb5ad224ad19964397b2097a41bd9f54bc93464182c095e96b400cba
-  languageName: node
-  linkType: hard
-
 "@ardrive/turbo-sdk@npm:1.0.0-beta.2":
   version: 1.0.0-beta.2
   resolution: "@ardrive/turbo-sdk@npm:1.0.0-beta.2"
@@ -2231,7 +2222,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ardrive-core-js@workspace:."
   dependencies:
-    "@ardrive/ardrive-promise-cache": ^1.1.4
+    "@alexsasharegan/simple-cache": ^3.3.3
     "@ardrive/turbo-sdk": 1.0.0-beta.2
     "@istanbuljs/nyc-config-typescript": ^1.0.1
     "@types/bn.js": ^5
