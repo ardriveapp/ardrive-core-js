@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"@alexsasharegan/simple-cache": "^3.3.3",
-		"@ardrive/turbo-sdk": "1.0.0-beta.2",
+		"@ardrive/turbo-sdk": "^1.0.0",
 		"arbundles": "^0.6.19",
 		"arweave": "^1.11.4",
 		"arweave-mnemonic-keys": "^0.0.9",
