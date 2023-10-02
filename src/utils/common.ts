@@ -430,6 +430,7 @@ export async function Utf8ArrayToStr(array: any): Promise<string> {
 	out = '';
 	const len = array.length;
 	i = 0;
+
 	while (i < len) {
 		c = array[i++];
 		switch (c >> 4) {

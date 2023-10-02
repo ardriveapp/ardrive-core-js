@@ -35,9 +35,9 @@ import {
 	ArFSPrivateFileCacheKey,
 	ArFSPrivateFolderCacheKey
 } from './arfsdao';
-import { ArFSEntityCache } from './arfs_entity_cache';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
-import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache } from './arfsdao_anonymous';
+import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache, defaultCacheParams } from './arfsdao_anonymous';
 import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
@@ -64,11 +64,11 @@ describe('The ArFSDAO class', () => {
 
 	let arfsDao: ArFSDAO;
 	let caches: ArFSCache;
-	const privateDriveCache = new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10);
-	const privateFolderCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10);
-	const privateConflictCache = new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10);
-	const privateFileCache = new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10);
-	const publicConflictCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10);
+	const privateDriveCache = new PromiseCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(defaultCacheParams);
+	const privateFolderCache = new PromiseCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(defaultCacheParams);
+	const privateConflictCache = new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams);
+	const privateFileCache = new PromiseCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(defaultCacheParams);
+	const publicConflictCache = new PromiseCache<ArFSPublicFolderCacheKey, NameConflictInfo>(defaultCacheParams);
 
 	const fakeGatewayApi = new GatewayAPI({ gatewayUrl: new URL('http://test.net:1337') });
 
