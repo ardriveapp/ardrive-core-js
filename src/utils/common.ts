@@ -168,7 +168,7 @@ export function checkExactFileExistsSync(filePath: string, lastModifiedDate: num
 // }
 
 // Takes the ArDrive User's JWK Private Key file and backs it up as a JSON to a folder specified by the user.
-export async function backupWallet(backupWalletPath: string, wallet: Wallet, owner: string): Promise<string> {
+export function backupWallet(backupWalletPath: string, wallet: Wallet, owner: string): string {
 	try {
 		const backupFileName = 'ArDrive_Backup_' + owner + '.json';
 		const backupWalletFile = path.join(backupWalletPath, backupFileName);
@@ -396,7 +396,7 @@ export async function createPrivateFileSharingLink(
 }
 
 // Creates a Public file sharing link using the File Id.
-export async function createPublicFileSharingLink(fileToShare: types.ArFSFileMetaData): Promise<string> {
+export function createPublicFileSharingLink(fileToShare: types.ArFSFileMetaData): string {
 	let fileSharingUrl = '';
 	try {
 		fileSharingUrl = stagingAppUrl.concat('/#/file/', fileToShare.fileId, '/view');
@@ -409,7 +409,7 @@ export async function createPublicFileSharingLink(fileToShare: types.ArFSFileMet
 }
 
 // Creates a Public drive sharing link using the Drive Id
-export async function createPublicDriveSharingLink(driveToShare: types.ArFSDriveMetaData): Promise<string> {
+export function createPublicDriveSharingLink(driveToShare: types.ArFSDriveMetaData): string {
 	let driveSharingUrl = '';
 	try {
 		driveSharingUrl = stagingAppUrl.concat('/#/drives/', driveToShare.driveId);
@@ -421,11 +421,12 @@ export async function createPublicDriveSharingLink(driveToShare: types.ArFSDrive
 	return driveSharingUrl;
 }
 
-// FIXME: set the correct type for this argument
-// eslint-disable-next-line
-export async function Utf8ArrayToStr(array: any): Promise<string> {
+export function BufferToString(buffer: Buffer): string {
 	let out, i, c;
 	let char2, char3;
+
+	// to keep our existing logic
+	const array = new Uint8Array(buffer)
 
 	out = '';
 	const len = array.length;
@@ -477,7 +478,7 @@ export function weightedRandom(dict: Record<string, number>): string | undefined
 }
 
 // Ensures a file path does not contain invalid characters
-export async function sanitizePath(path: string): Promise<string> {
+export function sanitizePath(path: string): string {
 	path = path.replace(/[\\/:*?"<>|]/g, '');
 	while (path.charAt(path.length - 1) == '.') {
 		// remove trailing dots
@@ -494,17 +495,6 @@ export async function sanitizePath(path: string): Promise<string> {
 	}
 }
 
-// export async function getArUSDPrice(): Promise<number> {
-// 	let usdPrice = 0;
-// 	try {
-// 		const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=arweave&vs_currencies=usd');
-// 		usdPrice = (await res.clone().json()).arweave.usd;
-// 		return usdPrice;
-// 	} catch (err) {
-// 		console.log('Error getting AR/USD price from Coingecko');
-// 		return 0;
-// 	}
-// }
 /**
  * Converts Winston value into AR
  *
