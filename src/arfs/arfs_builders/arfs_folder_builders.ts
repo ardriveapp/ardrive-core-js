@@ -10,7 +10,7 @@ import {
 	GQLTagInterface
 } from '../../types';
 import { fileDecrypt } from '../../utils/crypto';
-import { Utf8ArrayToStr } from '../../utils/common';
+import { BufferToString } from '../../utils/common';
 
 import { ArFSPublicFolder, ArFSPrivateFolder } from '../arfs_entities';
 import { fakeEntityId } from '../../utils/constants';
@@ -76,7 +76,7 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			this.entityType === 'folder'
 		) {
 			const txData = await this.getDataForTxID(this.txId);
-			const dataString = await Utf8ArrayToStr(txData);
+			const dataString = BufferToString(txData);
 			const dataJSON = await JSON.parse(dataString);
 
 			// Get the folder name
@@ -181,7 +181,7 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 			const dataBuffer = Buffer.from(txData);
 
 			const decryptedFolderBuffer: Buffer = await fileDecrypt(this.cipherIV, this.driveKey, dataBuffer);
-			const decryptedFolderString: string = await Utf8ArrayToStr(decryptedFolderBuffer);
+			const decryptedFolderString: string = BufferToString(decryptedFolderBuffer);
 			const decryptedFolderJSON = await JSON.parse(decryptedFolderString);
 
 			// Get the folder name

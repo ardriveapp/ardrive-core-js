@@ -27,7 +27,7 @@ import {
 	stub3073CharString
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
-import { readJWKFile, Utf8ArrayToStr } from '../utils/common';
+import { readJWKFile, BufferToString } from '../utils/common';
 import {
 	ArFSCache,
 	ArFSDAO,
@@ -156,7 +156,7 @@ describe('The ArFSDAO class', () => {
 				stubbedKey,
 				dataBuffer
 			);
-			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedString: string = BufferToString(decryptedBuffer);
 			const decryptedJSON = await JSON.parse(decryptedString);
 
 			expect(decryptedJSON).to.deep.equal({
@@ -220,7 +220,7 @@ describe('The ArFSDAO class', () => {
 				stubbedKey,
 				dataBuffer
 			);
-			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedString: string = BufferToString(decryptedBuffer);
 			const decryptedJSON = await JSON.parse(decryptedString);
 
 			// Assert that the data JSON of the metadata tx is ArFS compliant
@@ -301,7 +301,7 @@ describe('The ArFSDAO class', () => {
 				fileKey,
 				dataBuffer
 			);
-			const decryptedString: string = await Utf8ArrayToStr(decryptedBuffer);
+			const decryptedString: string = BufferToString(decryptedBuffer);
 			const decryptedJSON = await JSON.parse(decryptedString);
 
 			// Assert that the data JSON of the metadata tx is ArFS compliant

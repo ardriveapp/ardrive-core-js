@@ -12,7 +12,7 @@ import {
 	GQLTagInterface,
 	EntityMetaDataTransactionData
 } from '../../types';
-import { Utf8ArrayToStr } from '../../utils/common';
+import { BufferToString } from '../../utils/common';
 import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId } from '../../utils/constants';
 import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
@@ -86,7 +86,7 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 			this.drivePrivacy?.length
 		) {
 			const txData = await this.getDataForTxID(this.txId);
-			const dataString = await Utf8ArrayToStr(txData);
+			const dataString = BufferToString(txData);
 			const dataJSON = await JSON.parse(dataString);
 
 			// Get the drive name and root folder id
@@ -200,7 +200,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 			const decryptedDriveBuffer: Buffer = await driveDecrypt(this.cipherIV, this.driveKey, dataBuffer);
-			const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
+			const decryptedDriveString: string = BufferToString(decryptedDriveBuffer);
 			const decryptedDriveJSON: DriveMetaDataTransactionData = await JSON.parse(decryptedDriveString);
 
 			this.name = decryptedDriveJSON.name;
@@ -349,7 +349,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 					throw new Error('Invalid private drive state');
 				}
 				// Drive is public, no decryption needed
-				const dataString = await Utf8ArrayToStr(txData);
+				const dataString = BufferToString(txData);
 				return JSON.parse(dataString) as DriveMetaDataTransactionData;
 			})();
 
