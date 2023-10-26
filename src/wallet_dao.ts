@@ -26,6 +26,9 @@ export type ARTransferResult = {
 	reward: NetworkReward;
 };
 
+const algorithm = { id: 'rsa', modulusLength: 4096 } as const;
+const options = { privateKeyFormat: 'pkcs8-pem' } as const;
+
 export class WalletDAO {
 	constructor(
 		private readonly arweave: Arweave,
@@ -34,19 +37,12 @@ export class WalletDAO {
 	) {}
 
 	async generateSeedPhrase(): Promise<SeedPhrase> {
-		const keys = await generateKeyPair({ id: 'rsa', modulusLength: 4096 }, { privateKeyFormat: 'pkcs8-pem' });
+		const keys = await generateKeyPair(algorithm, options);
 		return new SeedPhrase(keys.mnemonic);
 	}
 
 	async generateJWKWallet(seedPhrase: SeedPhrase): Promise<JWKWallet> {
-		const { privateKey } = await getKeyPairFromMnemonic(
-			seedPhrase.toString(),
-			{
-				id: 'rsa',
-				modulusLength: 4096
-			},
-			{ privateKeyFormat: 'pkcs8-pem' }
-		);
+		const { privateKey } = await getKeyPairFromMnemonic(seedPhrase.toString(), algorithm, options);
 
 		const pem = nodeCrypto.createPrivateKey({ key: privateKey, format: 'pem' });
 		const jwk = pem.export({ format: 'jwk' });
