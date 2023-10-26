@@ -64,7 +64,7 @@
 		"typescript": "^5.1.6"
 	},
 	"scripts": {
-		"clean": "rimraf [ lib .nyc_output coverage ]",
+		"clean": "rimraf [ lib .nyc_output node_modules coverage ]",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"lint": "eslint . --ext .ts",
 		"lintfix": "eslint . --ext .ts --fix",
@@ -97,6 +97,5 @@
 	},
 	"files": [
 		"lib/**/*"
-	],
-	"packageManager": "yarn@4.0.0"
+	]
 }

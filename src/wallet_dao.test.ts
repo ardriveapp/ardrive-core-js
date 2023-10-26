@@ -10,7 +10,7 @@ describe('Wallet DAO', function () {
 		const seedPhrase = new SeedPhrase(
 			'slender during cost problem tortoise extra deal walnut great oblige planet kid'
 		);
-		const wallet = await walletDAO.generateJWKWallet2(seedPhrase);
+		const wallet = await walletDAO.generateJWKWallet(seedPhrase);
 		const address = await wallet.getAddress();
 		expect(address.toString()).to.equal('FOKCJ1sz9XfFGy8KwVQczDPdavCEu6c5GkzTNfEbRI8');
 	});
