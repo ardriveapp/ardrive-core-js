@@ -1,6 +1,5 @@
 import Arweave from 'arweave';
 import { CreateTransactionInterface } from 'arweave/node/common';
-import { JWKInterface } from 'arweave/node/lib/wallet';
 import { JWKWallet } from './jwk_wallet';
 import {
 	TransactionID,
@@ -14,10 +13,12 @@ import {
 	GQLTagInterface,
 	TxID
 } from './types';
-import * as mnemonicKeys from 'arweave-mnemonic-keys';
 import { Wallet } from './wallet';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 import assertTagLimits from './arfs/tags/tag_assertions';
+import { generateKeyPair, getKeyPairFromMnemonic } from 'human-crypto-keys';
+import * as nodeCrypto from 'crypto';
+import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export type ARTransferResult = {
 	txID: TransactionID;
@@ -33,13 +34,56 @@ export class WalletDAO {
 	) {}
 
 	async generateSeedPhrase(): Promise<SeedPhrase> {
-		const seedPhrase: SeedPhrase = await mnemonicKeys.generateMnemonic();
-		return Promise.resolve(seedPhrase);
+		const keys = await generateKeyPair({ id: 'rsa', modulusLength: 4096 }, { privateKeyFormat: 'pkcs8-pem' });
+		return new SeedPhrase(keys.mnemonic);
+	}
+
+	async generateJWKWallet2(seedPhrase: SeedPhrase): Promise<JWKWallet> {
+		const { privateKey } = await getKeyPairFromMnemonic(
+			seedPhrase.toString(),
+			{
+				id: 'rsa',
+				modulusLength: 4096
+			},
+			{ privateKeyFormat: 'pkcs8-pem' }
+		);
+
+		const pem = nodeCrypto.createPrivateKey({ key: privateKey, format: 'pem' });
+		const jwk = pem.export({ format: 'jwk' });
+
+		return Promise.resolve(new JWKWallet(jwk as JWKInterface));
 	}
 
 	async generateJWKWallet(seedPhrase: SeedPhrase): Promise<JWKWallet> {
-		const jwkWallet: JWKInterface = await mnemonicKeys.getKeyFromMnemonic(seedPhrase.toString());
-		return Promise.resolve(new JWKWallet(jwkWallet));
+		const { privateKey } = await getKeyPairFromMnemonic(
+			seedPhrase.toString(),
+			{
+				id: 'rsa',
+				modulusLength: 4096
+			},
+			{ privateKeyFormat: 'pkcs8-der' }
+		);
+
+		const key = await nodeCrypto.subtle.importKey(
+			'pkcs8',
+			privateKey as never,
+			{ name: 'RSA-PSS', hash: 'SHA-256' },
+			true,
+			['sign']
+		);
+		const jwk = await nodeCrypto.subtle.exportKey('jwk', key);
+
+		return new JWKWallet({
+			kty: jwk.kty!,
+			e: jwk.e!,
+			n: jwk.n!,
+			d: jwk.d,
+			p: jwk.p,
+			q: jwk.q,
+			dp: jwk.dp,
+			dq: jwk.dq,
+			qi: jwk.qi
+		});
 	}
 
 	async getWalletWinstonBalance(wallet: Wallet): Promise<Winston> {
