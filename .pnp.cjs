@@ -60,7 +60,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],\
             ["espower-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.0.0"],\
             ["futoin-hkdf", "npm:1.3.3"],\
-            ["human-crypto-keys", "https://github.com/fedellen/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
             ["husky", "npm:6.0.0"],\
             ["jwk-to-pem", "npm:2.0.4"],\
             ["lint-staged", "npm:11.0.0"],\
@@ -2158,7 +2158,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],\
             ["espower-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.0.0"],\
             ["futoin-hkdf", "npm:1.3.3"],\
-            ["human-crypto-keys", "https://github.com/fedellen/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
             ["husky", "npm:6.0.0"],\
             ["jwk-to-pem", "npm:2.0.4"],\
             ["lint-staged", "npm:11.0.0"],\
@@ -5010,10 +5010,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["human-crypto-keys", [\
-        ["https://github.com/fedellen/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9", {\
-          "packageLocation": "./.yarn/cache/human-crypto-keys-https-3eb954d194-1b3cfe1723.zip/node_modules/human-crypto-keys/",\
+        ["https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9", {\
+          "packageLocation": "./.yarn/cache/human-crypto-keys-https-f38e7cd903-1b3cfe1723.zip/node_modules/human-crypto-keys/",\
           "packageDependencies": [\
-            ["human-crypto-keys", "https://github.com/fedellen/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
             ["bip39", "npm:3.0.2"],\
             ["crypto-key-composer", "npm:0.1.3"],\
             ["hash.js", "npm:1.1.7"],\
