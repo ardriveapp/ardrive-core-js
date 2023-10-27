@@ -32,6 +32,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],\
             ["@types/bn.js", "npm:5.1.0"],\
             ["@types/chai", "npm:4.2.21"],\
+            ["@types/human-crypto-keys", "npm:0.1.2"],\
             ["@types/jwk-to-pem", "npm:2.0.0"],\
             ["@types/lodash", "npm:4.14.182"],\
             ["@types/mime-types", "npm:2.1.0"],\
@@ -48,7 +49,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:6.2.1"],\
             ["arbundles", "npm:0.6.19"],\
             ["arweave", "npm:1.11.4"],\
-            ["arweave-mnemonic-keys", "npm:0.0.9"],\
             ["axios", "npm:0.21.4"],\
             ["axios-retry", "npm:3.6.0"],\
             ["base64-js", "npm:1.5.1"],\
@@ -60,6 +60,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],\
             ["espower-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.0.0"],\
             ["futoin-hkdf", "npm:1.3.3"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
             ["husky", "npm:6.0.0"],\
             ["jwk-to-pem", "npm:2.0.4"],\
             ["lint-staged", "npm:11.0.0"],\
@@ -1087,98 +1088,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["@protobufjs/aspromise", [\
-        ["npm:1.1.2", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-aspromise-npm-1.1.2-71d00b938f-011fe7ef08.zip/node_modules/@protobufjs/aspromise/",\
-          "packageDependencies": [\
-            ["@protobufjs/aspromise", "npm:1.1.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/base64", [\
-        ["npm:1.1.2", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-base64-npm-1.1.2-cd8ca6814a-67173ac34d.zip/node_modules/@protobufjs/base64/",\
-          "packageDependencies": [\
-            ["@protobufjs/base64", "npm:1.1.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/codegen", [\
-        ["npm:2.0.4", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-codegen-npm-2.0.4-36e188bbe6-59240c850b.zip/node_modules/@protobufjs/codegen/",\
-          "packageDependencies": [\
-            ["@protobufjs/codegen", "npm:2.0.4"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/eventemitter", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-eventemitter-npm-1.1.0-029cc7d431-0369163a3d.zip/node_modules/@protobufjs/eventemitter/",\
-          "packageDependencies": [\
-            ["@protobufjs/eventemitter", "npm:1.1.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/fetch", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-fetch-npm-1.1.0-ca857b7df4-3fce7e09eb.zip/node_modules/@protobufjs/fetch/",\
-          "packageDependencies": [\
-            ["@protobufjs/fetch", "npm:1.1.0"],\
-            ["@protobufjs/aspromise", "npm:1.1.2"],\
-            ["@protobufjs/inquire", "npm:1.1.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/float", [\
-        ["npm:1.0.2", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-float-npm-1.0.2-5678f64d08-5781e12412.zip/node_modules/@protobufjs/float/",\
-          "packageDependencies": [\
-            ["@protobufjs/float", "npm:1.0.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/inquire", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-inquire-npm-1.1.0-3c7759e9ce-ca06f02eaf.zip/node_modules/@protobufjs/inquire/",\
-          "packageDependencies": [\
-            ["@protobufjs/inquire", "npm:1.1.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/path", [\
-        ["npm:1.1.2", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-path-npm-1.1.2-641d08de76-856eeb532b.zip/node_modules/@protobufjs/path/",\
-          "packageDependencies": [\
-            ["@protobufjs/path", "npm:1.1.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/pool", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-pool-npm-1.1.0-47a76f96a1-d6a34fbbd2.zip/node_modules/@protobufjs/pool/",\
-          "packageDependencies": [\
-            ["@protobufjs/pool", "npm:1.1.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@protobufjs/utf8", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/@protobufjs-utf8-npm-1.1.0-02c590807c-f9bf3163d1.zip/node_modules/@protobufjs/utf8/",\
-          "packageDependencies": [\
-            ["@protobufjs/utf8", "npm:1.1.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["@randlabs/communication-bridge", [\
         ["npm:1.0.0", {\
           "packageLocation": "./.yarn/cache/@randlabs-communication-bridge-npm-1.0.0-90958ec1f4-fe32ac0dcd.zip/node_modules/@randlabs/communication-bridge/",\
@@ -1419,6 +1328,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["@types/human-crypto-keys", [\
+        ["npm:0.1.2", {\
+          "packageLocation": "./.yarn/cache/@types-human-crypto-keys-npm-0.1.2-13d56b7661-967ca0d91c.zip/node_modules/@types/human-crypto-keys/",\
+          "packageDependencies": [\
+            ["@types/human-crypto-keys", "npm:0.1.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["@types/inquirer", [\
         ["npm:8.2.1", {\
           "packageLocation": "./.yarn/cache/@types-inquirer-npm-8.2.1-b3593fd8cc-5362d0b1cb.zip/node_modules/@types/inquirer/",\
@@ -1453,15 +1371,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-lodash-npm-4.14.182-1073aac722-7dd137aa9d.zip/node_modules/@types/lodash/",\
           "packageDependencies": [\
             ["@types/lodash", "npm:4.14.182"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["@types/long", [\
-        ["npm:4.0.1", {\
-          "packageLocation": "./.yarn/cache/@types-long-npm-4.0.1-022c8b6e77-ff9653c33f.zip/node_modules/@types/long/",\
-          "packageDependencies": [\
-            ["@types/long", "npm:4.0.1"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -2221,6 +2130,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@istanbuljs/nyc-config-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:1.0.1"],\
             ["@types/bn.js", "npm:5.1.0"],\
             ["@types/chai", "npm:4.2.21"],\
+            ["@types/human-crypto-keys", "npm:0.1.2"],\
             ["@types/jwk-to-pem", "npm:2.0.0"],\
             ["@types/lodash", "npm:4.14.182"],\
             ["@types/mime-types", "npm:2.1.0"],\
@@ -2237,7 +2147,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@typescript-eslint/parser", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:6.2.1"],\
             ["arbundles", "npm:0.6.19"],\
             ["arweave", "npm:1.11.4"],\
-            ["arweave-mnemonic-keys", "npm:0.0.9"],\
             ["axios", "npm:0.21.4"],\
             ["axios-retry", "npm:3.6.0"],\
             ["base64-js", "npm:1.5.1"],\
@@ -2249,6 +2158,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["eslint-plugin-prettier", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:3.3.1"],\
             ["espower-typescript", "virtual:f7d0909feb02b646d27a0e896ef65deae6e18a1bdcdc256a3ced17da599c2096990b6685816541f07eefa020178992c6dd347b7d71e3628ea412034fefb1952a#npm:10.0.0"],\
             ["futoin-hkdf", "npm:1.3.3"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
             ["husky", "npm:6.0.0"],\
             ["jwk-to-pem", "npm:2.0.4"],\
             ["lint-staged", "npm:11.0.0"],\
@@ -2356,17 +2266,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["base64-js", "npm:1.5.1"],\
             ["bignumber.js", "npm:9.0.2"],\
             ["util", "npm:0.12.4"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["arweave-mnemonic-keys", [\
-        ["npm:0.0.9", {\
-          "packageLocation": "./.yarn/cache/arweave-mnemonic-keys-npm-0.0.9-d1e53ee8b7-9fda19e677.zip/node_modules/arweave-mnemonic-keys/",\
-          "packageDependencies": [\
-            ["arweave-mnemonic-keys", "npm:0.0.9"],\
-            ["human-crypto-keys", "npm:0.1.4"],\
-            ["libp2p-crypto", "npm:0.19.7"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -2616,10 +2515,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["bip39", [\
-        ["npm:3.0.4", {\
-          "packageLocation": "./.yarn/cache/bip39-npm-3.0.4-7c69c9182f-79ce1600a0.zip/node_modules/bip39/",\
+        ["npm:3.0.2", {\
+          "packageLocation": "./.yarn/cache/bip39-npm-3.0.2-32369862f4-71798582b4.zip/node_modules/bip39/",\
           "packageDependencies": [\
-            ["bip39", "npm:3.0.4"],\
+            ["bip39", "npm:3.0.2"],\
             ["@types/node", "npm:11.11.6"],\
             ["create-hash", "npm:1.2.0"],\
             ["pbkdf2", "npm:3.1.2"],\
@@ -3676,15 +3575,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["err-code", [\
-        ["npm:3.0.1", {\
-          "packageLocation": "./.yarn/cache/err-code-npm-3.0.1-3a0dc5fc51-aede1f1d5e.zip/node_modules/err-code/",\
-          "packageDependencies": [\
-            ["err-code", "npm:3.0.1"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["error-ex", [\
         ["npm:1.3.2", {\
           "packageLocation": "./.yarn/cache/error-ex-npm-1.3.2-5654f80c0f-c1c2b8b65f.zip/node_modules/error-ex/",\
@@ -4287,15 +4177,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/eventemitter3-npm-4.0.7-7afcdd74ae-1875311c42.zip/node_modules/eventemitter3/",\
           "packageDependencies": [\
             ["eventemitter3", "npm:4.0.7"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["events", [\
-        ["npm:3.3.0", {\
-          "packageLocation": "./.yarn/cache/events-npm-3.3.0-c280bc7e48-f6f487ad21.zip/node_modules/events/",\
-          "packageDependencies": [\
-            ["events", "npm:3.3.0"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -5129,11 +5010,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["human-crypto-keys", [\
-        ["npm:0.1.4", {\
-          "packageLocation": "./.yarn/cache/human-crypto-keys-npm-0.1.4-352fe0a6a6-bdfbdac9a8.zip/node_modules/human-crypto-keys/",\
+        ["https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9", {\
+          "packageLocation": "./.yarn/cache/human-crypto-keys-https-f38e7cd903-1b3cfe1723.zip/node_modules/human-crypto-keys/",\
           "packageDependencies": [\
-            ["human-crypto-keys", "npm:0.1.4"],\
-            ["bip39", "npm:3.0.4"],\
+            ["human-crypto-keys", "https://github.com/ardriveapp/js-human-crypto-keys.git#commit=dcfde03a4d45fb390dc480950f6bf034a16b4cc9"],\
+            ["bip39", "npm:3.0.2"],\
             ["crypto-key-composer", "npm:0.1.3"],\
             ["hash.js", "npm:1.1.7"],\
             ["hmac-drbg", "npm:1.0.1"],\
@@ -5639,17 +5520,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["iso-random-stream", [\
-        ["npm:2.0.0", {\
-          "packageLocation": "./.yarn/cache/iso-random-stream-npm-2.0.0-bbb11744dc-3e8d6ca953.zip/node_modules/iso-random-stream/",\
-          "packageDependencies": [\
-            ["iso-random-stream", "npm:2.0.0"],\
-            ["events", "npm:3.3.0"],\
-            ["readable-stream", "npm:3.6.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["isobject", [\
         ["npm:3.0.1", {\
           "packageLocation": "./.yarn/cache/isobject-npm-3.0.1-8145901fd2-db85c4c970.zip/node_modules/isobject/",\
@@ -6008,15 +5878,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["keypair", [\
-        ["npm:1.0.4", {\
-          "packageLocation": "./.yarn/cache/keypair-npm-1.0.4-799f370fdf-7c91627416.zip/node_modules/keypair/",\
-          "packageDependencies": [\
-            ["keypair", "npm:1.0.4"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["kind-of", [\
         ["npm:6.0.3", {\
           "packageLocation": "./.yarn/cache/kind-of-npm-6.0.3-ab15f36220-3ab01e7b1d.zip/node_modules/kind-of/",\
@@ -6042,26 +5903,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["levn", "npm:0.4.1"],\
             ["prelude-ls", "npm:1.2.1"],\
             ["type-check", "npm:0.4.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["libp2p-crypto", [\
-        ["npm:0.19.7", {\
-          "packageLocation": "./.yarn/cache/libp2p-crypto-npm-0.19.7-6963e32764-d533395309.zip/node_modules/libp2p-crypto/",\
-          "packageDependencies": [\
-            ["libp2p-crypto", "npm:0.19.7"],\
-            ["err-code", "npm:3.0.1"],\
-            ["is-typedarray", "npm:1.0.0"],\
-            ["iso-random-stream", "npm:2.0.0"],\
-            ["keypair", "npm:1.0.4"],\
-            ["multiformats", "npm:9.4.10"],\
-            ["node-forge", "npm:0.10.0"],\
-            ["pem-jwk", "npm:2.0.0"],\
-            ["protobufjs", "npm:6.11.2"],\
-            ["secp256k1", "npm:4.0.2"],\
-            ["uint8arrays", "npm:3.0.0"],\
-            ["ursa-optional", "npm:0.10.2"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -6230,15 +6071,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/loglevel-npm-1.8.0-521cbfe852-41aeea17de.zip/node_modules/loglevel/",\
           "packageDependencies": [\
             ["loglevel", "npm:1.8.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["long", [\
-        ["npm:4.0.0", {\
-          "packageLocation": "./.yarn/cache/long-npm-4.0.0-ecd96a31ed-16afbe8f74.zip/node_modules/long/",\
-          "packageDependencies": [\
-            ["long", "npm:4.0.0"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -6540,15 +6372,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["multiformats", [\
-        ["npm:9.4.10", {\
-          "packageLocation": "./.yarn/cache/multiformats-npm-9.4.10-4fe8ac5e23-57093ef493.zip/node_modules/multiformats/",\
-          "packageDependencies": [\
-            ["multiformats", "npm:9.4.10"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["multistream", [\
         ["npm:4.1.0", {\
           "packageLocation": "./.yarn/cache/multistream-npm-4.1.0-0df2458b36-305c49a1aa.zip/node_modules/multistream/",\
@@ -6565,16 +6388,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/mute-stream-npm-0.0.8-489a7d6c2b-ff48d251fc.zip/node_modules/mute-stream/",\
           "packageDependencies": [\
             ["mute-stream", "npm:0.0.8"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["nan", [\
-        ["npm:2.15.0", {\
-          "packageLocation": "./.yarn/unplugged/nan-npm-2.15.0-505c98ef4d/node_modules/nan/",\
-          "packageDependencies": [\
-            ["nan", "npm:2.15.0"],\
-            ["node-gyp", "npm:7.1.2"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -6710,13 +6523,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["node-forge", [\
-        ["npm:0.10.0", {\
-          "packageLocation": "./.yarn/cache/node-forge-npm-0.10.0-605ba7b28b-5aa6dc9922.zip/node_modules/node-forge/",\
-          "packageDependencies": [\
-            ["node-forge", "npm:0.10.0"]\
-          ],\
-          "linkType": "HARD"\
-        }],\
         ["npm:0.8.5", {\
           "packageLocation": "./.yarn/cache/node-forge-npm-0.8.5-f18eb3b9a2-54d082233a.zip/node_modules/node-forge/",\
           "packageDependencies": [\
@@ -7162,16 +6968,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["pem-jwk", [\
-        ["npm:2.0.0", {\
-          "packageLocation": "./.yarn/cache/pem-jwk-npm-2.0.0-4f6af502ec-63516b8ba4.zip/node_modules/pem-jwk/",\
-          "packageDependencies": [\
-            ["pem-jwk", "npm:2.0.0"],\
-            ["asn1.js", "npm:5.4.1"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["performance-now", [\
         ["npm:2.1.0", {\
           "packageLocation": "./.yarn/cache/performance-now-npm-2.1.0-45e3ce7e49-534e641aa8.zip/node_modules/performance-now/",\
@@ -7420,28 +7216,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["process-on-spawn", "npm:1.0.0"],\
             ["fromentries", "npm:1.3.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["protobufjs", [\
-        ["npm:6.11.2", {\
-          "packageLocation": "./.yarn/unplugged/protobufjs-npm-6.11.2-9b422ce98e/node_modules/protobufjs/",\
-          "packageDependencies": [\
-            ["protobufjs", "npm:6.11.2"],\
-            ["@protobufjs/aspromise", "npm:1.1.2"],\
-            ["@protobufjs/base64", "npm:1.1.2"],\
-            ["@protobufjs/codegen", "npm:2.0.4"],\
-            ["@protobufjs/eventemitter", "npm:1.1.0"],\
-            ["@protobufjs/fetch", "npm:1.1.0"],\
-            ["@protobufjs/float", "npm:1.0.2"],\
-            ["@protobufjs/inquire", "npm:1.1.0"],\
-            ["@protobufjs/path", "npm:1.1.2"],\
-            ["@protobufjs/pool", "npm:1.1.0"],\
-            ["@protobufjs/utf8", "npm:1.1.0"],\
-            ["@types/long", "npm:4.0.1"],\
-            ["@types/node", "npm:20.4.5"],\
-            ["long", "npm:4.0.0"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -8784,16 +8558,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["uint8arrays", [\
-        ["npm:3.0.0", {\
-          "packageLocation": "./.yarn/cache/uint8arrays-npm-3.0.0-8a9076adb2-58470e6871.zip/node_modules/uint8arrays/",\
-          "packageDependencies": [\
-            ["uint8arrays", "npm:3.0.0"],\
-            ["multiformats", "npm:9.4.10"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["unbox-primitive", [\
         ["npm:1.0.2", {\
           "packageLocation": "./.yarn/cache/unbox-primitive-npm-1.0.2-cb56a05066-b7a1cf5862.zip/node_modules/unbox-primitive/",\
@@ -8845,18 +8609,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["url-parse", "npm:1.5.10"],\
             ["querystringify", "npm:2.2.0"],\
             ["requires-port", "npm:1.0.0"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["ursa-optional", [\
-        ["npm:0.10.2", {\
-          "packageLocation": "./.yarn/unplugged/ursa-optional-npm-0.10.2-2e11b3a5da/node_modules/ursa-optional/",\
-          "packageDependencies": [\
-            ["ursa-optional", "npm:0.10.2"],\
-            ["bindings", "npm:1.5.0"],\
-            ["nan", "npm:2.15.0"],\
-            ["node-gyp", "npm:7.1.2"]\
           ],\
           "linkType": "HARD"\
         }]\
