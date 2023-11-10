@@ -4,7 +4,7 @@ import { ContractReader } from './contract_oracle';
 
 /**
  *  Oracle class responsible for retrieving and
- *  reading Smartweave Contracts from the ArNS Microservice
+ *  reading Smartweave Contracts from the PDS Contract Cache Microservice
  */
 export class PDSContractCacheServiceContractReader implements ContractReader {
 	/** Fetches smartweave contracts from the Verto cache */
