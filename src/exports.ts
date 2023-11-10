@@ -35,7 +35,7 @@ export * from './community/community_oracle';
 export * from './community/contract_oracle';
 export * from './community/contract_types';
 export * from './community/smartweave_contract_oracle';
-export * from './community/arns_microservice_contract_oracle';
+export * from './community/pds_contract_oracle';
 
 // Pricing
 export * from './pricing/ar_data_price';

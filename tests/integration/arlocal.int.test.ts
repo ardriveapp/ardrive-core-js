@@ -70,7 +70,7 @@ import {
 	assertFolderMetaDataJson,
 	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
-import { CustomMetaData, CustomMetaDataJsonFields, ArNSMicroserviceContractReader } from '../../src/exports';
+import { CustomMetaData, CustomMetaDataJsonFields, PDSContractCacheServiceContractReader } from '../../src/exports';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -84,7 +84,7 @@ describe('ArLocal Integration Tests', function () {
 	const fakeVersion = 'FAKE_VERSION';
 
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
-	const fakeContractReader = new ArNSMicroserviceContractReader();
+	const fakeContractReader = new PDSContractCacheServiceContractReader();
 	stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
 
 	const communityOracle = new ArDriveCommunityOracle(arweave, [fakeContractReader]);
