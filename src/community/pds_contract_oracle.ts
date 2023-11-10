@@ -4,12 +4,12 @@ import { ContractReader } from './contract_oracle';
 
 /**
  *  Oracle class responsible for retrieving and
- *  reading Smartweave Contracts from the Verto cache
+ *  reading Smartweave Contracts from the PDS Contract Cache Microservice
  */
-export class VertoContractReader implements ContractReader {
+export class PDSContractCacheServiceContractReader implements ContractReader {
 	/** Fetches smartweave contracts from the Verto cache */
 	public async readContract(txId: TransactionID): Promise<unknown> {
-		const response: AxiosResponse = await axios.get(`https://v2.cache.verto.exchange/${txId}`);
+		const response: AxiosResponse = await axios.get(`https://api.arns.app/v1/contract/${txId}`);
 		const contract = response.data;
 		return contract.state;
 	}
