@@ -4,7 +4,7 @@ import { CommunityOracle } from './community_oracle';
 import { ArDriveContractOracle } from './ardrive_contract_oracle';
 import Arweave from 'arweave';
 import { SmartweaveContractReader } from './smartweave_contract_oracle';
-import { VertoContractReader } from './verto_contract_oracle';
+import { PDSContractCacheServiceContractReader } from './pds_contract_oracle';
 import { ADDR, ArweaveAddress, W, Winston } from '../types';
 
 /**
@@ -29,7 +29,7 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	private readonly contractOracle: ContractOracle;
 
 	private defaultContractReaders: ContractReader[] = [
-		new VertoContractReader(),
+		new PDSContractCacheServiceContractReader(),
 		new SmartweaveContractReader(this.arweave)
 	];
 
