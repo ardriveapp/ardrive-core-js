@@ -82,6 +82,16 @@ export class GatewayAPI {
 		try {
 			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', query);
 
+			if (data.errors) {
+				data.errors.forEach((error) => {
+					console.error(`GQL Error: ${error.message}`);
+				});
+			}
+
+			if (!data.data) {
+				throw new Error('No data was returned from the GQL request.');
+			}
+
 			return data.data.transactions;
 		} catch (error) {
 			throw Error(`GQL Error: ${(error as Error).message}`);
