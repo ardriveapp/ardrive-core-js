@@ -70,7 +70,7 @@ import {
 	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache
 } from './arfsdao_anonymous';
-import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import { deriveDriveKey, deriveFileKey } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -87,7 +87,6 @@ import {
 	W,
 	GQLEdgeInterface,
 	GQLNodeInterface,
-	DrivePrivacy,
 	DriveID,
 	DriveKey,
 	FolderID,
@@ -1755,64 +1754,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return this.getChildrenFolderIds(
 			folderId,
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })
-		);
-	}
-
-	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
-		const cachedOwner = this.caches.ownerCache.get(driveId);
-		if (cachedOwner) {
-			return cachedOwner;
-		}
-
-		return this.caches.ownerCache.put(
-			driveId,
-			(async () => {
-				const gqlQuery = buildQuery({
-					tags: [
-						{ name: 'Entity-Type', value: 'drive' },
-						{ name: 'Drive-Id', value: `${driveId}` }
-					],
-					sort: ASCENDING_ORDER
-				});
-				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
-				const edges: GQLEdgeInterface[] = transactions.edges;
-
-				if (!edges.length) {
-					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
-				}
-
-				const edgeOfFirstDrive = edges[0];
-				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
-				const driveOwner = new ArweaveAddress(driveOwnerAddress);
-
-				const drivePrivacy: DrivePrivacy = driveKey ? 'private' : 'public';
-				const drivePrivacyFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Drive-Privacy');
-
-				if (!drivePrivacyFromTag) {
-					throw new Error('Target drive has no "Drive-Privacy" tag!');
-				}
-
-				if (drivePrivacyFromTag.value !== drivePrivacy) {
-					throw new Error(`Target drive is not a ${drivePrivacy} drive!`);
-				}
-
-				if (driveKey) {
-					const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
-					if (!cipherIVFromTag) {
-						throw new Error('Target private drive has no "Cipher-IV" tag!');
-					}
-
-					const driveDataBuffer = await this.gatewayApi.getTxData(TxID(edgeOfFirstDrive.node.id));
-					try {
-						// Attempt to decrypt drive to assert drive key is correct
-						await driveDecrypt(cipherIVFromTag.value, driveKey, driveDataBuffer);
-					} catch {
-						throw new Error('Provided drive key or password could not decrypt target private drive!');
-					}
-				}
-
-				return driveOwner;
-			})()
 		);
 	}
 
