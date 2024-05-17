@@ -89,6 +89,14 @@ export class GatewayAPI {
 			}
 
 			if (!data.data) {
+				const isTimeoutError = data.errors?.some((error) =>
+					error.message.includes('canceling statement due to statement timeout')
+				);
+
+				if (isTimeoutError) {
+					throw new Error('GQL Query has been timed out.');
+				}
+
 				throw new Error('No data was returned from the GQL request.');
 			}
 
