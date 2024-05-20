@@ -1253,6 +1253,12 @@ export class ArDrive extends ArDriveAnonymous {
 		return createDriveResult;
 	}
 
+	async assertOwnerAddress(owner: ArweaveAddress): Promise<void> {
+		if (!owner.equals(await this.wallet.getAddress())) {
+			throw new Error('Supplied wallet is not the owner of this drive!');
+		}
+	}
+
 	public async getPrivateDrive({
 		driveId,
 		driveKey,
