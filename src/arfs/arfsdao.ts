@@ -87,7 +87,6 @@ import {
 	W,
 	GQLEdgeInterface,
 	GQLNodeInterface,
-	DrivePrivacy,
 	DriveID,
 	DriveKey,
 	FolderID,
@@ -176,7 +175,7 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
-import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
+import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy } from '../exports';
 import { Turbo, TurboCachesResponse } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
 
