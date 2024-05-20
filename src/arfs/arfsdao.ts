@@ -89,7 +89,6 @@ import {
 	W,
 	GQLEdgeInterface,
 	GQLNodeInterface,
-	DrivePrivacy,
 	DriveID,
 	DriveKey,
 	FolderID,
@@ -178,14 +177,17 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
-import { ArFSDataToUpload, ArFSFolderToUpload } from '../exports';
+import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy } from '../exports';
 import { Turbo } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
-	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
+	private constructor(
+		readonly driveId: DriveID,
+		readonly driveKey: DriveKey
+	) {}
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
@@ -541,7 +543,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
 		rewardSettings?: RewardSettings
-	): Promise<{ id: TransactionID } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>> {
+	): Promise<
+		{ id: TransactionID } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>
+	> {
 		if (rewardSettings) {
 			const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 				objectMetaData,
@@ -1082,7 +1086,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		driveKey
 	}: UploadStats<ArFSDataToUpload>): Promise<FileResult> {
 		// eslint-disable-next-line prettier/prettier
-		const { arFSObjects: dataItems, fileId, fileKey } = await this.prepareFile({
+		const {
+			arFSObjects: dataItems,
+			fileId,
+			fileKey
+		} = await this.prepareFile({
 			...getPrepFileParams({
 				wrappedEntity,
 				destFolderId,

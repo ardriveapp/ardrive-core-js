@@ -885,7 +885,7 @@ describe('ArLocal Integration Tests', function () {
 						await arweave.api.post('graphql', buildQuery({ tags: [], owner }))
 					).data;
 
-					const txNode = gqlResp.data.transactions.edges[0].node;
+					const txNode = gqlResp.data!.transactions.edges[0].node;
 					return TxID(txNode.id);
 				}
 

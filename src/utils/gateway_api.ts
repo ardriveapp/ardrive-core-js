@@ -82,6 +82,24 @@ export class GatewayAPI {
 		try {
 			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', query);
 
+			if (data.errors) {
+				data.errors.forEach((error) => {
+					console.error(`GQL Error: ${error.message}`);
+				});
+			}
+
+			if (!data.data) {
+				const isTimeoutError = data.errors?.some((error) =>
+					error.message.includes('canceling statement due to statement timeout')
+				);
+
+				if (isTimeoutError) {
+					throw new Error('GQL Query has been timed out.');
+				}
+
+				throw new Error('No data was returned from the GQL request.');
+			}
+
 			return data.data.transactions;
 		} catch (error) {
 			throw Error(`GQL Error: ${(error as Error).message}`);
