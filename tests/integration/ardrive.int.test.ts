@@ -184,8 +184,6 @@ describe('ArDrive class - integrated', () => {
 	);
 
 	const walletOwner = stubArweaveAddress();
-	const unexpectedOwner = stubArweaveAddress('0987654321klmnopqrxtuvwxyz123456789ABCDEFGH');
-
 	// Use copies to expose any issues with object equality in tested code
 	const expectedDriveId = EID(stubEntityID.toString());
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
@@ -788,10 +786,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			describe('entity name validation', () => {
-				beforeEach(() => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-				});
-
 				it('throws if the given name is empty', () => {
 					const promiseToError = arDrive.createPublicFolder({
 						folderName: invalidEntityNameShort,
@@ -835,22 +829,7 @@ describe('ArDrive class - integrated', () => {
 				});
 			});
 
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.createPublicFolder({
-						folderName: validEntityName,
-						driveId: stubEntityID,
-						parentFolderId: stubEntityID
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws an error if the folder name conflicts with another ENTITY name in the destination folder', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.createPublicFolder({
 						folderName: 'CONFLICTING_NAME',
@@ -862,7 +841,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(arfsDao, 'getPublicDrive').resolves(stubPublicDrive());
 
 				const result = await arDrive.createPublicFolder({
@@ -874,7 +852,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct turbo ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(arfsDao, 'getPublicDrive').resolves(stubPublicDrive());
 
 				const result = await turboArDrive.createPublicFolder({
@@ -892,10 +869,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			describe('entity name validation', () => {
-				beforeEach(() => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-				});
-
 				it('throws if the given name is empty', async () => {
 					const promiseToError = arDrive.createPrivateFolder({
 						folderName: invalidEntityNameShort,
@@ -942,23 +915,7 @@ describe('ArDrive class - integrated', () => {
 				});
 			});
 
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.createPrivateFolder({
-						folderName: validEntityName,
-						driveId: stubEntityID,
-						parentFolderId: stubEntityID,
-						driveKey: await getStubDriveKey()
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws an error if the folder name conflicts with another ENTITY name in the destination folder', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.createPrivateFolder({
 						folderName: 'CONFLICTING_NAME',
@@ -972,7 +929,6 @@ describe('ArDrive class - integrated', () => {
 
 			it('returns the correct ArFSResult', async () => {
 				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
 				const stubDriveKey = await getStubDriveKey();
 				const result = await arDrive.createPrivateFolder({
@@ -991,7 +947,6 @@ describe('ArDrive class - integrated', () => {
 
 			it('returns the correct turbo ArFSResult', async () => {
 				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 
 				const stubDriveKey = await getStubDriveKey();
 				const result = await turboArDrive.createPrivateFolder({
@@ -1028,18 +983,6 @@ describe('ArDrive class - integrated', () => {
 
 			beforeEach(() => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
-			});
-
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.movePublicFolder({
-						folderId: stubEntityID,
-						newParentFolderId: stubEntityIDAlt
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws an error if the folder name conflicts with another ENTITY name in the destination folder', async () => {
@@ -1182,19 +1125,6 @@ describe('ArDrive class - integrated', () => {
 
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
-			});
-
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.movePrivateFolder({
-						folderId: stubEntityID,
-						newParentFolderId: stubEntityIDAlt,
-						driveKey: await getStubDriveKey()
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws an error if the folder name conflicts with another ENTITY name in the destination folder', async () => {
@@ -1365,10 +1295,6 @@ describe('ArDrive class - integrated', () => {
 			describe('entity name validation', () => {
 				const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
 
-				beforeEach(() => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-				});
-
 				it('throws if the given name is empty', () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
 					stub(wrappedFileWithInvalidName, 'destinationBaseName').get(() => invalidEntityNameShort);
@@ -1419,7 +1345,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns an empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
 
 				const result = await arDrive.uploadPublicFile({
@@ -1436,21 +1361,7 @@ describe('ArDrive class - integrated', () => {
 				});
 			});
 
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.uploadPublicFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws an error if destination folder has a conflicting FOLDER name', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.uploadPublicFile({
 						parentFolderId: stubEntityID,
@@ -1462,8 +1373,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await arDrive.uploadPublicFile({
 					parentFolderId: stubEntityID,
 					wrappedFile,
@@ -1479,8 +1388,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await arDrive.uploadPublicFile({
 					parentFolderId: EID(stubEntityID.toString()),
 					wrappedFile,
@@ -1501,7 +1408,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
 
 				const result = await arDrive.uploadPublicFile({
@@ -1519,7 +1425,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
 
 				const result = await arDrive.uploadPublicFile({
@@ -1542,7 +1447,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 					resolution: 'rename',
 					newFileName: 'New File!'
@@ -1567,7 +1471,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 					resolution: 'replace'
 				});
@@ -1592,8 +1495,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await bundledArDrive.uploadPublicFile({
 					parentFolderId: EID(stubEntityID.toString()),
 					wrappedFile
@@ -1611,8 +1512,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await arDrive.uploadPublicFile({
 					parentFolderId: EID(stubEntityID.toString()),
 					wrappedFile
@@ -1639,10 +1538,6 @@ describe('ArDrive class - integrated', () => {
 
 			describe('entity name validation', () => {
 				const wrappedFileWithInvalidName = new ArFSFileToUpload('test_wallet.json', fileStats);
-
-				beforeEach(() => {
-					stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-				});
 
 				it('throws if the given name is empty', async () => {
 					// Stub ArFSFileToUpload with a real file changing the filename to an invalid name
@@ -1697,7 +1592,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns empty ArFSResult if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
 
 				const result = await arDrive.uploadPrivateFile({
@@ -1715,22 +1609,7 @@ describe('ArDrive class - integrated', () => {
 				});
 			});
 
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.uploadPrivateFile({
-						parentFolderId: EID(stubEntityID.toString()),
-						wrappedFile,
-						driveKey: await getStubDriveKey()
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws an error if destination folder has a conflicting FOLDER name', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				await expectAsyncErrorThrow({
 					promiseToError: arDrive.uploadPrivateFile({
 						parentFolderId: EID(stubEntityID.toString()),
@@ -1743,8 +1622,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and conflict resolution is set to skip', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await arDrive.uploadPrivateFile({
 					parentFolderId: stubEntityID,
 					wrappedFile,
@@ -1761,8 +1638,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult revision with if destination folder has a conflicting FILE name and conflict resolution is set to replace', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
-
 				const result = await arDrive.uploadPrivateFile({
 					parentFolderId: stubEntityID,
 					wrappedFile,
@@ -1785,7 +1660,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('throws an error if destination folder has a conflicting FILE name and a matching last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(420));
 
 				const result = await arDrive.uploadPrivateFile({
@@ -1804,7 +1678,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult revision if destination folder has a conflicting FILE name and a different last modified date and the conflict resolution is set to upsert', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(wrappedFile, 'lastModifiedDate').get(() => new UnixTime(1337));
 
 				const result = await arDrive.uploadPrivateFile({
@@ -1829,7 +1702,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user supplies a new file name', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 					resolution: 'rename',
 					newFileName: 'New File!'
@@ -1856,7 +1728,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct revision ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to replace', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 					resolution: 'replace'
 				});
@@ -1883,7 +1754,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct empty ArFSResult if destination folder has a conflicting FILE name and the conflict resolution is set to ask and the user chooses to skip', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				stub(stubbedFileAskPrompts, 'fileToFileNameConflict').resolves({
 					resolution: 'skip'
 				});
@@ -1905,7 +1775,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct bundled ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				const stubDriveKey = await getStubDriveKey();
 
 				const result = await bundledArDrive.uploadPrivateFile({
@@ -1926,7 +1795,6 @@ describe('ArDrive class - integrated', () => {
 			});
 
 			it('returns the correct ArFSResult', async () => {
-				stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 				const stubDriveKey = await getStubDriveKey();
 
 				const result = await arDrive.uploadPrivateFile({
@@ -1949,18 +1817,6 @@ describe('ArDrive class - integrated', () => {
 		describe('movePublicFile', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
-			});
-
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.movePublicFile({
-						fileId: stubEntityID,
-						newParentFolderId: stubEntityIDAlt
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws an error if the destination folder has a conflicting entity name', async () => {
@@ -2028,19 +1884,6 @@ describe('ArDrive class - integrated', () => {
 		describe('movePrivateFile', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves(['CONFLICTING_NAME']);
-			});
-
-			it('throws an error if the owner of the drive conflicts with supplied wallet', async () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-
-				await expectAsyncErrorThrow({
-					promiseToError: arDrive.movePrivateFile({
-						fileId: stubEntityID,
-						newParentFolderId: stubEntityIDAlt,
-						driveKey: await getStubDriveKey()
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws an error if the destination folder has a conflicting entity name', async () => {
@@ -2118,17 +1961,6 @@ describe('ArDrive class - integrated', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPublicFile').resolves(stubPublicFile({ fileName: stubFileName }));
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-			});
-
-			it('throws if the owner mismatches', () => {
-				stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePublicFile({
-						fileId: stubEntityID,
-						newName: validEntityName
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws if the given name is the same as the current one', () => {
@@ -2231,18 +2063,6 @@ describe('ArDrive class - integrated', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateFile').returns(stubPrivateFile({ fileName: stubFileName }));
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-			});
-
-			it('throws if the owner mismatches', async () => {
-				stub(arfsDao, 'getDriveOwnerForFileId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePrivateFile({
-						fileId: stubEntityID,
-						newName: validEntityName,
-						driveKey: await stubDriveKey
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws if the given name is the same as the current one', async () => {
@@ -2352,17 +2172,6 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubFileName, conflictingName]);
 			});
 
-			it('throws if the owner mismatches', () => {
-				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePublicFolder({
-						folderId: stubEntityID,
-						newName: validEntityName
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws if the given name is the same as the current one', () => {
 				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
 				return expectAsyncErrorThrow({
@@ -2463,18 +2272,6 @@ describe('ArDrive class - integrated', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateFolder').returns(stubPrivateFolder({ folderName: stubFileName }));
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubFileName, conflictingName]);
-			});
-
-			it('throws if the owner mismatches', async () => {
-				stub(arfsDao, 'getDriveOwnerForFolderId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePrivateFolder({
-						folderId: stubEntityID,
-						newName: validEntityName,
-						driveKey: await stubDriveKey
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws if the given name is the same as the current one', async () => {
@@ -2584,17 +2381,6 @@ describe('ArDrive class - integrated', () => {
 				stub(arfsDao, 'getPublicEntityNamesInFolder').resolves([stubDriveName, conflictingName]);
 			});
 
-			it('throws if the owner mismatches', () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePublicDrive({
-						driveId: stubEntityID,
-						newName: validEntityName
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
-			});
-
 			it('throws if the given name is the same as the current one', () => {
 				stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 				return expectAsyncErrorThrow({
@@ -2684,18 +2470,6 @@ describe('ArDrive class - integrated', () => {
 			beforeEach(() => {
 				stub(arfsDao, 'getPrivateDrive').returns(stubPrivateDrive());
 				stub(arfsDao, 'getPrivateEntityNamesInFolder').resolves([stubDriveName, conflictingName]);
-			});
-
-			it('throws if the owner mismatches', async () => {
-				stub(arfsDao, 'getOwnerForDriveId').resolves(unexpectedOwner);
-				return expectAsyncErrorThrow({
-					promiseToError: arDrive.renamePrivateDrive({
-						driveId: stubEntityID,
-						newName: validEntityName,
-						driveKey: await stubDriveKey
-					}),
-					errorMessage: 'Supplied wallet is not the owner of this drive!'
-				});
 			});
 
 			it('throws if the given name is the same as the current one', async () => {
@@ -2792,7 +2566,6 @@ describe('ArDrive class - integrated', () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
-			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
 		});
 
 		describe('createPublicFolderAndUploadChildren', () => {
@@ -3001,7 +2774,7 @@ describe('ArDrive class - integrated', () => {
 	describe('uploadPublicManifest', async () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
-			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
@@ -3124,7 +2897,7 @@ describe('ArDrive class - integrated', () => {
 	describe('uploadAllEntities ArDrive method', () => {
 		beforeEach(() => {
 			stub(arfsDao, 'getDriveIdForFolderId').resolves(stubEntityID);
-			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
 			stub(communityOracle, 'getCommunityWinstonTip').resolves(W('1'));
 			stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
 			stub(arfsDao, 'getPublicNameConflictInfoInFolder').resolves(stubNameConflictInfo);
@@ -3955,7 +3728,7 @@ describe('ArDrive class - integrated', () => {
 			// TODO: Consolidate owner calls...
 			stub(arfsDao, 'getDriveOwnerForFileId').resolves(walletOwner);
 			stub(arfsDao, 'getDriveOwnerForFolderId').resolves(walletOwner);
-			stub(arfsDao, 'getOwnerAndAssertDrive').resolves(walletOwner);
+
 			stub(arfsDao, 'getOwnerForDriveId').resolves(walletOwner);
 
 			stub(arfsDao, 'getPublicFilesWithParentFolderIds').resolves([stubRetryFile]);
