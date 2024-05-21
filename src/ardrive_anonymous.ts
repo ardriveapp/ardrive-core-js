@@ -13,7 +13,8 @@ import {
 	DownloadPublicFileParameters,
 	DownloadPublicFolderParameters,
 	DownloadPublicDriveParameters,
-	ArFSDownloadPublicFolderParams
+	ArFSDownloadPublicFolderParams,
+	MANIFEST_CONTENT_TYPE
 } from './types';
 import {
 	GetPublicDriveParams,
@@ -94,7 +95,10 @@ export class ArDriveAnonymous extends ArDriveType {
 		const publicFile = await this.getPublicFile({ fileId });
 		const outputFileName = defaultFileName ?? publicFile.name;
 		const fullPath = joinPath(destFolderPath, outputFileName);
-		const data = await this.arFsDao.getPublicDataStream(publicFile.dataTxId);
+		const data =
+			publicFile.dataContentType === MANIFEST_CONTENT_TYPE
+				? await this.arFsDao.getPublicRawManifestDataStream(publicFile.dataTxId)
+				: await this.arFsDao.getPublicDataStream(publicFile.dataTxId);
 		const fileToDownload = new ArFSPublicFileToDownload(publicFile, data, fullPath);
 		await fileToDownload.write();
 	}
