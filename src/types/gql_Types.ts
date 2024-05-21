@@ -79,5 +79,13 @@ export interface GQLTransactionsResultInterface {
 export default interface GQLResultInterface {
 	data: {
 		transactions: GQLTransactionsResultInterface;
-	};
+	} | null;
+	errors:
+		| {
+				message: string;
+				path: string[];
+				locations: { line: number; column: number }[];
+				extensions: { code: string };
+		  }[]
+		| undefined;
 }
