@@ -1,11 +1,12 @@
 import { DataItem } from 'arbundles';
-import { createAxiosInstance } from '../utils/axiosClient';
-import { AxiosInstance } from 'axios';
+import { Readable } from 'node:stream';
 
-interface TurboParams {
-	turboUrl: URL;
-	isDryRun: boolean;
-	axios?: AxiosInstance;
+import { TurboUnauthenticatedClient, TurboUploadDataItemResponse, TurboFactory } from '@ardrive/turbo-sdk';
+import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
+
+export interface TurboSettings {
+	turboUploadUrl: URL;
+	turboPaymentUrl: URL;
 }
 
 export interface TurboCachesResponse {
@@ -13,52 +14,42 @@ export interface TurboCachesResponse {
 	fastFinalityIndexes?: string[];
 }
 
-export interface SendDataItemsResponse extends TurboCachesResponse {
-	id: string;
-	owner: string;
-}
-
+// Note: this class is a wrapper of the TurboSDk - it's helpful for things like dry run and other tests, but could be removed in the future
 export class Turbo {
-	public readonly turboUrl: URL;
 	private isDryRun: boolean;
-	private axios: AxiosInstance;
+	private turbo: TurboUnauthenticatedClient;
 
-	constructor({ turboUrl, isDryRun, axios = createAxiosInstance({}) }: TurboParams) {
-		this.turboUrl = turboUrl;
+	constructor({
+		turboUploadUrl = defaultTurboUploadUrl,
+		turboPaymentUrl = defaultTurboPaymentUrl,
+		isDryRun = false
+	}: Partial<TurboSettings> & { isDryRun?: boolean }) {
 		this.isDryRun = isDryRun;
-		this.axios = axios;
+		this.turbo = TurboFactory.unauthenticated({
+			uploadServiceConfig: {
+				url: turboUploadUrl.origin
+			},
+			paymentServiceConfig: {
+				url: turboPaymentUrl.origin
+			}
+		});
 	}
 
-	private get dataItemEndpoint(): string {
-		return `${this.turboUrl.href}v1/tx`;
-	}
-
-	async sendDataItem(dataItem: DataItem): Promise<SendDataItemsResponse> {
-		const defaultResponse = { id: dataItem.id, owner: dataItem.owner };
+	async sendDataItem(dataItem: DataItem): Promise<TurboUploadDataItemResponse> {
+		const defaultResponse = {
+			id: dataItem.id,
+			owner: dataItem.owner,
+			dataCaches: [],
+			fastFinalityIndexes: []
+		};
 		if (this.isDryRun) {
 			return defaultResponse;
 		}
 
-		const { data, status, statusText } = await this.axios.post<SendDataItemsResponse>(
-			this.dataItemEndpoint,
-			dataItem.getRaw(),
-			{
-				headers: {
-					'Content-Type': 'application/octet-stream'
-				},
-				maxBodyLength: Infinity,
-				validateStatus: () => true
-			}
-		);
-
-		if (status === 202) {
-			return defaultResponse;
-		}
-
-		if (status !== 200) {
-			throw new Error(`Upload to Turbo Has Failed. Status: ${status} Text: ${statusText}`);
-		}
-
-		return data;
+		// convert the data item Buffer to a Readable
+		return this.turbo.uploadSignedDataItem({
+			dataItemStreamFactory: () => Readable.from(dataItem.getRaw()),
+			dataItemSizeFactory: () => dataItem.getRaw().length
+		});
 	}
 }

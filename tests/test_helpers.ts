@@ -2,7 +2,7 @@ import Arweave from 'arweave';
 import { Tag } from 'arweave/node/lib/transaction';
 import { expect } from 'chai';
 import { EntityMetaDataTransactionData, GQLTagInterface, TransactionID } from '../src/types';
-import { Utf8ArrayToStr } from '../src/utils/common';
+import { BufferToString } from '../src/utils/common';
 import { Wallet } from '../src/wallet';
 
 interface expectAsyncErrorThrowParams {
@@ -55,11 +55,11 @@ export async function mineArLocalBlock(arweave: Arweave): Promise<void> {
 }
 
 export async function getTxDataFromGateway(arweave: Arweave, txId: TransactionID): Promise<Buffer> {
-	return (
+	const { data } =
 		await arweave.api.get<Buffer>(`${txId}`, {
 			responseType: 'arraybuffer'
 		})
-	).data;
+		return data;
 }
 
 export async function getMetaDataJSONFromGateway(
@@ -67,6 +67,6 @@ export async function getMetaDataJSONFromGateway(
 	txId: TransactionID
 ): Promise<EntityMetaDataTransactionData> {
 	const dataBuffer = await getTxDataFromGateway(arweave, txId);
-	const dataString = await Utf8ArrayToStr(dataBuffer);
+	const dataString = BufferToString(dataBuffer);
 	return JSON.parse(dataString);
 }

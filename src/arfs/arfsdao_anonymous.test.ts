@@ -15,10 +15,11 @@ import {
 	ArFSDAOAnonymous,
 	ArFSPublicDriveCacheKey,
 	ArFSPublicFileCacheKey,
-	ArFSPublicFolderCacheKey
+	ArFSPublicFolderCacheKey,
+	defaultCacheParams
 } from './arfsdao_anonymous';
 import { ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
-import { ArFSEntityCache } from './arfs_entity_cache';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 
 const fakeArweave = Arweave.init({
 	host: 'localhost',
@@ -30,11 +31,11 @@ const fakeArweave = Arweave.init({
 describe('ArFSDAOAnonymous class', () => {
 	let caches: ArFSAnonymousCache;
 	let arfsDaoAnonymous: ArFSDAOAnonymous;
-	const ownerCache = new ArFSEntityCache<DriveID, ArweaveAddress>(10);
-	const driveIdCache = new ArFSEntityCache<EntityID, DriveID>(10);
-	const publicDriveCache = new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10);
-	const publicFolderCache = new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10);
-	const publicFileCache = new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10);
+	const ownerCache = new PromiseCache<DriveID, ArweaveAddress>(defaultCacheParams);
+	const driveIdCache = new PromiseCache<EntityID, DriveID>(defaultCacheParams);
+	const publicDriveCache = new PromiseCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(defaultCacheParams);
+	const publicFolderCache = new PromiseCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(defaultCacheParams);
+	const publicFileCache = new PromiseCache<ArFSPublicFileCacheKey, ArFSPublicFile>(defaultCacheParams);
 
 	beforeEach(() => {
 		// Start each test with a newly wrapped file

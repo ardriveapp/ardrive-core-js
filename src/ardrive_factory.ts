@@ -11,7 +11,8 @@ import {
 	defaultGatewayProtocol,
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
-	turboProdUrl
+	defaultTurboPaymentUrl,
+	defaultTurboUploadUrl
 } from './utils/constants';
 import { ArDrive } from './ardrive';
 import { ArDriveAnonymous } from './ardrive_anonymous';
@@ -23,7 +24,7 @@ import { ARDataPriceNetworkEstimator } from './pricing/ar_data_price_network_est
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
-import { Turbo } from './arfs/turbo';
+import { Turbo, TurboSettings } from './arfs/turbo';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -31,10 +32,6 @@ export interface ArDriveSettingsAnonymous {
 	appVersion?: string;
 	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
-}
-
-export interface TurboSettings {
-	turboUrl?: URL;
 }
 
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
@@ -63,6 +60,11 @@ const defaultArweave = Arweave.init({
 	timeout: 600000
 });
 
+const defaultTurboSettings = {
+	turboUploadUrl: defaultTurboUploadUrl,
+	turboPaymentUrl: defaultTurboPaymentUrl
+};
+
 export function arDriveFactory({
 	wallet,
 	arweave = defaultArweave,
@@ -79,7 +81,7 @@ export function arDriveFactory({
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings,
-		useTurbo: turboSettings === undefined ? false : true
+		useTurbo: !!turboSettings
 	}),
 	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
 	arfsDao = new ArFSDAO(
@@ -92,9 +94,16 @@ export function arDriveFactory({
 		undefined,
 		undefined,
 		undefined,
-		turboSettings === undefined
-			? undefined
-			: new Turbo({ turboUrl: turboSettings.turboUrl ?? turboProdUrl, isDryRun: dryRun })
+		!turboSettings
+			? new Turbo({
+					...defaultTurboSettings,
+					isDryRun: dryRun
+			  })
+			: new Turbo({
+					turboUploadUrl: turboSettings.turboUploadUrl,
+					turboPaymentUrl: turboSettings.turboPaymentUrl,
+					isDryRun: dryRun
+			  })
 	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(

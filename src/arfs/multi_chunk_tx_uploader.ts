@@ -136,7 +136,8 @@ export class MultiChunkTxUploader {
 				await this.gatewayApi.postChunk(chunk);
 			} catch (err) {
 				this.hasFailedRequests = true;
-				throw new Error(`Too many errors encountered while posting chunks: ${err}`);
+				const message = err instanceof Error ? err.message : err;
+				throw new Error(`Too many errors encountered while posting chunks: ${message}`);
 			}
 
 			this.uploadedChunks++;
@@ -166,7 +167,8 @@ export class MultiChunkTxUploader {
 			await this.gatewayApi.postTxHeader(transactionToUpload);
 		} catch (err) {
 			this.hasFailedRequests = true;
-			throw new Error(`Too many errors encountered while posting transaction header: ${err}`);
+			const message = err instanceof Error ? err.message : err;
+			throw new Error(`Too many errors encountered while posting transaction header: ${message}`);
 		}
 
 		this.txPosted = true;
