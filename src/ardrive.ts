@@ -191,7 +191,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId, owner);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
+			newParentFolderId,
+			owner,
+			destFolderDriveId
+		);
 		if (entityNamesInParentFolder.includes(originalFileMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -269,7 +273,8 @@ export class ArDrive extends ArDriveAnonymous {
 		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
 			newParentFolderId,
 			owner,
-			driveKey
+			driveKey,
+			destFolderDriveId
 		);
 		if (entityNamesInParentFolder.includes(originalFileMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
@@ -353,7 +358,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(newParentFolderId, owner);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
+			newParentFolderId,
+			owner,
+			destFolderDriveId
+		);
 		if (entityNamesInParentFolder.includes(originalFolderMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -439,7 +448,8 @@ export class ArDrive extends ArDriveAnonymous {
 		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
 			newParentFolderId,
 			owner,
-			driveKey
+			driveKey,
+			destFolderDriveId
 		);
 		if (entityNamesInParentFolder.includes(originalFolderMetaData.name)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
@@ -523,14 +533,14 @@ export class ArDrive extends ArDriveAnonymous {
 		const resolvedEntitiesToUpload: UploadStats[] = [];
 
 		for (const entity of entitiesToUpload) {
-			const { destFolderId, wrappedEntity, driveKey, owner, destName } = entity;
+			const { destFolderId, wrappedEntity, driveKey, owner, destName, destDriveId } = entity;
 
 			const resolveConflictParams = {
 				conflictResolution,
 				getConflictInfoFn: (folderId: FolderID) =>
 					driveKey
-						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, owner, driveKey)
-						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner),
+						? this.arFsDao.getPrivateNameConflictInfoInFolder(folderId, owner, driveKey, destDriveId)
+						: this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner, destDriveId),
 				prompts,
 				destFolderId
 			};
@@ -729,6 +739,7 @@ export class ArDrive extends ArDriveAnonymous {
 		destinationFolderId
 	}: RetryPublicArFSFileByDestFolderIdParams): Promise<ArFSResult> {
 		const metaDataTx = await this.deriveMetaDataTxFromPublicFolder(destinationFolderId, dataTxId);
+		const driveId = await this.arFsDao.getDriveIdForFolderId(destinationFolderId);
 
 		let metaDataTxId: undefined | TransactionID = undefined;
 		let createMetaDataPlan: undefined | ArFSCreateFileMetaDataV2Plan = undefined;
@@ -743,7 +754,8 @@ export class ArDrive extends ArDriveAnonymous {
 			const isValidUpload = await this.assertWriteFileMetaData({
 				wrappedFile,
 				conflictResolution,
-				destinationFolderId
+				destinationFolderId,
+				driveId
 			});
 
 			if (!isValidUpload) {
@@ -827,11 +839,13 @@ export class ArDrive extends ArDriveAnonymous {
 		dataTxId: TransactionID
 	): Promise<ArFSPublicFile | undefined> {
 		const owner = await this.wallet.getAddress();
+		const driveId = await this.arFsDao.getDriveIdForFolderId(destinationFolderId);
 		await this.assertFolderExists(destinationFolderId, owner);
 
 		const allFileMetaDataTxInFolder = await this.arFsDao.getPublicFilesWithParentFolderIds(
 			[destinationFolderId],
-			owner
+			owner,
+			driveId
 		);
 		const metaDataTxsForThisTx = allFileMetaDataTxInFolder.filter((f) => `${f.dataTxId}` === `${dataTxId}`);
 
@@ -853,11 +867,13 @@ export class ArDrive extends ArDriveAnonymous {
 	private async assertWriteFileMetaData({
 		wrappedFile,
 		destinationFolderId,
-		conflictResolution
+		conflictResolution,
+		driveId
 	}: {
 		wrappedFile: ArFSFileToUpload;
 		destinationFolderId: FolderID;
 		conflictResolution: FileNameConflictResolution;
+		driveId: DriveID;
 	}): Promise<boolean> {
 		const owner = await this.wallet.getAddress();
 		await resolveFileNameConflicts({
@@ -865,7 +881,8 @@ export class ArDrive extends ArDriveAnonymous {
 			conflictResolution,
 			destFolderId: destinationFolderId,
 			destinationFileName: wrappedFile.destinationBaseName,
-			getConflictInfoFn: (folderId: FolderID) => this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner)
+			getConflictInfoFn: (folderId: FolderID) =>
+				this.arFsDao.getPublicNameConflictInfoInFolder(folderId, owner, driveId)
 		});
 
 		if (wrappedFile.conflictResolution) {
@@ -1019,7 +1036,11 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.wallet.getAddress();
 
 		// Assert that there are no duplicate names in the destination folder
-		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(parentFolderId, owner);
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
+			parentFolderId,
+			owner,
+			driveId
+		);
 		if (entityNamesInParentFolder.includes(folderName)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
 			throw new Error(errorMessage.entityNameExists);
@@ -1083,7 +1104,8 @@ export class ArDrive extends ArDriveAnonymous {
 		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
 			parentFolderId,
 			owner,
-			driveKey
+			driveKey,
+			driveId
 		);
 		if (entityNamesInParentFolder.includes(folderName)) {
 			// TODO: Add optional interactive prompt to resolve name conflicts in ticket PE-599
@@ -1438,10 +1460,11 @@ export class ArDrive extends ArDriveAnonymous {
 		await fileToDownload.write();
 	}
 
-	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID): Promise<void> {
+	async assertUniqueNameWithinPublicFolder(name: string, folderId: FolderID, driveId: DriveID): Promise<void> {
 		const allSiblingNames = await this.arFsDao.getPublicEntityNamesInFolder(
 			folderId,
-			await this.wallet.getAddress()
+			await this.wallet.getAddress(),
+			driveId
 		);
 		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
 			return accumulator || siblingName === name;
@@ -1451,11 +1474,17 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 	}
 
-	async assertUniqueNameWithinPrivateFolder(name: string, folderId: FolderID, driveKey: DriveKey): Promise<void> {
+	async assertUniqueNameWithinPrivateFolder(
+		name: string,
+		folderId: FolderID,
+		driveKey: DriveKey,
+		driveId: DriveID
+	): Promise<void> {
 		const allSiblingNames = await this.arFsDao.getPrivateEntityNamesInFolder(
 			folderId,
 			await this.wallet.getAddress(),
-			driveKey
+			driveKey,
+			driveId
 		);
 		const collidesWithExistingSiblingName = allSiblingNames.reduce((accumulator, siblingName) => {
 			return accumulator || siblingName === name;
@@ -1467,13 +1496,14 @@ export class ArDrive extends ArDriveAnonymous {
 
 	async renamePublicFile({ fileId, newName }: RenamePublicFileParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
+		const driveId = await this.getDriveIdForFileId(fileId);
 
 		const file = await this.getPublicFile({ fileId, owner });
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
 		assertValidArFSFileName(newName);
-		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId);
+		await this.assertUniqueNameWithinPublicFolder(newName, file.parentFolderId, driveId);
 		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
 			newName,
 			file.size,
@@ -1527,11 +1557,12 @@ export class ArDrive extends ArDriveAnonymous {
 	async renamePrivateFile({ fileId, newName, driveKey }: RenamePrivateFileParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
 		const file = await this.getPrivateFile({ fileId, driveKey, owner });
+		const driveId = await this.getDriveIdForFileId(fileId);
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
 		assertValidArFSFileName(newName);
-		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey);
+		await this.assertUniqueNameWithinPrivateFolder(newName, file.parentFolderId, driveKey, driveId);
 		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
 			newName,
 			file.size,
@@ -1590,6 +1621,7 @@ export class ArDrive extends ArDriveAnonymous {
 	async renamePublicFolder({ folderId, newName }: RenamePublicFolderParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
 		const folder = await this.getPublicFolder({ folderId, owner });
+		const driveId = await this.getDriveIdForFolderId(folderId);
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
 				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
@@ -1599,7 +1631,7 @@ export class ArDrive extends ArDriveAnonymous {
 			throw new Error(`New folder name '${newName}' must be different from the current folder name!`);
 		}
 		assertValidArFSFolderName(newName);
-		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId);
+		await this.assertUniqueNameWithinPublicFolder(newName, folder.parentFolderId, driveId);
 		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(newName, folder.customMetaDataJson);
 
 		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
@@ -1647,6 +1679,7 @@ export class ArDrive extends ArDriveAnonymous {
 	async renamePrivateFolder({ folderId, newName, driveKey }: RenamePrivateFolderParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
 		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+		const driveId = await this.getDriveIdForFolderId(folderId);
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
 				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
@@ -1656,7 +1689,7 @@ export class ArDrive extends ArDriveAnonymous {
 			throw new Error(`New folder name '${newName}' must be different from the current folder name!`);
 		}
 		assertValidArFSFolderName(newName);
-		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey);
+		await this.assertUniqueNameWithinPrivateFolder(newName, folder.parentFolderId, driveKey, driveId);
 		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(
 			newName,
 			driveKey,
