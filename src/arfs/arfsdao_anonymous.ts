@@ -251,6 +251,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	async getPublicFilesWithParentFolderIds(
 		folderIDs: FolderID[],
 		owner: ArweaveAddress,
+		driveId: DriveID,
 		latestRevisionsOnly = false
 	): Promise<ArFSPublicFile[]> {
 		let cursor = '';
@@ -260,6 +261,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
 				tags: [
+					{ name: 'Drive-Id', value: `${driveId}` },
 					{ name: 'Parent-Folder-Id', value: folderIDs.map((fid) => fid.toString()) },
 					{ name: 'Entity-Type', value: 'file' }
 				],
@@ -364,7 +366,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const childrenFileEntities: ArFSPublicFile[] = [];
 
 		for (const id of searchFolderIDs) {
-			(await this.getPublicFilesWithParentFolderIds([id], owner, true)).forEach((e) => {
+			(await this.getPublicFilesWithParentFolderIds([id], owner, driveIdOfFolder, true)).forEach((e) => {
 				childrenFileEntities.push(e);
 			});
 		}
@@ -425,7 +427,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		);
 
 		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, true);
+		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(
+			searchFolderIDs,
+			owner,
+			driveIdOfFolder,
+			true
+		);
 		const folderWrapper = new ArFSFolderToDownload(
 			publicEntityWithPathsFactory(publicFolder, hierarchy),
 			customFolderName

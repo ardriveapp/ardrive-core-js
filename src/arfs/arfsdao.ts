@@ -1562,6 +1562,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderIDs: FolderID[],
 		driveKey: DriveKey,
 		owner: ArweaveAddress,
+		driveId: DriveID,
 		latestRevisionsOnly = false
 	): Promise<ArFSPrivateFile[]> {
 		let cursor = '';
@@ -1571,6 +1572,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
 				tags: [
+					{ name: 'Drive-Id', value: `${driveId}` },
 					{ name: 'Parent-Folder-Id', value: folderIDs.map((fid) => fid.toString()) },
 					{ name: 'Entity-Type', value: 'file' }
 				],
@@ -1609,6 +1611,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		) =>
 			| ArFSFileOrFolderBuilder<'file', ArFSFileOrFolderEntity<'file'>>
 			| ArFSFileOrFolderBuilder<'folder', ArFSFileOrFolderEntity<'folder'>>,
+		driveId: DriveID,
 		latestRevisionsOnly = true,
 		filterOnOwner = true
 	): Promise<T[]> {
@@ -1619,6 +1622,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
 				tags: [
+					{ name: 'Drive-Id', value: `${driveId}` },
 					{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
 					{ name: 'Entity-Type', value: ['file', 'folder'] }
 				],
@@ -1654,6 +1658,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		parentFolderId: FolderID,
 		owner: ArweaveAddress,
 		driveKey: DriveKey,
+		driveId: DriveID,
 		latestRevisionsOnly = true
 	): Promise<(ArFSPrivateFile | ArFSPrivateFolder)[]> {
 		return this.getEntitiesInFolder(
@@ -1663,6 +1668,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				entityType === 'folder'
 					? ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey)
 					: ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey),
+			driveId,
 			latestRevisionsOnly
 		);
 	}
@@ -1670,6 +1676,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
 		owner: ArweaveAddress,
+		driveId: DriveID,
 		latestRevisionsOnly = true
 	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
 		return this.getEntitiesInFolder(
@@ -1679,6 +1686,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				entityType === 'folder'
 					? ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi)
 					: ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi),
+			driveId,
 			latestRevisionsOnly
 		);
 	}
@@ -1694,18 +1702,23 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateEntityNamesInFolder(
 		folderId: FolderID,
 		owner: ArweaveAddress,
-		driveKey: DriveKey
+		driveKey: DriveKey,
+		driveId: DriveID
 	): Promise<string[]> {
-		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
+		const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, driveId, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicEntityNamesInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<string[]> {
-		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+	async getPublicEntityNamesInFolder(folderId: FolderID, owner: ArweaveAddress, driveId: DriveID): Promise<string[]> {
+		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, driveId, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicNameConflictInfoInFolder(folderId: FolderID, owner: ArweaveAddress): Promise<NameConflictInfo> {
+	async getPublicNameConflictInfoInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress,
+		driveId: DriveID
+	): Promise<NameConflictInfo> {
 		const cacheKey = { folderId, owner };
 		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
 		if (cachedConflictInfo) {
@@ -1715,7 +1728,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return this.caches.publicConflictCache.put(
 			cacheKey,
 			(async () => {
-				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, true);
+				const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, driveId, true);
 				return {
 					files: childrenOfFolder.filter(fileFilter).map(fileConflictInfoMap),
 					folders: childrenOfFolder.filter(folderFilter).map(folderToNameAndIdMap)
@@ -1727,7 +1740,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateNameConflictInfoInFolder(
 		folderId: FolderID,
 		owner: ArweaveAddress,
-		driveKey: DriveKey
+		driveKey: DriveKey,
+		driveId: DriveID
 	): Promise<NameConflictInfo> {
 		const cacheKey = { folderId, owner, driveKey };
 		const cachedConflictInfo = this.caches.privateConflictCache.get(cacheKey);
@@ -1738,7 +1752,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return this.caches.privateConflictCache.put(
 			cacheKey,
 			(async () => {
-				const childrenOfFolder = await this.getPrivateEntitiesInFolder(folderId, owner, driveKey, true);
+				const childrenOfFolder = await this.getPrivateEntitiesInFolder(
+					folderId,
+					owner,
+					driveKey,
+					driveId,
+					true
+				);
 				// Hack to deal with potential typescript bug
 				const files = childrenOfFolder.filter(fileFilter) as ArFSPrivateFile[];
 				const folders = childrenOfFolder.filter(folderFilter) as ArFSPrivateFolder[];
@@ -2298,9 +2318,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		// Fetch all file entities within all Folders of the drive
 		const childFiles: ArFSPrivateFile[] = [];
 		for (const id of searchFolderIDs) {
-			(await this.getPrivateFilesWithParentFolderIds([id], driveKey, owner, true)).forEach((e) => {
-				childFiles.push(e);
-			});
+			(await this.getPrivateFilesWithParentFolderIds([id], driveKey, owner, driveIdOfFolder, true)).forEach(
+				(e) => {
+					childFiles.push(e);
+				}
+			);
 		}
 
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);

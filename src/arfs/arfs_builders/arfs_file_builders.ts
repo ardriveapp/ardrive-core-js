@@ -43,8 +43,8 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 		];
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
-		const tags = await super.parseFromArweaveNode(node);
+	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+		const tags = await super.parseFromArweaveNode(node, owner);
 		return tags.filter((tag) => tag.name !== 'File-Id');
 	}
 
@@ -148,9 +148,9 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 		return fileBuilder;
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
-		const tags = await super.parseFromArweaveNode(node);
+		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;
 			const { value } = tag;
