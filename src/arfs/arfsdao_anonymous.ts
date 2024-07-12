@@ -22,7 +22,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
 import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
-import { ArFSEntityCache } from './arfs_entity_cache';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
@@ -50,19 +50,24 @@ export interface ArFSPublicFileCacheKey {
 }
 
 export interface ArFSAnonymousCache {
-	ownerCache: ArFSEntityCache<DriveID, ArweaveAddress>;
-	driveIdCache: ArFSEntityCache<EntityID, DriveID>;
-	publicDriveCache: ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>;
-	publicFolderCache: ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>;
-	publicFileCache: ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>;
+	ownerCache: PromiseCache<DriveID, ArweaveAddress>;
+	driveIdCache: PromiseCache<EntityID, DriveID>;
+	publicDriveCache: PromiseCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>;
+	publicFolderCache: PromiseCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>;
+	publicFileCache: PromiseCache<ArFSPublicFileCacheKey, ArFSPublicFile>;
 }
 
+export const defaultCacheParams = {
+	cacheCapacity: 10,
+	cacheTTL: 1000 * 60 * 60 * 24 * 365 // 1 year
+};
+
 export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
-	ownerCache: new ArFSEntityCache<DriveID, ArweaveAddress>(10),
-	driveIdCache: new ArFSEntityCache<EntityID, DriveID>(10),
-	publicDriveCache: new ArFSEntityCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(10),
-	publicFolderCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(10),
-	publicFileCache: new ArFSEntityCache<ArFSPublicFileCacheKey, ArFSPublicFile>(10)
+	ownerCache: new PromiseCache<DriveID, ArweaveAddress>(defaultCacheParams),
+	driveIdCache: new PromiseCache<EntityID, DriveID>(defaultCacheParams),
+	publicDriveCache: new PromiseCache<ArFSPublicDriveCacheKey, ArFSPublicDrive>(defaultCacheParams),
+	publicFolderCache: new PromiseCache<ArFSPublicFolderCacheKey, ArFSPublicFolder>(defaultCacheParams),
+	publicFileCache: new PromiseCache<ArFSPublicFileCacheKey, ArFSPublicFile>(defaultCacheParams)
 };
 
 /**
