@@ -193,9 +193,9 @@ export abstract class ArFSFileOrFolderBuilder<
 > extends ArFSMetadataEntityBuilder<T> {
 	parentFolderId?: FolderID;
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
-		const tags = await super.parseFromArweaveNode(node);
+		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;
 			const { value } = tag;
