@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import {
 	ArFSPrivateDrive,
@@ -598,6 +599,17 @@ export class ArDrive extends ArDriveAnonymous {
 		for (const entity of entitiesToUpload) {
 			const { destFolderId } = entity;
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
+
+			const isPublicDrive = await this.arFsDao.isPublicDrive(destDriveId);
+
+			// Private drive uploads require a drive key
+			if(!isPublicDrive && !entity.driveKey) {
+				throw new Error('Private drive requires a drive key to upload');
+			}
+
+			if(isPublicDrive && entity.driveKey) {
+				throw new Error('Public drive does not require a drive key to upload');
+			}
 
 			const owner = await this.wallet.getAddress();
 			preparedEntities.push({ ...entity, destDriveId, owner });

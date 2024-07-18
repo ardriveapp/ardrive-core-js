@@ -1776,6 +1776,28 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })
 		);
 	}
+	
+	public async isPublicDrive(driveId: DriveID): Promise<boolean> {
+		console.log('Checking if drive is public...');
+
+		const gqlQuery = buildQuery({
+			tags: [
+				{ name: 'Entity-Type', value: 'drive' },
+				{ name: 'Drive-Id', value: `${driveId}` },
+			],
+			sort: ASCENDING_ORDER
+		});
+
+		console.log('Querying the graphQL API...');
+
+		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+		console.log('Checking if drive is public...');
+
+		const drivePrivacyFromTag = transactions.edges[0].node.tags.find((t) => t.name === 'Drive-Privacy');
+
+		return drivePrivacyFromTag?.value === 'public';
+	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
 		const cachedOwner = this.caches.ownerCache.get(driveId);
