@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { ArDriveAnonymous } from './ardrive_anonymous';
 import {
 	ArFSPrivateDrive,
