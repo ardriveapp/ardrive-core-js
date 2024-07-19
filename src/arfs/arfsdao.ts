@@ -78,7 +78,7 @@ import {
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
 	turboProdUrl,
-	drivePrivacyTagName
+	gqlTagNameRecord
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -1790,7 +1790,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
-		const drivePrivacyFromTag = transactions.edges[0].node.tags.find((t) => t.name === drivePrivacyTagName);
+		const drivePrivacyFromTag = transactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.drivePrivacy
+		);
 
 		return drivePrivacyFromTag?.value === 'public';
 	}

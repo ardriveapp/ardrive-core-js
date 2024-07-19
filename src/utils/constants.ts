@@ -93,5 +93,3 @@ export const gqlTagNameRecord = {
 
 export const gqlTagNameArray = Object.values(gqlTagNameRecord);
 export type GqlTagName = typeof gqlTagNameArray[number];
-
-export const drivePrivacyTagName = 'Drive-Privacy';
