@@ -77,7 +77,8 @@ import {
 	authTagLength,
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
-	turboProdUrl
+	turboProdUrl,
+	drivePrivacyTagName
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -105,7 +106,7 @@ import {
 	fileConflictInfoMap,
 	folderToNameAndIdMap
 } from '../utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER } from '../utils/query';
+import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { ArFSEntityCache } from './arfs_entity_cache';
@@ -1776,27 +1777,35 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })
 		);
 	}
-	
-	public async isPublicDrive(driveId: DriveID): Promise<boolean> {
-		console.log('Checking if drive is public...');
 
+	public async isPublicDrive(driveId: DriveID, address: ArweaveAddress): Promise<boolean> {
 		const gqlQuery = buildQuery({
 			tags: [
 				{ name: 'Entity-Type', value: 'drive' },
-				{ name: 'Drive-Id', value: `${driveId}` },
+				{ name: 'Drive-Id', value: `${driveId}` }
 			],
-			sort: ASCENDING_ORDER
+			owner: address,
+			sort: DESCENDING_ORDER
 		});
-
-		console.log('Querying the graphQL API...');
 
 		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
-		console.log('Checking if drive is public...');
-
-		const drivePrivacyFromTag = transactions.edges[0].node.tags.find((t) => t.name === 'Drive-Privacy');
+		const drivePrivacyFromTag = transactions.edges[0].node.tags.find((t) => t.name === drivePrivacyTagName);
 
 		return drivePrivacyFromTag?.value === 'public';
+	}
+
+	public async assertDrivePrivacy(driveId: DriveID, address: ArweaveAddress, driveKey?: DriveKey): Promise<void> {
+		const _isPublicDrive = await this.isPublicDrive(driveId, address);
+
+		// Private drive uploads require a drive key
+		if (!_isPublicDrive && !driveKey) {
+			throw new Error('Private drive requires a drive key to upload');
+		}
+
+		if (_isPublicDrive && driveKey) {
+			throw new Error('Public drive does not require a drive key to upload');
+		}
 	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {
