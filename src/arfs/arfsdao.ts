@@ -176,7 +176,7 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
-import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy } from '../exports';
+import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy, errorMessage } from '../exports';
 import { Turbo, TurboCachesResponse } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
 
@@ -1802,11 +1802,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		// Private drive uploads require a drive key
 		if (!_isPublicDrive && !driveKey) {
-			throw new Error('Private drive requires a drive key to upload');
+			throw new Error(errorMessage.privateDriveRequiresDriveKey);
 		}
 
 		if (_isPublicDrive && driveKey) {
-			throw new Error('Public drive does not require a drive key to upload');
+			throw new Error(errorMessage.publicDriveDoesNotRequireDriveKey);
 		}
 	}
 

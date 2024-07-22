@@ -576,6 +576,8 @@ describe('The ArFSDAO class', () => {
 		it('returns the expected result for an upload plan with a private file as v2 transactions', async () => {
 			// Use an expected id so we can expect an exact file key
 			const fileWithExistingId = stubFileUploadStats();
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			fileWithExistingId.wrappedEntity.existingId = stubEntityID;
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
@@ -601,6 +603,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a private folder as v2 transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
 				v2TxPlans: {
@@ -622,6 +626,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a public folder that has an expected folder id sent as a v2 transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
@@ -646,6 +652,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a private folder that has an expected folder id sent as a v2 transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
@@ -670,6 +678,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a folder and a file as v2 transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
 				v2TxPlans: {
@@ -700,6 +710,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a single file as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -721,6 +733,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a two folders as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -744,6 +758,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a folder and a file as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -766,6 +782,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with many files and folders sent as multiple bundled transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
