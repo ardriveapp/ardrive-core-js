@@ -1528,16 +1528,27 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<ArFSPrivateFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				cursor = edge.cursor;
-				const { node } = edge;
-				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				// Build the folder so that we don't add something invalid to the cache
-				const folder = await folderBuilder.build(node);
-				const cacheKey = { folderId: folder.entityId, owner, driveKey };
-				return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+			const folderPromises: Promise<ArFSPrivateFolder | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					cursor = edge.cursor;
+					const { node } = edge;
+					const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+					// Build the folder so that we don't add something invalid to the cache
+					const folder = await folderBuilder.build(node);
+					const cacheKey = { folderId: folder.entityId, owner, driveKey };
+					return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+				} catch (e) {
+					// If the folder is broken, skip it
+					console.error(`Error building folder: ${e}`);
+					return null;
+				}
 			});
-			allFolders.push(...(await Promise.all(folders)));
+
+			const folders = await Promise.all(folderPromises);
+
+			// Filter out null values
+			const validFolders = folders.filter((f) => f !== null) as ArFSPrivateFolder[];
+			allFolders.push(...(await Promise.all(validFolders)));
 		}
 
 		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
