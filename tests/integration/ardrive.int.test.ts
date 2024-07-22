@@ -184,6 +184,7 @@ describe('ArDrive class - integrated', () => {
 	);
 
 	const walletOwner = stubArweaveAddress();
+
 	// Use copies to expose any issues with object equality in tested code
 	const expectedDriveId = EID(stubEntityID.toString());
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
@@ -220,6 +221,7 @@ describe('ArDrive class - integrated', () => {
 		stub(walletDao, 'walletHasBalance').resolves(true);
 		stub(wallet, 'getAddress').resolves(walletOwner);
 		stub(arfsDao, 'getDriveIDForEntityId').resolves(expectedDriveId);
+		stub(arfsDao, 'assertDrivePrivacy').resolves();
 	});
 
 	describe('utility function', () => {

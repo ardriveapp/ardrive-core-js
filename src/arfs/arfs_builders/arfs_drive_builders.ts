@@ -13,7 +13,7 @@ import {
 	EntityMetaDataTransactionData
 } from '../../types';
 import { Utf8ArrayToStr } from '../../utils/common';
-import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId } from '../../utils/constants';
+import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId, gqlTagNameRecord } from '../../utils/constants';
 import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
 	ArFSMetadataEntityBuilder,
@@ -171,7 +171,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 				case 'Drive-Auth-Mode':
 					this.driveAuthMode = value as DriveAuthMode;
 					break;
-				case 'Drive-Privacy':
+				case gqlTagNameRecord.drivePrivacy:
 					this.drivePrivacy = value as DrivePrivacy;
 					break;
 				default:

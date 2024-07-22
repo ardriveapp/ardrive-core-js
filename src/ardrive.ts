@@ -598,8 +598,11 @@ export class ArDrive extends ArDriveAnonymous {
 		for (const entity of entitiesToUpload) {
 			const { destFolderId } = entity;
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
-
 			const owner = await this.wallet.getAddress();
+
+			// Assert that the drive has the correct privacy settings
+			await this.arFsDao.assertDrivePrivacy(destDriveId, owner, entity.driveKey);
+
 			preparedEntities.push({ ...entity, destDriveId, owner });
 		}
 
@@ -1035,6 +1038,9 @@ export class ArDrive extends ArDriveAnonymous {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.wallet.getAddress();
 
+		// Assert that the drive is public
+		await this.arFsDao.assertDrivePrivacy(driveId, owner);
+
 		// Assert that there are no duplicate names in the destination folder
 		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
 			parentFolderId,
@@ -1099,6 +1105,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.wallet.getAddress();
+
+		// Assert that the drive is private
+		await this.arFsDao.assertDrivePrivacy(driveId, owner, driveKey);
 
 		// Assert that there are no duplicate names in the destination folder
 		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
@@ -1558,6 +1567,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.wallet.getAddress();
 		const file = await this.getPrivateFile({ fileId, driveKey, owner });
 		const driveId = await this.getDriveIdForFileId(fileId);
+
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1622,6 +1632,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.wallet.getAddress();
 		const folder = await this.getPublicFolder({ folderId, owner });
 		const driveId = await this.getDriveIdForFolderId(folderId);
+
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
 				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
@@ -1743,6 +1754,7 @@ export class ArDrive extends ArDriveAnonymous {
 	async renamePublicDrive({ driveId, newName }: RenamePublicDriveParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
 		const drive = await this.getPublicDrive({ driveId, owner });
+
 		if (drive.name === newName) {
 			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
 		}
