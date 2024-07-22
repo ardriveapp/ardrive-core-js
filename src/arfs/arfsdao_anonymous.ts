@@ -315,8 +315,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					return folder;
 				} catch (e) {
 					// If the folder is broken, skip it
-					console.error(`Error building folder: ${e}`);
-					return null;
+					if (e instanceof SyntaxError) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
 				}
 			});
 

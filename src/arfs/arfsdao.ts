@@ -1539,8 +1539,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
 				} catch (e) {
 					// If the folder is broken, skip it
-					console.error(`Error building folder: ${e}`);
-					return null;
+					if (e instanceof SyntaxError) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
 				}
 			});
 
