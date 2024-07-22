@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 /* eslint-disable no-console */
 import Arweave from 'arweave';
 import {
@@ -321,10 +320,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				}
 			});
 
-        	const folders = await Promise.all(folderPromises);
+			const folders = await Promise.all(folderPromises);
 
 			// Filter out null values
-			const validFolders = folders.filter(folder => folder !== null) as ArFSPublicFolder[];
+			const validFolders = folders.filter((folder) => folder !== null) as ArFSPublicFolder[];
 
 			allFolders.push(...validFolders);
 		}
