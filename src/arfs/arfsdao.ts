@@ -1584,7 +1584,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPrivateFile | null	>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			const files: Promise<ArFSPrivateFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
 				try {
 					const { node } = edge;
 					cursor = edge.cursor;

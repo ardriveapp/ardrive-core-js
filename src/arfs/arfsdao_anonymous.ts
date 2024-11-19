@@ -275,7 +275,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 					const file = await fileBuilder.build(node);
 					const cacheKey = { fileId: file.fileId, owner };
-					allFiles.push(file);
 					return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
 					// If the file is broken, skip it
