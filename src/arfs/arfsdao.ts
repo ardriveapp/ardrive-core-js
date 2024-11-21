@@ -179,6 +179,7 @@ import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy, errorMessage } from '../exports';
 import { Turbo, TurboCachesResponse } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
+import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1583,21 +1584,31 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPrivateFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				// Build the file so that we don't add something invalid to the cache
-				const file = await fileBuilder.build(node);
-				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
-				const cacheKey = {
-					fileId: file.fileId,
-					owner,
-					fileKey
-				};
-				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+			const files: Promise<ArFSPrivateFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					const { node } = edge;
+					cursor = edge.cursor;
+					const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+					// Build the file so that we don't add something invalid to the cache
+					const file = await fileBuilder.build(node);
+					const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+					const cacheKey = {
+						fileId: file.fileId,
+						owner,
+						fileKey
+					};
+					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+				} catch (e) {
+					if (e instanceof InvalidFileStateException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			allFiles.push(...(await Promise.all(files)));
+			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPrivateFile[];
+			allFiles.push(...validFiles);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}

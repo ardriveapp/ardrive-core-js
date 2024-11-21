@@ -27,6 +27,7 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
 import { GatewayAPI } from '../utils/gateway_api';
+import { InvalidFileStateException } from '../types/exceptions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -267,16 +268,33 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPublicFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
-				const file = await fileBuilder.build(node);
-				const cacheKey = { fileId: file.fileId, owner };
-				allFiles.push(file);
-				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
+			const files: Promise<ArFSPublicFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					const { node } = edge;
+					cursor = edge.cursor;
+					const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
+					const file = await fileBuilder.build(node);
+					const cacheKey = { fileId: file.fileId, owner };
+					return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
+				} catch (e) {
+					// If the file is broken, skip it
+					if (e instanceof SyntaxError) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					if (e instanceof InvalidFileStateException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			await Promise.all(files);
+
+			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPublicFile[];
+
+			allFiles.push(...validFiles);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}

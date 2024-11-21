@@ -1,11 +1,14 @@
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import { fakeArweave, stubTxID } from '../../../tests/stubs';
+import { fakeArweave, stubTxID, stubTxIDAlt } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { EntityKey, GQLNodeInterface } from '../../types';
+import { EID, EntityKey, GQLNodeInterface } from '../../types';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
+import { ArFSDAOAnonymous } from '../arfsdao_anonymous';
+import { ADDR, DriveID, FolderID } from '../../types';
+import { stub, SinonStub } from 'sinon';
 
 const gatewayApi = new GatewayAPI({
 	gatewayUrl: gatewayUrlForArweave(fakeArweave),
