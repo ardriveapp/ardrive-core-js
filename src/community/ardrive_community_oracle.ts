@@ -1,7 +1,7 @@
 import { weightedRandom } from '../utils/common';
 import { ContractOracle, ContractReader } from './contract_oracle';
 import { CommunityOracle } from './community_oracle';
-import { ArDriveContractOracle } from './ardrive_contract_oracle';
+import { ArDriveContractOracle, communityTxId } from './ardrive_contract_oracle';
 import Arweave from 'arweave';
 import { SmartweaveContractReader } from './smartweave_contract_oracle';
 import { PDSContractCacheServiceContractReader } from './pds_contract_oracle';
@@ -60,7 +60,6 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	 */
 	async selectTokenHolder(): Promise<ArweaveAddress> {
 		try {
-			console.log('selectTokenHolder');
 			// Read the ArDrive Smart Contract to get the latest state
 			const contract = await this.contractOracle.getCommunityContract();
 
@@ -106,7 +105,7 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 		} catch (error) {
 			console.error('Failed to determine token holder: ' + error + '. Using default address.');
 			// Use ArDrive profit sharing community contract address as default target
-			return ADDR('-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ');
+			return ADDR(communityTxId);
 		}
 	}
 }
