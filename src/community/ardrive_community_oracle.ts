@@ -36,61 +36,77 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	/**
 	 * Given a Winston data cost, returns a calculated ArDrive community tip amount in Winston
 	 *
+	 * If contract reading fails, returns a zero fee to allow upload flow to continue
+	 *
 	 * TODO: Use big int library on Winston types
 	 */
 	async getCommunityWinstonTip(winstonCost: Winston): Promise<Winston> {
-		const communityTipPercentage = await this.contractOracle.getTipPercentageFromContract();
-		const arDriveCommunityTip = winstonCost.times(communityTipPercentage);
-		return Winston.max(arDriveCommunityTip, minArDriveCommunityWinstonTip);
+		try {
+			const communityTipPercentage = await this.contractOracle.getTipPercentageFromContract();
+			const arDriveCommunityTip = winstonCost.times(communityTipPercentage);
+			return Winston.max(arDriveCommunityTip, minArDriveCommunityWinstonTip);
+		} catch (error) {
+			console.error(`Failed to get community tip percentage: ${error}. Using 0 fee to allow upload to continue.`);
+			return W(0);
+		}
 	}
 
 	/**
 	 * Gets a random ArDrive token holder based off their weight (amount of tokens they hold)
 	 *
+	 * If contract reading fails, returns a default address to allow upload flow to continue
+	 *
 	 * TODO: This is mostly copy-paste from core -- refactor into a more testable state
 	 */
 	async selectTokenHolder(): Promise<ArweaveAddress> {
-		// Read the ArDrive Smart Contract to get the latest state
-		const contract = await this.contractOracle.getCommunityContract();
+		try {
+			console.log('selectTokenHolder');
+			// Read the ArDrive Smart Contract to get the latest state
+			const contract = await this.contractOracle.getCommunityContract();
 
-		const balances = contract.balances;
-		const vault = contract.vault;
+			const balances = contract.balances;
+			const vault = contract.vault;
 
-		// Get the total number of token holders
-		let total = 0;
-		for (const addr of Object.keys(balances)) {
-			total += balances[addr];
-		}
-
-		// Check for how many tokens the user has staked/vaulted
-		for (const addr of Object.keys(vault)) {
-			if (!vault[addr].length) continue;
-
-			const vaultBalance = vault[addr]
-				.map((a: { balance: number; start: number; end: number }) => a.balance)
-				.reduce((a: number, b: number) => a + b, 0);
-
-			total += vaultBalance;
-
-			if (addr in balances) {
-				balances[addr] += vaultBalance;
-			} else {
-				balances[addr] = vaultBalance;
+			// Get the total number of token holders
+			let total = 0;
+			for (const addr of Object.keys(balances)) {
+				total += balances[addr];
 			}
-		}
 
-		// Create a weighted list of token holders
-		const weighted: { [addr: string]: number } = {};
-		for (const addr of Object.keys(balances)) {
-			weighted[addr] = balances[addr] / total;
-		}
-		// Get a random holder based off of the weighted list of holders
-		const randomHolder = weightedRandom(weighted);
+			// Check for how many tokens the user has staked/vaulted
+			for (const addr of Object.keys(vault)) {
+				if (!vault[addr].length) continue;
 
-		if (randomHolder === undefined) {
-			throw new Error('Token holder target could not be determined for community tip distribution..');
-		}
+				const vaultBalance = vault[addr]
+					.map((a: { balance: number; start: number; end: number }) => a.balance)
+					.reduce((a: number, b: number) => a + b, 0);
 
-		return ADDR(randomHolder);
+				total += vaultBalance;
+
+				if (addr in balances) {
+					balances[addr] += vaultBalance;
+				} else {
+					balances[addr] = vaultBalance;
+				}
+			}
+
+			// Create a weighted list of token holders
+			const weighted: { [addr: string]: number } = {};
+			for (const addr of Object.keys(balances)) {
+				weighted[addr] = balances[addr] / total;
+			}
+			// Get a random holder based off of the weighted list of holders
+			const randomHolder = weightedRandom(weighted);
+
+			if (randomHolder === undefined) {
+				throw new Error('Token holder target could not be determined for community tip distribution..');
+			}
+
+			return ADDR(randomHolder);
+		} catch (error) {
+			console.error('Failed to determine token holder: ' + error + '. Using default address.');
+			// Use ArDrive profit sharing community contract address as default target
+			return ADDR('-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ');
+		}
 	}
 }
