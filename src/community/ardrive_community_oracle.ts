@@ -60,7 +60,6 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 	 */
 	async selectTokenHolder(): Promise<ArweaveAddress> {
 		try {
-			console.log('selectTokenHolder');
 			// Read the ArDrive Smart Contract to get the latest state
 			const contract = await this.contractOracle.getCommunityContract();
 
