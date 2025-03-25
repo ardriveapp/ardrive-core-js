@@ -1239,7 +1239,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					});
 				} else {
 					if (!communityTipSettings) {
-						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
+						console.warn('There are no community tip settings for this file upload...');
 					}
 
 					// Prepare file data item and results

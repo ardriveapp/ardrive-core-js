@@ -932,22 +932,6 @@ describe('The ArFSDAO class', () => {
 			assertFileResult(fileResults[1], 42);
 		});
 
-		it('throws an error if a provided bundle plan has a file entity but no communityTipSettings', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [
-						{
-							bundleRewardSettings: { reward: W(20) },
-							metaDataDataItems: [],
-							uploadStats: [stubFileUploadStats()]
-						}
-					],
-					v2TxPlans: emptyV2TxPlans
-				}),
-				errorMessage: 'Invalid bundle plan, file uploads must include communityTipSettings!'
-			});
-		});
-
 		it('throws an error if a provided bundle plan has only a single folder entity', async () => {
 			await expectAsyncErrorThrow({
 				promiseToError: arfsDao.uploadAllEntities({

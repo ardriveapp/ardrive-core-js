@@ -1,11 +1,11 @@
 import { weightedRandom } from '../utils/common';
 import { ContractOracle, ContractReader } from './contract_oracle';
 import { CommunityOracle } from './community_oracle';
-import { ArDriveContractOracle, communityTxId } from './ardrive_contract_oracle';
+import { ArDriveContractOracle } from './ardrive_contract_oracle';
 import Arweave from 'arweave';
-import { SmartweaveContractReader } from './smartweave_contract_oracle';
 import { PDSContractCacheServiceContractReader } from './pds_contract_oracle';
 import { ADDR, ArweaveAddress, W, Winston } from '../types';
+import { SmartweaveContractReader } from './smartweave_contract_oracle';
 
 /**
  * Minimum ArDrive community tip from the Community Improvement Proposal Doc:
@@ -103,9 +103,8 @@ export class ArDriveCommunityOracle implements CommunityOracle {
 
 			return ADDR(randomHolder);
 		} catch (error) {
-			console.error('Failed to determine token holder: ' + error + '. Using default address.');
-			// Use ArDrive profit sharing community contract address as default target
-			return ADDR(communityTxId);
+			console.error(`Failed to determine token holder: ${error}`);
+			throw error;
 		}
 	}
 }

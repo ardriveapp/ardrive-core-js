@@ -2,11 +2,18 @@ import { expect } from 'chai';
 import { fakeArweave, stubCommunityContract } from '../../tests/stubs';
 import { W } from '../types';
 import { ArDriveCommunityOracle } from './ardrive_community_oracle';
+import { expectAsyncErrorThrow } from '../../tests/test_helpers';
 
 describe('The ArDriveCommunityOracle', () => {
 	const stubContractReader = {
 		async readContract() {
 			return stubCommunityContract;
+		}
+	};
+
+	const errorThrowingContractReader = {
+		async readContract() {
+			throw new Error('Failed to read contract!');
 		}
 	};
 
@@ -23,6 +30,13 @@ describe('The ArDriveCommunityOracle', () => {
 
 			expect(+(await communityOracle.getCommunityWinstonTip(W(10_000_000)))).to.equal(10_000_000);
 		});
+
+		it('returns zero fee when contract reading fails', async () => {
+			const communityOracle = new ArDriveCommunityOracle(fakeArweave, [errorThrowingContractReader]);
+
+			// Should return 0 winston as a fallback
+			expect(+(await communityOracle.getCommunityWinstonTip(W(100_000_000)))).to.equal(0);
+		});
 	});
 
 	describe('selectTokenHolder method', () => {
@@ -32,6 +46,15 @@ describe('The ArDriveCommunityOracle', () => {
 			expect(`${await communityOracle.selectTokenHolder()}`).to.equal(
 				'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'
 			);
+		});
+
+		it('throws an error when contract reading fails', async () => {
+			const communityOracle = new ArDriveCommunityOracle(fakeArweave, [errorThrowingContractReader]);
+
+			await expectAsyncErrorThrow({
+				promiseToError: communityOracle.selectTokenHolder(),
+				errorMessage: 'Max contract read attempts has been reached on the last fallback contract reader..'
+			});
 		});
 	});
 });
