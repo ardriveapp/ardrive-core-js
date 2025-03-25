@@ -137,11 +137,11 @@ export interface CalculatedFileAndMetaDataPlan
 	extends Omit<V2FileAndMetaDataPlan, 'fileDataByteCount' | 'metaDataByteCount'> {
 	dataTxRewardSettings: RewardSettings;
 	metaDataRewardSettings: RewardSettings;
-	communityTipSettings: CommunityTipSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface CalculatedFileDataOnlyPlan extends Omit<V2FileDataOnlyPlan, 'fileDataByteCount'> {
 	dataTxRewardSettings: RewardSettings;
-	communityTipSettings: CommunityTipSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface CalculatedFolderMetaDataPlan extends Omit<V2FolderMetaDataPlan, 'metaDataByteCount'> {
 	metaDataRewardSettings: RewardSettings;

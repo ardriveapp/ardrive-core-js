@@ -157,7 +157,13 @@ export class ArDrive extends ArDriveAnonymous {
 	 * @remarks Presumes that there's a sufficient wallet balance
 	 */
 	async sendCommunityTip({ communityWinstonTip, assertBalance = false }: CommunityTipParams): Promise<TipResult> {
-		const tokenHolder: ArweaveAddress = await this.communityOracle.selectTokenHolder();
+		let tokenHolder: ArweaveAddress;
+		try {
+			tokenHolder = await this.communityOracle.selectTokenHolder();
+		} catch (error) {
+			console.error(`Failed to select token holder: ${error}. Cannot send community tip.`);
+			throw new Error('Failed to select a token holder to receive the community tip.');
+		}
 		const arTransferBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
 		const transferResult = await this.walletDao.sendARToAddress(
