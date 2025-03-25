@@ -15,7 +15,7 @@ describe('The ArDriveCommunityOracle', () => {
 			const communityOracle = new ArDriveCommunityOracle(fakeArweave, [stubContractReader]);
 
 			// 50% stubbed fee of 100 million Winston is 50 million winston
-			expect(+(await communityOracle.getCommunityWinstonTip(W(100_000_000)))).to.equal(50_000_000);
+			expect(+(await communityOracle.getCommunityWinstonTip(W(100_000_000)))).to.equal(15_000_000);
 		});
 
 		it('returns the expected minimum community tip result when the derived tip is below the minimum', async () => {

@@ -85,8 +85,6 @@ describe('ArLocal Integration Tests', function () {
 
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
 	const fakeContractReader = new PDSContractCacheServiceContractReader();
-	stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
-
 	const communityOracle = new ArDriveCommunityOracle(arweave, [fakeContractReader]);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', fakeVersion);
@@ -167,6 +165,7 @@ describe('ArLocal Integration Tests', function () {
 
 	beforeEach(() => {
 		stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+		stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
@@ -727,7 +726,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		describe('with a v2 public file transaction that has incomplete chunks', () => {
-			it.skip('and a valid metadata tx, we can restore that tx using the file ID', async () => {
+			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
 				const wrappedFile = stub2ChunkFileToUpload();
@@ -793,7 +792,8 @@ describe('ArLocal Integration Tests', function () {
 				});
 			});
 
-			it.skip('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
+			it('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
+				stub(fakeGatewayApi, 'postChunk').resolves();
 				const wrappedFile = stub3ChunkFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
@@ -856,7 +856,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 			});
 
-			it.skip('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
+			it('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
 				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
 
 				const wrappedFile = stub258KiBFileToUpload();

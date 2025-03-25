@@ -462,7 +462,7 @@ export const stubEntitiesWithNoFilesWithPaths = stubEntitiesWithNoFiles.map((ent
 );
 
 export const stubCommunityContract = {
-	settings: [['fee', 50]],
+	settings: [['fee', 15]],
 	vault: { [`${stubArweaveAddress()}`]: [{ balance: 500, start: 1, end: 2 }] },
 	balances: { [`${stubArweaveAddress()}`]: 200 }
 };
