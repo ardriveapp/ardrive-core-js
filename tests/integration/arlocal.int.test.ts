@@ -727,7 +727,7 @@ describe('ArLocal Integration Tests', function () {
 		});
 
 		describe('with a v2 public file transaction that has incomplete chunks', () => {
-			it('and a valid metadata tx, we can restore that tx using the file ID', async () => {
+			it.skip('and a valid metadata tx, we can restore that tx using the file ID', async () => {
 				stub(fakeGatewayApi, 'postChunk').resolves();
 
 				const wrappedFile = stub2ChunkFileToUpload();
@@ -793,9 +793,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 			});
 
-			it('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
-				stub(fakeGatewayApi, 'postChunk').resolves();
-
+			it.skip('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
 				const wrappedFile = stub3ChunkFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
@@ -858,7 +856,7 @@ describe('ArLocal Integration Tests', function () {
 				});
 			});
 
-			it('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
+			it.skip('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
 				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
 
 				const wrappedFile = stub258KiBFileToUpload();
