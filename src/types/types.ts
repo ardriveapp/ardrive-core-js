@@ -54,3 +54,8 @@ export type MakeOptional<T, K> = Omit<T, K> & Partial<T>;
 export type Mutable<T> = {
 	-readonly [P in keyof T]: T[P];
 };
+
+export enum DriveSignatureType {
+	v1 = 1,
+	v2 = 2
+}

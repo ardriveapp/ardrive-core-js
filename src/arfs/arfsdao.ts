@@ -111,7 +111,7 @@ import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { ArFSEntityCache } from './arfs_entity_cache';
 
-import { DataItem, bundleAndSignData, createData } from 'arbundles';
+import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -178,7 +178,7 @@ import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy, errorMessage } from '../exports';
 import { Turbo, TurboCachesResponse } from './turbo';
-import { ArweaveSigner } from 'arbundles/src/signing';
+import { ArweaveSigner } from '@dha-team/arbundles';
 import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */

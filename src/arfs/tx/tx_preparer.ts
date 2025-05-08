@@ -1,5 +1,4 @@
-import { bundleAndSignData, createData, DataItem } from 'arbundles';
-import { ArweaveSigner } from 'arbundles/src/signing';
+import { bundleAndSignData, createData, DataItem, ArweaveSigner } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import Transaction from 'arweave/node/lib/transaction';
 import { GQLTagInterface } from '../../exports';

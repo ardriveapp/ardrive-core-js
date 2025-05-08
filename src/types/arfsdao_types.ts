@@ -1,4 +1,4 @@
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress } from '.';
 import {
