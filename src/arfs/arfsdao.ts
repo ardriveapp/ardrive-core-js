@@ -176,7 +176,15 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
-import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy, errorMessage } from '../exports';
+import {
+	ArFSDataToUpload,
+	ArFSFolderToUpload,
+	DrivePrivacy,
+	DriveSignatureInfo,
+	DriveSignatureType,
+	errorMessage,
+	parseDriveSignatureType
+} from '../exports';
 import { Turbo, TurboCachesResponse } from './turbo';
 import { ArweaveSigner } from '@dha-team/arbundles';
 import { InvalidFileStateException } from '../types/exceptions';
@@ -1461,6 +1469,73 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await this.sendTransactionsAsChunks([transaction], true);
 	}
 
+	public async getDriveSignatureInfo(driveId: DriveID, address: ArweaveAddress): Promise<DriveSignatureInfo> {
+		const gqlDriveQuery = buildQuery({
+			tags: [
+				{ name: 'Drive-Id', value: `${driveId}` },
+				{ name: 'Entity-Type', value: 'drive' }
+			],
+			owner: address,
+			sort: DESCENDING_ORDER
+		});
+
+		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
+
+		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.drivePrivacy
+		);
+
+		if (drivePrivacyFromTag?.value === 'public') {
+			throw new Error('Drive is public');
+		}
+
+		const driveSignatureTypeTagData = driveTransactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.signatureType
+		);
+
+		const driveSignatureType = driveSignatureTypeTagData?.value
+			? parseDriveSignatureType(driveSignatureTypeTagData.value)
+			: DriveSignatureType.v1;
+
+		let encryptedSignatureData: { cipherIV: string; encryptedData: Buffer } | undefined;
+
+		if (driveSignatureType === DriveSignatureType.v1) {
+			const gqlQuery = buildQuery({
+				tags: [
+					{ name: 'Entity-Type', value: 'drive-signature' },
+					{ name: 'Drive-Id', value: `${driveId}` }
+				],
+				owner: address,
+				sort: DESCENDING_ORDER
+			});
+
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+			if (transactions.edges.length > 0) {
+				const txId = transactions.edges[0].node.id;
+				const cipherIV = transactions.edges[0].node.tags.find((t) => t.name === gqlTagNameRecord.cipherIv);
+				const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${txId}`;
+				const requestConfig: AxiosRequestConfig = {
+					method: 'get',
+					url: dataTxUrl,
+					responseType: 'arraybuffer'
+				};
+				const response = await axios(requestConfig);
+				if (cipherIV) {
+					encryptedSignatureData = {
+						cipherIV: cipherIV.value,
+						encryptedData: Buffer.from(response.data)
+					};
+				}
+			}
+		}
+
+		return {
+			driveSignatureType,
+			encryptedSignatureData
+		};
+	}
+
 	// Convenience function for known-private use cases
 	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
 		const cacheKey = { driveId, driveKey, owner };
@@ -1468,13 +1543,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (cachedDrive) {
 			return cachedDrive;
 		}
+
+		const driveSignatureInfo = await this.getDriveSignatureInfo(driveId, owner);
 		return this.caches.privateDriveCache.put(
 			cacheKey,
 			new ArFSPrivateDriveBuilder({
 				entityId: driveId,
 				key: driveKey,
 				owner,
-				gatewayApi: this.gatewayApi
+				gatewayApi: this.gatewayApi,
+				driveSignatureType: driveSignatureInfo?.driveSignatureType ?? DriveSignatureType.v1
 			}).build()
 		);
 	}

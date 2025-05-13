@@ -88,7 +88,8 @@ export const gqlTagNameRecord = {
 	drivePrivacy: 'Drive-Privacy',
 	cipher: 'Cipher',
 	cipherIv: 'Cipher-IV',
-	driveAuthMode: 'Drive-Auth-Mode'
+	driveAuthMode: 'Drive-Auth-Mode',
+	signatureType: 'Signature-Type'
 } as const;
 
 export const gqlTagNameArray = Object.values(gqlTagNameRecord);

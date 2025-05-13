@@ -8,7 +8,7 @@ import utf8 from 'utf8';
 import jwkToPem, { JWK } from 'jwk-to-pem';
 import { authTagLength } from './constants';
 import { DriveKey, EntityKey, FileKey, DriveSignatureType } from '../types';
-import { ArweaveSigner, createData } from '@dha-team/arbundles';
+import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
@@ -28,16 +28,25 @@ export async function generateWalletSignatureV1(jwk: JWK, data: Uint8Array): Pro
 }
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file using data item (equivalent to Wander's signDataItem())
-export async function generateWalletSignatureV2(jwk: JWK, data: Uint8Array): Promise<Uint8Array> {
-	const sign = crypto.createSign('sha256');
-	sign.update(data);
-	const pem: string = jwkToPem(jwk, { private: true });
-	const signature = sign.sign({
-		key: pem,
-		padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-		saltLength: 0 // We do not need to salt the signature since we combine with a random UUID
+export async function generateWalletSignatureV2(jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
+	const signer = new ArweaveSigner(jwk);
+	// Override sign to use 0 saltLength
+	signer.sign = function (message) {
+		return getCryptoDriver().sign(jwk, message, {
+			saltLength: 0
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		}) as any;
+	};
+	const dataItem = createData(data, signer, {
+		tags: [
+			{
+				name: 'Action',
+				value: 'Drive-Signature-V2'
+			}
+		]
 	});
-	return signature;
+	await dataItem.sign(signer);
+	return new Uint8Array(dataItem.rawSignature);
 }
 
 // Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
@@ -52,7 +61,7 @@ export async function deriveDriveKey(
 	signatureType: DriveSignatureType = DriveSignatureType.v1,
 	encryptedSignatureData?: {
 		cipherIV: string;
-		data: Buffer;
+		encryptedData: Buffer;
 	}
 ): Promise<DriveKey> {
 	const driveIdBytes: Buffer = Buffer.from(parse(driveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
@@ -73,24 +82,14 @@ export async function deriveDriveKey(
 			walletSignature = await driveDecrypt(
 				encryptedSignatureData.cipherIV,
 				driveKeyV2,
-				encryptedSignatureData.data
+				encryptedSignatureData.encryptedData
 			);
 		} else {
 			walletSignature = await generateWalletSignatureV1(JSON.parse(walletPrivateKey), signingKey);
 		}
 	} else if (signatureType === DriveSignatureType.v2) {
 		// v2 signature uses equivalent to Wander's signDataItem()
-		const signer = new ArweaveSigner(JSON.parse(walletPrivateKey));
-		const data = createData(signingKey, signer, {
-			tags: [
-				{
-					name: 'Action',
-					value: 'Drive-Signature-V2'
-				}
-			]
-		});
-		await data.sign(signer);
-		walletSignature = await data.getSignatureData();
+		walletSignature = await generateWalletSignatureV2(JSON.parse(walletPrivateKey), signingKey);
 	} else {
 		throw new Error(`Unknown signature type: ${signatureType}`);
 	}

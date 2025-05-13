@@ -16,7 +16,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey, FileKey } from '../types';
+import { ByteCount, DriveKey, DriveSignatureType, FileKey } from '../types';
 import Arweave from 'arweave';
 
 // Pauses application
@@ -565,3 +565,15 @@ export function encryptedDataSize(dataSize: ByteCount): ByteCount {
 	}
 	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
 }
+
+export const parseDriveSignatureType = (value: string): DriveSignatureType => {
+	switch (value) {
+		case '1':
+			return DriveSignatureType.v1;
+		case '2':
+			return DriveSignatureType.v2;
+		default:
+			// Added default case for robustness
+			throw new Error(`Unknown DriveSignatureType value: ${value}`);
+	}
+};

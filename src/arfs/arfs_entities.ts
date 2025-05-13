@@ -21,7 +21,9 @@ import {
 	EntityIDTypeForEntityType,
 	CustomMetaDataGqlTags,
 	CustomMetaDataJsonFields,
-	FeeMultiple
+	FeeMultiple,
+	SignatureFormat,
+	DriveSignatureType
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 import { ENCRYPTED_DATA_PLACEHOLDER_TYPE } from '../utils/constants';
@@ -131,6 +133,7 @@ export class ArFSPrivateDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
 		readonly driveKey: DriveKey,
+		readonly driveSignatureType: DriveSignatureType,
 		readonly boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
 		customMetaDataJson?: CustomMetaDataJsonFields
@@ -170,6 +173,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 		driveAuthMode: DriveAuthMode,
 		cipher: string,
 		cipherIV: CipherIV,
+		driveSignatureType: DriveSignatureType,
 		readonly boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
 		customMetaDataJson?: CustomMetaDataJsonFields
@@ -190,12 +194,51 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			cipher,
 			cipherIV,
 			new EntityKey(Buffer.from([])),
+			driveSignatureType,
 			boost,
 			customMetaDataGqlTags,
 			customMetaDataJson
 		);
 		// @ts-expect-error
 		delete this.driveKey;
+	}
+}
+
+export class DriveSignature extends ArFSEntity {
+	readonly encryptedSignatureData: Buffer;
+	readonly signatureFormat: SignatureFormat;
+
+	constructor(
+		appName: string,
+		appVersion: string,
+		arFS: string,
+		contentType: ContentType,
+		driveId: DriveID,
+		name: string,
+		txId: TransactionID,
+		unixTime: UnixTime,
+		encryptedSignatureData: Buffer,
+		signatureFormat: SignatureFormat,
+		boost?: FeeMultiple,
+		customMetaDataGqlTags?: CustomMetaDataGqlTags,
+		customMetaDataJson?: CustomMetaDataJsonFields
+	) {
+		super(
+			appName,
+			appVersion,
+			arFS,
+			contentType,
+			driveId,
+			'drive-signature', // entityType
+			name,
+			txId,
+			unixTime,
+			boost,
+			customMetaDataGqlTags,
+			customMetaDataJson
+		);
+		this.encryptedSignatureData = encryptedSignatureData;
+		this.signatureFormat = signatureFormat;
 	}
 }
 

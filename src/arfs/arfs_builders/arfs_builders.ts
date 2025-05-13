@@ -19,7 +19,8 @@ import {
 	CustomMetaData,
 	CustomMetaDataJsonFields,
 	isCustomMetaDataGqlTags,
-	FeeMultiple
+	FeeMultiple,
+	DriveSignatureType
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -31,6 +32,7 @@ export interface ArFSMetadataEntityBuilderParams {
 export type ArFSPublicMetadataEntityBuilderParams = ArFSMetadataEntityBuilderParams;
 export interface ArFSPrivateMetadataEntityBuilderParams extends ArFSMetadataEntityBuilderParams {
 	key: EntityKey;
+	driveSignatureType: DriveSignatureType;
 }
 
 export type ArFSMetadataEntityBuilderFactoryFunction<

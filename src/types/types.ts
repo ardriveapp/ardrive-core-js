@@ -59,3 +59,15 @@ export enum DriveSignatureType {
 	v1 = 1,
 	v2 = 2
 }
+
+export enum SignatureFormat {
+	v1 = '1'
+}
+
+export type DriveSignatureInfo = {
+	driveSignatureType: DriveSignatureType;
+	encryptedSignatureData?: {
+		cipherIV: string;
+		encryptedData: Buffer;
+	};
+};
