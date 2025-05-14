@@ -70,7 +70,12 @@ import {
 	assertFolderMetaDataJson,
 	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
-import { CustomMetaData, CustomMetaDataJsonFields, PDSContractCacheServiceContractReader } from '../../src/exports';
+import {
+	CustomMetaData,
+	CustomMetaDataJsonFields,
+	DriveSignatureType,
+	PDSContractCacheServiceContractReader
+} from '../../src/exports';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -953,7 +958,7 @@ describe('ArLocal Integration Tests', function () {
 			rootFolderTxId = created[1].metadataTxId!;
 			driveId = created[0].entityId!;
 			driveTxID = created[0].metadataTxId!;
-			driveKey = created[0].key!;
+			driveKey = new DriveKey(created[0].key!.keyData, DriveSignatureType.v1);
 
 			await mineArLocalBlock(arweave);
 		});

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { EntityKey, GQLNodeInterface } from '../../types';
+import { DriveKey, DriveSignatureType, GQLNodeInterface } from '../../types';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
@@ -122,8 +122,9 @@ describe('ArFSPrivateFileBuilder', () => {
 		]
 	};
 
-	const driveKeyForStubPrivateFile = new EntityKey(
-		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64')
+	const driveKeyForStubPrivateFile = new DriveKey(
+		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
+		DriveSignatureType.v1
 	);
 
 	// prettier-ignore
@@ -141,7 +142,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
 			stubPrivateFileGQLNode as GQLNodeInterface,
 			gatewayApi,
-			driveKeyForStubPrivateFile
+			new DriveKey(driveKeyForStubPrivateFile.keyData, DriveSignatureType.v1)
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateFileGetDataResult);
 

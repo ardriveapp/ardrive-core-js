@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { EntityKey, GQLNodeInterface } from '../../types';
+import { DriveKey, DriveSignatureType, GQLNodeInterface } from '../../types';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs_folder_builders';
@@ -120,8 +120,9 @@ describe('ArFSPrivateFolderBuilder', () => {
 		]
 	};
 
-	const driveKeyForStubPrivateFolder = new EntityKey(
-		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64')
+	const driveKeyForStubPrivateFolder = new DriveKey(
+		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
+		DriveSignatureType.v1
 	);
 
 	// prettier-ignore
