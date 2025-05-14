@@ -108,7 +108,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public Drive Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -134,7 +134,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private Drive Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -142,8 +142,9 @@ describe('The ArFSDAO class', () => {
 			expect(tags.find((t) => t.name === 'Cipher')?.value).to.equal('AES256-GCM');
 			expect(tags.find((t) => t.name === 'Cipher-IV')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Auth-Mode')?.value).to.equal('password');
+			expect(tags.find((t) => t.name === 'Signature-Type')?.value).to.equal('1');
 
-			expect(tags.length).to.equal(11);
+			expect(tags.length).to.equal(12);
 
 			const dataBuffer = Buffer.from(transaction.data);
 			const stubbedKey = await getStubDriveKey();
@@ -172,7 +173,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public Folder Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -198,7 +199,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private Folder Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -248,7 +249,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public File Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -278,7 +279,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private File Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -354,7 +355,7 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 
 			expect(tags.length).to.equal(9);
 		});
@@ -405,7 +406,7 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 
 			expect(tags.length).to.equal(9);
 		});

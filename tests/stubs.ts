@@ -42,7 +42,8 @@ import {
 	W,
 	wrapFileOrFolder,
 	ArFSPrivateDrive,
-	deriveFileKey
+	deriveFileKey,
+	DriveSignatureType
 } from '../src/exports';
 import {
 	ADDR,
@@ -60,7 +61,7 @@ import {
 	TxID,
 	UnixTime
 } from '../src/types';
-import { ArFS_O_11 } from '../src/utils/constants';
+import { ArFS_O_15 } from '../src/utils/constants';
 
 export const fakeArweave = Arweave.init({
 	host: 'localhost',
@@ -180,7 +181,7 @@ export const stubPublicDrive = (): ArFSPublicDrive =>
 	new ArFSPublicDrive(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		JSON_CONTENT_TYPE,
 		stubEntityID,
 		'drive',
@@ -195,7 +196,7 @@ export const stubPrivateDrive = async (): Promise<ArFSPrivateDrive> =>
 	new ArFSPrivateDrive(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		PRIVATE_CONTENT_TYPE,
 		stubEntityID,
 		'drive',
@@ -207,7 +208,8 @@ export const stubPrivateDrive = async (): Promise<ArFSPrivateDrive> =>
 		'password',
 		'stubCipher',
 		'stubIV',
-		await getStubDriveKey()
+		await getStubDriveKey(),
+		DriveSignatureType.v2
 	);
 
 interface StubFolderParams {
@@ -226,7 +228,7 @@ export const stubPublicFolder = ({
 	new ArFSPublicFolder(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		JSON_CONTENT_TYPE,
 		driveId,
 		folderName,
@@ -245,7 +247,7 @@ export const stubPrivateFolder = async ({
 	new ArFSPrivateFolder(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		JSON_CONTENT_TYPE,
 		driveId,
 		folderName,
@@ -278,7 +280,7 @@ export const stubPublicFile = ({
 	new ArFSPublicFile(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		JSON_CONTENT_TYPE,
 		driveId,
 		fileName,
@@ -305,7 +307,7 @@ export const stubPrivateFile = async ({
 	return new ArFSPrivateFile(
 		'Integration Test',
 		'1.0',
-		ArFS_O_11,
+		ArFS_O_15,
 		JSON_CONTENT_TYPE,
 		driveId,
 		fileName,

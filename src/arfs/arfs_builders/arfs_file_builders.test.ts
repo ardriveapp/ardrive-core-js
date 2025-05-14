@@ -19,7 +19,7 @@ describe('ArFSPublicFileBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.2.0' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 			{ name: 'Entity-Type', value: 'file' },
@@ -49,7 +49,7 @@ describe('ArFSPublicFileBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
 		expect(fileMetaData.appVersion).to.equal('1.2.0');
-		expect(fileMetaData.arFS).to.equal('0.11');
+		expect(fileMetaData.arFS).to.equal('0.15');
 		expect(fileMetaData.contentType).to.equal('application/json');
 		expect(`${fileMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
 		expect(fileMetaData.entityType).to.equal('file');
@@ -109,7 +109,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.2.0' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/octet-stream' },
 			{ name: 'Drive-Id', value: '5ca7ddfe-effa-4fc5-8796-8f3e0502854a' },
 			{ name: 'Entity-Type', value: 'file' },
@@ -150,7 +150,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
 		expect(fileMetaData.appVersion).to.equal('1.2.0');
-		expect(fileMetaData.arFS).to.equal('0.11');
+		expect(fileMetaData.arFS).to.equal('0.15');
 		expect(fileMetaData.contentType).to.equal('application/octet-stream');
 		expect(`${fileMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
 		expect(fileMetaData.entityType).to.equal('file');

@@ -89,7 +89,6 @@ import {
 	GQLEdgeInterface,
 	GQLNodeInterface,
 	DriveID,
-	DriveKey,
 	FolderID,
 	RewardSettings,
 	FileID,
@@ -179,6 +178,7 @@ import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import {
 	ArFSDataToUpload,
 	ArFSFolderToUpload,
+	DriveKey,
 	DrivePrivacy,
 	DriveSignatureInfo,
 	DriveSignatureType,
@@ -195,7 +195,12 @@ export class PrivateDriveKeyData {
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
-		const driveKey = await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey));
+		const driveKey = await deriveDriveKey(
+			drivePassword,
+			driveId,
+			JSON.stringify(privateKey),
+			DriveSignatureType.v2
+		);
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
 }

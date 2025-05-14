@@ -2,7 +2,6 @@ import { driveEncrypt, fileEncrypt, deriveFileKey } from '../../utils/crypto';
 import {
 	CipherIV,
 	DataContentType,
-	DriveKey,
 	FileID,
 	FileKey,
 	FolderID,
@@ -14,7 +13,9 @@ import {
 	DriveAuthMode,
 	EntityMetaDataTransactionData,
 	CustomMetaDataJsonFields,
-	assertCustomMetaDataJsonFields
+	assertCustomMetaDataJsonFields,
+	DriveKey,
+	DriveSignatureType
 } from '../../types';
 import { DriveMetaDataTransactionData } from '../arfs_builders/arfs_drive_builders';
 import { FileMetaDataTransactionData } from '../arfs_builders/arfs_file_builders';
@@ -108,7 +109,8 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 		readonly cipherIV: CipherIV,
 		readonly encryptedDriveData: Buffer,
 		readonly driveKey: DriveKey,
-		readonly driveAuthMode: DriveAuthMode = 'password'
+		readonly driveAuthMode: DriveAuthMode = 'password',
+		readonly driveSignatureType: DriveSignatureType = driveKey.driveSignatureType
 	) {
 		super();
 	}
@@ -130,7 +132,14 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 
 		const { cipher, cipherIV, data } = await driveEncrypt(driveKey, Buffer.from(JSON.stringify(fullDataJson)));
 
-		return new ArFSPrivateDriveTransactionData(cipher, cipherIV, data, driveKey, 'password');
+		return new ArFSPrivateDriveTransactionData(
+			cipher,
+			cipherIV,
+			data,
+			driveKey,
+			'password',
+			driveKey.driveSignatureType
+		);
 	}
 
 	asTransactionData(): Buffer {

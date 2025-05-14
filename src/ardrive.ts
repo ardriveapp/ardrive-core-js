@@ -76,7 +76,6 @@ import {
 	MetaDataBaseCosts,
 	RenamePublicDriveParams,
 	RenamePrivateDriveParams,
-	DriveKey,
 	W,
 	TransactionID,
 	ArFSFees,
@@ -87,7 +86,8 @@ import {
 	RetryPublicArFSFileByFileIdParams,
 	RetryPublicArFSFileByDestFolderIdParams,
 	emptyArFSResult,
-	DriveSignatureInfo
+	DriveSignatureInfo,
+	DriveKey
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';

@@ -440,7 +440,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertCreateDriveExpectations({
 					result,
-					driveFee: W(2973),
+					driveFee: W(2990),
 					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true,

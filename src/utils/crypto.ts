@@ -7,7 +7,7 @@ import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
 import jwkToPem, { JWK } from 'jwk-to-pem';
 import { authTagLength } from './constants';
-import { DriveKey, EntityKey, FileKey, DriveSignatureType } from '../types';
+import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
 import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
 
 const keyByteLength = 32;
@@ -96,7 +96,7 @@ export async function deriveDriveKey(
 
 	const info: string = utf8.encode(dataEncryptionKey as string);
 	const driveKey: Buffer = hkdf(Buffer.from(walletSignature), keyByteLength, { info, hash: keyHash });
-	return new EntityKey(driveKey);
+	return new DriveKey(driveKey, signatureType);
 }
 
 // Derive a key from the user's Drive Key and the File Id

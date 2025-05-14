@@ -2,7 +2,6 @@ import { driveDecrypt } from '../../utils/crypto';
 import { PrivateKeyData } from '../private_key_data';
 import {
 	CipherIV,
-	DriveKey,
 	FolderID,
 	EID,
 	EntityID,
@@ -20,7 +19,13 @@ import {
 	ArFSMetadataEntityBuilderParams,
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
-import { ArFSPrivateDriveKeyless, ArweaveAddress, DriveSignatureType, parseDriveSignatureType } from '../../exports';
+import {
+	ArFSPrivateDriveKeyless,
+	ArweaveAddress,
+	DriveKey,
+	DriveSignatureType,
+	parseDriveSignatureType
+} from '../../exports';
 import { GatewayAPI } from '../../utils/gateway_api';
 
 export interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {

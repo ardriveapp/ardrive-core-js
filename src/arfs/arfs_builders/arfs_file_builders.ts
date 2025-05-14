@@ -2,7 +2,6 @@ import { deriveFileKey, fileDecrypt } from '../../utils/crypto';
 import {
 	ArweaveAddress,
 	CipherIV,
-	DriveKey,
 	FileID,
 	FileKey,
 	ByteCount,
@@ -12,7 +11,8 @@ import {
 	GQLNodeInterface,
 	GQLTagInterface,
 	EntityMetaDataTransactionData,
-	DataContentType
+	DataContentType,
+	DriveKey
 } from '../../types';
 import { Utf8ArrayToStr, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';

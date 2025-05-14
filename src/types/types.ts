@@ -16,7 +16,6 @@ export type AnyEntityID = DriveID | FolderID | FileID;
 export type EntityIDTypeForEntityType<T extends 'file' | 'folder'> = T extends 'file' ? FileID : FolderID;
 
 export type CipherIV = string;
-export type DriveKey = EntityKey;
 export type FileKey = EntityKey;
 
 export type DataContentType = string;

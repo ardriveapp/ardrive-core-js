@@ -16,14 +16,13 @@ import {
 	DrivePrivacy,
 	EntityType,
 	FileKey,
-	DriveKey,
-	EntityKey,
 	EntityIDTypeForEntityType,
 	CustomMetaDataGqlTags,
 	CustomMetaDataJsonFields,
 	FeeMultiple,
 	SignatureFormat,
-	DriveSignatureType
+	DriveSignatureType,
+	DriveKey
 } from '../types';
 import { encryptedDataSize } from '../utils/common';
 import { ENCRYPTED_DATA_PLACEHOLDER_TYPE } from '../utils/constants';
@@ -193,7 +192,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			driveAuthMode,
 			cipher,
 			cipherIV,
-			new EntityKey(Buffer.from([])),
+			new DriveKey(Buffer.from([]), driveSignatureType),
 			driveSignatureType,
 			boost,
 			customMetaDataGqlTags,

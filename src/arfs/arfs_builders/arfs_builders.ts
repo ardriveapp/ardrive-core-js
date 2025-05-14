@@ -4,7 +4,6 @@ import {
 	ArweaveAddress,
 	DriveID,
 	AnyEntityID,
-	EntityKey,
 	FolderID,
 	TransactionID,
 	TxID,
@@ -20,7 +19,8 @@ import {
 	CustomMetaDataJsonFields,
 	isCustomMetaDataGqlTags,
 	FeeMultiple,
-	DriveSignatureType
+	DriveSignatureType,
+	DriveKey
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
@@ -31,7 +31,7 @@ export interface ArFSMetadataEntityBuilderParams {
 }
 export type ArFSPublicMetadataEntityBuilderParams = ArFSMetadataEntityBuilderParams;
 export interface ArFSPrivateMetadataEntityBuilderParams extends ArFSMetadataEntityBuilderParams {
-	key: EntityKey;
+	key: DriveKey;
 	driveSignatureType: DriveSignatureType;
 }
 
