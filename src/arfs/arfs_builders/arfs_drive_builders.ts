@@ -196,8 +196,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 					this.driveAuthMode = value as DriveAuthMode;
 					break;
 				case 'Signature-Type':
-					this.driveSignatureType =
-						value == DriveSignatureType.v2.toString() ? DriveSignatureType.v2 : DriveSignatureType.v1;
+					this.driveSignatureType = parseDriveSignatureType(value);
 					break;
 				case gqlTagNameRecord.drivePrivacy:
 					this.drivePrivacy = value as DrivePrivacy;
