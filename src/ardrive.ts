@@ -87,7 +87,8 @@ import {
 	RetryPublicArFSFileByDestFolderIdParams,
 	emptyArFSResult,
 	DriveSignatureInfo,
-	DriveKey
+	DriveKey,
+	GetDriveSignatureInfoParameters
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -1920,7 +1921,7 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
 	}
 
-	async getDriveSignatureInfo(driveId: DriveID, owner: ArweaveAddress): Promise<DriveSignatureInfo> {
+	async getDriveSignatureInfo({ driveId, owner }: GetDriveSignatureInfoParameters): Promise<DriveSignatureInfo> {
 		return this.arFsDao.getDriveSignatureInfo(driveId, owner);
 	}
 }
