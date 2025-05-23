@@ -49,7 +49,7 @@ export async function generateWalletSignatureV2(jwk: JWKInterface, data: Uint8Ar
 	return new Uint8Array(dataItem.rawSignature);
 }
 
-// Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
+// Derive a key from the user's Drive ID, JWK and Data Encryption Password (also their login password)
 // Defaults to DriveSignatureType.v1 for backwards compatibility.
 // ArFS v0.15 introduced stored encrypted v1 signatures which can be passed in here for decryption using a
 // v2 Drive key. Private Drives may also be created using v2 signatures. The drive's signature type is stored
