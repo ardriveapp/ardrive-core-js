@@ -75,11 +75,11 @@ export const stubArweaveAddress = (address = 'abcdefghijklmnopqrxtuvwxyz12345678
 };
 
 export const getStubDriveKey = async (): Promise<DriveKey> => {
-	return await deriveDriveKey(
-		'stubPassword',
-		`${stubEntityID}`,
-		JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
-	);
+	return await deriveDriveKey({
+		dataEncryptionKey: 'stubPassword',
+		driveId: `${stubEntityID}`,
+		walletPrivateKey: JSON.stringify((readJWKFile('./test_wallet.json') as JWKWallet).getPrivateKey())
+	});
 };
 
 export const stubTxID = TxID('0000000000000000000000000000000000000000001');

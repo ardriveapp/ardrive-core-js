@@ -375,11 +375,11 @@ export async function createPrivateFileSharingLink(
 ): Promise<string> {
 	let fileSharingUrl = '';
 	try {
-		const driveKey: DriveKey = await deriveDriveKey(
-			user.dataProtectionKey,
-			fileToShare.driveId,
-			user.walletPrivateKey
-		);
+		const driveKey: DriveKey = await deriveDriveKey({
+			dataEncryptionKey: user.dataProtectionKey,
+			driveId: fileToShare.driveId,
+			walletPrivateKey: user.walletPrivateKey
+		});
 		const fileKey: FileKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',

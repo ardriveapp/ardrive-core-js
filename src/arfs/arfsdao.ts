@@ -195,12 +195,12 @@ export class PrivateDriveKeyData {
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
-		const driveKey = await deriveDriveKey(
-			drivePassword,
+		const driveKey = await deriveDriveKey({
+			dataEncryptionKey: drivePassword,
 			driveId,
-			JSON.stringify(privateKey),
-			DriveSignatureType.v2
-		);
+			walletPrivateKey: JSON.stringify(privateKey),
+			driveSignatureType: DriveSignatureType.v2
+		});
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
 }
