@@ -167,9 +167,9 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 		}
 
 		const driveSignatureTypeTagData = tags.find((tag) => tag.name === 'Signature-Type')?.value;
-		const driveSignatureType = !driveSignatureTypeTagData
-			? undefined
-			: parseDriveSignatureType(driveSignatureTypeTagData);
+		const driveSignatureType = driveSignatureTypeTagData
+			? parseDriveSignatureType(driveSignatureTypeTagData)
+			: undefined;
 		const fileBuilder = new ArFSPrivateDriveBuilder({
 			entityId: EID(driveId),
 			key: driveKey,
