@@ -256,12 +256,6 @@ export interface DownloadPublicDriveParameters {
 }
 
 export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
-
-export interface GetDriveSignatureInfoParameters {
-	driveId: DriveID;
-	owner: ArweaveAddress;
-}
-
 export interface RenamePublicFileParams {
 	fileId: FileID;
 	newName: string;

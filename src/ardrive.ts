@@ -1921,7 +1921,13 @@ export class ArDrive extends ArDriveAnonymous {
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
 	}
 
-	async getDriveSignatureInfo({ driveId, owner }: GetDriveSignatureInfoParameters): Promise<DriveSignatureInfo> {
+	async getDriveSignatureInfo({
+		driveId,
+		owner
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+	}): Promise<DriveSignatureInfo> {
 		return this.arFsDao.getDriveSignatureInfo(driveId, owner);
 	}
 }
