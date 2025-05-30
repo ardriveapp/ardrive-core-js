@@ -1,9 +1,9 @@
 name: Node.js CI
 
-on: [ push ]
+on: [push]
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -11,17 +11,29 @@ jobs:
 
       - name: Read .nvmrc
         id: node_version
-        run: echo ::set-output name=NODE_VERSION::$(cat .nvmrc)
+        run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_ENV
 
-      - name: Set Up node
+      - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
-          cache: 'yarn'
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: Cache Yarn cache
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: .yarn/cache
+          key: yarn-cache-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-v2
+          restore-keys: |
+            yarn-cache-${{ runner.os }}-
+
+      - name: Install dependencies (with immutable cache)
+        if: steps.yarn-cache.outputs.cache-hit == 'true'
         run: yarn --immutable --immutable-cache
+
+      - name: Install dependencies (fallback)
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn install
 
       - name: Test and Build Codebase
         run: yarn ci
-        
