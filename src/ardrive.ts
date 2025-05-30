@@ -87,8 +87,7 @@ import {
 	RetryPublicArFSFileByDestFolderIdParams,
 	emptyArFSResult,
 	DriveSignatureInfo,
-	DriveKey,
-	GetDriveSignatureInfoParameters
+	DriveKey
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
