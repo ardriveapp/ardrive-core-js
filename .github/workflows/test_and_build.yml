@@ -1,6 +1,6 @@
 name: Node.js CI
 
-on: [push]
+on: [ push ]
 
 jobs:
   build:
@@ -19,7 +19,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache Yarn cache
-        id: yarn-cache
         uses: actions/cache@v4
         with:
           path: .yarn/cache
@@ -27,13 +26,8 @@ jobs:
           restore-keys: |
             yarn-cache-${{ runner.os }}-
 
-      - name: Install dependencies (with immutable cache)
-        if: steps.yarn-cache.outputs.cache-hit == 'true'
+      - name: Install dependencies
         run: yarn --immutable --immutable-cache
-
-      - name: Install dependencies (fallback)
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
-        run: yarn install
 
       - name: Test and Build Codebase
         run: yarn ci
