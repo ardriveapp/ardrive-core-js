@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { ArFSPrivateDrive, DriveKey, DriveSignatureType } from '../../exports';
+import { ArFSPrivateDrive, DriveSignatureType } from '../../exports';
+import { VersionedDriveKey } from '../../types/entity_key';
 import { EID, GQLNodeInterface, GQLTransactionsResultInterface } from '../../types';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
@@ -152,7 +153,7 @@ const stubPrivateDriveGQLNode: Partial<GQLNodeInterface> = {
 	]
 };
 
-const driveKeyForStubPrivateDrive = new DriveKey(
+const driveKeyForStubPrivateDrive = new VersionedDriveKey(
 	Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
 	DriveSignatureType.v1
 );

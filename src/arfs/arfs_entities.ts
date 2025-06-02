@@ -24,6 +24,7 @@ import {
 	DriveSignatureType,
 	DriveKey
 } from '../types';
+import { VersionedDriveKey } from '../types/entity_key';
 import { encryptedDataSize } from '../utils/common';
 import { ENCRYPTED_DATA_PLACEHOLDER_TYPE } from '../utils/constants';
 
@@ -131,8 +132,8 @@ export class ArFSPrivateDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly driveAuthMode: DriveAuthMode,
 		readonly cipher: string,
 		readonly cipherIV: CipherIV,
-		readonly driveKey: DriveKey,
-		readonly driveSignatureType: DriveSignatureType,
+		readonly driveKey: DriveKey | VersionedDriveKey,
+		readonly driveSignatureType: DriveSignatureType = DriveSignatureType.v1,
 		readonly boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
 		customMetaDataJson?: CustomMetaDataJsonFields
@@ -172,7 +173,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 		driveAuthMode: DriveAuthMode,
 		cipher: string,
 		cipherIV: CipherIV,
-		driveSignatureType: DriveSignatureType,
+		driveSignatureType: DriveSignatureType = DriveSignatureType.v1,
 		readonly boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
 		customMetaDataJson?: CustomMetaDataJsonFields
@@ -192,7 +193,7 @@ export class ArFSPrivateDriveKeyless extends ArFSPrivateDrive {
 			driveAuthMode,
 			cipher,
 			cipherIV,
-			new DriveKey(Buffer.from([]), driveSignatureType),
+			new VersionedDriveKey(Buffer.from([]), driveSignatureType),
 			driveSignatureType,
 			boost,
 			customMetaDataGqlTags,
