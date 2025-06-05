@@ -23,6 +23,7 @@ import {
 	DriveSignatureType,
 	encryptedDataSize
 } from '../exports';
+import { VersionedDriveKey } from '../types/entity_key';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';
 
@@ -31,7 +32,7 @@ export const getFakeDriveKey = async (): Promise<DriveKey> => {
 	const fakeDriveKeyString = 'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZFAKE/s';
 	const fakeDriveKey = Buffer.from(fakeDriveKeyString, 'base64');
 
-	return new DriveKey(fakeDriveKey, DriveSignatureType.v1);
+	return new VersionedDriveKey(fakeDriveKey, DriveSignatureType.v1);
 };
 
 /**
