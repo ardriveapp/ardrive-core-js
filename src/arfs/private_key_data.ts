@@ -1,5 +1,5 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
-import { CipherIV, DriveID, DriveKey, EntityMetaDataTransactionData } from '../types';
+import { CipherIV, DriveID, DriveKey, DriveSignatureType, EntityMetaDataTransactionData } from '../types';
 import { Utf8ArrayToStr } from '../utils/common';
 import { JWKWallet } from '../jwk_wallet';
 
@@ -48,7 +48,8 @@ export class PrivateKeyData {
 		cipherIV: CipherIV,
 		driveId: DriveID,
 		dataBuffer: Buffer,
-		placeholder: T
+		placeholder: T,
+		driveSignatureType?: DriveSignatureType
 	): Promise<T> {
 		// Check for a cached key that is matching provided driveId first
 		const cachedDriveKey = this.driveKeyForDriveId(driveId);
@@ -76,7 +77,8 @@ export class PrivateKeyData {
 			const derivedDriveKey: DriveKey = await deriveDriveKey({
 				dataEncryptionKey: this.password!,
 				driveId: `${driveId}`,
-				walletPrivateKey: JSON.stringify(this.wallet!.getPrivateKey())
+				walletPrivateKey: JSON.stringify(this.wallet!.getPrivateKey()),
+				driveSignatureType: driveSignatureType ?? DriveSignatureType.v1
 			});
 			try {
 				const decryptedDriveJSON = await this.decryptToJson<T>(cipherIV, dataBuffer, derivedDriveKey);

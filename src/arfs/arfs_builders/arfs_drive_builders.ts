@@ -390,7 +390,8 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 							this.cipherIV,
 							this.entityId,
 							dataBuffer,
-							placeholderDriveData
+							placeholderDriveData,
+							this.driveSignatureType
 						);
 					}
 					throw new Error('Invalid private drive state');
