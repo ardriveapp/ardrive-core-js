@@ -13,7 +13,8 @@ import {
 	DownloadPublicFileParameters,
 	DownloadPublicFolderParameters,
 	DownloadPublicDriveParameters,
-	ArFSDownloadPublicFolderParams
+	ArFSDownloadPublicFolderParams,
+	FileID
 } from './types';
 import {
 	GetPublicDriveParams,
@@ -37,6 +38,10 @@ export class ArDriveAnonymous extends ArDriveType {
 
 	public async getOwnerForDriveId(driveId: DriveID): Promise<ArweaveAddress> {
 		return this.arFsDao.getOwnerForDriveId(driveId);
+	}
+
+	public async getOwnerForFileId(fileId: FileID): Promise<ArweaveAddress> {
+		return this.arFsDao.getDriveOwnerForFileId(fileId);
 	}
 
 	public async getPublicDrive({ driveId, owner }: GetPublicDriveParams): Promise<ArFSPublicDrive> {
