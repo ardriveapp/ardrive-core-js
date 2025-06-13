@@ -10,7 +10,7 @@
 	"dependencies": {
 		"@alexsasharegan/simple-cache": "^3.3.3",
 		"@ardrive/ardrive-promise-cache": "^1.1.4",
-		"@ardrive/turbo-sdk": "^1.0.1",
+		"@ardrive/turbo-sdk": "1.27.0",
 		"arbundles": "^0.6.22",
 		"arweave": "^1.14.4",
 		"axios": "^1.5.1",

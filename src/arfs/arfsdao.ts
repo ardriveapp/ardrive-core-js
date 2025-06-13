@@ -1331,10 +1331,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return excludedTagNames.includes('ArFS')
 			? this.txPreparer.prepareFileDataDataItem({
 					objectMetaData: objectMetaData as ArFSFileDataPrototype
-			  })
+				})
 			: this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
-			  });
+				});
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
@@ -1358,11 +1358,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData: objectMetaData as ArFSFileDataPrototype,
 					rewardSettings,
 					communityTipSettings
-			  })
+				})
 			: this.txPreparer.prepareMetaDataTx({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
 					rewardSettings
-			  });
+				});
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
@@ -1395,7 +1395,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 										progressLogDebounce = false;
 									}, 500); // .5 sec debounce
 								}
-						  }
+							}
 						: undefined
 				};
 
@@ -1420,7 +1420,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedFile,
 					arFSDataTxId,
 					createMetaDataPlan
-			  })
+				})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);

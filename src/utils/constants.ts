@@ -93,4 +93,4 @@ export const gqlTagNameRecord = {
 } as const;
 
 export const gqlTagNameArray = Object.values(gqlTagNameRecord);
-export type GqlTagName = typeof gqlTagNameArray[number];
+export type GqlTagName = (typeof gqlTagNameArray)[number];

@@ -25,6 +25,7 @@ import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
 import { Turbo, TurboSettings } from './arfs/turbo';
+import { TurboSigner } from '@ardrive/turbo-sdk';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -51,6 +52,18 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
 	turboSettings?: TurboSettings;
+	/**
+	 * Ethereum private key for authenticated Turbo operations.
+	 * Must be a 64-character hex string with optional 0x prefix.
+	 * Takes precedence over turboSigner if both are provided.
+	 */
+	ethereumPrivateKey?: string;
+	/**
+	 * Custom signer for Turbo operations.
+	 * Can be any supported signer type (EthereumSigner, ArweaveSigner, etc).
+	 * Ignored if ethereumPrivateKey is provided.
+	 */
+	turboSigner?: TurboSigner;
 }
 
 const defaultArweave = Arweave.init({
@@ -65,6 +78,43 @@ const defaultTurboSettings = {
 	turboPaymentUrl: defaultTurboPaymentUrl
 };
 
+/**
+ * Helper function to create a Turbo instance with the appropriate configuration
+ * @param config - Configuration options for Turbo
+ * @returns Configured Turbo instance
+ */
+function createTurboInstance(config: {
+	turboSettings?: TurboSettings;
+	ethereumPrivateKey?: string;
+	turboSigner?: TurboSigner;
+	isDryRun: boolean;
+}): Turbo {
+	const { turboSettings, ethereumPrivateKey, turboSigner, isDryRun } = config;
+
+	// Determine if we need authenticated Turbo
+	const needsAuth = !!(ethereumPrivateKey || turboSigner);
+
+	// Build the Turbo configuration
+	const turboConfig = {
+		...defaultTurboSettings,
+		...(turboSettings || {}),
+		isDryRun
+	};
+
+	// Add authentication if needed
+	if (needsAuth) {
+		return new Turbo({
+			...turboConfig,
+			ethereumPrivateKey,
+			signer: turboSigner,
+			useAuthenticated: true
+		});
+	}
+
+	// Return unauthenticated Turbo
+	return new Turbo(turboConfig);
+}
+
 export function arDriveFactory({
 	wallet,
 	arweave = defaultArweave,
@@ -78,33 +128,36 @@ export function arDriveFactory({
 	shouldBundle = true,
 	arFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 	turboSettings = undefined,
+	ethereumPrivateKey = undefined,
+	turboSigner = undefined,
 	uploadPlanner = new ArFSUploadPlanner({
 		shouldBundle,
 		arFSTagSettings,
-		useTurbo: !!turboSettings
+		useTurbo: !!turboSettings || !!ethereumPrivateKey || !!turboSigner
 	}),
 	costCalculator = new ArFSCostCalculator({ priceEstimator, communityOracle, feeMultiple }),
-	arfsDao = new ArFSDAO(
-		wallet,
-		arweave,
-		dryRun,
-		appName,
-		appVersion,
-		arFSTagSettings,
-		undefined,
-		undefined,
-		undefined,
-		!turboSettings
-			? new Turbo({
-					...defaultTurboSettings,
-					isDryRun: dryRun
-			  })
-			: new Turbo({
-					turboUploadUrl: turboSettings.turboUploadUrl,
-					turboPaymentUrl: turboSettings.turboPaymentUrl,
-					isDryRun: dryRun
-			  })
-	)
+	arfsDao = (() => {
+		// Create Turbo instance based on provided configuration
+		const turboInstance = createTurboInstance({
+			turboSettings,
+			ethereumPrivateKey,
+			turboSigner,
+			isDryRun: dryRun
+		});
+
+		return new ArFSDAO(
+			wallet,
+			arweave,
+			dryRun,
+			appName,
+			appVersion,
+			arFSTagSettings,
+			undefined,
+			undefined,
+			undefined,
+			turboInstance
+		);
+	})()
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(
 		wallet,
