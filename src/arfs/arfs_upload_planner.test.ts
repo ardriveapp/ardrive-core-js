@@ -291,7 +291,7 @@ describe('The ArFSUploadPlanner class', () => {
 				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this private drive Bundle is 2998
-				expect(+totalBundledByteCount).to.equal(2998);
+				expect(+totalBundledByteCount).to.equal(3015);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {

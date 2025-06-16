@@ -16,7 +16,6 @@ export type AnyEntityID = DriveID | FolderID | FileID;
 export type EntityIDTypeForEntityType<T extends 'file' | 'folder'> = T extends 'file' ? FileID : FolderID;
 
 export type CipherIV = string;
-export type DriveKey = EntityKey;
 export type FileKey = EntityKey;
 
 export type DataContentType = string;
@@ -53,4 +52,21 @@ type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
 export type MakeOptional<T, K> = Omit<T, K> & Partial<T>;
 export type Mutable<T> = {
 	-readonly [P in keyof T]: T[P];
+};
+
+export enum DriveSignatureType {
+	v1 = 1,
+	v2 = 2
+}
+
+export enum SignatureFormat {
+	v1 = '1'
+}
+
+export type DriveSignatureInfo = {
+	driveSignatureType: DriveSignatureType;
+	encryptedSignatureData?: {
+		cipherIV: string;
+		encryptedData: Buffer;
+	};
 };

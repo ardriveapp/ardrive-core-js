@@ -1,5 +1,5 @@
-import { DataItem } from 'arbundles';
 import { Readable } from 'node:stream';
+import { DataItem } from '@dha-team/arbundles';
 
 import { TurboUnauthenticatedClient, TurboUploadDataItemResponse, TurboFactory } from '@ardrive/turbo-sdk';
 import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
@@ -40,7 +40,8 @@ export class Turbo {
 			id: dataItem.id,
 			owner: dataItem.owner,
 			dataCaches: [],
-			fastFinalityIndexes: []
+			fastFinalityIndexes: [],
+			winc: '0'
 		};
 		if (this.isDryRun) {
 			return defaultResponse;

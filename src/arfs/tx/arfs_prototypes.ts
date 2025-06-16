@@ -148,7 +148,8 @@ export class ArFSPrivateDriveMetaDataPrototype extends ArFSDriveMetaDataPrototyp
 		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV },
-			{ name: 'Drive-Auth-Mode', value: this.objectData.driveAuthMode }
+			{ name: 'Drive-Auth-Mode', value: this.objectData.driveAuthMode },
+			{ name: 'Signature-Type', value: this.objectData.driveSignatureType.toString() }
 		]) {
 			tags.push(tag);
 		}

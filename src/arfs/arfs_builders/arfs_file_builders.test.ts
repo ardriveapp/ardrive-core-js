@@ -1,11 +1,12 @@
 import { expect } from 'chai';
-import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { EntityKey, GQLNodeInterface } from '../../types';
+import { DriveSignatureType, GQLNodeInterface } from '../../types';
+import { VersionedDriveKey } from '../../types/entity_key';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from './arfs_file_builders';
+import { stub } from 'sinon';
 
 const gatewayApi = new GatewayAPI({
 	gatewayUrl: gatewayUrlForArweave(fakeArweave),
@@ -19,7 +20,7 @@ describe('ArFSPublicFileBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.2.0' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 			{ name: 'Entity-Type', value: 'file' },
@@ -49,7 +50,7 @@ describe('ArFSPublicFileBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
 		expect(fileMetaData.appVersion).to.equal('1.2.0');
-		expect(fileMetaData.arFS).to.equal('0.11');
+		expect(fileMetaData.arFS).to.equal('0.15');
 		expect(fileMetaData.contentType).to.equal('application/json');
 		expect(`${fileMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
 		expect(fileMetaData.entityType).to.equal('file');
@@ -109,7 +110,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.2.0' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/octet-stream' },
 			{ name: 'Drive-Id', value: '5ca7ddfe-effa-4fc5-8796-8f3e0502854a' },
 			{ name: 'Entity-Type', value: 'file' },
@@ -122,8 +123,9 @@ describe('ArFSPrivateFileBuilder', () => {
 		]
 	};
 
-	const driveKeyForStubPrivateFile = new EntityKey(
-		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64')
+	const driveKeyForStubPrivateFile = new VersionedDriveKey(
+		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
+		DriveSignatureType.v1
 	);
 
 	// prettier-ignore
@@ -141,7 +143,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		const builder = ArFSPrivateFileBuilder.fromArweaveNode(
 			stubPrivateFileGQLNode as GQLNodeInterface,
 			gatewayApi,
-			driveKeyForStubPrivateFile
+			new VersionedDriveKey(driveKeyForStubPrivateFile.keyData, DriveSignatureType.v1)
 		);
 		stub(builder, 'getDataForTxID').resolves(stubPrivateFileGetDataResult);
 
@@ -150,7 +152,7 @@ describe('ArFSPrivateFileBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(fileMetaData.appName).to.equal('ArDrive-CLI');
 		expect(fileMetaData.appVersion).to.equal('1.2.0');
-		expect(fileMetaData.arFS).to.equal('0.11');
+		expect(fileMetaData.arFS).to.equal('0.15');
 		expect(fileMetaData.contentType).to.equal('application/octet-stream');
 		expect(`${fileMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
 		expect(fileMetaData.entityType).to.equal('file');

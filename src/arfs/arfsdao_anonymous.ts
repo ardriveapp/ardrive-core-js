@@ -27,6 +27,7 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
 import { GatewayAPI } from '../utils/gateway_api';
+import { InvalidFileStateException } from '../types/exceptions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -272,16 +273,33 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPublicFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
-				const file = await fileBuilder.build(node);
-				const cacheKey = { fileId: file.fileId, owner };
-				allFiles.push(file);
-				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
+			const files: Promise<ArFSPublicFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					const { node } = edge;
+					cursor = edge.cursor;
+					const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
+					const file = await fileBuilder.build(node);
+					const cacheKey = { fileId: file.fileId, owner };
+					return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
+				} catch (e) {
+					// If the file is broken, skip it
+					if (e instanceof SyntaxError) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					if (e instanceof InvalidFileStateException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			await Promise.all(files);
+
+			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPublicFile[];
+
+			allFiles.push(...validFiles);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
@@ -309,15 +327,32 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			const { edges } = transactions;
 
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const folders: Promise<ArFSPublicFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
+			const folderPromises = edges.map(async (edge: GQLEdgeInterface) => {
 				const { node } = edge;
 				cursor = edge.cursor;
-				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
-				const folder = await folderBuilder.build(node);
-				const cacheKey = { folderId: folder.entityId, owner };
-				return this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
+				try {
+					const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
+					const folder = await folderBuilder.build(node);
+					const cacheKey = { folderId: folder.entityId, owner };
+					await this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
+					return folder;
+				} catch (e) {
+					// If the folder is broken, skip it
+					if (e instanceof SyntaxError) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			allFolders.push(...(await Promise.all(folders)));
+
+			const folders = await Promise.all(folderPromises);
+
+			// Filter out null values
+			const validFolders = folders.filter((folder) => folder !== null) as ArFSPublicFolder[];
+
+			allFolders.push(...validFolders);
 		}
 		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
 	}
@@ -343,6 +378,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		// Fetch all of the folder entities within the drive
 		const driveIdOfFolder = folder.driveId;
+
 		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPublicDrive({
 			driveId: driveIdOfFolder,
 			owner,
@@ -380,6 +416,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 
 		const entitiesWithPath = children.map((entity) => publicEntityWithPathsFactory(entity, hierarchy));
+
 		return entitiesWithPath;
 	}
 

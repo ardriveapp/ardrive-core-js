@@ -2,12 +2,12 @@ import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import {
 	ArweaveAddress,
 	CipherIV,
-	DriveKey,
 	FolderID,
 	EID,
 	EntityID,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	DriveKey
 } from '../../types';
 import { fileDecrypt } from '../../utils/crypto';
 import { BufferToString } from '../../utils/common';

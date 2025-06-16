@@ -1,4 +1,4 @@
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import { CommunityTipSettings, RewardSettings, GQLTagInterface } from '../../exports';
 import { JWKWallet } from '../../jwk_wallet';
