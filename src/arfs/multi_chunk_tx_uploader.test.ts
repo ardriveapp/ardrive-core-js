@@ -131,7 +131,7 @@ describe('MultiChunkTxUploader class', () => {
 				gatewayApi,
 				transaction: txWithOneChunkOfData
 			});
-			stub(gatewayApi, 'postToEndpoint').throws('Super Error');
+			stub(gatewayApi, 'postToEndpoint').throws(new Error('Super Error'));
 
 			await expectAsyncErrorThrow({
 				promiseToError: uploader.batchUploadChunks(),
@@ -158,7 +158,7 @@ describe('MultiChunkTxUploader class', () => {
 				transaction: txWithTwentyChunksOfData,
 				maxConcurrentChunks: 1
 			});
-			stub(gatewayApi, 'postToEndpoint').onFirstCall().resolves().onSecondCall().throws('Mega Error');
+			stub(gatewayApi, 'postToEndpoint').onFirstCall().resolves().onSecondCall().throws(new Error('Mega Error'));
 
 			const uploadChunkSpy = spy(uploader as any, 'uploadChunk');
 			const postTxHeaderSpy = spy(uploader as any, 'postTransactionHeader');

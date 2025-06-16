@@ -214,9 +214,8 @@ export class ArFSCostCalculator implements CostCalculator {
 		}
 
 		for (const plan of v2TxPlans.fileAndMetaDataPlans) {
-			const { calculatedFileAndMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FileAndMetaData(
-				plan
-			);
+			const { calculatedFileAndMetaDataPlan, totalPriceOfV2Tx } =
+				await this.calculateCostsForV2FileAndMetaData(plan);
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
 			calculatedV2TxPlans.fileAndMetaDataPlans.push(calculatedFileAndMetaDataPlan);
 		}
@@ -228,9 +227,8 @@ export class ArFSCostCalculator implements CostCalculator {
 		}
 
 		for (const plan of v2TxPlans.folderMetaDataPlans) {
-			const { calculatedFolderMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FolderMetaData(
-				plan
-			);
+			const { calculatedFolderMetaDataPlan, totalPriceOfV2Tx } =
+				await this.calculateCostsForV2FolderMetaData(plan);
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
 			calculatedV2TxPlans.folderMetaDataPlans.push(calculatedFolderMetaDataPlan);
 		}

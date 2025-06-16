@@ -863,7 +863,7 @@ describe('ArLocal Integration Tests', function () {
 			});
 
 			it('and NO valid metadata tx, we can restore that tx to an ArFS destination folder view', async () => {
-				stub(fakeGatewayApi, 'postChunk').throws('Bad Error!');
+				stub(fakeGatewayApi, 'postChunk').throws(new Error('Bad Error!'));
 
 				const wrappedFile = stub258KiBFileToUpload();
 
