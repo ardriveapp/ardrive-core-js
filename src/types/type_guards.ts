@@ -7,7 +7,8 @@ export const cipherTypeValues = {
 export const entityTypeValues = {
 	DRIVE: 'drive',
 	FILE: 'file',
-	FOLDER: 'folder'
+	FOLDER: 'folder',
+	DRIVE_SIGNATURE: 'drive-signature'
 } as const;
 export const contentTypeValues = {
 	APPLICATION_JSON: 'application/json',

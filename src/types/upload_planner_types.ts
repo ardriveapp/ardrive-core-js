@@ -1,4 +1,4 @@
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings } from '.';
 import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {
@@ -137,11 +137,11 @@ export interface CalculatedFileAndMetaDataPlan
 	extends Omit<V2FileAndMetaDataPlan, 'fileDataByteCount' | 'metaDataByteCount'> {
 	dataTxRewardSettings: RewardSettings;
 	metaDataRewardSettings: RewardSettings;
-	communityTipSettings: CommunityTipSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface CalculatedFileDataOnlyPlan extends Omit<V2FileDataOnlyPlan, 'fileDataByteCount'> {
 	dataTxRewardSettings: RewardSettings;
-	communityTipSettings: CommunityTipSettings;
+	communityTipSettings?: CommunityTipSettings;
 }
 export interface CalculatedFolderMetaDataPlan extends Omit<V2FolderMetaDataPlan, 'metaDataByteCount'> {
 	metaDataRewardSettings: RewardSettings;

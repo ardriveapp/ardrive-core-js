@@ -79,7 +79,8 @@ import {
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
 	defaultTurboPaymentUrl,
-	defaultTurboUploadUrl
+	defaultTurboUploadUrl,
+	gqlTagNameRecord
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
 import {
@@ -90,7 +91,6 @@ import {
 	GQLEdgeInterface,
 	GQLNodeInterface,
 	DriveID,
-	DriveKey,
 	FolderID,
 	RewardSettings,
 	FileID,
@@ -107,12 +107,12 @@ import {
 	fileConflictInfoMap,
 	folderToNameAndIdMap
 } from '../utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER } from '../utils/query';
+import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 
-import { DataItem, bundleAndSignData, createData } from 'arbundles';
+import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -181,6 +181,19 @@ import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy } from '../exports';
 import { Turbo } from './turbo';
 import { ArweaveSigner } from 'arbundles/src/signing';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
+import {
+	ArFSDataToUpload,
+	ArFSFolderToUpload,
+	DriveKey,
+	DrivePrivacy,
+	DriveSignatureInfo,
+	DriveSignatureType,
+	errorMessage,
+	parseDriveSignatureType
+} from '../exports';
+import { Turbo } from './turbo';
+import { ArweaveSigner } from '@dha-team/arbundles';
+import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -191,7 +204,12 @@ export class PrivateDriveKeyData {
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
-		const driveKey = await deriveDriveKey(drivePassword, driveId, JSON.stringify(privateKey));
+		const driveKey = await deriveDriveKey({
+			dataEncryptionKey: drivePassword,
+			driveId,
+			walletPrivateKey: JSON.stringify(privateKey),
+			driveSignatureType: DriveSignatureType.v2
+		});
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
 }
@@ -1253,7 +1271,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					});
 				} else {
 					if (!communityTipSettings) {
-						throw new Error('Invalid bundle plan, file uploads must include communityTipSettings!');
+						console.warn('There are no community tip settings for this file upload...');
 					}
 
 					// Prepare file data item and results
@@ -1331,10 +1349,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return excludedTagNames.includes('ArFS')
 			? this.txPreparer.prepareFileDataDataItem({
 					objectMetaData: objectMetaData as ArFSFileDataPrototype
-			  })
+				})
 			: this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
-			  });
+				});
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
@@ -1358,11 +1376,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData: objectMetaData as ArFSFileDataPrototype,
 					rewardSettings,
 					communityTipSettings
-			  })
+				})
 			: this.txPreparer.prepareMetaDataTx({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
 					rewardSettings
-			  });
+				});
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
@@ -1395,7 +1413,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 										progressLogDebounce = false;
 									}, 500); // .5 sec debounce
 								}
-						  }
+							}
 						: undefined
 				};
 
@@ -1420,7 +1438,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedFile,
 					arFSDataTxId,
 					createMetaDataPlan
-			  })
+				})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);
@@ -1475,6 +1493,73 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await this.sendTransactionsAsChunks([transaction], true);
 	}
 
+	public async getDriveSignatureInfo(driveId: DriveID, address: ArweaveAddress): Promise<DriveSignatureInfo> {
+		const gqlDriveQuery = buildQuery({
+			tags: [
+				{ name: 'Drive-Id', value: `${driveId}` },
+				{ name: 'Entity-Type', value: 'drive' }
+			],
+			owner: address,
+			sort: DESCENDING_ORDER
+		});
+
+		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
+
+		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.drivePrivacy
+		);
+
+		if (drivePrivacyFromTag?.value === 'public') {
+			throw new Error('Drive is public');
+		}
+
+		const driveSignatureTypeTagData = driveTransactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.signatureType
+		);
+
+		const driveSignatureType = driveSignatureTypeTagData?.value
+			? parseDriveSignatureType(driveSignatureTypeTagData.value)
+			: DriveSignatureType.v1;
+
+		let encryptedSignatureData: { cipherIV: string; encryptedData: Buffer } | undefined;
+
+		if (driveSignatureType === DriveSignatureType.v1) {
+			const gqlQuery = buildQuery({
+				tags: [
+					{ name: 'Entity-Type', value: 'drive-signature' },
+					{ name: 'Drive-Id', value: `${driveId}` }
+				],
+				owner: address,
+				sort: DESCENDING_ORDER
+			});
+
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+			if (transactions.edges.length > 0) {
+				const txId = transactions.edges[0].node.id;
+				const cipherIV = transactions.edges[0].node.tags.find((t) => t.name === gqlTagNameRecord.cipherIv);
+				const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${txId}`;
+				const requestConfig: AxiosRequestConfig = {
+					method: 'get',
+					url: dataTxUrl,
+					responseType: 'arraybuffer'
+				};
+				const response = await axios(requestConfig);
+				if (cipherIV) {
+					encryptedSignatureData = {
+						cipherIV: cipherIV.value,
+						encryptedData: Buffer.from(response.data)
+					};
+				}
+			}
+		}
+
+		return {
+			driveSignatureType,
+			encryptedSignatureData
+		};
+	}
+
 	// Convenience function for known-private use cases
 	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
 		const cacheKey = { driveId, driveKey, owner };
@@ -1482,13 +1567,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		if (cachedDrive) {
 			return cachedDrive;
 		}
+
+		const driveSignatureInfo = await this.getDriveSignatureInfo(driveId, owner);
 		return this.caches.privateDriveCache.put(
 			cacheKey,
 			new ArFSPrivateDriveBuilder({
 				entityId: driveId,
 				key: driveKey,
 				owner,
-				gatewayApi: this.gatewayApi
+				gatewayApi: this.gatewayApi,
+				driveSignatureType: driveSignatureInfo?.driveSignatureType ?? DriveSignatureType.v1
 			}).build()
 		);
 	}
@@ -1543,16 +1631,31 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folders: Promise<ArFSPrivateFolder>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				cursor = edge.cursor;
-				const { node } = edge;
-				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				// Build the folder so that we don't add something invalid to the cache
-				const folder = await folderBuilder.build(node);
-				const cacheKey = { folderId: folder.entityId, owner, driveKey };
-				return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+			const folderPromises: Promise<ArFSPrivateFolder | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					cursor = edge.cursor;
+					const { node } = edge;
+					const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+					// Build the folder so that we don't add something invalid to the cache
+					const folder = await folderBuilder.build(node);
+					const cacheKey = { folderId: folder.entityId, owner, driveKey };
+					return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+				} catch (e) {
+					// If the folder is broken, skip it
+					if (e instanceof SyntaxError) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			allFolders.push(...(await Promise.all(folders)));
+
+			const folders = await Promise.all(folderPromises);
+
+			// Filter out null values
+			const validFolders = folders.filter((f) => f !== null) as ArFSPrivateFolder[];
+			allFolders.push(...(await Promise.all(validFolders)));
 		}
 
 		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
@@ -1583,21 +1686,31 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPrivateFile>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				// Build the file so that we don't add something invalid to the cache
-				const file = await fileBuilder.build(node);
-				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
-				const cacheKey = {
-					fileId: file.fileId,
-					owner,
-					fileKey
-				};
-				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+			const files: Promise<ArFSPrivateFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
+				try {
+					const { node } = edge;
+					cursor = edge.cursor;
+					const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+					// Build the file so that we don't add something invalid to the cache
+					const file = await fileBuilder.build(node);
+					const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+					const cacheKey = {
+						fileId: file.fileId,
+						owner,
+						fileKey
+					};
+					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+				} catch (e) {
+					if (e instanceof InvalidFileStateException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					throw e;
+				}
 			});
-			allFiles.push(...(await Promise.all(files)));
+			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPrivateFile[];
+			allFiles.push(...validFiles);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
 	}
@@ -1791,6 +1904,38 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			folderId,
 			await this.getAllFoldersOfPublicDrive({ driveId, owner, latestRevisionsOnly: true })
 		);
+	}
+
+	public async isPublicDrive(driveId: DriveID, address: ArweaveAddress): Promise<boolean> {
+		const gqlQuery = buildQuery({
+			tags: [
+				{ name: 'Entity-Type', value: 'drive' },
+				{ name: 'Drive-Id', value: `${driveId}` }
+			],
+			owner: address,
+			sort: DESCENDING_ORDER
+		});
+
+		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+		const drivePrivacyFromTag = transactions.edges[0].node.tags.find(
+			(t) => t.name === gqlTagNameRecord.drivePrivacy
+		);
+
+		return drivePrivacyFromTag?.value === 'public';
+	}
+
+	public async assertDrivePrivacy(driveId: DriveID, address: ArweaveAddress, driveKey?: DriveKey): Promise<void> {
+		const _isPublicDrive = await this.isPublicDrive(driveId, address);
+
+		// Private drive uploads require a drive key
+		if (!_isPublicDrive && !driveKey) {
+			throw new Error(errorMessage.privateDriveRequiresDriveKey);
+		}
+
+		if (_isPublicDrive && driveKey) {
+			throw new Error(errorMessage.publicDriveDoesNotRequireDriveKey);
+		}
 	}
 
 	public async getOwnerAndAssertDrive(driveId: DriveID, driveKey?: DriveKey): Promise<ArweaveAddress> {

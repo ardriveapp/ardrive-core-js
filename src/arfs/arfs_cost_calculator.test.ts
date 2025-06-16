@@ -138,10 +138,12 @@ describe('ArFSCostCalculator class', () => {
 
 			const { dataTxRewardSettings, metaDataRewardSettings, communityTipSettings } = fileAndMetaDataPlans[0];
 
-			expect(`${communityTipSettings.communityTipTarget}`).to.equal(
+			expect(communityTipSettings).to.not.be.undefined;
+
+			expect(`${communityTipSettings!.communityTipTarget}`).to.equal(
 				'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'
 			);
-			expect(+communityTipSettings.communityWinstonTip).to.equal(1_234);
+			expect(+communityTipSettings!.communityWinstonTip).to.equal(1_234);
 
 			expect(+dataTxRewardSettings.reward!).to.equal(20);
 			expect(+dataTxRewardSettings.feeMultiple!).to.equal(1);
@@ -179,10 +181,12 @@ describe('ArFSCostCalculator class', () => {
 
 			const { dataTxRewardSettings, metaDataBundleIndex, communityTipSettings } = fileDataOnlyPlans[0];
 
-			expect(`${communityTipSettings.communityTipTarget}`).to.equal(
+			expect(communityTipSettings).to.not.be.undefined;
+
+			expect(`${communityTipSettings!.communityTipTarget}`).to.equal(
 				'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH'
 			);
-			expect(+communityTipSettings.communityWinstonTip).to.equal(1_234);
+			expect(+communityTipSettings!.communityWinstonTip).to.equal(1_234);
 
 			expect(+dataTxRewardSettings.reward!).to.equal(25);
 			expect(+dataTxRewardSettings.feeMultiple!).to.equal(1);
@@ -236,8 +240,8 @@ describe('ArFSCostCalculator class', () => {
 				communityTipSettings: v2CommTipSettings
 			} = fileAndMetaDataPlans[0];
 
-			expect(`${v2CommTipSettings.communityTipTarget}`).to.equal('abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH');
-			expect(+v2CommTipSettings.communityWinstonTip).to.equal(1_234);
+			expect(`${v2CommTipSettings?.communityTipTarget}`).to.equal('abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH');
+			expect(+v2CommTipSettings!.communityWinstonTip).to.equal(1_234);
 
 			expect(+dataTxRewardSettings.reward!).to.equal(20);
 			expect(+dataTxRewardSettings.feeMultiple!).to.equal(10);

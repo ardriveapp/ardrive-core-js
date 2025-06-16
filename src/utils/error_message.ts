@@ -7,5 +7,7 @@ export const errorMessage = {
 	folderCannotMoveIntoItself: 'Folders cannot be moved into themselves!',
 	fileIsTheSame: 'The file to upload matches an existing file entity!',
 	cannotMoveIntoSamePlace: (type: 'File' | 'Folder', parentFolderId: FolderID): string =>
-		`${type} already has parent folder with ID: ${parentFolderId}`
+		`${type} already has parent folder with ID: ${parentFolderId}`,
+	privateDriveRequiresDriveKey: 'Private drive requires a drive key to upload.',
+	publicDriveDoesNotRequireDriveKey: 'Public drive does not require a drive key to upload.'
 };

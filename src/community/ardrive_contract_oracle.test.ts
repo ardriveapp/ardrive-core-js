@@ -29,7 +29,7 @@ describe('The ArDriveContractOracle', () => {
 
 	describe('getPercentageFromContract method', () => {
 		it('returns the expected fee result', async () => {
-			expect(await arDriveContractOracle.getTipPercentageFromContract()).to.equal(0.5);
+			expect(await arDriveContractOracle.getTipPercentageFromContract()).to.equal(0.15);
 		});
 
 		it('throws an error if fee does not exist', async () => {

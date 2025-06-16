@@ -70,7 +70,13 @@ import {
 	assertFolderMetaDataJson,
 	assertFolderMetaDataGqlTags
 } from '../helpers/arlocal_test_assertions';
-import { CustomMetaData, CustomMetaDataJsonFields, PDSContractCacheServiceContractReader } from '../../src/exports';
+import {
+	CustomMetaData,
+	CustomMetaDataJsonFields,
+	DriveSignatureType,
+	PDSContractCacheServiceContractReader
+} from '../../src/exports';
+import { VersionedDriveKey } from '../../src/types/entity_key';
 
 describe('ArLocal Integration Tests', function () {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -85,8 +91,6 @@ describe('ArLocal Integration Tests', function () {
 
 	const arweaveOracle = new GatewayOracle(gatewayUrlForArweave(arweave));
 	const fakeContractReader = new PDSContractCacheServiceContractReader();
-	stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
-
 	const communityOracle = new ArDriveCommunityOracle(arweave, [fakeContractReader]);
 	const priceEstimator = new ARDataPriceNetworkEstimator(arweaveOracle);
 	const walletDao = new WalletDAO(arweave, 'ArLocal Integration Test', fakeVersion);
@@ -167,6 +171,7 @@ describe('ArLocal Integration Tests', function () {
 
 	beforeEach(() => {
 		stub(communityOracle, 'selectTokenHolder').resolves(stubArweaveAddress());
+		stub(fakeContractReader, 'readContract').resolves(stubCommunityContract);
 	});
 
 	describe('when a public drive is created with `createPublicDrive`', () => {
@@ -795,7 +800,6 @@ describe('ArLocal Integration Tests', function () {
 
 			it('and a valid metadata tx, we can restore that tx using the parent folder ID', async () => {
 				stub(fakeGatewayApi, 'postChunk').resolves();
-
 				const wrappedFile = stub3ChunkFileToUpload();
 
 				// Upload file with `postChunk` method stubbed to RESOLVE without uploading
@@ -955,7 +959,7 @@ describe('ArLocal Integration Tests', function () {
 			rootFolderTxId = created[1].metadataTxId!;
 			driveId = created[0].entityId!;
 			driveTxID = created[0].metadataTxId!;
-			driveKey = created[0].key!;
+			driveKey = new VersionedDriveKey(created[0].key!.keyData, DriveSignatureType.v1);
 
 			await mineArLocalBlock(arweave);
 		});

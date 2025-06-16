@@ -76,10 +76,15 @@ export class ArFSCostCalculator implements CostCalculator {
 		const hasFileData = uploadStats.find((u) => u.wrappedEntity.entityType === 'file');
 		if (hasFileData) {
 			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfBundle);
-			const communityTipTarget = await this.communityOracle.selectTokenHolder();
-
-			totalPriceOfBundle = totalPriceOfBundle.plus(communityWinstonTip);
-			communityTipSettings = { communityTipTarget, communityWinstonTip };
+			let communityTipTarget;
+			try {
+				communityTipTarget = await this.communityOracle.selectTokenHolder();
+				communityTipSettings = { communityTipTarget, communityWinstonTip };
+				totalPriceOfBundle = totalPriceOfBundle.plus(communityWinstonTip);
+			} catch (error) {
+				console.error(`Failed to select token holder: ${error}. Skipping community tip.`);
+				// Community tip is not added to total price if token holder selection fails
+			}
 		}
 
 		return {
@@ -105,17 +110,28 @@ export class ArFSCostCalculator implements CostCalculator {
 		const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
 		const winstonPriceOfMetaDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(metaDataByteCount);
 
-		const communityTipTarget = await this.communityOracle.selectTokenHolder();
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
+		let communityTipSettings: CommunityTipSettings | undefined;
+		let totalPriceOfV2Tx: Winston;
 
-		const totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx)
-			.plus(this.boostedReward(winstonPriceOfMetaDataTx))
-			.plus(communityWinstonTip);
+		try {
+			const communityTipTarget = await this.communityOracle.selectTokenHolder();
+			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
+			communityTipSettings = { communityTipTarget, communityWinstonTip };
+
+			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx)
+				.plus(this.boostedReward(winstonPriceOfMetaDataTx))
+				.plus(communityWinstonTip);
+		} catch (error) {
+			console.error(`Failed to select token holder: ${error}. Skipping community tip.`);
+			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx).plus(
+				this.boostedReward(winstonPriceOfMetaDataTx)
+			);
+		}
 
 		return {
 			calculatedFileAndMetaDataPlan: {
 				uploadStats,
-				communityTipSettings: { communityTipTarget, communityWinstonTip },
+				communityTipSettings,
 				dataTxRewardSettings: this.rewardSettingsForWinston(winstonPriceOfDataTx),
 				metaDataRewardSettings: this.rewardSettingsForWinston(winstonPriceOfMetaDataTx)
 			},
@@ -134,15 +150,24 @@ export class ArFSCostCalculator implements CostCalculator {
 	}> {
 		const winstonPriceOfDataTx = await this.priceEstimator.getBaseWinstonPriceForByteCount(fileDataByteCount);
 
-		const communityTipTarget = await this.communityOracle.selectTokenHolder();
-		const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
+		let communityTipSettings: CommunityTipSettings | undefined;
+		let totalPriceOfV2Tx: Winston;
 
-		const totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx).plus(communityWinstonTip);
+		try {
+			const communityTipTarget = await this.communityOracle.selectTokenHolder();
+			const communityWinstonTip = await this.communityOracle.getCommunityWinstonTip(winstonPriceOfDataTx);
+			communityTipSettings = { communityTipTarget, communityWinstonTip };
+
+			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx).plus(communityWinstonTip);
+		} catch (error) {
+			console.error(`Failed to select token holder: ${error}. Skipping community tip.`);
+			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx);
+		}
 
 		return {
 			calculatedFileDataOnlyPlan: {
 				uploadStats,
-				communityTipSettings: { communityTipTarget, communityWinstonTip },
+				communityTipSettings,
 				dataTxRewardSettings: this.rewardSettingsForWinston(winstonPriceOfDataTx),
 				metaDataBundleIndex
 			},
@@ -189,9 +214,8 @@ export class ArFSCostCalculator implements CostCalculator {
 		}
 
 		for (const plan of v2TxPlans.fileAndMetaDataPlans) {
-			const { calculatedFileAndMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FileAndMetaData(
-				plan
-			);
+			const { calculatedFileAndMetaDataPlan, totalPriceOfV2Tx } =
+				await this.calculateCostsForV2FileAndMetaData(plan);
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
 			calculatedV2TxPlans.fileAndMetaDataPlans.push(calculatedFileAndMetaDataPlan);
 		}
@@ -203,9 +227,8 @@ export class ArFSCostCalculator implements CostCalculator {
 		}
 
 		for (const plan of v2TxPlans.folderMetaDataPlans) {
-			const { calculatedFolderMetaDataPlan, totalPriceOfV2Tx } = await this.calculateCostsForV2FolderMetaData(
-				plan
-			);
+			const { calculatedFolderMetaDataPlan, totalPriceOfV2Tx } =
+				await this.calculateCostsForV2FolderMetaData(plan);
 			totalWinstonPrice = totalWinstonPrice.plus(totalPriceOfV2Tx);
 			calculatedV2TxPlans.folderMetaDataPlans.push(calculatedFolderMetaDataPlan);
 		}

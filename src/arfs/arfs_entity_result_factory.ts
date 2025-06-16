@@ -3,13 +3,13 @@ import {
 	FolderID,
 	FileID,
 	FileKey,
-	DriveKey,
 	TransactionID,
 	Winston,
 	CommunityTipSettings,
 	SourceUri,
 	EntityName,
-	EntityID
+	EntityID,
+	DriveKey
 } from '../types';
 import { TurboCachesResponse } from './turbo';
 
