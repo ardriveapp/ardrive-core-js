@@ -177,9 +177,6 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
-import { ArFSDataToUpload, ArFSFolderToUpload, DrivePrivacy } from '../exports';
-import { Turbo } from './turbo';
-import { ArweaveSigner } from 'arbundles/src/signing';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
 	ArFSDataToUpload,

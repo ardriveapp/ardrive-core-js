@@ -885,7 +885,8 @@ export class ArDrive extends ArDriveAnonymous {
 				case 'error':
 					throw Error('File names cannot conflict with a folder name in the destination folder!');
 
-				case 'skip' || 'upsert':
+				case 'skip':
+				case 'upsert':
 					console.error(
 						'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
 					);

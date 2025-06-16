@@ -24,6 +24,7 @@ import {
 } from './arfsdao_anonymous';
 import { ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
+import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 
 const fakeArweave = Arweave.init({
 	host: 'localhost',

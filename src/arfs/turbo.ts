@@ -40,7 +40,8 @@ export class Turbo {
 			id: dataItem.id,
 			owner: dataItem.owner,
 			dataCaches: [],
-			fastFinalityIndexes: []
+			fastFinalityIndexes: [],
+			winc: '0'
 		};
 		if (this.isDryRun) {
 			return defaultResponse;
