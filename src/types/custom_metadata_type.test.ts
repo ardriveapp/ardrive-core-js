@@ -20,7 +20,8 @@ describe('isCustomMetaDataGqlTags type guard function', () => {
 			'Drive-Privacy',
 			'Cipher',
 			'Cipher-IV',
-			'Drive-Auth-Mode'
+			'Drive-Auth-Mode',
+			'Signature-Type'
 		];
 		for (const protectedTagName of ArFSTagSettings.protectedArFSGqlTagNames) {
 			expect(testedTagNames).includes(protectedTagName);

@@ -1,4 +1,4 @@
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import { FeeMultiple, Winston, RewardSettings, CommunityTipSettings } from '.';
 import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
 import {

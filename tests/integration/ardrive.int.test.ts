@@ -97,11 +97,11 @@ describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const getStubDriveKey = async (): Promise<DriveKey> => {
-		const key = await deriveDriveKey(
-			'stubPassword',
-			`${stubEntityID}`,
-			JSON.stringify((wallet as JWKWallet).getPrivateKey())
-		);
+		const key = await deriveDriveKey({
+			dataEncryptionKey: 'stubPassword',
+			driveId: `${stubEntityID}`,
+			walletPrivateKey: JSON.stringify((wallet as JWKWallet).getPrivateKey())
+		});
 		return key;
 	};
 
@@ -440,7 +440,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertCreateDriveExpectations({
 					result,
-					driveFee: W(2973),
+					driveFee: W(2990),
 					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true,

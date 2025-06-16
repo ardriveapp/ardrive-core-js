@@ -253,21 +253,21 @@ describe('ArFSDAOAnonymous class', () => {
 			const mockGQLResponse = {
 				edges: [
 					{
-					cursor: 'cursor1',
-					node: {
-						id: `${stubTxID}`,
-						tags: [
-							{ name: 'App-Name', value: 'ArDrive-CLI' },
-							{ name: 'App-Version', value: '1.2.0' },
-							{ name: 'ArFS', value: '0.11' },
-							{ name: 'Content-Type', value: 'application/json' },
-							{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
-							{ name: 'Entity-Type', value: 'file' },
-							{ name: 'Unix-Time', value: '1639073846' },
-							{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
-							{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' }
-						],
-						owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+						cursor: 'cursor1',
+						node: {
+							id: `${stubTxID}`,
+							tags: [
+								{ name: 'App-Name', value: 'ArDrive-CLI' },
+								{ name: 'App-Version', value: '1.2.0' },
+								{ name: 'ArFS', value: '0.15' },
+								{ name: 'Content-Type', value: 'application/json' },
+								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
+								{ name: 'Entity-Type', value: 'file' },
+								{ name: 'Unix-Time', value: '1639073846' },
+								{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
+								{ name: 'File-Id', value: '9f7038c7-26bd-4856-a843-8de24b828d4e' }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
 						}
 					}
 				],
@@ -318,7 +318,7 @@ describe('ArFSDAOAnonymous class', () => {
 							tags: [
 								{ name: 'App-Name', value: 'ArDrive-CLI' },
 								{ name: 'App-Version', value: '1.2.0' },
-								{ name: 'ArFS', value: '0.11' },
+								{ name: 'ArFS', value: '0.15' },
 								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 								{ name: 'Entity-Type', value: 'file' },
@@ -344,7 +344,7 @@ describe('ArFSDAOAnonymous class', () => {
 							tags: [
 								{ name: 'App-Name', value: 'ArDrive-CLI' },
 								{ name: 'App-Version', value: '1.2.0' },
-								{ name: 'ArFS', value: '0.11' },
+								{ name: 'ArFS', value: '0.15' },
 								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 								{ name: 'Entity-Type', value: 'file' },
@@ -404,7 +404,7 @@ describe('ArFSDAOAnonymous class', () => {
 							tags: [
 								{ name: 'App-Name', value: 'ArDrive-CLI' },
 								{ name: 'App-Version', value: '1.2.0' },
-								{ name: 'ArFS', value: '0.11' },
+								{ name: 'ArFS', value: '0.15' },
 								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 								{ name: 'Entity-Type', value: 'file' },
@@ -422,15 +422,15 @@ describe('ArFSDAOAnonymous class', () => {
 							tags: [
 								{ name: 'App-Name', value: 'ArDrive-CLI' },
 								{ name: 'App-Version', value: '1.2.0' },
-								{ name: 'ArFS', value: '0.11' },
+								{ name: 'ArFS', value: '0.15' },
 								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 								{ name: 'Entity-Type', value: 'file' },
 								{ name: 'Unix-Time', value: '1639073846' },
 								{ name: 'Parent-Folder-Id', value: '1c312b3e-4778-4a18-8243-f2b346f5e7cb' },
 								{ name: 'File-Id', value: fileId2 }
-						],
-						owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
 						}
 					},
 					{
@@ -440,15 +440,15 @@ describe('ArFSDAOAnonymous class', () => {
 							tags: [
 								{ name: 'App-Name', value: 'ArDrive-CLI' },
 								{ name: 'App-Version', value: '1.2.0' },
-								{ name: 'ArFS', value: '0.11' },
+								{ name: 'ArFS', value: '0.15' },
 								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 								{ name: 'Entity-Type', value: 'file' },
 								{ name: 'Unix-Time', value: '1639073846' },
 								{ name: 'Parent-Folder-Id', value: '1c312b3e-4778-4a18-8243-f2b346f5e7cb' },
 								{ name: 'File-Id', value: fileId3 }
-						],
-						owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
 						}
 					}
 				],

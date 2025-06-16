@@ -76,7 +76,6 @@ import {
 	MetaDataBaseCosts,
 	RenamePublicDriveParams,
 	RenamePrivateDriveParams,
-	DriveKey,
 	W,
 	TransactionID,
 	ArFSFees,
@@ -86,7 +85,9 @@ import {
 	RetryPublicArFSFileParams,
 	RetryPublicArFSFileByFileIdParams,
 	RetryPublicArFSFileByDestFolderIdParams,
-	emptyArFSResult
+	emptyArFSResult,
+	DriveSignatureInfo,
+	DriveKey
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -1322,7 +1323,8 @@ export class ArDrive extends ArDriveAnonymous {
 					drive.rootFolderId,
 					drive.driveAuthMode,
 					drive.cipher,
-					drive.cipherIV
+					drive.cipherIV,
+					drive.driveSignatureType
 			  );
 	}
 
@@ -1916,5 +1918,15 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
+	}
+
+	async getDriveSignatureInfo({
+		driveId,
+		owner
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+	}): Promise<DriveSignatureInfo> {
+		return this.arFsDao.getDriveSignatureInfo(driveId, owner);
 	}
 }

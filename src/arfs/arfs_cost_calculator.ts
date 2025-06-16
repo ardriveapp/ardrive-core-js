@@ -85,7 +85,7 @@ export class ArFSCostCalculator implements CostCalculator {
 				console.error(`Failed to select token holder: ${error}. Skipping community tip.`);
 				// Community tip is not added to total price if token holder selection fails
 			}
-		} 
+		}
 
 		return {
 			calculatedBundlePlan: {
@@ -123,8 +123,9 @@ export class ArFSCostCalculator implements CostCalculator {
 				.plus(communityWinstonTip);
 		} catch (error) {
 			console.error(`Failed to select token holder: ${error}. Skipping community tip.`);
-			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx)
-				.plus(this.boostedReward(winstonPriceOfMetaDataTx));
+			totalPriceOfV2Tx = this.boostedReward(winstonPriceOfDataTx).plus(
+				this.boostedReward(winstonPriceOfMetaDataTx)
+			);
 		}
 
 		return {
