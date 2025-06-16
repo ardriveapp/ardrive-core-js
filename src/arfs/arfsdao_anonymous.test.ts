@@ -227,4 +227,51 @@ describe('ArFSDAOAnonymous class', () => {
 			// });
 		});
 	});
+
+	describe('Incremental Sync', () => {
+		// Test variables are commented out until ArweaveService is implemented
+		// let arfsDao: ArFSDAOAnonymous;
+		// const testDriveId = stubEntityID;
+		// const testOwner = stubArweaveAddress();
+
+		beforeEach(() => {
+			// arfsDao = new ArFSDAOAnonymous(fakeArweave, 'test_app', '0.0', caches);
+		});
+
+		describe('getPublicDriveIncrementalSync', () => {
+			it('should perform initial sync and return all entities', async function () {
+				// This test would require mocking the GraphQL queries
+				// Since the test infrastructure relies on ArweaveService that isn't implemented yet,
+				// we'll create a placeholder test that can be filled in when the service is ready
+
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+
+			it('should detect new entities in incremental sync', async function () {
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+
+			it('should detect modified entities', async function () {
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+
+			it('should detect possibly deleted entities', async function () {
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+
+			it('should handle progress callback', async function () {
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+
+			it('should stop early when finding many known entities', async function () {
+				// TODO: Implement once ArweaveService is implemented
+				this.skip();
+			});
+		});
+	});
 });
