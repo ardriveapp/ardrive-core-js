@@ -98,12 +98,12 @@ export function arDriveFactory({
 			? new Turbo({
 					...defaultTurboSettings,
 					isDryRun: dryRun
-			  })
+				})
 			: new Turbo({
 					turboUploadUrl: turboSettings.turboUploadUrl,
 					turboPaymentUrl: turboSettings.turboPaymentUrl,
 					isDryRun: dryRun
-			  })
+				})
 	)
 }: ArDriveSettings): ArDrive {
 	return new ArDrive(

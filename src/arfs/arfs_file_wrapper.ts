@@ -411,7 +411,10 @@ export class ArFSPrivateFileToDownload extends ArFSFileToDownload {
 }
 
 export class ArFSFolderToDownload<P extends ArFSWithPath> {
-	constructor(readonly folderWithPaths: P, protected readonly customBaseName?: string) {}
+	constructor(
+		readonly folderWithPaths: P,
+		protected readonly customBaseName?: string
+	) {}
 
 	getRelativePathOf(childPath: string): string {
 		const treeRootPath = this.folderWithPaths.path;

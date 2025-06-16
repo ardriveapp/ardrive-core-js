@@ -1,14 +1,7 @@
 import { expect } from 'chai';
 import { stub, SinonStub, restore } from 'sinon';
 import Arweave from 'arweave';
-import {
-	stubArweaveAddress,
-	stubEntityID,
-	stubEntityIDAlt,
-	stubPublicDrive,
-	stubPublicFile,
-	stubPublicFolder
-} from '../../tests/stubs';
+import { stubArweaveAddress } from '../../tests/stubs';
 import {
 	createMockDriveNode,
 	createMockFolderNode,
@@ -19,9 +12,8 @@ import {
 	mockFolderMetadata,
 	mockFileMetadata
 } from '../../tests/mocks/gql_mock_responses';
-import { ArweaveAddress, DriveID, FolderID, FileID, EID, TxID } from '../types';
+import { EID, TxID } from '../types';
 import { ArFSDAOAnonymous, defaultArFSAnonymousCache } from './arfsdao_anonymous';
-import { GatewayAPI } from '../utils/gateway_api';
 import axios from 'axios';
 
 const fakeArweave = Arweave.init({
@@ -38,13 +30,12 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 	const testDriveId = EID('test-drive-123');
 	const testOwner = stubArweaveAddress();
 	const rootFolderId = EID('root-folder-123');
-	const subfolderId = EID('subfolder-123');
 	const fileId = EID('file-123');
 
 	beforeEach(() => {
 		// Create fresh DAO instance
 		arfsDao = new ArFSDAOAnonymous(fakeArweave, 'test_app', '0.0', defaultArFSAnonymousCache);
-		
+
 		// Stub axios for metadata fetching
 		axiosGetStub = stub(axios, 'get');
 	});
@@ -63,21 +54,20 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			// Mock responses for each entity type
 			const driveNode = createMockDriveNode(testDriveId.toString(), 1000000);
 			const folderNode = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000001);
-			const fileNode = createMockFileNode(fileId.toString(), testDriveId.toString(), rootFolderId.toString(), 1000002);
+			const fileNode = createMockFileNode(
+				fileId.toString(),
+				testDriveId.toString(),
+				rootFolderId.toString(),
+				1000002
+			);
 
 			// Mock GraphQL responses for each entity type query
-			gatewayApiStub.onFirstCall().resolves(
-				createMockGQLResponse([createMockEdge(driveNode)], false)
-			);
-			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([createMockEdge(folderNode)], false)
-			);
-			gatewayApiStub.onThirdCall().resolves(
-				createMockGQLResponse([createMockEdge(fileNode)], false)
-			);
+			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([createMockEdge(driveNode)], false));
+			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([createMockEdge(folderNode)], false));
+			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([createMockEdge(fileNode)], false));
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockDriveMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -105,34 +95,43 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 				lastSyncedBlockHeight: 1000001,
 				lastSyncedTimestamp: Date.now() - 3600000,
 				entityStates: new Map([
-					[testDriveId.toString(), {
-						entityId: testDriveId,
-						txId: TxID('drive-tx-1000000'),
-						blockHeight: 1000000,
-						name: 'Test Drive'
-					}],
-					[rootFolderId.toString(), {
-						entityId: rootFolderId,
-						txId: TxID('folder-tx-1000001'),
-						blockHeight: 1000001,
-						parentFolderId: undefined,
-						name: 'Root Folder'
-					}]
+					[
+						testDriveId.toString(),
+						{
+							entityId: testDriveId,
+							txId: TxID('drive-tx-1000000'),
+							blockHeight: 1000000,
+							name: 'Test Drive'
+						}
+					],
+					[
+						rootFolderId.toString(),
+						{
+							entityId: rootFolderId,
+							txId: TxID('folder-tx-1000001'),
+							blockHeight: 1000001,
+							parentFolderId: undefined,
+							name: 'Root Folder'
+						}
+					]
 				])
 			};
 
 			// New file added after last sync
-			const newFileNode = createMockFileNode(fileId.toString(), testDriveId.toString(), rootFolderId.toString(), 1000003);
+			const newFileNode = createMockFileNode(
+				fileId.toString(),
+				testDriveId.toString(),
+				rootFolderId.toString(),
+				1000003
+			);
 
 			// Mock responses - empty for drive and folder (no changes), new file
 			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([], false));
 			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([], false));
-			gatewayApiStub.onThirdCall().resolves(
-				createMockGQLResponse([createMockEdge(newFileNode)], false)
-			);
+			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([createMockEdge(newFileNode)], false));
 
 			// Mock metadata response
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockFileMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -159,35 +158,35 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 				lastSyncedBlockHeight: 1000001,
 				lastSyncedTimestamp: Date.now() - 3600000,
 				entityStates: new Map([
-					[rootFolderId.toString(), {
-						entityId: rootFolderId,
-						txId: TxID('folder-tx-1000001'),
-						blockHeight: 1000001,
-						parentFolderId: undefined,
-						name: 'Old Folder Name'
-					}]
+					[
+						rootFolderId.toString(),
+						{
+							entityId: rootFolderId,
+							txId: TxID('folder-tx-1000001'),
+							blockHeight: 1000001,
+							parentFolderId: undefined,
+							name: 'Old Folder Name'
+						}
+					]
 				])
 			};
 
 			// Modified folder (same ID, new transaction)
 			const modifiedFolderNode = createMockFolderNode(
-				rootFolderId.toString(), 
-				testDriveId.toString(), 
-				'', 
-				1000005,
-				'New Folder Name'
+				rootFolderId.toString(),
+				testDriveId.toString(),
+				'',
+				1000005
 			);
 			modifiedFolderNode.id = 'folder-tx-1000005'; // New transaction ID
 
 			// Mock responses
 			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([], false));
-			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([createMockEdge(modifiedFolderNode)], false)
-			);
+			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([createMockEdge(modifiedFolderNode)], false));
 			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([], false));
 
 			// Mock metadata response
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: { name: 'New Folder Name' },
 				status: 200,
 				statusText: 'OK'
@@ -214,26 +213,35 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 				lastSyncedBlockHeight: 1000002,
 				lastSyncedTimestamp: Date.now() - 3600000,
 				entityStates: new Map([
-					[testDriveId.toString(), {
-						entityId: testDriveId,
-						txId: TxID('drive-tx-1000000'),
-						blockHeight: 1000000,
-						name: 'Test Drive'
-					}],
-					[rootFolderId.toString(), {
-						entityId: rootFolderId,
-						txId: TxID('folder-tx-1000001'),
-						blockHeight: 1000001,
-						parentFolderId: undefined,
-						name: 'Root Folder'
-					}],
-					[fileId.toString(), {
-						entityId: fileId,
-						txId: TxID('file-tx-1000002'),
-						blockHeight: 1000002,
-						parentFolderId: rootFolderId,
-						name: 'test.txt'
-					}]
+					[
+						testDriveId.toString(),
+						{
+							entityId: testDriveId,
+							txId: TxID('drive-tx-1000000'),
+							blockHeight: 1000000,
+							name: 'Test Drive'
+						}
+					],
+					[
+						rootFolderId.toString(),
+						{
+							entityId: rootFolderId,
+							txId: TxID('folder-tx-1000001'),
+							blockHeight: 1000001,
+							parentFolderId: undefined,
+							name: 'Root Folder'
+						}
+					],
+					[
+						fileId.toString(),
+						{
+							entityId: fileId,
+							txId: TxID('file-tx-1000002'),
+							blockHeight: 1000002,
+							parentFolderId: rootFolderId,
+							name: 'test.txt'
+						}
+					]
 				])
 			};
 
@@ -241,16 +249,12 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			const driveNode = createMockDriveNode(testDriveId.toString(), 1000000);
 			const folderNode = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000001);
 
-			gatewayApiStub.onFirstCall().resolves(
-				createMockGQLResponse([createMockEdge(driveNode)], false)
-			);
-			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([createMockEdge(folderNode)], false)
-			);
+			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([createMockEdge(driveNode)], false));
+			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([createMockEdge(folderNode)], false));
 			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([], false));
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockDriveMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -277,16 +281,12 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			const driveNode = createMockDriveNode(testDriveId.toString(), 1000000);
 			const folderNode = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000001);
 
-			gatewayApiStub.onFirstCall().resolves(
-				createMockGQLResponse([createMockEdge(driveNode)], false)
-			);
-			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([createMockEdge(folderNode)], false)
-			);
+			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([createMockEdge(driveNode)], false));
+			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([createMockEdge(folderNode)], false));
 			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([], false));
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockDriveMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -299,7 +299,7 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 
 			// Verify progress was reported
 			expect(progressUpdates.length).to.be.greaterThan(0);
-			progressUpdates.forEach(update => {
+			progressUpdates.forEach((update) => {
 				expect(update.processed).to.be.a('number');
 				expect(update.total).to.be.a('number');
 			});
@@ -327,12 +327,7 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			// Create response with known entities
 			const knownEntities = [];
 			for (let i = 0; i < 15; i++) {
-				const node = createMockFolderNode(
-					`entity-${i}`,
-					testDriveId.toString(),
-					'',
-					1000001 + i
-				);
+				const node = createMockFolderNode(`entity-${i}`, testDriveId.toString(), '', 1000001 + i);
 				node.id = `tx-${i}`; // Same transaction ID as in state
 				knownEntities.push(createMockEdge(node));
 			}
@@ -346,7 +341,7 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([], false));
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockFolderMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -377,15 +372,21 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			// Mock paginated responses
 			gatewayApiStub.onCall(0).resolves(createMockGQLResponse([], false)); // No drives
 			gatewayApiStub.onCall(1).resolves(
-				createMockGQLResponse(page1Nodes.map(n => createMockEdge(n)), true) // Has next page
+				createMockGQLResponse(
+					page1Nodes.map((n) => createMockEdge(n)),
+					true
+				) // Has next page
 			);
 			gatewayApiStub.onCall(2).resolves(
-				createMockGQLResponse(page2Nodes.map(n => createMockEdge(n)), false) // Last page
+				createMockGQLResponse(
+					page2Nodes.map((n) => createMockEdge(n)),
+					false
+				) // Last page
 			);
 			gatewayApiStub.onCall(3).resolves(createMockGQLResponse([], false)); // No files
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockFolderMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -403,23 +404,26 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			// Create multiple revisions of the same folder
 			const revision1 = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000001);
 			revision1.id = 'tx-rev-1';
-			
+
 			const revision2 = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000002);
 			revision2.id = 'tx-rev-2';
-			revision2.tags.find(t => t.name === 'ArFS')!.value = '0.12'; // Different version
+			revision2.tags.find((t) => t.name === 'ArFS')!.value = '0.12'; // Different version
 
 			// Mock response with multiple revisions
 			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([], false));
 			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([
-					createMockEdge(revision2), // Latest revision first (HEIGHT_DESC order)
-					createMockEdge(revision1)
-				], false)
+				createMockGQLResponse(
+					[
+						createMockEdge(revision2), // Latest revision first (HEIGHT_DESC order)
+						createMockEdge(revision1)
+					],
+					false
+				)
 			);
 			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([], false));
 
 			// Mock metadata responses
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockFolderMetadata,
 				status: 200,
 				statusText: 'OK'
@@ -458,21 +462,22 @@ describe('ArFSDAOAnonymous - Incremental Sync Tests', () => {
 			// Create a node with missing required tags
 			const corruptedNode = createMockFolderNode(rootFolderId.toString(), testDriveId.toString(), '', 1000001);
 			// Remove Entity-Type tag to cause build failure
-			corruptedNode.tags = corruptedNode.tags.filter(t => t.name !== 'Entity-Type');
+			corruptedNode.tags = corruptedNode.tags.filter((t) => t.name !== 'Entity-Type');
 
-			const validNode = createMockFileNode(fileId.toString(), testDriveId.toString(), rootFolderId.toString(), 1000002);
+			const validNode = createMockFileNode(
+				fileId.toString(),
+				testDriveId.toString(),
+				rootFolderId.toString(),
+				1000002
+			);
 
 			// Mock responses with one corrupted and one valid entity
 			gatewayApiStub.onFirstCall().resolves(createMockGQLResponse([], false));
-			gatewayApiStub.onSecondCall().resolves(
-				createMockGQLResponse([createMockEdge(corruptedNode)], false)
-			);
-			gatewayApiStub.onThirdCall().resolves(
-				createMockGQLResponse([createMockEdge(validNode)], false)
-			);
+			gatewayApiStub.onSecondCall().resolves(createMockGQLResponse([createMockEdge(corruptedNode)], false));
+			gatewayApiStub.onThirdCall().resolves(createMockGQLResponse([createMockEdge(validNode)], false));
 
 			// Mock metadata response for valid entity
-			axiosGetStub.resolves({ 
+			axiosGetStub.resolves({
 				data: mockFileMetadata,
 				status: 200,
 				statusText: 'OK'

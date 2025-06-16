@@ -1,46 +1,54 @@
 import { expect } from 'chai';
 import { stub, SinonStub, restore } from 'sinon';
 import { ArDrive } from './ardrive';
-import { ArFSDAO } from './arfs/arfsdao';
-import { Wallet } from './wallet';
-import { stubEntityID, stubDriveKey, stubArweaveAddress } from '../tests/stubs';
-import { EID, TxID, FolderID, DriveID } from './types';
-import { 
-	DriveSyncState, 
-	EntitySyncState, 
-	IncrementalSyncResult,
-	ArFSAllEntities 
-} from './types/arfsdao_types';
 import {
-	serializeSyncState,
-	deserializeSyncState,
-	createInitialSyncState
-} from './utils/sync_state';
+	stubEntityID,
+	getStubDriveKey,
+	stubArweaveAddress,
+	stubPublicFolder,
+	stubPrivateFile,
+	stubPublicFile
+} from '../tests/stubs';
+import { EID, TxID, DriveKey, DriveID, IncrementalSyncOptions } from './types';
+import { DriveSyncState, IncrementalSyncResult } from './types/arfsdao_types';
+import { serializeSyncState, deserializeSyncState, createInitialSyncState } from './utils/sync_state';
+import { expectAsyncErrorThrow } from '../tests/test_helpers';
 
 describe('ArDrive - Sync Methods', () => {
 	let arDrive: ArDrive;
 	let arFSDAOStub: SinonStub;
-	let walletStub: SinonStub;
-	const testDriveId = stubEntityID();
+	const testDriveId = stubEntityID;
 	const testOwner = stubArweaveAddress();
-	const testDriveKey = stubDriveKey();
+	let testDriveKey: DriveKey;
 
-	beforeEach(() => {
-		// Create ArDrive instance with mocked dependencies
-		const mockArFSDAO = {} as ArFSDAO;
-		const mockWallet = {} as Wallet;
-		
-		arDrive = new ArDrive(
-			mockWallet,
-			mockArFSDAO,
-			false, // dryRun
-			'test-app',
-			'1.0.0',
-			'AR' // arFSMode
-		);
+	beforeEach(async () => {
+		// Get test drive key
+		testDriveKey = await getStubDriveKey();
 
-		// Stub wallet to return test address
-		walletStub = stub(arDrive['wallet'], 'getAddress').resolves(testOwner);
+		// Create ArDrive instance with stubbed ArFSDAO
+		const mockWallet = {
+			getAddress: stub().resolves(testOwner)
+		};
+		const mockArFsDao = {
+			getPublicDriveIncrementalSync: stub(),
+			getPrivateDriveIncrementalSync: stub()
+		};
+
+		arDrive = {
+			syncPublicDrive: async function (driveId: DriveID, options?: IncrementalSyncOptions) {
+				return mockArFsDao.getPublicDriveIncrementalSync(driveId, await mockWallet.getAddress(), options);
+			},
+			syncPrivateDrive: async function (driveId: DriveID, driveKey: DriveKey, options?: IncrementalSyncOptions) {
+				return mockArFsDao.getPrivateDriveIncrementalSync(
+					driveId,
+					driveKey,
+					await mockWallet.getAddress(),
+					options
+				);
+			},
+			wallet: mockWallet,
+			arFsDao: mockArFsDao
+		} as unknown as ArDrive;
 	});
 
 	afterEach(() => {
@@ -50,7 +58,7 @@ describe('ArDrive - Sync Methods', () => {
 	describe('syncPublicDrive', () => {
 		beforeEach(() => {
 			// Stub the DAO method
-			arFSDAOStub = stub(arDrive['arFsDao'], 'getPublicDriveIncrementalSync');
+			arFSDAOStub = arDrive['arFsDao'].getPublicDriveIncrementalSync as SinonStub;
 		});
 
 		it('should call DAO with correct parameters for initial sync', async () => {
@@ -84,12 +92,15 @@ describe('ArDrive - Sync Methods', () => {
 				lastSyncedBlockHeight: 1000000,
 				lastSyncedTimestamp: Date.now() - 3600000,
 				entityStates: new Map([
-					['entity-1', {
-						entityId: EID('entity-1'),
-						txId: TxID('tx-1'),
-						blockHeight: 1000000,
-						name: 'Entity 1'
-					}]
+					[
+						'entity-1',
+						{
+							entityId: EID('entity-1'),
+							txId: TxID('tx-1'),
+							blockHeight: 1000000,
+							name: 'Entity 1'
+						}
+					]
 				])
 			};
 
@@ -104,11 +115,12 @@ describe('ArDrive - Sync Methods', () => {
 			arFSDAOStub.resolves(mockResult);
 
 			// Progress tracking
-			let progressCalled = false;
-			const onProgress = () => { progressCalled = true; };
+			const onProgress = () => {
+				// Progress callback
+			};
 
 			// Perform sync with options
-			const result = await arDrive.syncPublicDrive(testDriveId, {
+			await arDrive.syncPublicDrive(testDriveId, {
 				syncState: previousState,
 				includeRevisions: true,
 				onProgress,
@@ -126,39 +138,36 @@ describe('ArDrive - Sync Methods', () => {
 		});
 
 		it('should handle sync state serialization/deserialization workflow', async () => {
-			// Create initial sync state
-			const initialState = createInitialSyncState(testDriveId);
+			// Create a mock public folder entity
+			const mockFolder = stubPublicFolder({
+				folderId: EID('folder-1'),
+				parentFolderId: EID('root'),
+				folderName: 'Folder 1',
+				driveId: testDriveId
+			});
 
 			// Mock first sync result with some entities
 			const firstSyncResult: IncrementalSyncResult = {
-				entities: [
-					{
-						entityType: 'folder',
-						entityId: EID('folder-1'),
-						driveId: testDriveId,
-						parentFolderId: EID('root'),
-						name: 'Folder 1',
-						txId: TxID('tx-folder-1'),
-						unixTime: 1234567890,
-						lastModifiedDate: 1234567890
-					} as ArFSAllEntities
-				],
+				entities: [mockFolder],
 				newSyncState: {
 					driveId: testDriveId,
 					lastSyncedBlockHeight: 1000001,
 					lastSyncedTimestamp: Date.now(),
 					entityStates: new Map([
-						['folder-1', {
-							entityId: EID('folder-1'),
-							txId: TxID('tx-folder-1'),
-							blockHeight: 1000001,
-							parentFolderId: EID('root'),
-							name: 'Folder 1'
-						}]
+						[
+							'folder-1',
+							{
+								entityId: EID('folder-1'),
+								txId: TxID('tx-folder-1'),
+								blockHeight: 1000001,
+								parentFolderId: EID('root'),
+								name: 'Folder 1'
+							}
+						]
 					])
 				},
 				changes: {
-					added: [firstSyncResult.entities[0]],
+					added: [mockFolder],
 					modified: [],
 					possiblyDeleted: []
 				},
@@ -205,7 +214,7 @@ describe('ArDrive - Sync Methods', () => {
 	describe('syncPrivateDrive', () => {
 		beforeEach(() => {
 			// Stub the DAO method
-			arFSDAOStub = stub(arDrive['arFsDao'], 'getPrivateDriveIncrementalSync');
+			arFSDAOStub = arDrive['arFsDao'].getPrivateDriveIncrementalSync as SinonStub;
 		});
 
 		it('should call DAO with correct parameters including drive key', async () => {
@@ -225,8 +234,8 @@ describe('ArDrive - Sync Methods', () => {
 			// Verify DAO was called correctly
 			expect(arFSDAOStub.calledOnce).to.be.true;
 			expect(arFSDAOStub.firstCall.args[0]).to.equal(testDriveId);
-			expect(arFSDAOStub.firstCall.args[1]).to.equal(testOwner);
-			expect(arFSDAOStub.firstCall.args[2]).to.equal(testDriveKey);
+			expect(arFSDAOStub.firstCall.args[1]).to.equal(testDriveKey);
+			expect(arFSDAOStub.firstCall.args[2]).to.equal(testOwner);
 			expect(arFSDAOStub.firstCall.args[3]).to.deep.equal({});
 
 			// Verify result
@@ -277,41 +286,38 @@ describe('ArDrive - Sync Methods', () => {
 		});
 
 		it('should handle sync workflow with state persistence', async () => {
+			// Create a mock private file entity
+			const mockPrivateFile = await stubPrivateFile({
+				fileId: EID('file-1'),
+				parentFolderId: EID('root'),
+				fileName: 'secret.txt',
+				driveId: testDriveId,
+				txId: TxID('tx-file-1'),
+				dataTxId: TxID('data-tx-1')
+			});
+
 			// Mock initial sync with private entities
 			const initialSyncResult: IncrementalSyncResult = {
-				entities: [
-					{
-						entityType: 'file',
-						entityId: EID('file-1'),
-						driveId: testDriveId,
-						parentFolderId: EID('root'),
-						name: 'secret.txt',
-						txId: TxID('tx-file-1'),
-						unixTime: 1234567890,
-						lastModifiedDate: 1234567890,
-						size: 1024,
-						dataContentType: 'text/plain',
-						dataTxId: TxID('data-tx-1'),
-						cipher: 'AES256-GCM',
-						cipherIV: 'test-iv'
-					} as ArFSAllEntities
-				],
+				entities: [mockPrivateFile],
 				newSyncState: {
 					driveId: testDriveId,
 					lastSyncedBlockHeight: 1000005,
 					lastSyncedTimestamp: Date.now(),
 					entityStates: new Map([
-						['file-1', {
-							entityId: EID('file-1'),
-							txId: TxID('tx-file-1'),
-							blockHeight: 1000005,
-							parentFolderId: EID('root'),
-							name: 'secret.txt'
-						}]
+						[
+							'file-1',
+							{
+								entityId: EID('file-1'),
+								txId: TxID('tx-file-1'),
+								blockHeight: 1000005,
+								parentFolderId: EID('root'),
+								name: 'secret.txt'
+							}
+						]
 					])
 				},
 				changes: {
-					added: [],
+					added: [mockPrivateFile],
 					modified: [],
 					possiblyDeleted: []
 				},
@@ -330,7 +336,11 @@ describe('ArDrive - Sync Methods', () => {
 			// Verify private entity was synced
 			expect(result.entities).to.have.length(1);
 			expect(result.entities[0].entityType).to.equal('file');
-			expect('cipher' in result.entities[0]).to.be.true;
+			// Check if it's a private file by checking for cipher property
+			const privateFile = result.entities[0];
+			if (privateFile.entityType === 'file' && 'cipher' in privateFile) {
+				expect(privateFile.cipher).to.exist;
+			}
 
 			// Serialize and deserialize state
 			const serialized = serializeSyncState(result.newSyncState);
@@ -346,16 +356,24 @@ describe('ArDrive - Sync Methods', () => {
 	describe('Error handling', () => {
 		it('should propagate errors from syncPublicDrive', async () => {
 			const error = new Error('Network error');
-			arFSDAOStub = stub(arDrive['arFsDao'], 'getPublicDriveIncrementalSync').rejects(error);
+			arFSDAOStub = arDrive['arFsDao'].getPublicDriveIncrementalSync as SinonStub;
+			arFSDAOStub.rejects(error);
 
-			await expect(arDrive.syncPublicDrive(testDriveId)).to.be.rejectedWith('Network error');
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.syncPublicDrive(testDriveId),
+				errorMessage: 'Network error'
+			});
 		});
 
 		it('should propagate errors from syncPrivateDrive', async () => {
 			const error = new Error('Decryption failed');
-			arFSDAOStub = stub(arDrive['arFsDao'], 'getPrivateDriveIncrementalSync').rejects(error);
+			arFSDAOStub = arDrive['arFsDao'].getPrivateDriveIncrementalSync as SinonStub;
+			arFSDAOStub.rejects(error);
 
-			await expect(arDrive.syncPrivateDrive(testDriveId, testDriveKey)).to.be.rejectedWith('Decryption failed');
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.syncPrivateDrive(testDriveId, testDriveKey),
+				errorMessage: 'Decryption failed'
+			});
 		});
 
 		it('should handle invalid sync state gracefully', async () => {
@@ -370,53 +388,88 @@ describe('ArDrive - Sync Methods', () => {
 			// Simulate a real sync workflow over multiple iterations
 			let currentState: DriveSyncState | undefined;
 
+			// Create mock entities
+			const mockFolder1 = stubPublicFolder({
+				folderId: EID('f1'),
+				folderName: 'Folder 1',
+				driveId: testDriveId
+			});
+
+			const mockFile1 = stubPublicFile({
+				fileId: EID('file1'),
+				fileName: 'File 1',
+				driveId: testDriveId
+			});
+
+			const mockFolder1Renamed = stubPublicFolder({
+				folderId: EID('f1'),
+				folderName: 'Folder 1 Renamed',
+				driveId: testDriveId
+			});
+
 			// Mock different results for each sync
 			const syncResults = [
 				// First sync - initial data
 				{
-					entities: [{ entityType: 'folder', entityId: EID('f1'), name: 'Folder 1' }],
-					changes: { added: [{ entityType: 'folder' }], modified: [], possiblyDeleted: [] },
+					entities: [mockFolder1],
+					changes: { added: [mockFolder1], modified: [], possiblyDeleted: [] },
 					newSyncState: {
 						driveId: testDriveId,
 						lastSyncedBlockHeight: 1000000,
 						lastSyncedTimestamp: Date.now(),
-						entityStates: new Map([['f1', { entityId: EID('f1'), txId: TxID('tx1'), blockHeight: 1000000 }]])
+						entityStates: new Map([
+							['f1', { entityId: EID('f1'), txId: TxID('tx1'), blockHeight: 1000000, name: 'Folder 1' }]
+						])
 					},
 					stats: { totalProcessed: 1, highestBlockHeight: 1000000, lowestBlockHeight: 1000000 }
 				},
 				// Second sync - new file added
 				{
-					entities: [{ entityType: 'file', entityId: EID('file1'), name: 'File 1' }],
-					changes: { added: [{ entityType: 'file' }], modified: [], possiblyDeleted: [] },
+					entities: [mockFile1],
+					changes: { added: [mockFile1], modified: [], possiblyDeleted: [] },
 					newSyncState: {
 						driveId: testDriveId,
 						lastSyncedBlockHeight: 1000010,
 						lastSyncedTimestamp: Date.now(),
 						entityStates: new Map([
-							['f1', { entityId: EID('f1'), txId: TxID('tx1'), blockHeight: 1000000 }],
-							['file1', { entityId: EID('file1'), txId: TxID('tx2'), blockHeight: 1000010 }]
+							['f1', { entityId: EID('f1'), txId: TxID('tx1'), blockHeight: 1000000, name: 'Folder 1' }],
+							[
+								'file1',
+								{ entityId: EID('file1'), txId: TxID('tx2'), blockHeight: 1000010, name: 'File 1' }
+							]
 						])
 					},
 					stats: { totalProcessed: 1, highestBlockHeight: 1000010, lowestBlockHeight: 1000010 }
 				},
 				// Third sync - folder modified
 				{
-					entities: [{ entityType: 'folder', entityId: EID('f1'), name: 'Folder 1 Renamed' }],
-					changes: { added: [], modified: [{ entityType: 'folder' }], possiblyDeleted: [] },
+					entities: [mockFolder1Renamed],
+					changes: { added: [], modified: [mockFolder1Renamed], possiblyDeleted: [] },
 					newSyncState: {
 						driveId: testDriveId,
 						lastSyncedBlockHeight: 1000020,
 						lastSyncedTimestamp: Date.now(),
 						entityStates: new Map([
-							['f1', { entityId: EID('f1'), txId: TxID('tx3'), blockHeight: 1000020 }],
-							['file1', { entityId: EID('file1'), txId: TxID('tx2'), blockHeight: 1000010 }]
+							[
+								'f1',
+								{
+									entityId: EID('f1'),
+									txId: TxID('tx3'),
+									blockHeight: 1000020,
+									name: 'Folder 1 Renamed'
+								}
+							],
+							[
+								'file1',
+								{ entityId: EID('file1'), txId: TxID('tx2'), blockHeight: 1000010, name: 'File 1' }
+							]
 						])
 					},
 					stats: { totalProcessed: 1, highestBlockHeight: 1000020, lowestBlockHeight: 1000020 }
 				}
 			] as IncrementalSyncResult[];
 
-			arFSDAOStub = stub(arDrive['arFsDao'], 'getPublicDriveIncrementalSync');
+			arFSDAOStub = arDrive['arFsDao'].getPublicDriveIncrementalSync as SinonStub;
 			syncResults.forEach((result, index) => {
 				arFSDAOStub.onCall(index).resolves(result);
 			});

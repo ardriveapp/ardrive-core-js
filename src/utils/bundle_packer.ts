@@ -16,7 +16,10 @@ interface DataItemPlan {
 }
 
 export abstract class BundlePacker {
-	constructor(protected readonly maxBundleSize: ByteCount, protected readonly maxDataItemLimit: number) {
+	constructor(
+		protected readonly maxBundleSize: ByteCount,
+		protected readonly maxDataItemLimit: number
+	) {
 		if (!Number.isFinite(maxDataItemLimit) || !Number.isInteger(maxDataItemLimit) || maxDataItemLimit < 2) {
 			throw new Error('Maximum data item limit must be an integer value of 2 or more!');
 		}

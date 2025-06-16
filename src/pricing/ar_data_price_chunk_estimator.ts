@@ -25,7 +25,10 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 	 * @param skipSetup allows for instantiation without pre-fetching pricing data from the oracle
 	 * @param oracle a data source for Arweave data pricing
 	 */
-	constructor(skipSetup = false, private readonly oracle: ArweaveOracle = new GatewayOracle()) {
+	constructor(
+		skipSetup = false,
+		private readonly oracle: ArweaveOracle = new GatewayOracle()
+	) {
 		super();
 
 		if (!skipSetup) {

@@ -5,6 +5,8 @@ export function createMockGQLNode(overrides: Partial<GQLNodeInterface>): GQLNode
 	return {
 		id: 'tx123',
 		anchor: 'anchor123',
+		signature: 'test-signature',
+		recipient: '',
 		owner: {
 			address: 'test-owner-address',
 			key: 'test-owner-key'
@@ -29,9 +31,6 @@ export function createMockGQLNode(overrides: Partial<GQLNodeInterface>): GQLNode
 			previous: 'prev-block'
 		},
 		parent: {
-			id: ''
-		},
-		bundledIn: {
 			id: ''
 		},
 		...overrides
@@ -63,8 +62,7 @@ export function createMockFolderNode(
 	folderId: string,
 	driveId: string,
 	parentFolderId: string,
-	blockHeight: number,
-	name = 'Test Folder'
+	blockHeight: number
 ): GQLNodeInterface {
 	return createMockGQLNode({
 		id: `folder-tx-${blockHeight}`,
@@ -90,9 +88,7 @@ export function createMockFileNode(
 	fileId: string,
 	driveId: string,
 	parentFolderId: string,
-	blockHeight: number,
-	dataTxId = 'data-tx-123',
-	name = 'test.txt'
+	blockHeight: number
 ): GQLNodeInterface {
 	return createMockGQLNode({
 		id: `file-tx-${blockHeight}`,
