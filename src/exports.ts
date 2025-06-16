@@ -57,3 +57,4 @@ export * from './utils/query';
 export * from './utils/sort_functions';
 export * from './utils/upload_conflict_resolution';
 export * from './utils/wallet_utils';
+export * from './utils/sync_state';
