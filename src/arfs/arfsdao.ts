@@ -100,7 +100,7 @@ import {
 	ADDR,
 	UploadStats
 } from '../types';
-import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
+import { latestRevisionFilter, fileFilter, folderFilter, universalRevisionFilter } from '../utils/filter_methods';
 import {
 	entityToNameMap,
 	NameConflictInfo,
@@ -109,6 +109,7 @@ import {
 } from '../utils/mapper_functions';
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
+import { AnyEntityID } from '../types';
 import { JWKWallet } from '../jwk_wallet';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 
@@ -147,7 +148,12 @@ import {
 	ArFSPrepareObjectBundleParams,
 	ArFSPrepareObjectTransactionParams,
 	ArFSRetryPublicFileUploadParams,
-	ArFSFolderPrototypeFactory
+	ArFSFolderPrototypeFactory,
+	DriveSyncState,
+	EntitySyncState,
+	IncrementalSyncOptions,
+	IncrementalSyncResult,
+	ArFSAllEntities
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
@@ -1331,10 +1337,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return excludedTagNames.includes('ArFS')
 			? this.txPreparer.prepareFileDataDataItem({
 					objectMetaData: objectMetaData as ArFSFileDataPrototype
-			  })
+				})
 			: this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
-			  });
+				});
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
@@ -1358,11 +1364,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData: objectMetaData as ArFSFileDataPrototype,
 					rewardSettings,
 					communityTipSettings
-			  })
+				})
 			: this.txPreparer.prepareMetaDataTx({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
 					rewardSettings
-			  });
+				});
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
@@ -1395,7 +1401,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 										progressLogDebounce = false;
 									}, 500); // .5 sec debounce
 								}
-						  }
+							}
 						: undefined
 				};
 
@@ -1420,7 +1426,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedFile,
 					arFSDataTxId,
 					createMetaDataPlan
-			  })
+				})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);
@@ -2335,5 +2341,198 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	getManifestLinks(dataTxId: TransactionID, manifest: ArFSManifestToUpload): string[] {
 		return manifest.getLinksOutput(dataTxId, gatewayUrlForArweave(this.arweave));
+	}
+
+	/**
+	 * Performs incremental synchronization of a private drive based on block height
+	 * This method fetches only new or updated entities since the last sync
+	 * @param driveId The drive to sync
+	 * @param driveKey The drive key for decryption
+	 * @param owner The owner of the drive
+	 * @param options Sync options including previous state
+	 * @returns Sync results with categorized changes
+	 */
+	async getPrivateDriveIncrementalSync(
+		driveId: DriveID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress,
+		options: IncrementalSyncOptions = {}
+	): Promise<IncrementalSyncResult> {
+		const { syncState, includeRevisions = false, onProgress, batchSize = 100, stopAfterKnownCount = 10 } = options;
+
+		const lastKnownHeight = syncState?.lastSyncedBlockHeight || 0;
+		const previousEntityStates = syncState?.entityStates || new Map<string, EntitySyncState>();
+		const newEntityStates = new Map<string, EntitySyncState>();
+
+		// Track changes
+		const added: ArFSAllEntities[] = [];
+		const modified: ArFSAllEntities[] = [];
+		const seenEntityIds = new Set<string>();
+
+		// Statistics
+		let totalProcessed = 0;
+		let highestBlockHeight = lastKnownHeight;
+		let lowestBlockHeight = Number.MAX_SAFE_INTEGER;
+		let knownEntityCount = 0;
+
+		// Query all entity types for this drive, sorted by block height ascending
+		const entityTypes = ['drive', 'folder', 'file'];
+
+		for (const entityType of entityTypes) {
+			let cursor = '';
+			let hasNextPage = true;
+			let shouldContinue = true;
+
+			while (hasNextPage && shouldContinue) {
+				// Build query for this entity type
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Drive-Id', value: `${driveId}` },
+						{ name: 'Entity-Type', value: entityType },
+						{ name: 'Drive-Privacy', value: 'private' }
+					],
+					cursor,
+					owner,
+					sort: ASCENDING_ORDER
+				});
+
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const { edges, pageInfo } = transactions;
+				hasNextPage = pageInfo.hasNextPage;
+
+				// Process each transaction
+				for (const edge of edges) {
+					const { node } = edge;
+					cursor = edge.cursor;
+
+					// Get block height
+					const blockHeight = node.block?.height || 0;
+					if (blockHeight > highestBlockHeight) {
+						highestBlockHeight = blockHeight;
+					}
+					if (blockHeight < lowestBlockHeight) {
+						lowestBlockHeight = blockHeight;
+					}
+
+					// Build the entity based on type
+					let entity: ArFSAllEntities | null = null;
+
+					try {
+						if (entityType === 'drive') {
+							const builder = ArFSPrivateDriveBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+							entity = await builder.build(node);
+						} else if (entityType === 'folder') {
+							const builder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+							entity = await builder.build(node);
+						} else if (entityType === 'file') {
+							// For private files, we need to first get the file ID from the transaction
+							const fileIdTag = node.tags.find((tag) => tag.name === 'File-Id');
+							if (!fileIdTag) {
+								console.warn(`No File-Id tag found on file transaction ${node.id}`);
+								continue;
+							}
+							const fileId = EID(fileIdTag.value);
+							const fileKey = await deriveFileKey(fileId.toString(), driveKey);
+							const builder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, fileKey);
+							entity = await builder.build(node);
+						}
+					} catch (error) {
+						// Skip entities that fail to build (e.g., corrupted metadata)
+						console.warn(`Failed to build ${entityType} from tx ${node.id}: ${error}`);
+						continue;
+					}
+
+					if (!entity) continue;
+
+					// Get the entity ID based on entity type
+					const entityIdValue = 'entityId' in entity ? entity.entityId : entity.driveId;
+					const entityId = entityIdValue.toString();
+					const txId = entity.txId;
+
+					// Track this entity
+					seenEntityIds.add(entityId);
+					totalProcessed++;
+
+					// Create sync state for this entity
+					const entityState: EntitySyncState = {
+						entityId: entityIdValue,
+						txId: TxID(txId.toString()),
+						blockHeight,
+						parentFolderId: 'parentFolderId' in entity ? entity.parentFolderId : undefined,
+						name: entity.name
+					};
+
+					// Check if this is a known entity
+					const previousState = previousEntityStates.get(entityId);
+
+					if (previousState) {
+						// We've seen this entity before
+						if (previousState.txId.toString() !== txId.toString()) {
+							// This is a modification (new revision)
+							modified.push(entity);
+							newEntityStates.set(entityId, entityState);
+						} else {
+							// Same transaction, no change
+							newEntityStates.set(entityId, previousState);
+							knownEntityCount++;
+
+							// Optimization: stop if we've seen many known entities
+							if (blockHeight > lastKnownHeight && knownEntityCount >= stopAfterKnownCount) {
+								shouldContinue = false;
+								break;
+							}
+						}
+					} else if (blockHeight > lastKnownHeight) {
+						// This is a new entity added after our last sync
+						added.push(entity);
+						newEntityStates.set(entityId, entityState);
+					} else {
+						// Old entity we haven't seen before (e.g., first sync)
+						added.push(entity);
+						newEntityStates.set(entityId, entityState);
+					}
+
+					// Progress callback
+					if (onProgress) {
+						onProgress(totalProcessed, totalProcessed + (hasNextPage ? batchSize : 0));
+					}
+				}
+			}
+		}
+
+		// Find possibly deleted entities
+		const possiblyDeleted: AnyEntityID[] = [];
+		for (const [entityId, previousState] of previousEntityStates) {
+			if (!seenEntityIds.has(entityId)) {
+				possiblyDeleted.push(previousState.entityId);
+			}
+		}
+
+		// Apply revision filtering if requested
+		const allEntities = [...added, ...modified];
+		const filteredEntities = includeRevisions ? allEntities : allEntities.filter(universalRevisionFilter);
+
+		// Create new sync state
+		const newSyncState: DriveSyncState = {
+			driveId,
+			lastSyncedBlockHeight: highestBlockHeight,
+			lastSyncedTimestamp: Date.now(),
+			entityStates: newEntityStates
+		};
+
+		return {
+			entities: filteredEntities,
+			newSyncState,
+			changes: {
+				added: includeRevisions ? added : added.filter(universalRevisionFilter),
+				modified: includeRevisions ? modified : modified.filter(universalRevisionFilter),
+				possiblyDeleted
+			},
+			stats: {
+				totalProcessed,
+				highestBlockHeight,
+				lowestBlockHeight: lowestBlockHeight === Number.MAX_SAFE_INTEGER ? 0 : lowestBlockHeight
+			}
+		};
 	}
 }

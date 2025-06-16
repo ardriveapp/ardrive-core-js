@@ -6,11 +6,16 @@ import {
 	ArFSDownloadPublicFolderParams,
 	EntityID,
 	GQLEdgeInterface,
-	TransactionID
+	TransactionID,
+	DriveSyncState,
+	EntitySyncState,
+	IncrementalSyncOptions,
+	IncrementalSyncResult,
+	ArFSAllEntities
 } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
-import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
-import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
+import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR, TxID } from '../types';
+import { latestRevisionFilter, latestRevisionFilterForDrives, universalRevisionFilter } from '../utils/filter_methods';
 import { FolderHierarchy } from './folder_hierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
@@ -468,5 +473,187 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				await fileWrapper.write();
 			}
 		}
+	}
+
+	/**
+	 * Performs incremental synchronization of a drive based on block height
+	 * This method fetches only new or updated entities since the last sync
+	 * @param driveId The drive to sync
+	 * @param owner The owner of the drive
+	 * @param options Sync options including previous state
+	 * @returns Sync results with categorized changes
+	 */
+	async getPublicDriveIncrementalSync(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		options: IncrementalSyncOptions = {}
+	): Promise<IncrementalSyncResult> {
+		const { syncState, includeRevisions = false, onProgress, batchSize = 100, stopAfterKnownCount = 10 } = options;
+
+		const lastKnownHeight = syncState?.lastSyncedBlockHeight || 0;
+		const previousEntityStates = syncState?.entityStates || new Map<string, EntitySyncState>();
+		const newEntityStates = new Map<string, EntitySyncState>();
+
+		// Track changes
+		const added: ArFSAllEntities[] = [];
+		const modified: ArFSAllEntities[] = [];
+		const seenEntityIds = new Set<string>();
+
+		// Statistics
+		let totalProcessed = 0;
+		let highestBlockHeight = lastKnownHeight;
+		let lowestBlockHeight = Number.MAX_SAFE_INTEGER;
+		let knownEntityCount = 0;
+
+		// Query all entity types for this drive, sorted by block height ascending
+		const entityTypes = ['drive', 'folder', 'file'];
+
+		for (const entityType of entityTypes) {
+			let cursor = '';
+			let hasNextPage = true;
+			let shouldContinue = true;
+
+			while (hasNextPage && shouldContinue) {
+				// Build query for this entity type
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Drive-Id', value: `${driveId}` },
+						{ name: 'Entity-Type', value: entityType }
+					],
+					cursor,
+					owner,
+					sort: ASCENDING_ORDER
+				});
+
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const { edges, pageInfo } = transactions;
+				hasNextPage = pageInfo.hasNextPage;
+
+				// Process each transaction
+				for (const edge of edges) {
+					const { node } = edge;
+					cursor = edge.cursor;
+
+					// Get block height
+					const blockHeight = node.block?.height || 0;
+					if (blockHeight > highestBlockHeight) {
+						highestBlockHeight = blockHeight;
+					}
+					if (blockHeight < lowestBlockHeight) {
+						lowestBlockHeight = blockHeight;
+					}
+
+					// Build the entity based on type
+					let entity: ArFSAllEntities | null = null;
+
+					try {
+						if (entityType === 'drive') {
+							const builder = ArFSPublicDriveBuilder.fromArweaveNode(node, this.gatewayApi);
+							entity = await builder.build(node);
+						} else if (entityType === 'folder') {
+							const builder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
+							entity = await builder.build(node);
+						} else if (entityType === 'file') {
+							const builder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
+							entity = await builder.build(node);
+						}
+					} catch (error) {
+						// Skip entities that fail to build (e.g., corrupted metadata)
+						console.warn(`Failed to build ${entityType} from tx ${node.id}: ${error}`);
+						continue;
+					}
+
+					if (!entity) continue;
+
+					// Get the entity ID based on entity type
+					const entityIdValue = 'entityId' in entity ? entity.entityId : entity.driveId;
+					const entityId = entityIdValue.toString();
+					const txId = entity.txId;
+
+					// Track this entity
+					seenEntityIds.add(entityId);
+					totalProcessed++;
+
+					// Create sync state for this entity
+					const entityState: EntitySyncState = {
+						entityId: entityIdValue,
+						txId: TxID(txId.toString()),
+						blockHeight,
+						parentFolderId: 'parentFolderId' in entity ? entity.parentFolderId : undefined,
+						name: entity.name
+					};
+
+					// Check if this is a known entity
+					const previousState = previousEntityStates.get(entityId);
+
+					if (previousState) {
+						// We've seen this entity before
+						if (previousState.txId.toString() !== txId.toString()) {
+							// This is a modification (new revision)
+							modified.push(entity);
+							newEntityStates.set(entityId, entityState);
+						} else {
+							// Same transaction, no change
+							newEntityStates.set(entityId, previousState);
+							knownEntityCount++;
+
+							// Optimization: stop if we've seen many known entities
+							if (blockHeight > lastKnownHeight && knownEntityCount >= stopAfterKnownCount) {
+								shouldContinue = false;
+								break;
+							}
+						}
+					} else if (blockHeight > lastKnownHeight) {
+						// This is a new entity added after our last sync
+						added.push(entity);
+						newEntityStates.set(entityId, entityState);
+					} else {
+						// Old entity we haven't seen before (e.g., first sync)
+						added.push(entity);
+						newEntityStates.set(entityId, entityState);
+					}
+
+					// Progress callback
+					if (onProgress) {
+						onProgress(totalProcessed, totalProcessed + (hasNextPage ? batchSize : 0));
+					}
+				}
+			}
+		}
+
+		// Find possibly deleted entities
+		const possiblyDeleted: AnyEntityID[] = [];
+		for (const [entityId, previousState] of previousEntityStates) {
+			if (!seenEntityIds.has(entityId)) {
+				possiblyDeleted.push(previousState.entityId);
+			}
+		}
+
+		// Apply revision filtering if requested
+		const allEntities = [...added, ...modified];
+		const filteredEntities = includeRevisions ? allEntities : allEntities.filter(universalRevisionFilter);
+
+		// Create new sync state
+		const newSyncState: DriveSyncState = {
+			driveId,
+			lastSyncedBlockHeight: highestBlockHeight,
+			lastSyncedTimestamp: Date.now(),
+			entityStates: newEntityStates
+		};
+
+		return {
+			entities: filteredEntities,
+			newSyncState,
+			changes: {
+				added: includeRevisions ? added : added.filter(universalRevisionFilter),
+				modified: includeRevisions ? modified : modified.filter(universalRevisionFilter),
+				possiblyDeleted
+			},
+			stats: {
+				totalProcessed,
+				highestBlockHeight,
+				lowestBlockHeight: lowestBlockHeight === Number.MAX_SAFE_INTEGER ? 0 : lowestBlockHeight
+			}
+		};
 	}
 }
