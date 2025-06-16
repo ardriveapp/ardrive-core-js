@@ -6,6 +6,7 @@ import {
 	ArFSPublicFile,
 	ArFSPublicFolder
 } from '../arfs/arfs_entities';
+import { ArFSAllEntities } from '../types/arfsdao_types';
 
 /**
  * @name lastRevisionFilter is a standard JS find/filter function intended to
@@ -55,4 +56,32 @@ export function folderFilter<T extends ArFSPublicFolder | ArFSPrivateFolder>(
 	entity: ArFSFileOrFolderEntity<'file' | 'folder'>
 ): entity is T {
 	return entity.entityType === 'folder';
+}
+
+/**
+ * @name universalRevisionFilter is a standard JS find/filter function intended to
+ * filter only the last revision of any entity type within an array
+ *
+ * @param {ArFSAllEntities} entity the iterated entity
+ * @param {number} _index the iterated index
+ * @param {ArFSAllEntities[]} allEntities the array of all entities
+ * @returns {boolean}
+ */
+export function universalRevisionFilter(
+	entity: ArFSAllEntities,
+	_index: number,
+	allEntities: ArFSAllEntities[]
+): boolean {
+	// Determine the ID property based on entity type
+	const entityId = 'entityId' in entity ? entity.entityId : entity.driveId;
+
+	// Find all revisions of this entity
+	const allRevisions = allEntities.filter((e) => {
+		const eId = 'entityId' in e ? e.entityId : e.driveId;
+		return eId.equals(entityId);
+	});
+
+	// The first one (when sorted by HEIGHT_DESC) is the latest
+	const latestRevision = allRevisions[0];
+	return entity.txId.equals(latestRevision.txId);
 }

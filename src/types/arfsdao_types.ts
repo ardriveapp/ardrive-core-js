@@ -1,6 +1,6 @@
 import { DataItem } from 'arbundles';
 import Transaction from 'arweave/node/lib/transaction';
-import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress } from '.';
+import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress, AnyEntityID } from '.';
 import {
 	ArFSObjectMetadataPrototype,
 	CreateDriveMetaDataFactory,
@@ -245,4 +245,68 @@ export interface ArFSCreateFileMetaDataV2Plan {
 	destinationFolderId: FolderID;
 	// File ID will be defined here for revision retries
 	fileId?: FileID;
+}
+
+// State tracking for incremental drive synchronization
+export interface DriveSyncState {
+	driveId: DriveID;
+	lastSyncedBlockHeight: number;
+	// Unix timestamp of last sync
+	lastSyncedTimestamp: number;
+	// Map of entity ID to last known state
+	entityStates: Map<string, EntitySyncState>;
+}
+
+// Track individual entity state for change detection
+export interface EntitySyncState {
+	entityId: AnyEntityID;
+	txId: TransactionID;
+	blockHeight: number;
+	// For detecting moves/renames
+	parentFolderId?: FolderID;
+	name?: string;
+}
+
+// Options for incremental sync
+export interface IncrementalSyncOptions {
+	// Previous sync state to continue from
+	syncState?: DriveSyncState;
+	// Include older revisions of entities
+	includeRevisions?: boolean;
+	// Callback for progress updates
+	onProgress?: (processed: number, total: number) => void;
+	// Maximum entities to process per batch
+	batchSize?: number;
+	// Stop after finding this many known entities (optimization)
+	stopAfterKnownCount?: number;
+}
+
+// Union type for all entity types
+export type ArFSAllEntities =
+	| ArFSPublicDrive
+	| ArFSPrivateDrive
+	| ArFSPublicFolder
+	| ArFSPrivateFolder
+	| ArFSPublicFile
+	| ArFSPrivateFile;
+
+// Result of incremental sync operation
+export interface IncrementalSyncResult {
+	// All entities found in this sync
+	entities: ArFSAllEntities[];
+	// Updated sync state for next sync
+	newSyncState: DriveSyncState;
+	// Categorized changes since last sync
+	changes: {
+		added: ArFSAllEntities[];
+		modified: ArFSAllEntities[];
+		// Entity IDs that were in our state but not found
+		possiblyDeleted: AnyEntityID[];
+	};
+	// Statistics about the sync
+	stats: {
+		totalProcessed: number;
+		highestBlockHeight: number;
+		lowestBlockHeight: number;
+	};
 }
