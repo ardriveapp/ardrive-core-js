@@ -69,12 +69,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Key Files for Understanding the Codebase
 
 - `src/exports.ts` - All public exports
-- `src/ardrive.ts` - Main user-facing API
+- `src/ardrive.ts` - Main user-facing API (includes sync methods)
 - `src/arfs/arfsdao.ts` - Blockchain interactions
+- `src/arfs/arfsdao_incremental_sync.ts` - Incremental sync implementation
 - `src/arfs/turbo.ts` - Turbo integration with Ethereum signer support
 - `src/ardrive_factory.ts` - Factory functions with Ethereum options
 - `src/types/` - All type definitions
 - `src/utils/constants.ts` - Important constants and limits
+- `src/utils/sync_state.ts` - Sync state management utilities
+
+### Incremental Drive Synchronization
+
+The library provides efficient incremental sync capabilities:
+
+1. **Block-Height Based**: Tracks changes using Arweave block heights for precise synchronization
+2. **Change Detection**: Identifies added, modified, and possibly deleted entities
+3. **State Persistence**: Sync state can be serialized/deserialized for cross-session continuity
+4. **Progress Tracking**: Built-in progress callbacks for UI integration
+5. **Optimizations**: Configurable batch sizes and early-stop mechanisms for large drives
+
+Key methods:
+- `ArDrive.syncPublicDrive()` - Sync public drives
+- `ArDrive.syncPrivateDrive()` - Sync private drives with decryption
+- `serializeSyncState()` / `deserializeSyncState()` - State persistence utilities
 
 ### Turbo and Ethereum Integration
 

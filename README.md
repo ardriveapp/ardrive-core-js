@@ -11,6 +11,7 @@ Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more inf
 - [Core Concepts](#core-concepts)
 - [API Reference](#api-reference)
   - [Drive Operations](#drive-operations)
+  - [Drive Synchronization](#drive-synchronization)
   - [Folder Operations](#folder-operations)
   - [File Operations](#file-operations)
   - [Bulk Operations](#bulk-operations)
@@ -156,6 +157,148 @@ await arDrive.renamePrivateDrive({
   driveKey,
   newName: 'Updated Private Name'
 });
+```
+
+### Drive Synchronization
+
+ArDrive Core now supports efficient incremental synchronization of drives, allowing you to fetch only new or modified entities since your last sync. This is ideal for building local caches, monitoring drive changes, or syncing drive contents across applications.
+
+#### Basic Sync Operations
+
+```typescript
+import { serializeSyncState, deserializeSyncState } from 'ardrive-core-js';
+
+// Initial sync - fetches all entities in the drive
+const firstSync = await arDrive.syncPublicDrive(driveId);
+
+// Process the entities
+console.log('Found entities:', firstSync.entities.length);
+console.log('Added:', firstSync.changes.added.length);
+
+// Save sync state for next time
+const savedState = serializeSyncState(firstSync.newSyncState);
+// Store savedState in your database/file system
+```
+
+#### Incremental Sync
+
+```typescript
+// Load previous sync state
+const previousState = deserializeSyncState(savedState);
+
+// Incremental sync - only fetches changes
+const incrementalSync = await arDrive.syncPublicDrive(driveId, {
+  syncState: previousState
+});
+
+// Process changes
+console.log('New entities:', incrementalSync.changes.added);
+console.log('Modified entities:', incrementalSync.changes.modified);
+console.log('Possibly deleted:', incrementalSync.changes.possiblyDeleted);
+
+// Save updated state
+const updatedState = serializeSyncState(incrementalSync.newSyncState);
+```
+
+#### Private Drive Sync
+
+```typescript
+// Sync private drive (requires drive key)
+const privateSync = await arDrive.syncPrivateDrive(
+  driveId, 
+  driveKey,
+  {
+    syncState: previousState,
+    onProgress: (processed, total) => {
+      console.log(`Progress: ${processed}/${total}`);
+    }
+  }
+);
+```
+
+#### Advanced Sync Options
+
+```typescript
+const syncResult = await arDrive.syncPublicDrive(driveId, {
+  // Previous sync state (optional)
+  syncState: previousState,
+  
+  // Include revision history (default: false)
+  includeRevisions: true,
+  
+  // Progress callback
+  onProgress: (processed, total) => {
+    console.log(`Synced ${processed} of ${total} entities`);
+  },
+  
+  // Batch size for GraphQL queries (default: 100)
+  batchSize: 50,
+  
+  // Stop after finding N known entities (optimization)
+  stopAfterKnownCount: 5
+});
+```
+
+#### Sync State Management
+
+The sync state tracks:
+- Last synced block height
+- Entity states (IDs, transaction IDs, names)
+- Timestamp of last sync
+
+```typescript
+// Inspect sync state
+console.log('Last block:', syncResult.newSyncState.lastSyncedBlockHeight);
+console.log('Entities tracked:', syncResult.newSyncState.entityStates.size);
+
+// Check sync statistics
+console.log('Total processed:', syncResult.stats.totalProcessed);
+console.log('Block range:', syncResult.stats.lowestBlockHeight, 
+            'to', syncResult.stats.highestBlockHeight);
+```
+
+#### Complete Sync Example
+
+```typescript
+import { 
+  arDriveFactory, 
+  readJWKFile,
+  serializeSyncState,
+  deserializeSyncState 
+} from 'ardrive-core-js';
+
+const wallet = readJWKFile('./wallet.json');
+const arDrive = arDriveFactory({ wallet });
+
+async function syncDrive(driveId, savedStateJson) {
+  try {
+    // Load previous state if available
+    const options = savedStateJson 
+      ? { syncState: deserializeSyncState(savedStateJson) }
+      : {};
+    
+    // Perform sync
+    const result = await arDrive.syncPublicDrive(driveId, {
+      ...options,
+      onProgress: (p, t) => console.log(`Progress: ${p}/${t}`)
+    });
+    
+    // Process changes
+    for (const entity of result.changes.added) {
+      console.log(`New ${entity.entityType}:`, entity.name);
+    }
+    
+    for (const entity of result.changes.modified) {
+      console.log(`Modified ${entity.entityType}:`, entity.name);
+    }
+    
+    // Return serialized state for next sync
+    return serializeSyncState(result.newSyncState);
+  } catch (error) {
+    console.error('Sync failed:', error);
+    throw error;
+  }
+}
 ```
 
 ### Folder Operations
