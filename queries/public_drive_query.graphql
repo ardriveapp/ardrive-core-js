@@ -1,0 +1,24 @@
+query {
+	transactions(
+		first: 1
+		sort: HEIGHT_DESC
+		tags: [
+			{ name: "Drive-Id", values: "drive_id_value" }
+			{ name: "Entity-Type", values: "drive" }
+			{ name: "Drive-Privacy", values: "public" }
+		]
+	) {
+		edges {
+			node {
+				id
+				tags {
+					name
+					value
+				}
+				owner {
+					address
+				}
+			}
+		}
+	}
+}

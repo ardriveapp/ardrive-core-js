@@ -1,0 +1,30 @@
+query {
+	transactions(
+		first: 100
+		sort: HEIGHT_DESC
+		after: "cursor_value"
+		owners: ["owner_address"]
+		tags: [
+			{ name: "Drive-Id", values: "drive_id_value" }
+			{ name: "Parent-Folder-Id", values: ["folder_id_1", "folder_id_2", "folder_id_3"] }
+			{ name: "Entity-Type", values: "file" }
+		]
+	) {
+		pageInfo {
+			hasNextPage
+		}
+		edges {
+			cursor
+			node {
+				id
+				tags {
+					name
+					value
+				}
+				owner {
+					address
+				}
+			}
+		}
+	}
+}

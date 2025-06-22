@@ -1,0 +1,30 @@
+query {
+	transactions(
+		ids: ["transaction_id_1", "transaction_id_2"]
+		first: 100
+		sort: HEIGHT_DESC
+		after: "cursor_value_here"
+		owners: ["arweave_address_here"]
+		tags: [
+			{ name: "tag1", values: "value1" }
+			{ name: "tag2", values: ["array_value1", "array_value2"] }
+		]
+	) {
+		pageInfo {
+			hasNextPage
+		}
+		edges {
+			cursor
+			node {
+				id
+				tags {
+					name
+					value
+				}
+				owner {
+					address
+				}
+			}
+		}
+	}
+}

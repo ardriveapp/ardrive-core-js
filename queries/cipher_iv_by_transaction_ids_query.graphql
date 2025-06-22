@@ -1,0 +1,28 @@
+query {
+	transactions(
+		ids: ["transaction_id_1", "transaction_id_2", "transaction_id_3"]
+		first: 100
+		sort: HEIGHT_DESC
+		after: "cursor_value"
+		owners: ["wallet_address"]
+		tags: [
+		]
+	) {
+		pageInfo {
+			hasNextPage
+		}
+		edges {
+			cursor
+			node {
+				id
+				tags {
+					name
+					value
+				}
+				owner {
+					address
+				}
+			}
+		}
+	}
+}

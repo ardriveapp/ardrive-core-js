@@ -1,0 +1,23 @@
+query {
+	transactions(
+		first: 1
+		sort: HEIGHT_DESC
+		tags: [
+			{ name: "File-Id", values: "file_id_value" }
+			{ name: "Entity-Type", values: "file" }
+		]
+	) {
+		edges {
+			node {
+				id
+				tags {
+					name
+					value
+				}
+				owner {
+					address
+				}
+			}
+		}
+	}
+}
