@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { createStubInstance } from 'sinon';
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import { ArDrive } from '../../src/ardrive';
 import { arDriveFactory } from '../../src/ardrive_factory';
 import { Turbo } from '../../src/arfs/turbo';

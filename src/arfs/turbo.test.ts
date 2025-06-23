@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { stub, createStubInstance, SinonStub } from 'sinon';
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import { Readable } from 'node:stream';
 
 import {
