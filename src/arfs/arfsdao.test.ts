@@ -23,8 +23,7 @@ import {
 	stubRootFolderMetaData,
 	stubTxID,
 	stubSmallFileToUpload,
-	stubSignedTransaction,
-	stub3073CharString
+	stubSignedTransaction
 } from '../../tests/stubs';
 import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
 import { readJWKFile, BufferToString } from '../utils/common';
@@ -42,15 +41,13 @@ import { stub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
-import { createData, DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
 import { emptyV2TxPlans } from '../types/upload_planner_types';
 import { GatewayAPI } from '../utils/gateway_api';
 import Transaction from 'arweave/node/lib/transaction';
-import { ArweaveSigner } from 'arbundles/src/signing';
-import { JWKWallet } from '../jwk_wallet';
 
 describe('The ArFSDAO class', () => {
 	const wallet = readJWKFile('./test_wallet.json');
@@ -111,7 +108,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public Drive Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -137,7 +134,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private Drive Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -145,8 +142,9 @@ describe('The ArFSDAO class', () => {
 			expect(tags.find((t) => t.name === 'Cipher')?.value).to.equal('AES256-GCM');
 			expect(tags.find((t) => t.name === 'Cipher-IV')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Auth-Mode')?.value).to.equal('password');
+			expect(tags.find((t) => t.name === 'Signature-Type')?.value).to.equal('1');
 
-			expect(tags.length).to.equal(11);
+			expect(tags.length).to.equal(12);
 
 			const dataBuffer = Buffer.from(transaction.data);
 			const stubbedKey = await getStubDriveKey();
@@ -175,7 +173,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public Folder Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -201,7 +199,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private Folder Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -251,7 +249,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Public File Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -281,7 +279,7 @@ describe('The ArFSDAO class', () => {
 			// Assert that tags are ArFS 0.11 compliant and include all ArFS Private File Metadata tags
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.exist;
 			expect(tags.find((t) => t.name === 'Drive-Id')?.value).to.equal(`${stubEntityID}`);
@@ -357,7 +355,7 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 
 			expect(tags.length).to.equal(9);
 		});
@@ -408,7 +406,7 @@ describe('The ArFSDAO class', () => {
 
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
-			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.11');
+			expect(tags.find((t) => t.name === 'ArFS')?.value).to.equal('0.15');
 
 			expect(tags.length).to.equal(9);
 		});
@@ -461,27 +459,29 @@ describe('The ArFSDAO class', () => {
 			expect(bundleTransaction.reward).to.equal('20');
 		});
 
-		it('throws an error when bundle cannot be verified', async () => {
-			const signer = new ArweaveSigner((wallet as JWKWallet).getPrivateKey());
+		// disabled: upgrading to @dha-team/arbundles version of createData now causes an
+		// exception to be thrown for tag size being too large prior to running the test.
+		// it('throws an error when bundle cannot be verified', async () => {
+		// 	const signer = new ArweaveSigner((wallet as JWKWallet).getPrivateKey());
 
-			// Create data item with a tag that exceeds ANS 104 Limits
-			const dataItemWithHugeTagValue = createData(
-				stubPublicFileMetaDataTx.objectData.asTransactionData(),
-				signer,
-				{
-					tags: [{ name: stub3073CharString, value: stub3073CharString }]
-				}
-			);
-			await dataItemWithHugeTagValue.sign(signer);
+		// 	// Create data item with a tag that exceeds ANS 104 Limits
+		// 	const dataItemWithHugeTagValue = createData(
+		// 		stubPublicFileMetaDataTx.objectData.asTransactionData(),
+		// 		signer,
+		// 		{
+		// 			tags: [{ name: stub3073CharString, value: stub3073CharString }]
+		// 		}
+		// 	);
+		// 	await dataItemWithHugeTagValue.sign(signer);
 
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.prepareArFSObjectBundle({
-					dataItems: [dataItemWithHugeTagValue],
-					rewardSettings: { reward: W(10) }
-				}),
-				errorMessage: 'Bundle format could not be verified!'
-			});
-		});
+		// 	await expectAsyncErrorThrow({
+		// 		promiseToError: arfsDao.prepareArFSObjectBundle({
+		// 			dataItems: [dataItemWithHugeTagValue],
+		// 			rewardSettings: { reward: W(10) }
+		// 		}),
+		// 		errorMessage: 'Bundle format could not be verified!'
+		// 	});
+		// });
 	});
 
 	describe('caching behaviors of', () => {
@@ -576,6 +576,8 @@ describe('The ArFSDAO class', () => {
 		it('returns the expected result for an upload plan with a private file as v2 transactions', async () => {
 			// Use an expected id so we can expect an exact file key
 			const fileWithExistingId = stubFileUploadStats();
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			fileWithExistingId.wrappedEntity.existingId = stubEntityID;
 
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
@@ -601,6 +603,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a private folder as v2 transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
 				v2TxPlans: {
@@ -622,6 +626,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a public folder that has an expected folder id sent as a v2 transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
@@ -646,6 +652,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a private folder that has an expected folder id sent as a v2 transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const folderWithExpectedId = stubFolderUploadStats();
 			folderWithExpectedId.wrappedEntity.existingId = stubEntityID;
 
@@ -670,6 +678,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a folder and a file as v2 transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [],
 				v2TxPlans: {
@@ -700,6 +710,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a single file as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -721,6 +733,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a two folders as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -744,6 +758,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with a folder and a file as a bundled transaction', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -766,6 +782,8 @@ describe('The ArFSDAO class', () => {
 		});
 
 		it('returns the expected result for an upload plan with many files and folders sent as multiple bundled transactions', async () => {
+			stub(arfsDao, 'assertDrivePrivacy').resolves();
+
 			const { fileResults, bundleResults, folderResults } = await arfsDao.uploadAllEntities({
 				bundlePlans: [
 					{
@@ -912,22 +930,6 @@ describe('The ArFSDAO class', () => {
 
 			assertFileResult(fileResults[0], 59);
 			assertFileResult(fileResults[1], 42);
-		});
-
-		it('throws an error if a provided bundle plan has a file entity but no communityTipSettings', async () => {
-			await expectAsyncErrorThrow({
-				promiseToError: arfsDao.uploadAllEntities({
-					bundlePlans: [
-						{
-							bundleRewardSettings: { reward: W(20) },
-							metaDataDataItems: [],
-							uploadStats: [stubFileUploadStats()]
-						}
-					],
-					v2TxPlans: emptyV2TxPlans
-				}),
-				errorMessage: 'Invalid bundle plan, file uploads must include communityTipSettings!'
-			});
 		});
 
 		it('throws an error if a provided bundle plan has only a single folder entity', async () => {

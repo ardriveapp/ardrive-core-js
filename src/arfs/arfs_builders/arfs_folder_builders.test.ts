@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { EntityKey, GQLNodeInterface } from '../../types';
+import { DriveSignatureType, GQLNodeInterface } from '../../types';
+import { VersionedDriveKey } from '../../types/entity_key';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { ArFSPrivateFolderBuilder, ArFSPublicFolderBuilder } from './arfs_folder_builders';
@@ -19,7 +20,7 @@ describe('ArFSPublicFolderBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.1.4' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 			{ name: 'Entity-Type', value: 'folder' },
@@ -48,7 +49,7 @@ describe('ArFSPublicFolderBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(folderMetaData.appName).to.equal('ArDrive-CLI');
 		expect(folderMetaData.appVersion).to.equal('1.1.4');
-		expect(folderMetaData.arFS).to.equal('0.11');
+		expect(folderMetaData.arFS).to.equal('0.15');
 		expect(folderMetaData.contentType).to.equal('application/json');
 		expect(`${folderMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
 		expect(folderMetaData.entityType).to.equal('folder');
@@ -108,7 +109,7 @@ describe('ArFSPrivateFolderBuilder', () => {
 		tags: [
 			{ name: 'App-Name', value: 'ArDrive-CLI' },
 			{ name: 'App-Version', value: '1.1.2' },
-			{ name: 'ArFS', value: '0.11' },
+			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/octet-stream' },
 			{ name: 'Drive-Id', value: '5ca7ddfe-effa-4fc5-8796-8f3e0502854a' },
 			{ name: 'Entity-Type', value: 'folder' },
@@ -120,8 +121,9 @@ describe('ArFSPrivateFolderBuilder', () => {
 		]
 	};
 
-	const driveKeyForStubPrivateFolder = new EntityKey(
-		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64')
+	const driveKeyForStubPrivateFolder = new VersionedDriveKey(
+		Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
+		DriveSignatureType.v1
 	);
 
 	// prettier-ignore
@@ -146,7 +148,7 @@ describe('ArFSPrivateFolderBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(folderMetaData.appName).to.equal('ArDrive-CLI');
 		expect(folderMetaData.appVersion).to.equal('1.1.2');
-		expect(folderMetaData.arFS).to.equal('0.11');
+		expect(folderMetaData.arFS).to.equal('0.15');
 		expect(folderMetaData.contentType).to.equal('application/octet-stream');
 		expect(`${folderMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
 		expect(folderMetaData.entityType).to.equal('folder');

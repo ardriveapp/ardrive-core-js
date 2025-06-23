@@ -1,4 +1,4 @@
-import { DataItem } from 'arbundles';
+import { DataItem } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress } from '.';
 import {
@@ -19,7 +19,6 @@ import {
 	ArFSFileDataPrototype,
 	ArFSFileMetaDataPrototype,
 	FileKey,
-	DriveKey,
 	FolderHierarchy,
 	ArFSPublicFolder,
 	ArFSPrivateFolder,
@@ -27,7 +26,8 @@ import {
 	ArFSPrivateDrive,
 	ArFSPrivateFileWithPaths,
 	ArFSPrivateFolderWithPaths,
-	ArFSFileToUpload
+	ArFSFileToUpload,
+	DriveKey
 } from '../exports';
 import { CreateDriveRewardSettings, UploadFileRewardSettings } from './upload_planner_types';
 import { TransactionID } from './transaction_id';

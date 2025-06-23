@@ -1,5 +1,5 @@
-import { DataItem } from 'arbundles';
 import { Readable } from 'node:stream';
+import { DataItem } from '@dha-team/arbundles';
 
 import {
 	TurboUnauthenticatedClient,
