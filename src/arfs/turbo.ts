@@ -28,7 +28,7 @@ export class Turbo {
 		isDryRun = false
 	}: TurboSettings & { isDryRun?: boolean }) {
 		if (turboUrl) {
-			turboUploadUrl ??= new URL(turboUrl);
+			turboUploadUrl ??= turboUrl;
 		}
 		turboUploadUrl ??= defaultTurboUploadUrl;
 		this.isDryRun = isDryRun;
