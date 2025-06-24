@@ -27,6 +27,8 @@ export interface TurboSettings {
 	signer?: TurboSigner;
 	/** Use authenticated client when signer or ethereum private key is provided */
 	useAuthenticated?: boolean;
+	/** @deprecated Use turboUploadUrl instead */
+	turboUrl?: URL;
 }
 
 export interface TurboCachesResponse {
@@ -41,13 +43,18 @@ export class Turbo {
 	private isAuthenticated: boolean;
 
 	constructor({
-		turboUploadUrl = defaultTurboUploadUrl,
+		turboUploadUrl,
 		turboPaymentUrl = defaultTurboPaymentUrl,
 		isDryRun = false,
 		ethereumPrivateKey,
 		signer,
-		useAuthenticated = false
-	}: Partial<TurboSettings> & { isDryRun?: boolean }) {
+		useAuthenticated = false,
+		turboUrl
+	}: TurboSettings & { isDryRun?: boolean }) {
+		if (turboUrl) {
+			turboUploadUrl ??= turboUrl;
+		}
+		turboUploadUrl ??= defaultTurboUploadUrl;
 		this.isDryRun = isDryRun;
 		this.isAuthenticated = useAuthenticated || !!ethereumPrivateKey || !!signer;
 

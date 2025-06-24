@@ -421,12 +421,19 @@ export function createPublicDriveSharingLink(driveToShare: types.ArFSDriveMetaDa
 	return driveSharingUrl;
 }
 
+/** @deprecated use Uint8ArrayToString */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function Utf8ArrayToStr(array: Uint8Array | any): string {
+	return Uint8ArrayToString(array);
+}
 export function BufferToString(buffer: Buffer): string {
-	let out, i, c;
-	let char2, char3;
-
 	// to keep our existing logic
 	const array = new Uint8Array(buffer);
+	return Uint8ArrayToString(array);
+}
+export function Uint8ArrayToString(array: Uint8Array): string {
+	let out, i, c;
+	let char2, char3;
 
 	out = '';
 	const len = array.length;

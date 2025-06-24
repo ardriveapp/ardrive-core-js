@@ -80,7 +80,6 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 	protected async buildEntity(): Promise<ArFSPublicDrive> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -105,7 +104,7 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 
 			return new ArFSPublicDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
@@ -212,7 +211,6 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 	protected async buildEntity(): Promise<ArFSPrivateDrive> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -237,7 +235,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 
 			return new ArFSPrivateDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
@@ -363,7 +361,6 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 	protected async buildEntity(): Promise<ArFSDriveEntity> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -435,7 +432,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 
 				return new ArFSPrivateDriveKeyless(
 					this.appName,
-					this.appVersion,
+					this.appVersion ?? '',
 					this.arFS,
 					this.contentType,
 					this.driveId,
@@ -456,7 +453,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 			}
 			return new ArFSPublicDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
