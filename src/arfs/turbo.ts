@@ -15,8 +15,8 @@ import { Wallet } from '../wallet';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export interface TurboSettings {
-	turboUploadUrl: URL;
-	turboPaymentUrl: URL;
+	turboUploadUrl?: URL;
+	turboPaymentUrl?: URL;
 	/**
 	 * Optional Ethereum private key for authenticated Turbo operations.
 	 * SECURITY: This key is passed directly to the Turbo SDK and is never stored.
