@@ -102,7 +102,8 @@ export function arDriveFactory({
 			: new Turbo({
 					turboUploadUrl: turboSettings.turboUploadUrl,
 					turboPaymentUrl: turboSettings.turboPaymentUrl,
-					isDryRun: dryRun
+					isDryRun: dryRun,
+					turboUrl: turboSettings.turboUrl // for backwards compatibility
 				})
 	)
 }: ArDriveSettings): ArDrive {

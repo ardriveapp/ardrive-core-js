@@ -2310,7 +2310,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ardrive-core-js@workspace:."
   dependencies:
-    "@alexsasharegan/simple-cache": ^3.3.3
     "@ardrive/ardrive-promise-cache": ^1.1.4
     "@ardrive/turbo-sdk": ^1.0.1
     "@dha-team/arbundles": ^1.0.3
