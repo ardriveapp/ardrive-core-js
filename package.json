@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"@ardrive/ardrive-promise-cache": "^1.1.4",
-		"@ardrive/turbo-sdk": "^1.0.1",
+		"@ardrive/turbo-sdk": "1.27.0",
 		"@dha-team/arbundles": "^1.0.3",
 		"arweave": "^1.15.7",
 		"axios": "^0.21.1",

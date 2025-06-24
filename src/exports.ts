@@ -27,6 +27,16 @@ export * from './arfs/arfs_builders/arfs_drive_builders';
 export * from './arfs/arfs_builders/arfs_file_builders';
 export * from './arfs/arfs_builders/arfs_folder_builders';
 export * from './arfs/private_key_data';
+export * from './arfs/turbo';
+
+// Re-export Turbo SDK types for convenience
+export {
+	EthereumSigner,
+	ArweaveSigner,
+	TurboSigner,
+	TurboAuthenticatedClient,
+	TurboUnauthenticatedClient
+} from '@ardrive/turbo-sdk';
 
 // Community
 export * from './community/ardrive_community_oracle';

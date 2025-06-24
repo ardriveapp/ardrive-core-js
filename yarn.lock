@@ -40,7 +40,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardrive/turbo-sdk@npm:^1.0.1":
+"@ardrive/turbo-sdk@npm:1.27.0":
   version: 1.27.0
   resolution: "@ardrive/turbo-sdk@npm:1.27.0"
   dependencies:
@@ -993,40 +993,40 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@keplr-wallet/common@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/common@npm:0.12.240"
+"@keplr-wallet/common@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/common@npm:0.12.243"
   dependencies:
-    "@keplr-wallet/crypto": 0.12.240
-    "@keplr-wallet/types": 0.12.240
+    "@keplr-wallet/crypto": 0.12.243
+    "@keplr-wallet/types": 0.12.243
     buffer: ^6.0.3
     delay: ^4.4.0
-  checksum: c91fa1b571a9e3b7d77abd3ad0cfa404cbeff42e022f19b29db7803c880eafec1b44d2d0cd0c0e7b8231ef66538597e4820f830c95f2a01b2cc488fff067a865
+  checksum: 71eef944da067beb900c0e9930bae185ea7d6d091bdb0af56df35e648d030869ac3cd3c787cf66ecb04294c2721bac96391e27edd1e3893ffee4996077948c44
   languageName: node
   linkType: hard
 
 "@keplr-wallet/cosmos@npm:^0.12.96":
-  version: 0.12.240
-  resolution: "@keplr-wallet/cosmos@npm:0.12.240"
+  version: 0.12.243
+  resolution: "@keplr-wallet/cosmos@npm:0.12.243"
   dependencies:
     "@ethersproject/address": ^5.6.0
-    "@keplr-wallet/common": 0.12.240
-    "@keplr-wallet/crypto": 0.12.240
-    "@keplr-wallet/proto-types": 0.12.240
-    "@keplr-wallet/simple-fetch": 0.12.240
-    "@keplr-wallet/types": 0.12.240
-    "@keplr-wallet/unit": 0.12.240
+    "@keplr-wallet/common": 0.12.243
+    "@keplr-wallet/crypto": 0.12.243
+    "@keplr-wallet/proto-types": 0.12.243
+    "@keplr-wallet/simple-fetch": 0.12.243
+    "@keplr-wallet/types": 0.12.243
+    "@keplr-wallet/unit": 0.12.243
     bech32: ^1.1.4
     buffer: ^6.0.3
     long: ^4.0.0
     protobufjs: ^6.11.2
-  checksum: ddf8f0cd4f4d2c4e43ff5a3bbf5cbdf532a7cd751bc0ba8bb43d3bb354b319320b8350e37d8502af1a1b8dffeda750c4626ecb35cc220a9e898fc98c1aeb3543
+  checksum: 599e698d9f347a8967904792043cbdee368dc1fb30e30d67a026cf266cfecb775e51fd19fbae74c7300265e9c6b06bfb2beededed0ffb95d064cf2b8a3ef2e11
   languageName: node
   linkType: hard
 
-"@keplr-wallet/crypto@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/crypto@npm:0.12.240"
+"@keplr-wallet/crypto@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/crypto@npm:0.12.243"
   dependencies:
     "@noble/curves": ^1.4.2
     "@noble/hashes": ^1.4.0
@@ -1038,46 +1038,46 @@ __metadata:
   peerDependencies:
     bitcoinjs-lib: ^6
     starknet: ^7
-  checksum: 3634c24955cd21e9cec09f6a5570713efe1f4d0c86e2b8ec8f4869d031efc503906ee2e50c83426657198db23da55a34e876ae0f56a9990cf7bcb120c41c1f5b
+  checksum: b945d6d43adf9b9b3b64901d3f10dde39ac4e48fc3f412bdb16cfdedd2c42d238bfd805ed7fc634b004fb28de66bb1a63331960730c50ed31dd61446ae9ff1b9
   languageName: node
   linkType: hard
 
-"@keplr-wallet/proto-types@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/proto-types@npm:0.12.240"
+"@keplr-wallet/proto-types@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/proto-types@npm:0.12.243"
   dependencies:
     long: ^4.0.0
     protobufjs: ^6.11.2
-  checksum: 57eacfd50fcce1c0e5a0a6088057b4b89daf3a4a00a41dbbbbb1ea81905d96bc669edde226f40942431cba1aa21518547d27eeb14327eaaf02f2af83452ba9b2
+  checksum: 9cd65805ed6e6296284d97361fce34a45de24950aa419fcb228e2b962d4600ccd1dcdad4b6d14b1b7a19ca2520eb558840ab1945db630a791eeb71f4ff14948b
   languageName: node
   linkType: hard
 
-"@keplr-wallet/simple-fetch@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/simple-fetch@npm:0.12.240"
-  checksum: b109f38b7a54c491463445ce6820a815d72b82f9d1e546d61e6286d1225cf0f3eb92ba7bf0e5b5363677a46ccfba3e9fc2e9538a36ac9ded8323849f1e298c9f
+"@keplr-wallet/simple-fetch@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/simple-fetch@npm:0.12.243"
+  checksum: 3f580825593936fdac784bb615c4fcd845784b57ad0464c2501484ab523ce869a27434b70a012c88986e3b3373b3cb07682ac727822f8c96578eefa1d80b0d25
   languageName: node
   linkType: hard
 
-"@keplr-wallet/types@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/types@npm:0.12.240"
+"@keplr-wallet/types@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/types@npm:0.12.243"
   dependencies:
     long: ^4.0.0
   peerDependencies:
     starknet: ^7
-  checksum: 7ca4db072275a45b76f9bc63df87943b0bb4416fab9e8a86aae67311c860fae08f265b632df062587d8c424866656b33cc178d7ab6776da87bca736c55ac403d
+  checksum: 0fb3c06363b38bb9f2400f476f9905c40fee0bb6d8f1c6f257b2af8d5b253980b565e02297d017d8dae05bd592423e681c260294f790a6e82439653bef91d6a3
   languageName: node
   linkType: hard
 
-"@keplr-wallet/unit@npm:0.12.240":
-  version: 0.12.240
-  resolution: "@keplr-wallet/unit@npm:0.12.240"
+"@keplr-wallet/unit@npm:0.12.243":
+  version: 0.12.243
+  resolution: "@keplr-wallet/unit@npm:0.12.243"
   dependencies:
-    "@keplr-wallet/types": 0.12.240
+    "@keplr-wallet/types": 0.12.243
     big-integer: ^1.6.48
     utility-types: ^3.10.0
-  checksum: 6501c5248b411579fe7fe9f91a4fbbe4eef36ca8f778a1b0a46ebcd5b272bc2fb449a781009684279cca9d2698a424235ec769f41df8a77529432cdb214bddd2
+  checksum: aa6517d220dded99a6f402a5b16e418022a0542fef69c9e971eb611b6b1cf3084a6fadf1d122db06f7eef0a58fd050a9e70b4e99fe762fe05b79636d0e522a58
   languageName: node
   linkType: hard
 
@@ -1672,9 +1672,9 @@ __metadata:
   linkType: hard
 
 "@types/lodash@npm:^4":
-  version: 4.17.17
-  resolution: "@types/lodash@npm:4.17.17"
-  checksum: cfa34a752f3c540a196e9f92dbaff93ae15fe4058da8cce1918dd9219076dc19eec33b043aae45865e2b3ef8234a845bb57366144ec8e52551e2bc3f119e04a1
+  version: 4.17.18
+  resolution: "@types/lodash@npm:4.17.18"
+  checksum: 539b2a01a83062888c36e53450b03ff2fbb4631a8226df38e1d77888c954c931b0b1abcbb26bb4f19ffc37da5b0be4db8b3002560d2acc036e8d28ebad132c47
   languageName: node
   linkType: hard
 
@@ -2311,7 +2311,7 @@ __metadata:
   resolution: "ardrive-core-js@workspace:."
   dependencies:
     "@ardrive/ardrive-promise-cache": ^1.1.4
-    "@ardrive/turbo-sdk": ^1.0.1
+    "@ardrive/turbo-sdk": 1.27.0
     "@dha-team/arbundles": ^1.0.3
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@types/bn.js": ^5.1.2
@@ -2979,9 +2979,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001718":
-  version: 1.0.30001723
-  resolution: "caniuse-lite@npm:1.0.30001723"
-  checksum: 0acd7f33f15cfc6cf81a5155bb288afb34ce63cddd90bbf1740243b3c6c1de813ad10b393650f1c15e47f13ff4da61a8d14b02fac8e47e7367aede3ef162a1c6
+  version: 1.0.30001724
+  resolution: "caniuse-lite@npm:1.0.30001724"
+  checksum: 3285f9c56898ffd9f5fce8f6cff9deb832c5897da8046474f8961a5848771cac293b80200c6311c8a97822dd25b8af699af35042a2033d5ec54017fe4dc6c5e3
   languageName: node
   linkType: hard
 
@@ -3361,7 +3361,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"create-hash@npm:^1.1.0, create-hash@npm:^1.1.2, create-hash@npm:^1.2.0":
+"create-hash@npm:^1.1.0, create-hash@npm:^1.2.0":
   version: 1.2.0
   resolution: "create-hash@npm:1.2.0"
   dependencies:
@@ -3374,7 +3374,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"create-hmac@npm:^1.1.4, create-hmac@npm:^1.1.7":
+"create-hash@npm:~1.1.3":
+  version: 1.1.3
+  resolution: "create-hash@npm:1.1.3"
+  dependencies:
+    cipher-base: ^1.0.1
+    inherits: ^2.0.1
+    ripemd160: ^2.0.0
+    sha.js: ^2.4.0
+  checksum: 8d7d9bade6ab432f22737bf6f584155bab26d11b5abd98214034dda1e087bd2c395595f6729751b94d37f95f737dddffeb2db198bbbd5717a125906756ed3012
+  languageName: node
+  linkType: hard
+
+"create-hmac@npm:^1.1.7":
   version: 1.1.7
   resolution: "create-hmac@npm:1.1.7"
   dependencies:
@@ -3696,9 +3708,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.5.160":
-  version: 1.5.168
-  resolution: "electron-to-chromium@npm:1.5.168"
-  checksum: bdfb313c03f49df9893a865ae4b5640e27b3d7f1cb67c2816bc7f86051045eb3bdafdff35861862becb6c7174a3e24705618aeb37bc9397606548662df962948
+  version: 1.5.171
+  resolution: "electron-to-chromium@npm:1.5.171"
+  checksum: 2fd04844c0a28295723246b915a41056c19fae53a779a8f138338e13bb42f24aeae55d724c38269ea5b4edc357ad7d043dee3a7897e52a9c75762b6bb679cc56
   languageName: node
   linkType: hard
 
@@ -4127,8 +4139,8 @@ __metadata:
   linkType: hard
 
 "eslint-plugin-prettier@npm:latest":
-  version: 5.4.1
-  resolution: "eslint-plugin-prettier@npm:5.4.1"
+  version: 5.5.0
+  resolution: "eslint-plugin-prettier@npm:5.5.0"
   dependencies:
     prettier-linter-helpers: ^1.0.0
     synckit: ^0.11.7
@@ -4142,7 +4154,7 @@ __metadata:
       optional: true
     eslint-config-prettier:
       optional: true
-  checksum: ddbfc60e478dd78602b1f1594db539bfc686161eba4531e4c59580c9cf5746919878beabfe31b559d783ad3ed753af158bfa16bd35bd05382c7d2d86c894c81b
+  checksum: 63eab6adfa0cca78fafbc8482c2f04676dd3efc92b260b1abf15c63cd42a8a3207dc128a73694f177bec37a91a275976aa5fcb21676916dcb91cf49e9312d9a2
   languageName: node
   linkType: hard
 
@@ -5037,6 +5049,15 @@ __metadata:
   dependencies:
     has-symbols: ^1.0.3
   checksum: 999d60bb753ad714356b2c6c87b7fb74f32463b8426e159397da4bde5bca7e598ab1073f4d8d4deafac297f2eb311484cd177af242776bf05f0d11565680468d
+  languageName: node
+  linkType: hard
+
+"hash-base@npm:^2.0.0":
+  version: 2.0.2
+  resolution: "hash-base@npm:2.0.2"
+  dependencies:
+    inherits: ^2.0.1
+  checksum: e39f3f2bb91679ed350bd2eb81035acb1e1e6e9bb86d9f1197fcfdc3cf39a2c56bf82a1870f000fae651477883b4c107fd6ac0c640a18ab06298b87c39939396
   languageName: node
   linkType: hard
 
@@ -6265,9 +6286,9 @@ __metadata:
   linkType: hard
 
 "lossless-json@npm:^4.0.1":
-  version: 4.1.0
-  resolution: "lossless-json@npm:4.1.0"
-  checksum: 896fb2946ab5b5236b926565d67ca7a11f8548080aad11b944e7c2baf925373bfdd8e47261ac1d7f243b37cb06b708807576fd84e1afc82924c085be735a1f0a
+  version: 4.1.1
+  resolution: "lossless-json@npm:4.1.1"
+  checksum: 06c2b11bf6a5f64fde2dca706ad6ff801a84efca629644b800a831bc02b62abb1d6587b8275ea023ec7fbeff1946a5b00857ced0cbb327d20eceff65e93c519d
   languageName: node
   linkType: hard
 
@@ -7221,15 +7242,16 @@ __metadata:
   linkType: hard
 
 "pbkdf2@npm:^3.0.9":
-  version: 3.1.2
-  resolution: "pbkdf2@npm:3.1.2"
+  version: 3.1.3
+  resolution: "pbkdf2@npm:3.1.3"
   dependencies:
-    create-hash: ^1.1.2
-    create-hmac: ^1.1.4
-    ripemd160: ^2.0.1
-    safe-buffer: ^5.0.1
-    sha.js: ^2.4.8
-  checksum: 2c950a100b1da72123449208e231afc188d980177d021d7121e96a2de7f2abbc96ead2b87d03d8fe5c318face097f203270d7e27908af9f471c165a4e8e69c92
+    create-hash: ~1.1.3
+    create-hmac: ^1.1.7
+    ripemd160: =2.0.1
+    safe-buffer: ^5.2.1
+    sha.js: ^2.4.11
+    to-buffer: ^1.2.0
+  checksum: afd1ec13044343ad877065b806d5b4d7625806139d22bec46cb146d1d52bb8debf4200767e33672b681e024307048e558a16f5997d86838d95552b88fa546530
   languageName: node
   linkType: hard
 
@@ -7440,11 +7462,11 @@ __metadata:
   linkType: hard
 
 "prettier@npm:^3.0.3":
-  version: 3.5.3
-  resolution: "prettier@npm:3.5.3"
+  version: 3.6.0
+  resolution: "prettier@npm:3.6.0"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 61e97bb8e71a95d8f9c71f1fd5229c9aaa9d1e184dedb12399f76aa802fb6fdc8954ecac9df25a7f82ee7311cf8ddbd06baf5507388fc98e5b44036cc6a88a1b
+  checksum: 4ff40e82092565b05165c527b5ba3e9f6de6b785c81297e79665e881d9409a922ddf43b222440a90678a840133b498ed3e9af5c7c2106119c9552bda0f79dfeb
   languageName: node
   linkType: hard
 
@@ -7783,6 +7805,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ripemd160@npm:=2.0.1":
+  version: 2.0.1
+  resolution: "ripemd160@npm:2.0.1"
+  dependencies:
+    hash-base: ^2.0.0
+    inherits: ^2.0.1
+  checksum: 865bcb4be1f04762c4afc9375f9172c326bed7057f388913512850493c22af9092efe21d7a488ec25665530333a1900f2f81d39b3fdfcc37a39f97b8f4ce13d0
+  languageName: node
+  linkType: hard
+
 "ripemd160@npm:^2.0.0, ripemd160@npm:^2.0.1":
   version: 2.0.2
   resolution: "ripemd160@npm:2.0.2"
@@ -8018,7 +8050,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sha.js@npm:^2.4.0, sha.js@npm:^2.4.8":
+"sha.js@npm:^2.4.0, sha.js@npm:^2.4.11, sha.js@npm:^2.4.8":
   version: 2.4.11
   resolution: "sha.js@npm:2.4.11"
   dependencies:
@@ -8684,6 +8716,17 @@ __metadata:
   version: 0.2.3
   resolution: "tmp@npm:0.2.3"
   checksum: 73b5c96b6e52da7e104d9d44afb5d106bb1e16d9fa7d00dbeb9e6522e61b571fbdb165c756c62164be9a3bbe192b9b268c236d370a2a0955c7689cd2ae377b95
+  languageName: node
+  linkType: hard
+
+"to-buffer@npm:^1.2.0":
+  version: 1.2.1
+  resolution: "to-buffer@npm:1.2.1"
+  dependencies:
+    isarray: ^2.0.5
+    safe-buffer: ^5.2.1
+    typed-array-buffer: ^1.0.3
+  checksum: a683dcf19bea02ed6af477513248d514b7590641170c2d64dd2b235bd9896193b0aea5f46ab64f50b787562aafce421569db6e44230b95beb8fb675a9169464b
   languageName: node
   linkType: hard
 
@@ -9674,8 +9717,8 @@ __metadata:
   linkType: hard
 
 "zod@npm:^3.23.5, zod@npm:^3.23.8":
-  version: 3.25.65
-  resolution: "zod@npm:3.25.65"
-  checksum: f986e19f9911cfe826ac9a6537bf8e7b112ecd324736f0976aad35058fcc95e0c1b9ec65b37b34aa50f441bb1579a0346f4ec0b2e3492f0bf47e3ce43ea84a45
+  version: 3.25.67
+  resolution: "zod@npm:3.25.67"
+  checksum: 56ab904d33b1cd00041ce64ae05b0628fcbfeb7e707fa31cd498a97b540135e4dfe685200c9c62aea307695ee132870b4bc34f035228ea728aa75cc96a4954cb
   languageName: node
   linkType: hard

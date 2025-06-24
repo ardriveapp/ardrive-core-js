@@ -479,7 +479,7 @@ await arDrive.uploadAllEntities({
 Enable Turbo for optimized uploads:
 
 ```typescript
-// Enable Turbo
+// Enable Turbo with default settings
 const arDriveWithTurbo = arDriveFactory({ 
   wallet: myWallet, 
   turboSettings: {} 
@@ -488,6 +488,46 @@ const arDriveWithTurbo = arDriveFactory({
 // Uploads will automatically use Turbo
 const result = await arDriveWithTurbo.uploadAllEntities({
   entitiesToUpload: [{ wrappedEntity, destFolderId }]
+});
+```
+
+#### Turbo with Ethereum Signer
+
+Use Ethereum-based authentication for Turbo operations:
+
+```typescript
+// Using Ethereum private key
+const arDriveWithEthereum = arDriveFactory({
+  wallet: myWallet,
+  ethereumPrivateKey: '0x1234567890abcdef...' // Your Ethereum private key
+});
+
+// Using custom Ethereum signer
+import { EthereumSigner } from 'ardrive-core-js';
+
+const ethereumSigner = new EthereumSigner('0x1234567890abcdef...');
+const arDriveWithSigner = arDriveFactory({
+  wallet: myWallet,
+  turboSigner: ethereumSigner
+});
+
+// Both approaches enable authenticated Turbo uploads
+const result = await arDriveWithEthereum.uploadAllEntities({
+  entitiesToUpload: [{ wrappedEntity, destFolderId }]
+});
+```
+
+#### Combining Turbo Settings with Ethereum Authentication
+
+```typescript
+// Combine custom Turbo endpoints with Ethereum authentication
+const arDrive = arDriveFactory({
+  wallet: myWallet,
+  turboSettings: {
+    turboUploadUrl: new URL('https://upload.ardrive.io'),
+    turboPaymentUrl: new URL('https://payment.ardrive.io')
+  },
+  ethereumPrivateKey: '0x1234567890abcdef...'
 });
 ```
 
