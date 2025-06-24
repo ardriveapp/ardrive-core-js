@@ -65,7 +65,6 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 	protected async buildEntity(): Promise<ArFSPublicFile> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -95,7 +94,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			return Promise.resolve(
 				new ArFSPublicFile(
 					this.appName,
-					this.appVersion,
+					this.appVersion ?? '',
 					this.arFS,
 					this.contentType,
 					this.driveId,
@@ -166,7 +165,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 	protected async buildEntity(): Promise<ArFSPrivateFile> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -205,7 +203,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 
 			return new ArFSPrivateFile(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
