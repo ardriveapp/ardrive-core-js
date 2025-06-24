@@ -14,7 +14,11 @@ export { DEFAULT_APP_VERSION };
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
 
+/** @deprecated use defaultTurboProdUploadUrl */
 export const turboProdUrl = new URL('https://upload.ardrive.io/');
+
+export const defaultTurboUploadUrl = new URL('https://upload.ardrive.io/');
+export const defaultTurboPaymentUrl = new URL('https://payment.ardrive.io/');
 
 export const defaultGatewayHost = 'arweave.net';
 export const defaultGatewayProtocol = 'https';
@@ -93,4 +97,4 @@ export const gqlTagNameRecord = {
 } as const;
 
 export const gqlTagNameArray = Object.values(gqlTagNameRecord);
-export type GqlTagName = typeof gqlTagNameArray[number];
+export type GqlTagName = (typeof gqlTagNameArray)[number];

@@ -20,7 +20,10 @@ export const minArDriveCommunityWinstonTip = W(10_000_000);
  * TODO: Unit testing for important functions
  */
 export class ArDriveCommunityOracle implements CommunityOracle {
-	constructor(readonly arweave: Arweave, contractReaders?: ContractReader[]) {
+	constructor(
+		readonly arweave: Arweave,
+		contractReaders?: ContractReader[]
+	) {
 		this.contractOracle = new ArDriveContractOracle(
 			contractReaders ? contractReaders : this.defaultContractReaders
 		);

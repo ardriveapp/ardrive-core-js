@@ -1,6 +1,6 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
+import { BufferToString } from '../utils/common';
 import { CipherIV, DriveID, DriveKey, DriveSignatureType, EntityMetaDataTransactionData } from '../types';
-import { Utf8ArrayToStr } from '../utils/common';
 import { JWKWallet } from '../jwk_wallet';
 
 type DriveIdKeyPair = { [key: string /* DriveID */]: DriveKey };
@@ -107,7 +107,7 @@ export class PrivateKeyData {
 		driveKey: DriveKey
 	): Promise<T> {
 		const decryptedDriveBuffer: Buffer = await driveDecrypt(cipherIV, driveKey, encryptedDataBuffer);
-		const decryptedDriveString: string = await Utf8ArrayToStr(decryptedDriveBuffer);
+		const decryptedDriveString: string = BufferToString(decryptedDriveBuffer);
 		return JSON.parse(decryptedDriveString);
 	}
 

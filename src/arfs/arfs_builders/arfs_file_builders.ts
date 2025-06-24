@@ -14,7 +14,7 @@ import {
 	DataContentType,
 	DriveKey
 } from '../../types';
-import { Utf8ArrayToStr, extToMime } from '../../utils/common';
+import { BufferToString, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';
@@ -75,7 +75,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.entityId
 		) {
 			const txData = await this.getDataForTxID(this.txId);
-			const dataString = await Utf8ArrayToStr(txData);
+			const dataString = BufferToString(txData);
 			const dataJSON: FileMetaDataTransactionData = await JSON.parse(dataString);
 
 			// Get fields from data JSON
@@ -185,7 +185,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			}
 
 			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer);
-			const decryptedFileString: string = await Utf8ArrayToStr(decryptedFileBuffer);
+			const decryptedFileString: string = BufferToString(decryptedFileBuffer);
 			const decryptedFileJSON: FileMetaDataTransactionData = await JSON.parse(decryptedFileString);
 
 			// Get fields from data JSON

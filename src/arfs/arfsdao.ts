@@ -68,7 +68,8 @@ import {
 	ArFSDAOAnonymous,
 	ArFSPublicDriveCacheKey,
 	ArFSPublicFolderCacheKey,
-	defaultArFSAnonymousCache
+	defaultArFSAnonymousCache,
+	defaultCacheParams
 } from './arfsdao_anonymous';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
@@ -77,7 +78,8 @@ import {
 	authTagLength,
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
-	turboProdUrl,
+	defaultTurboPaymentUrl,
+	defaultTurboUploadUrl,
 	gqlTagNameRecord
 } from '../utils/constants';
 import { PrivateKeyData } from './private_key_data';
@@ -108,7 +110,7 @@ import {
 import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
-import { ArFSEntityCache } from './arfs_entity_cache';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import {
@@ -175,6 +177,7 @@ import {
 } from './tx/arfs_tx_data_types';
 import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
+import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
 	ArFSDataToUpload,
 	ArFSFolderToUpload,
@@ -185,13 +188,16 @@ import {
 	errorMessage,
 	parseDriveSignatureType
 } from '../exports';
-import { Turbo, TurboCachesResponse } from './turbo';
+import { Turbo } from './turbo';
 import { ArweaveSigner } from '@dha-team/arbundles';
 import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
-	private constructor(readonly driveId: DriveID, readonly driveKey: DriveKey) {}
+	private constructor(
+		readonly driveId: DriveID,
+		readonly driveKey: DriveKey
+	) {}
 
 	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
@@ -222,11 +228,11 @@ export interface ArFSPrivateFileCacheKey {
 }
 
 export interface ArFSCache extends ArFSAnonymousCache {
-	privateDriveCache: ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
-	privateFolderCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
-	privateFileCache: ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
-	publicConflictCache: ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>;
-	privateConflictCache: ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
+	privateDriveCache: PromiseCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>;
+	privateFolderCache: PromiseCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>;
+	privateFileCache: PromiseCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>;
+	publicConflictCache: PromiseCache<ArFSPublicFolderCacheKey, NameConflictInfo>;
+	privateConflictCache: PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
 export class ArFSDAO extends ArFSDAOAnonymous {
@@ -242,11 +248,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		protected readonly arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
 		protected caches: ArFSCache = {
 			...defaultArFSAnonymousCache,
-			privateDriveCache: new ArFSEntityCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(10),
-			privateFolderCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(10),
-			privateFileCache: new ArFSEntityCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(10),
-			publicConflictCache: new ArFSEntityCache<ArFSPublicFolderCacheKey, NameConflictInfo>(10),
-			privateConflictCache: new ArFSEntityCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(10)
+			privateDriveCache: new PromiseCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(defaultCacheParams),
+			privateFolderCache: new PromiseCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(defaultCacheParams),
+			privateFileCache: new PromiseCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(defaultCacheParams),
+			publicConflictCache: new PromiseCache<ArFSPublicFolderCacheKey, NameConflictInfo>(defaultCacheParams),
+			privateConflictCache: new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams)
 		},
 		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
 		protected txPreparer = new TxPreparer({
@@ -254,7 +260,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			wallet: wallet as JWKWallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
-		protected turbo = new Turbo({ turboUrl: turboProdUrl, isDryRun: dryRun })
+		protected turbo = new Turbo({
+			turboPaymentUrl: defaultTurboPaymentUrl,
+			turboUploadUrl: defaultTurboUploadUrl,
+			isDryRun: dryRun
+		})
 	) {
 		super(arweave, undefined, undefined, caches);
 	}
@@ -548,7 +558,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async uploadMetaData<P extends ArFSEntityMetaDataPrototype>(
 		objectMetaData: P,
 		rewardSettings?: RewardSettings
-	): Promise<{ id: TransactionID } & TurboCachesResponse> {
+	): Promise<
+		{ id: TransactionID } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>
+	> {
 		if (rewardSettings) {
 			const metaDataTx = await this.txPreparer.prepareMetaDataTx({
 				objectMetaData,
@@ -923,7 +935,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const contentCountUploaded = { numFiles: 0, numFolders: 0 };
 
 		if (this.shouldProgressLog) {
-			console.error(`\nUploading to Turbo at ${this.turbo.turboUrl}...\n`);
+			console.error(`\nUploading to Turbo at...\n`);
 		}
 
 		const logProgress = (entityType?: 'file' | 'folder') => {
@@ -1089,7 +1101,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		driveKey
 	}: UploadStats<ArFSDataToUpload>): Promise<FileResult> {
 		// eslint-disable-next-line prettier/prettier
-		const { arFSObjects: dataItems, fileId, fileKey } = await this.prepareFile({
+		const {
+			arFSObjects: dataItems,
+			fileId,
+			fileKey
+		} = await this.prepareFile({
 			...getPrepFileParams({
 				wrappedEntity,
 				destFolderId,
@@ -1330,10 +1346,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return excludedTagNames.includes('ArFS')
 			? this.txPreparer.prepareFileDataDataItem({
 					objectMetaData: objectMetaData as ArFSFileDataPrototype
-			  })
+				})
 			: this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
-			  });
+				});
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
@@ -1357,11 +1373,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData: objectMetaData as ArFSFileDataPrototype,
 					rewardSettings,
 					communityTipSettings
-			  })
+				})
 			: this.txPreparer.prepareMetaDataTx({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
 					rewardSettings
-			  });
+				});
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
@@ -1394,7 +1410,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 										progressLogDebounce = false;
 									}, 500); // .5 sec debounce
 								}
-						  }
+							}
 						: undefined
 				};
 
@@ -1419,7 +1435,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedFile,
 					arFSDataTxId,
 					createMetaDataPlan
-			  })
+				})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);
