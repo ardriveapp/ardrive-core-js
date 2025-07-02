@@ -1,8 +1,8 @@
-import { bundleAndSignData, createData, DataItem, ArweaveSigner } from '@dha-team/arbundles';
+import { bundleAndSignData, createData, DataItem, Signer } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import Transaction from 'arweave/node/lib/transaction';
 import { GQLTagInterface } from '../../exports';
-import { JWKWallet } from '../../jwk_wallet';
+import { Wallet } from '../../wallet';
 import { ArFSTagAssembler } from '../tags/tag_assembler';
 import { ArFSObjectTransactionData } from './arfs_tx_data_types';
 
@@ -19,16 +19,16 @@ import {
 
 export class TxPreparer {
 	private readonly arweave: Arweave;
-	private readonly wallet: JWKWallet;
-	private readonly signer: ArweaveSigner;
+        private readonly wallet: Wallet;
+        private readonly signer: Signer;
 	private readonly tagAssembler: ArFSTagAssembler;
 
 	public constructor({ arweave, wallet, arFSTagAssembler }: TxPreparerParams) {
 		this.arweave = arweave;
-		this.wallet = wallet;
-		this.tagAssembler = arFSTagAssembler;
-		this.signer = new ArweaveSigner(this.wallet.getPrivateKey());
-	}
+                this.wallet = wallet;
+                this.tagAssembler = arFSTagAssembler;
+                this.signer = wallet.getSigner();
+        }
 
 	public async prepareFileDataDataItem({ objectMetaData }: ArFSPrepareFileDataItemParams): Promise<DataItem> {
 		const tags = this.tagAssembler.assembleArFSFileDataTags({ arFSPrototype: objectMetaData });
@@ -124,14 +124,14 @@ export class TxPreparer {
 		return this.createAndSignTx(txAttributes, tags);
 	}
 
-	private async createAndSignTx(txAttributes: TxAttributesToAssemble, tags: GQLTagInterface[]): Promise<Transaction> {
-		const transaction = await this.arweave.createTransaction(txAttributes.assemble(), this.wallet.getPrivateKey());
+        private async createAndSignTx(txAttributes: TxAttributesToAssemble, tags: GQLTagInterface[]): Promise<Transaction> {
+                const transaction = await this.arweave.createTransaction(txAttributes.assemble());
 
 		for (const tag of tags) {
 			transaction.addTag(tag.name, tag.value);
 		}
 
-		await this.arweave.transactions.sign(transaction, this.wallet.getPrivateKey());
+                await this.wallet.signTransaction(transaction);
 
 		return transaction;
 	}

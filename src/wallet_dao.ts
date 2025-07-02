@@ -74,12 +74,10 @@ export class WalletDAO {
 			{ value: appVersion = this.appVersion },
 			{ value: txType = 'transfer' },
 			...otherTags
-		]: GQLTagInterface[],
-		assertBalance = false
-	): Promise<ARTransferResult> {
-		// TODO: Figure out how this works for other wallet types
-		const jwkWallet = fromWallet as JWKWallet;
-		const winston: Winston = arAmount.toWinston();
+                ]: GQLTagInterface[],
+                assertBalance = false
+        ): Promise<ARTransferResult> {
+                const winston: Winston = arAmount.toWinston();
 
 		// Create transaction
 		const txAttributes: Partial<CreateTransactionInterface> = {
@@ -96,7 +94,7 @@ export class WalletDAO {
 		if (process.env.NODE_ENV === 'test') {
 			txAttributes.last_tx = 'STUB';
 		}
-		const transaction = await this.arweave.createTransaction(txAttributes, jwkWallet.getPrivateKey());
+                const transaction = await this.arweave.createTransaction(txAttributes);
 		if (rewardSettings.feeMultiple?.wouldBoostReward()) {
 			transaction.reward = rewardSettings.feeMultiple.boostReward(transaction.reward);
 		}
@@ -133,7 +131,7 @@ export class WalletDAO {
 		assertTagLimits(transaction.tags);
 
 		// Sign file
-		await this.arweave.transactions.sign(transaction, jwkWallet.getPrivateKey());
+                await fromWallet.signTransaction(transaction);
 
 		// Submit the transaction
 		const response = await (async () => {
