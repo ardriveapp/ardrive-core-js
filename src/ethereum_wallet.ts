@@ -9,16 +9,15 @@ import { Wallet } from './wallet';
 
 export class EthereumWallet implements Wallet {
         private readonly wallet: EthersWallet;
+        private readonly signer: EthereumSigner;
 
         constructor(privateKey: string) {
                 this.wallet = new EthersWallet(privateKey);
+                this.signer = new EthereumSigner(this.wallet.privateKey);
         }
 
         async getPublicKey(): Promise<PublicKey> {
-                const pub = this.wallet.publicKey.startsWith('0x')
-                        ? this.wallet.publicKey.slice(2)
-                        : this.wallet.publicKey;
-                return bufferTob64Url(Buffer.from(pub, 'hex'));
+                return bufferTob64Url(this.signer.publicKey);
         }
 
         async getAddress(): Promise<ArweaveAddress> {
@@ -47,6 +46,6 @@ export class EthereumWallet implements Wallet {
         }
 
         getSigner(): EthereumSigner {
-                return new EthereumSigner(this.wallet.privateKey);
+                return this.signer;
         }
 }
