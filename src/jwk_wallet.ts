@@ -27,14 +27,14 @@ export class JWKWallet implements Wallet {
 	}
 
 	// Use cases: generating drive keys, file keys, etc.
-	sign(data: Uint8Array): Promise<Uint8Array> {
+	sign(data: Uint8Array, saltLength = 0): Promise<Uint8Array> {
 		const sign = crypto.createSign('sha256');
 		sign.update(data);
 		const pem: string = jwkToPem(this.jwk as JWK, { private: true });
 		const signature = sign.sign({
 			key: pem,
 			padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-			saltLength: 0 // We do not need to salt the signature since we combine with a random UUID
+			saltLength // We do not need to salt the signature since we combine with a random UUID
 		});
 		return Promise.resolve(signature);
 	}
@@ -42,7 +42,7 @@ export class JWKWallet implements Wallet {
 	async signTransaction(tx: Transaction): Promise<void> {
 		tx.setOwner(this.jwk.n);
 		const data = await tx.getSignatureData();
-		const signature = await this.sign(data);
+		const signature = await this.sign(data, 32); // pass 32 saltLength -- default for Arweave JS RSA Signatures
 		const id = crypto.createHash('sha256').update(signature).digest();
 		tx.setSignature({
 			id: bufferTob64Url(id),
