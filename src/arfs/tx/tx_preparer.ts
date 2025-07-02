@@ -19,16 +19,16 @@ import {
 
 export class TxPreparer {
 	private readonly arweave: Arweave;
-        private readonly wallet: Wallet;
-        private readonly signer: Signer;
+	private readonly wallet: Wallet;
+	private readonly signer: Signer;
 	private readonly tagAssembler: ArFSTagAssembler;
 
 	public constructor({ arweave, wallet, arFSTagAssembler }: TxPreparerParams) {
 		this.arweave = arweave;
-                this.wallet = wallet;
-                this.tagAssembler = arFSTagAssembler;
-                this.signer = wallet.getSigner();
-        }
+		this.wallet = wallet;
+		this.tagAssembler = arFSTagAssembler;
+		this.signer = wallet.getSigner();
+	}
 
 	public async prepareFileDataDataItem({ objectMetaData }: ArFSPrepareFileDataItemParams): Promise<DataItem> {
 		const tags = this.tagAssembler.assembleArFSFileDataTags({ arFSPrototype: objectMetaData });
@@ -124,14 +124,14 @@ export class TxPreparer {
 		return this.createAndSignTx(txAttributes, tags);
 	}
 
-        private async createAndSignTx(txAttributes: TxAttributesToAssemble, tags: GQLTagInterface[]): Promise<Transaction> {
-                const transaction = await this.arweave.createTransaction(txAttributes.assemble());
+	private async createAndSignTx(txAttributes: TxAttributesToAssemble, tags: GQLTagInterface[]): Promise<Transaction> {
+		const transaction = await this.arweave.createTransaction(txAttributes.assemble());
 
 		for (const tag of tags) {
 			transaction.addTag(tag.name, tag.value);
 		}
 
-                await this.wallet.signTransaction(transaction);
+		await this.wallet.signTransaction(transaction);
 
 		return transaction;
 	}

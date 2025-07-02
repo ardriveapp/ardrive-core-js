@@ -34,7 +34,7 @@ export type PrepareTxParams<T = string | Buffer> = { data: T; tags: GQLTagInterf
 	withRewardSettings;
 
 export interface TxPreparerParams {
-        arweave: Arweave;
-        wallet: Wallet;
-        arFSTagAssembler: ArFSTagAssembler;
+	arweave: Arweave;
+	wallet: Wallet;
+	arFSTagAssembler: ArFSTagAssembler;
 }
