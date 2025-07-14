@@ -1,7 +1,7 @@
 import { DataItem } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import { CommunityTipSettings, RewardSettings, GQLTagInterface } from '../../exports';
-import { JWKWallet } from '../../jwk_wallet';
+import { Wallet } from '../../wallet';
 import { ArFSTagAssembler } from '../tags/tag_assembler';
 import { ArFSObjectMetadataPrototype, ArFSFileDataPrototype, ArFSEntityMetaDataPrototype } from './arfs_prototypes';
 
@@ -35,6 +35,6 @@ export type PrepareTxParams<T = string | Buffer> = { data: T; tags: GQLTagInterf
 
 export interface TxPreparerParams {
 	arweave: Arweave;
-	wallet: JWKWallet;
+	wallet: Wallet;
 	arFSTagAssembler: ArFSTagAssembler;
 }

@@ -189,7 +189,6 @@ import {
 	parseDriveSignatureType
 } from '../exports';
 import { Turbo } from './turbo';
-import { ArweaveSigner } from '@dha-team/arbundles';
 import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -257,7 +256,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
 		protected txPreparer = new TxPreparer({
 			arweave: arweave,
-			wallet: wallet as JWKWallet,
+			wallet: wallet,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
 		protected turbo = new Turbo({
@@ -436,7 +435,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async makeBdi(dataItems: DataItem[]): Promise<DataItem> {
-		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
+		const signer = this.wallet.getSigner();
 		const bundle = await bundleAndSignData(dataItems, signer);
 		const bdi = createData(bundle.getRaw(), signer, {
 			// baseBundleTags includes:  Bundle Format/Version, App Name/Version

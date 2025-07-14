@@ -74,6 +74,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@arweave/wasm-secp256k1@npm:^0.0.7":
+  version: 0.0.7
+  resolution: "@arweave/wasm-secp256k1@npm:0.0.7"
+  checksum: 5e2d492dd5b2aba74aec54a04b99269a0adfaf4c4c603c4eba41ce4bcada15dbf0965b6c25d8e81de26763a5fbbc8562efdadc4116e35409ad9b0b23f0ba7b0e
+  languageName: node
+  linkType: hard
+
 "@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.27.1":
   version: 7.27.1
   resolution: "@babel/code-frame@npm:7.27.1"
@@ -1564,7 +1571,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/bn.js@npm:^5.1.2":
+"@types/bn.js@npm:*, @types/bn.js@npm:^5.1.2":
   version: 5.2.0
   resolution: "@types/bn.js@npm:5.2.0"
   dependencies:
@@ -1618,6 +1625,15 @@ __metadata:
   version: 4.0.2
   resolution: "@types/deep-eql@npm:4.0.2"
   checksum: 249a27b0bb22f6aa28461db56afa21ec044fa0e303221a62dff81831b20c8530502175f1a49060f7099e7be06181078548ac47c668de79ff9880241968d43d0c
+  languageName: node
+  linkType: hard
+
+"@types/elliptic@npm:^6":
+  version: 6.4.18
+  resolution: "@types/elliptic@npm:6.4.18"
+  dependencies:
+    "@types/bn.js": "*"
+  checksum: c27613c530fb95441e5e6b456c8c9bc26568ca14c546aae6d7c1d8d46869f79a2272feaef266ac00bdb68b2671e6351ed01b91b82266eac30ca9092720825d16
   languageName: node
   linkType: hard
 
@@ -2316,6 +2332,7 @@ __metadata:
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@types/bn.js": ^5.1.2
     "@types/chai": ^4.3.6
+    "@types/elliptic": ^6
     "@types/human-crypto-keys": ^0.1.2
     "@types/jwk-to-pem": ^2.0.0
     "@types/lodash": ^4
@@ -2331,13 +2348,14 @@ __metadata:
     "@types/uuid": ^8.3.2
     "@typescript-eslint/eslint-plugin": ^6.2.1
     "@typescript-eslint/parser": ^6.2.1
-    arweave: ^1.15.7
+    arweave: 2.0.0-ec.2
     axios: ^0.21.1
     axios-retry: ^3.6.0
     base64-js: ^1.5.1
     bignumber.js: ^9.1.2
     bn.js: ^5.2.1
     chai: ^4.3.3
+    elliptic: ^6.6.1
     eslint: ^8.46.0
     eslint-config-prettier: ^8.1.0
     eslint-plugin-prettier: latest
@@ -2450,6 +2468,19 @@ __metadata:
   peerDependencies:
     arweave: ^1.10.0
   checksum: 7db2ef3078f28d25e9be096b7680da08b6d9a3b8f44216770a2c08be90ae192569ab948fc9904b930b61f8e0fef8a4e7f77165c2e18b68f3d586274034540c5c
+  languageName: node
+  linkType: hard
+
+"arweave@npm:2.0.0-ec.2":
+  version: 2.0.0-ec.2
+  resolution: "arweave@npm:2.0.0-ec.2"
+  dependencies:
+    "@arweave/wasm-secp256k1": ^0.0.7
+    arconnect: ^0.4.2
+    asn1.js: ^5.4.1
+    base64-js: ^1.5.1
+    bignumber.js: ^9.0.2
+  checksum: 4da59ac0a7e9306127b441418a3c0fe01cdc4e6429f1cb50fbdfe60d129cfb06801268dce7738414801a2fd81e9a967f9bc136d4cec050f9e109b4eb55ae4bfc
   languageName: node
   linkType: hard
 
