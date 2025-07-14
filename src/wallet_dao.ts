@@ -148,7 +148,7 @@ export class WalletDAO {
 				reward: W(transaction.reward)
 			});
 		} else {
-			throw new Error(`Transaction failed. Response: ${response}`);
+			throw new Error(`Transaction failed. Response: ${JSON.stringify(response, null, 2)}`);
 		}
 	}
 }

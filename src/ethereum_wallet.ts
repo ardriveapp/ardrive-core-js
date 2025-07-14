@@ -1,51 +1,91 @@
 import { Wallet as EthersWallet } from 'ethers';
-import * as crypto from 'crypto';
 import { EthereumSigner } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 
 import { PublicKey, ArweaveAddress, ADDR } from './types';
-import { b64UrlToBuffer, bufferTob64Url } from './utils/wallet_utils';
+import { bufferTob64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
+import { ec as EC } from 'elliptic';
+import Arweave from 'arweave';
+import { fromJWK, SECP256k1PublicKey } from 'arweave/node/lib/crypto/keys';
+import { Base64String } from '@ardrive/turbo-sdk/lib/types/types';
+import { createHash } from 'crypto';
 
 export class EthereumWallet implements Wallet {
 	private readonly wallet: EthersWallet;
 	private readonly signer: EthereumSigner;
+	private readonly jwk: JsonWebKey;
 
 	constructor(privateKey: string) {
 		this.wallet = new EthersWallet(privateKey);
 		this.signer = new EthereumSigner(this.wallet.privateKey);
+		const ec = new EC('secp256k1');
+
+		const key = ec.keyFromPrivate(privateKey, 'hex');
+		const pubPoint = key.getPublic();
+
+		// Get x, y, d in base64url format
+		const x = bufferTob64Url(Uint8Array.from(pubPoint.getX().toArray('be', 32)));
+		const y = bufferTob64Url(Uint8Array.from(pubPoint.getY().toArray('be', 32)));
+		const d = bufferTob64Url(Uint8Array.from(key.getPrivate().toArray('be', 32)));
+
+		// JWK structure
+		const jwk = {
+			kty: 'EC',
+			crv: 'secp256k1',
+			x,
+			y,
+			d
+		};
+		this.jwk = jwk;
 	}
 
 	async getPublicKey(): Promise<PublicKey> {
-		return bufferTob64Url(this.signer.publicKey);
+		const pubKey = await (await fromJWK(this.jwk)).public();
+		return bufferTob64Url(Buffer.from(await pubKey.identifier()));
 	}
 
 	async getAddress(): Promise<ArweaveAddress> {
-		const hash = crypto
-			.createHash('sha256')
-			.update(b64UrlToBuffer(await this.getPublicKey()))
-			.digest();
-		return ADDR(bufferTob64Url(hash));
+		const pubKey = await this.getPublicKey();
+		const address = sha256B64Url(Buffer.from(pubKey));
+		return ADDR(address);
 	}
 
 	async sign(data: Uint8Array): Promise<Uint8Array> {
-		const signature = await this.wallet.signMessage(data);
-		return Buffer.from(signature.slice(2), 'hex');
+		return (await fromJWK(this.jwk)).sign({ payload: Buffer.from(data), isDigest: false });
 	}
 
 	async signTransaction(tx: Transaction): Promise<void> {
-		tx.setOwner(await this.getPublicKey());
-		const data = await tx.getSignatureData();
-		const signature = await this.sign(data);
-		const id = crypto.createHash('sha256').update(signature).digest();
-		tx.setSignature({
-			id: bufferTob64Url(id),
-			owner: await this.getPublicKey(),
-			signature: bufferTob64Url(signature)
-		});
+		return Arweave.init({
+			host: 'arweave.net',
+			port: 443,
+			protocol: 'https'
+		}).transactions.sign(tx, await fromJWK(this.jwk));
 	}
 
+	/** Returns ANS-104 Signer */
 	getSigner(): EthereumSigner {
 		return this.signer;
 	}
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function secp256k1OwnerFromTx(tx: any): Promise<string> {
+	if (tx.signature === null) {
+		throw new Error('secp256k1OwnerFromTx error: transaction has no signature, cannot recover owner');
+	}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const transaction = new Transaction(tx);
+	const signatureData = await transaction.getSignatureData();
+	const publicKey = await SECP256k1PublicKey.recover({
+		payload: signatureData,
+		isDigest: false,
+		signature: Buffer.from(tx.signature, 'base64url')
+	});
+
+	return Buffer.from(await publicKey.identifier()).toString('base64url');
+}
+
+export function sha256B64Url(input: Buffer): Base64String {
+	return bufferTob64Url(createHash('sha256').update(input).digest());
 }
