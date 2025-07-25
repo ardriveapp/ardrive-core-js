@@ -10,6 +10,7 @@ import { authTagLength } from './constants';
 import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
 import { VersionedDriveKey } from '../types/entity_key';
 import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
+import { Wallet } from '../wallet';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
@@ -29,14 +30,17 @@ export async function generateWalletSignatureV1(jwk: JWK, data: Uint8Array): Pro
 }
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file using data item (equivalent to Wander's signDataItem())
-export async function generateWalletSignatureV2(jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
-	const signer = new ArweaveSigner(jwk);
+export async function generateWalletSignatureV2(
+	walletOrArweaveJWK: JWKInterface | Wallet,
+	data: Uint8Array
+): Promise<Uint8Array> {
+	const signer = 'n' in walletOrArweaveJWK ? new ArweaveSigner(walletOrArweaveJWK) : walletOrArweaveJWK.getSigner();
 	// Override sign to use 0 saltLength
-	signer.sign = function (message) {
-		return getCryptoDriver().sign(jwk, message, {
+	signer.sign = function (message: Uint8Array): Promise<Uint8Array> {
+		return getCryptoDriver().sign(walletOrArweaveJWK, message, {
 			saltLength: 0
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		}) as any;
+		});
 	};
 	const dataItem = createData(data, signer, {
 		tags: [
@@ -64,6 +68,7 @@ export interface DeriveDriveKeyParams {
 		cipherIV: string;
 		encryptedData: Buffer;
 	};
+	wallet?: Wallet; // Optional wallet for Ethereum operations
 }
 
 // Backwards compatibility overload pre ArFS v0.15
@@ -102,11 +107,14 @@ export async function deriveDriveKey(
 		driveId: paramDriveId,
 		walletPrivateKey: paramWalletPrivateKey,
 		driveSignatureType = DriveSignatureType.v1,
-		encryptedSignatureData
+		encryptedSignatureData,
+		wallet
 	} = params;
-	const driveIdBytes: Buffer = Buffer.from(parse(paramDriveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
-	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'));
-	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
+
+	const driveIdBytes = Buffer.from(parse(paramDriveId)); // The UUID of the driveId is the SALT used for the drive key
+	const driveBuffer = Buffer.from(utf8.encode('drive'));
+
+	const signingKey = Buffer.concat([driveBuffer, driveIdBytes]);
 
 	let walletSignature: Uint8Array;
 
@@ -129,7 +137,7 @@ export async function deriveDriveKey(
 		}
 	} else if (driveSignatureType === DriveSignatureType.v2) {
 		// v2 signature uses equivalent to Wander's signDataItem()
-		walletSignature = await generateWalletSignatureV2(JSON.parse(paramWalletPrivateKey), signingKey);
+		walletSignature = await generateWalletSignatureV2(wallet ?? JSON.parse(paramWalletPrivateKey), signingKey);
 	} else {
 		throw new Error(`Unknown signature type: ${driveSignatureType}`);
 	}

@@ -198,13 +198,17 @@ export class PrivateDriveKeyData {
 		readonly driveKey: DriveKey
 	) {}
 
-	static async from(drivePassword: string, privateKey: JWKInterface): Promise<PrivateDriveKeyData> {
+	static async from(drivePassword: string, walletOrArweaveJWK: JWKInterface | Wallet): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
+
 		const driveKey = await deriveDriveKey({
 			dataEncryptionKey: drivePassword,
 			driveId,
-			walletPrivateKey: JSON.stringify(privateKey),
-			driveSignatureType: DriveSignatureType.v2
+			walletPrivateKey: JSON.stringify(
+				'n' in walletOrArweaveJWK ? walletOrArweaveJWK : walletOrArweaveJWK.getPrivateKey()
+			),
+			driveSignatureType: DriveSignatureType.v2,
+			wallet: 'n' in walletOrArweaveJWK ? undefined : walletOrArweaveJWK
 		});
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}
@@ -1501,6 +1505,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
 
+		console.log('driveTransactions', driveTransactions);
 		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
 		);
@@ -1531,6 +1536,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
+			console.log('transactions', transactions);
 			if (transactions.edges.length > 0) {
 				const txId = transactions.edges[0].node.id;
 				const cipherIV = transactions.edges[0].node.tags.find((t) => t.name === gqlTagNameRecord.cipherIv);
@@ -1958,6 +1964,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 
 				const edgeOfFirstDrive = edges[0];
+				console.log('edgeOfFirstDrive', edgeOfFirstDrive);
 				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
 				const driveOwner = new ArweaveAddress(driveOwnerAddress);
 
@@ -1973,7 +1980,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 
 				if (driveKey) {
+					console.log('edgeOfFirstDrive', edgeOfFirstDrive);
 					const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
+
 					if (!cipherIVFromTag) {
 						throw new Error('Target private drive has no "Cipher-IV" tag!');
 					}
@@ -2103,6 +2112,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			edges.forEach((edge) => {
 				cursor = edge.cursor;
 				const { node } = edge;
+				console.log('node', node);
 				const { tags } = node;
 				const txId = TxID(node.id);
 				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');

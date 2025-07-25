@@ -137,6 +137,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				}
 
 				const driveIdTag = edges[0].node.tags.find((t) => t.name === 'Drive-Id');
+				console.log('driveIdTag', driveIdTag);
 				if (driveIdTag) {
 					return EID(driveIdTag.value);
 				}

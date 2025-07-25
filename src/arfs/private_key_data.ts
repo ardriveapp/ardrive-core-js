@@ -1,7 +1,7 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
 import { BufferToString } from '../utils/common';
 import { CipherIV, DriveID, DriveKey, DriveSignatureType, EntityMetaDataTransactionData } from '../types';
-import { JWKWallet } from '../jwk_wallet';
+import { Wallet } from '../wallet';
 
 type DriveIdKeyPair = { [key: string /* DriveID */]: DriveKey };
 
@@ -9,7 +9,7 @@ type DriveIdKeyPair = { [key: string /* DriveID */]: DriveKey };
 interface PrivateKeyDataParams {
 	readonly driveKeys?: DriveKey[];
 	readonly password?: string;
-	readonly wallet?: JWKWallet;
+	readonly wallet?: Wallet;
 }
 
 /**
@@ -19,7 +19,7 @@ interface PrivateKeyDataParams {
  */
 export class PrivateKeyData {
 	private readonly password?: string;
-	private readonly wallet?: JWKWallet;
+	private readonly wallet?: Wallet;
 
 	// Drive IDs are paired with their Drive Keys upon successful decryption
 	// TODO: Migrate this to ArFS Cache so it can persist between commands
@@ -78,7 +78,8 @@ export class PrivateKeyData {
 				dataEncryptionKey: this.password!,
 				driveId: `${driveId}`,
 				walletPrivateKey: JSON.stringify(this.wallet!.getPrivateKey()),
-				driveSignatureType: driveSignatureType ?? DriveSignatureType.v1
+				driveSignatureType: driveSignatureType ?? DriveSignatureType.v1,
+				wallet: this.wallet
 			});
 			try {
 				const decryptedDriveJSON = await this.decryptToJson<T>(cipherIV, dataBuffer, derivedDriveKey);

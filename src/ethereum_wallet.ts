@@ -10,6 +10,7 @@ import Arweave from 'arweave';
 import { fromJWK, SECP256k1PublicKey } from 'arweave/node/lib/crypto/keys';
 import { Base64String } from '@ardrive/turbo-sdk/lib/types/types';
 import { createHash } from 'crypto';
+import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export class EthereumWallet implements Wallet {
 	private readonly wallet: EthersWallet;
@@ -40,15 +41,23 @@ export class EthereumWallet implements Wallet {
 		this.jwk = jwk;
 	}
 
+	getPrivateKey(): JWKInterface {
+		return this.jwk as JWKInterface;
+	}
+
 	async getPublicKey(): Promise<PublicKey> {
 		const pubKey = await (await fromJWK(this.jwk)).public();
 		return bufferTob64Url(Buffer.from(await pubKey.identifier()));
 	}
 
 	async getAddress(): Promise<ArweaveAddress> {
-		const pubKey = await this.getPublicKey();
-		const address = sha256B64Url(Buffer.from(pubKey));
-		return ADDR(address);
+		return ADDR(
+			await Arweave.init({
+				host: 'arweave.net',
+				port: 443,
+				protocol: 'https'
+			}).wallets.jwkToAddress(await fromJWK(this.jwk))
+		);
 	}
 
 	async sign(data: Uint8Array): Promise<Uint8Array> {
