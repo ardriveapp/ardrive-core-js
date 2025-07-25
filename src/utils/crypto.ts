@@ -35,13 +35,16 @@ export async function generateWalletSignatureV2(
 	data: Uint8Array
 ): Promise<Uint8Array> {
 	const signer = 'n' in walletOrArweaveJWK ? new ArweaveSigner(walletOrArweaveJWK) : walletOrArweaveJWK.getSigner();
-	// Override sign to use 0 saltLength
-	signer.sign = function (message: Uint8Array): Promise<Uint8Array> {
-		return getCryptoDriver().sign(walletOrArweaveJWK, message, {
-			saltLength: 0
+	const jwk = 'n' in walletOrArweaveJWK ? walletOrArweaveJWK : walletOrArweaveJWK.getPrivateKey();
+	if (signer instanceof ArweaveSigner) {
+		// Override sign to use 0 saltLength
+		signer.sign = function (message: Uint8Array): Promise<Uint8Array> {
+			return getCryptoDriver().sign(jwk, message, {
+				saltLength: 0
+			});
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		});
-	};
+		} as any;
+	}
 	const dataItem = createData(data, signer, {
 		tags: [
 			{
