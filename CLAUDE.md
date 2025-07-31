@@ -94,15 +94,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The library provides efficient incremental sync capabilities:
 
 1. **Block-Height Based**: Tracks changes using Arweave block heights for precise synchronization
-2. **Change Detection**: Identifies added, modified, and possibly deleted entities
+2. **Change Detection**: Identifies added, modified, and unreachable entities
 3. **State Persistence**: Sync state can be serialized/deserialized for cross-session continuity
 4. **Progress Tracking**: Built-in progress callbacks for UI integration
-5. **Optimizations**: Configurable batch sizes and early-stop mechanisms for large drives
+5. **Optimizations**: 
+   - Configurable batch sizes (default/max: 100)
+   - Early termination after N consecutive known entities
+   - Query optimization starting from last synced block + 1
 
 Key methods:
 - `ArDrive.syncPublicDrive()` - Sync public drives
 - `ArDrive.syncPrivateDrive()` - Sync private drives with decryption
 - `serializeSyncState()` / `deserializeSyncState()` - State persistence utilities
+
+Sync Options:
+```typescript
+interface IncrementalSyncOptions {
+  earlyTerminationConsecutiveEntityThreshold?: number; // Default: 25
+  graphqlPageSize?: number; // Default: 100, Max: 100
+  progressCallback?: (progress: IncrementalSyncProgress) => void;
+}
+```
+
+Error Handling:
+- `IncrementalSyncError` preserves partial results when sync fails mid-process
+- Statistics tracking for monitoring sync performance
 
 ### Turbo Integration
 
@@ -112,4 +128,13 @@ The library supports Turbo for optimized uploads:
 2. **Factory Integration**: ArDrive factory accepts `turboSettings` parameter
 3. **Automatic Bundling**: When Turbo is enabled, uploads are optimized through Turbo service
 4. **Dry Run Support**: Turbo operations respect the `dryRun` flag for testing
-5. **Recent Updates**: Turbo SDK upgraded to v1.27.0 with planned Ethereum signer support
+
+### Environment Variables
+
+- `ARDRIVE_PROGRESS_LOG=1` - Enable upload progress logging to stderr
+- `ARDRIVE_CACHE_LOG=1` - Enable cache operation logging
+
+### Node Version Requirements
+
+- Node.js >= 18 (enforced in package.json)
+- Use with nvm: `nvm install && nvm use`
