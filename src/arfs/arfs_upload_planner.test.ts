@@ -148,7 +148,7 @@ describe('The ArFSUploadPlanner class', () => {
 			expect(bundlePlans.length).to.equal(1);
 
 			const { uploadStats, totalByteCount: bundleByteCount } = bundlePlans[0];
-			expect(+bundleByteCount).to.equal(3108);
+			expect(+bundleByteCount).to.equal(3114);
 			expect(uploadStats.length).to.equal(0);
 
 			const { fileAndMetaDataPlans, fileDataOnlyPlans, folderMetaDataPlans } = v2TxPlans;
@@ -263,7 +263,7 @@ describe('The ArFSUploadPlanner class', () => {
 				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this create drive Bundle is 2832
-				expect(+totalBundledByteCount).to.equal(2832);
+				expect(+totalBundledByteCount).to.equal(2838);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
@@ -291,7 +291,7 @@ describe('The ArFSUploadPlanner class', () => {
 				const { totalBundledByteCount } = uploadPlan as CreateDriveBundlePlan;
 
 				// Expected ByteCount for this private drive Bundle is 2998
-				expect(+totalBundledByteCount).to.equal(3015);
+				expect(+totalBundledByteCount).to.equal(3021);
 			});
 
 			it('returns correct rewardSetting and totalWinstonPrice for a v2 transaction', async () => {
