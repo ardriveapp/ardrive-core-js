@@ -45,7 +45,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(1);
-			expect(+totalByteCount).to.equal(5953);
+			expect(+totalByteCount).to.equal(5956);
 		});
 
 		it('returns the expected uploadPlan for a single wrappedFolder', async () => {
@@ -62,7 +62,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(8);
-			expect(+totalByteCount).to.equal(16295);
+			expect(+totalByteCount).to.equal(16319);
 		});
 
 		it('returns the expected uploadPlan for a folder with an existing folder id', async () => {
@@ -86,7 +86,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(7);
-			expect(+totalByteCount).to.equal(14946);
+			expect(+totalByteCount).to.equal(14967);
 
 			// Expect first upload stat to have our existing stub folder id
 			expect(`${uploadStats[0].destFolderId}`).to.equal(`${stubEntityIDAlt}`);
@@ -109,7 +109,7 @@ describe('The ArFSUploadPlanner class', () => {
 			const { uploadStats, totalByteCount } = bundlePlans[0];
 
 			expect(uploadStats.length).to.equal(2);
-			expect(+totalByteCount).to.equal(11874);
+			expect(+totalByteCount).to.equal(11880);
 		});
 
 		it('returns the expected uploadPlan for a single file that is over the size limit', async () => {
