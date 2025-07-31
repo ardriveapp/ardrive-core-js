@@ -13,6 +13,10 @@ const nodeFragment = `
 			name
 			value
 		}
+		block {
+			height
+			timestamp
+		}
 		${ownerFragment}
 	}
 `;
@@ -45,6 +49,9 @@ export interface BuildGQLQueryParams {
 	owner?: ArweaveAddress;
 	sort?: Sort;
 	ids?: TransactionID[];
+	minBlock?: number;
+	maxBlock?: number;
+	first?: number;
 }
 
 /**
@@ -55,7 +62,16 @@ export interface BuildGQLQueryParams {
  * @example
  * const query = buildQuery([{ name: 'Folder-Id', value: folderId }]);
  */
-export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, ids }: BuildGQLQueryParams): GQLQuery {
+export function buildQuery({
+	tags = [],
+	cursor,
+	owner,
+	sort = DESCENDING_ORDER,
+	ids,
+	minBlock,
+	maxBlock,
+	first
+}: BuildGQLQueryParams): GQLQuery {
 	let queryTags = ``;
 
 	tags.forEach((t) => {
@@ -65,14 +81,28 @@ export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, 
 
 	const singleResult = cursor === undefined;
 
+	// Build block filter if min or max block is specified
+	let blockFilter = '';
+	if (minBlock !== undefined || maxBlock !== undefined) {
+		blockFilter = 'block: {';
+		if (minBlock !== undefined) {
+			blockFilter += ` min: ${minBlock}`;
+		}
+		if (maxBlock !== undefined) {
+			blockFilter += `${minBlock !== undefined ? ',' : ''} max: ${maxBlock}`;
+		}
+		blockFilter += ' }';
+	}
+
 	return {
 		query: `query {
 			transactions(
 				${ids?.length ? `ids: [${ids.map((id) => `"${id}"`)}]` : ''}
-				first: ${singleResult ? latestResult : pageLimit}
+				first: ${singleResult ? latestResult : first !== undefined ? first : pageLimit}
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
 				${owner === undefined ? '' : `owners: ["${owner}"]`}
+				${blockFilter}
 				tags: [
 					${queryTags}
 				]

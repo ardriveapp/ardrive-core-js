@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm info:*)",
+      "Bash(npm view:*)",
+      "Bash(find:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx rimraf:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(npm run clean:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)",
+      "Bash(npx mocha:*)",
+      "Bash(rg:*)",
+      "WebFetch(domain:docs.ardrive.io)",
+      "Bash(ls:*)",
+      "Bash(yarn typecheck)",
+      "Bash(yarn build)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(yarn lint)",
+      "Bash(npx eslint:*)",
+      "Bash(git checkout:*)",
+      "Bash(yarn test:*)",
+      "Bash(yarn power-assert:*)",
+      "Bash(yarn lint:*)"
+    ],
+    "deny": []
+  }
+}

@@ -112,7 +112,8 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 				this.rootFolderId,
 				this.boost,
 				this.customMetaData.metaDataGqlTags,
-				this.customMetaData.metaDataJson
+				this.customMetaData.metaDataJson,
+				this.blockHeight || 0
 			);
 		}
 

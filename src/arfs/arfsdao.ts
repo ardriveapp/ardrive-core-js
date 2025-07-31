@@ -71,6 +71,7 @@ import {
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
+import { ArFSDAOAnonymousIncrementalSync } from './arfsdao_anonymous_incremental_sync';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
@@ -166,6 +167,7 @@ import { gatewayUrlForArweave } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
 import { ArFSTagSettings } from './arfs_tag_settings';
+export { ArFSTagSettings } from './arfs_tag_settings';
 import { TxPreparer } from './tx/tx_preparer';
 import {
 	ArFSPublicFolderTransactionData,
@@ -222,6 +224,8 @@ export interface ArFSCache extends ArFSAnonymousCache {
 
 export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
+	public readonly anonymousIncSync: ArFSDAOAnonymousIncrementalSync;
+
 	constructor(
 		private readonly wallet: Wallet,
 		arweave: Arweave,
@@ -252,6 +256,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		})
 	) {
 		super(arweave, undefined, undefined, caches);
+
+		// Initialize anonymous incremental sync instance
+		this.anonymousIncSync = new ArFSDAOAnonymousIncrementalSync(arweave, appName, appVersion, caches, gatewayApi);
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
@@ -1331,10 +1338,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return excludedTagNames.includes('ArFS')
 			? this.txPreparer.prepareFileDataDataItem({
 					objectMetaData: objectMetaData as ArFSFileDataPrototype
-			  })
+				})
 			: this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype
-			  });
+				});
 	}
 
 	/** @deprecated -- Logic has been moved from ArFSDAO, use TxPreparer methods instead */
@@ -1358,11 +1365,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					objectMetaData: objectMetaData as ArFSFileDataPrototype,
 					rewardSettings,
 					communityTipSettings
-			  })
+				})
 			: this.txPreparer.prepareMetaDataTx({
 					objectMetaData: objectMetaData as ArFSEntityMetaDataPrototype,
 					rewardSettings
-			  });
+				});
 	}
 
 	async sendTransactionsAsChunks(transactions: Transaction[], resumeChunkUpload = false): Promise<void> {
@@ -1395,7 +1402,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 										progressLogDebounce = false;
 									}, 500); // .5 sec debounce
 								}
-						  }
+							}
 						: undefined
 				};
 
@@ -1420,7 +1427,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					wrappedFile,
 					arFSDataTxId,
 					createMetaDataPlan
-			  })
+				})
 			: undefined;
 
 		await this.reSeedV2FileTransaction(wrappedFile, arFSDataTx);

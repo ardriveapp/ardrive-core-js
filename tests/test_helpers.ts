@@ -55,11 +55,10 @@ export async function mineArLocalBlock(arweave: Arweave): Promise<void> {
 }
 
 export async function getTxDataFromGateway(arweave: Arweave, txId: TransactionID): Promise<Buffer> {
-	const { data } =
-		await arweave.api.get<Buffer>(`${txId}`, {
-			responseType: 'arraybuffer'
-		})
-		return data;
+	const { data } = await arweave.api.get<Buffer>(`${txId}`, {
+		responseType: 'arraybuffer'
+	});
+	return data;
 }
 
 export async function getMetaDataJSONFromGateway(

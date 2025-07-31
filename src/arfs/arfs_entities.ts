@@ -37,6 +37,7 @@ export class ArFSEntity {
 	readonly name: string; // user defined entity name, cannot be longer than 64 characters.  This is stored in the JSON file that is uploaded along with the drive/folder/file metadata transaction cspell:disable
 	readonly txId: TransactionID; // the arweave transaction id for this entity. 43 numbers/letters eg. 1xRhN90Mu5mEgyyrmnzKgZP0y3aK8AwSucwlCOAwsaI cspell:enable
 	readonly unixTime: UnixTime; // seconds since unix epoch, taken at the time of upload, 10 numbers eg. 1620068042
+	blockHeight: number = 0; // the arweave block height when this entity was mined (default 0 for backward compatibility, mutable for incremental sync)
 
 	readonly boost?: FeeMultiple;
 
@@ -55,7 +56,8 @@ export class ArFSEntity {
 		unixTime: UnixTime,
 		boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
-		customMetaDataJson?: CustomMetaDataJsonFields
+		customMetaDataJson?: CustomMetaDataJsonFields,
+		blockHeight: number = 0
 	) {
 		this.appName = appName;
 		this.appVersion = appVersion;
@@ -66,6 +68,7 @@ export class ArFSEntity {
 		this.name = name;
 		this.txId = txId;
 		this.unixTime = unixTime;
+		this.blockHeight = blockHeight;
 		this.boost = boost;
 		this.customMetaDataGqlTags = customMetaDataGqlTags;
 		this.customMetaDataJson = customMetaDataJson;
@@ -95,7 +98,8 @@ export class ArFSPublicDrive extends ArFSEntity implements ArFSDriveEntity {
 		readonly rootFolderId: FolderID,
 		readonly boost?: FeeMultiple,
 		customMetaDataGqlTags?: CustomMetaDataGqlTags,
-		customMetaDataJson?: CustomMetaDataJsonFields
+		customMetaDataJson?: CustomMetaDataJsonFields,
+		blockHeight: number = 0
 	) {
 		super(
 			appName,
@@ -109,7 +113,8 @@ export class ArFSPublicDrive extends ArFSEntity implements ArFSDriveEntity {
 			unixTime,
 			boost,
 			customMetaDataGqlTags,
-			customMetaDataJson
+			customMetaDataJson,
+			blockHeight
 		);
 	}
 }

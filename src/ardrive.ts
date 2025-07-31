@@ -12,6 +12,7 @@ import {
 	ArFSPrivateDriveKeyless,
 	ArFSPublicFile
 } from './arfs/arfs_entities';
+import { ArFSDAOIncrementalSync } from './arfs/arfsdao_incremental_sync';
 import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
@@ -24,6 +25,7 @@ import {
 	ArFSPrivateDriveTransactionData
 } from './arfs/tx/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
+import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState } from './types/sync_types';
 import { CommunityOracle } from './community/community_oracle';
 import { deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
@@ -215,7 +217,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Move file will create a new meta data tx with identical meta data except for a new parentFolderId
 		const { dataTxId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
@@ -292,7 +294,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Move file will create a new meta data tx with identical meta data except for a new parentFolderId
 		const { dataTxId, fileKey, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
@@ -376,7 +378,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Move folder will create a new meta data tx with identical meta data except for a new parentFolderId
 		const { metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } = await this.arFsDao.movePublicFolder(
@@ -466,7 +468,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Move folder will create a new meta data tx with identical meta data except for a new parentFolderId
 		const { metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
@@ -608,7 +610,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 					// Send calculated uploadPlan to ArFSDAO to consume
 					return this.arFsDao.uploadAllEntities(calculatedPlan.calculatedUploadPlan);
-			  })();
+				})();
 
 		const arFSResult: ArFSResult = {
 			created: [],
@@ -875,7 +877,8 @@ export class ArDrive extends ArDriveAnonymous {
 				case 'error':
 					throw Error('File names cannot conflict with a folder name in the destination folder!');
 
-				case 'skip' || 'upsert':
+				case 'skip':
+				case 'upsert':
 					console.error(
 						'File name conflicts with an existing file, with the current conflictResolution setting this upload would have be skipped. Use `replace` conflict resolution setting to override this and retry this transaction'
 					);
@@ -1038,7 +1041,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Create the folder and retrieve its folder ID
 		const {
@@ -1104,7 +1107,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		// Create the folder and retrieve its folder ID
 		const {
@@ -1156,7 +1159,7 @@ export class ArDrive extends ArDriveAnonymous {
 						await this.costCalculator.calculateCostForCreateDrive(uploadPlan);
 					await this.assertWalletBalance(totalWinstonPrice);
 					return rewardSettings;
-			  })();
+				})();
 
 		const createDriveResult = await arFSCreateDrive(rewardSettings);
 
@@ -1286,7 +1289,7 @@ export class ArDrive extends ArDriveAnonymous {
 					drive.driveAuthMode,
 					drive.cipher,
 					drive.cipherIV
-			  );
+				);
 	}
 
 	public async getPrivateFolder({
@@ -1496,7 +1499,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePublicFile({
@@ -1552,7 +1555,7 @@ export class ArDrive extends ArDriveAnonymous {
 			: {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, fileKey, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePrivateFile({
@@ -1607,7 +1610,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
 						.metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePublicFolder({
@@ -1664,7 +1667,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
 						.metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePrivateFolder({
@@ -1716,7 +1719,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
 						.metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePublicDrive({
@@ -1767,7 +1770,7 @@ export class ArDrive extends ArDriveAnonymous {
 					reward: (await this.estimateAndAssertCostOfFolderUpload(driveMetadataTxDataStub))
 						.metaDataBaseReward,
 					feeMultiple: this.feeMultiple
-			  };
+				};
 
 		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
 			await this.arFsDao.renamePrivateDrive({
@@ -1845,5 +1848,80 @@ export class ArDrive extends ArDriveAnonymous {
 		};
 
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
+	}
+
+	/**
+	 * Performs an incremental sync of a public drive, fetching only new or modified entities
+	 *
+	 * @param driveId - The drive to sync
+	 * @param owner - Optional drive owner address (defaults to wallet address)
+	 * @param options - Sync options including previous state and progress callback
+	 * @returns Sync results including entities, changes, and new sync state
+	 */
+	async syncPublicDrive(
+		driveId: DriveID,
+		owner?: ArweaveAddress,
+		options?: IncrementalSyncOptions
+	): Promise<IncrementalSyncResult> {
+		if (!owner) {
+			owner = await this.wallet.getAddress();
+		}
+
+		// Use the anonymous incremental sync for public drives
+		return this.arFsDao.anonymousIncSync.getPublicDriveIncrementalSync(driveId, owner, options);
+	}
+
+	/**
+	 * Performs an incremental sync of a private drive, fetching only new or modified entities
+	 *
+	 * @param driveId - The drive to sync
+	 * @param driveKey - The drive key for decryption
+	 * @param owner - Optional drive owner address (defaults to wallet address)
+	 * @param options - Sync options including previous state and progress callback
+	 * @returns Sync results including entities, changes, and new sync state
+	 */
+	async syncPrivateDrive(
+		driveId: DriveID,
+		driveKey: DriveKey,
+		owner?: ArweaveAddress,
+		options?: IncrementalSyncOptions
+	): Promise<IncrementalSyncResult> {
+		if (!owner) {
+			owner = await this.wallet.getAddress();
+		}
+
+		// Ensure we have the incremental sync DAO
+		if (!(this.arFsDao instanceof ArFSDAOIncrementalSync)) {
+			throw new Error('ArFS DAO does not support incremental sync');
+		}
+
+		return this.arFsDao.getPrivateDriveIncrementalSync(driveId, driveKey, owner, options);
+	}
+
+	/**
+	 * Gets the cached sync state for a drive
+	 *
+	 * @param driveId - The drive ID to get sync state for
+	 * @returns The cached sync state or undefined if not cached
+	 */
+	async getCachedSyncState(driveId: DriveID): Promise<DriveSyncState | undefined> {
+		if (this.arFsDao instanceof ArFSDAOIncrementalSync) {
+			return this.arFsDao.getCachedSyncState(driveId);
+		}
+		return this.arFsDao.anonymousIncSync?.getCachedSyncState?.(driveId);
+	}
+
+	/**
+	 * Sets the cached sync state for a drive
+	 *
+	 * @param driveId - The drive ID to set sync state for
+	 * @param syncState - The sync state to cache
+	 */
+	setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): void {
+		if (this.arFsDao instanceof ArFSDAOIncrementalSync) {
+			this.arFsDao.setCachedSyncState(driveId, syncState);
+		} else if (this.arFsDao.anonymousIncSync?.setCachedSyncState) {
+			this.arFsDao.anonymousIncSync.setCachedSyncState(driveId, syncState);
+		}
 	}
 }

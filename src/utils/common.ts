@@ -426,7 +426,7 @@ export function BufferToString(buffer: Buffer): string {
 	let char2, char3;
 
 	// to keep our existing logic
-	const array = new Uint8Array(buffer)
+	const array = new Uint8Array(buffer);
 
 	out = '';
 	const len = array.length;

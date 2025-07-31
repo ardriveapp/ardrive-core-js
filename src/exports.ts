@@ -13,6 +13,8 @@ export * from './jwk_wallet';
 // ArFSDao
 export * from './arfs/arfsdao';
 export * from './arfs/arfsdao_anonymous';
+export * from './arfs/arfsdao_anonymous_incremental_sync';
+export * from './arfs/arfsdao_incremental_sync';
 
 // ArFS
 export * from './arfs/arfs_entities';
@@ -57,3 +59,4 @@ export * from './utils/query';
 export * from './utils/sort_functions';
 export * from './utils/upload_conflict_resolution';
 export * from './utils/wallet_utils';
+export * from './utils/sync_state';
