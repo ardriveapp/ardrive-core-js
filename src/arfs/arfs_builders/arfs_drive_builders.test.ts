@@ -2,8 +2,9 @@ import { expect } from 'chai';
 import { stub } from 'sinon';
 import { fakeArweave, stubTxID } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
-import { ArFSPrivateDrive } from '../../exports';
-import { EID, EntityKey, GQLNodeInterface, GQLTransactionsResultInterface } from '../../types';
+import { ArFSPrivateDrive, DriveSignatureType } from '../../exports';
+import { VersionedDriveKey } from '../../types/entity_key';
+import { EID, GQLNodeInterface, GQLTransactionsResultInterface } from '../../types';
 import { gatewayUrlForArweave } from '../../utils/common';
 import { GatewayAPI } from '../../utils/gateway_api';
 import { PrivateKeyData } from '../private_key_data';
@@ -14,7 +15,7 @@ const stubPublicDriveGQLNode: Partial<GQLNodeInterface> = {
 	tags: [
 		{ name: 'App-Name', value: 'ArDrive-CLI' },
 		{ name: 'App-Version', value: '1.1.4' },
-		{ name: 'ArFS', value: '0.11' },
+		{ name: 'ArFS', value: '0.15' },
 		{ name: 'Content-Type', value: 'application/json' },
 		{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
 		{ name: 'Entity-Type', value: 'drive' },
@@ -39,6 +40,21 @@ const gatewayApi = new GatewayAPI({
 });
 
 describe('ArFSPublicDriveBuilder', () => {
+	it('handles empty app version when building from node', async () => {
+		const nodeWithEmptyAppVersion = {
+			...stubPublicDriveGQLNode,
+			tags: stubPublicDriveGQLNode.tags?.map((tag) => (tag.name === 'App-Version' ? { ...tag, value: '' } : tag))
+		};
+
+		const builder = ArFSPublicDriveBuilder.fromArweaveNode(nodeWithEmptyAppVersion as GQLNodeInterface, gatewayApi);
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
+		const driveMetaData = await builder.build(nodeWithEmptyAppVersion as GQLNodeInterface);
+
+		expect(driveMetaData.appVersion).to.equal('');
+		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
+		expect(`${driveMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
+	});
+
 	it('constructs expected drive from node', async () => {
 		const builder = ArFSPublicDriveBuilder.fromArweaveNode(stubPublicDriveGQLNode as GQLNodeInterface, gatewayApi);
 		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
@@ -47,7 +63,7 @@ describe('ArFSPublicDriveBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
 		expect(driveMetaData.appVersion).to.equal('1.1.4');
-		expect(driveMetaData.arFS).to.equal('0.11');
+		expect(driveMetaData.arFS).to.equal('0.15');
 		expect(driveMetaData.contentType).to.equal('application/json');
 		expect(`${driveMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
 		expect(driveMetaData.entityType).to.equal('drive');
@@ -139,7 +155,7 @@ const stubPrivateDriveGQLNode: Partial<GQLNodeInterface> = {
 	tags: [
 		{ name: 'App-Name', value: 'ArDrive-CLI' },
 		{ name: 'App-Version', value: '1.1.2' },
-		{ name: 'ArFS', value: '0.11' },
+		{ name: 'ArFS', value: '0.15' },
 		{ name: 'Content-Type', value: 'application/octet-stream' },
 		{ name: 'Drive-Id', value: '5ca7ddfe-effa-4fc5-8796-8f3e0502854a' },
 		{ name: 'Entity-Type', value: 'drive' },
@@ -152,7 +168,10 @@ const stubPrivateDriveGQLNode: Partial<GQLNodeInterface> = {
 	]
 };
 
-const driveKeyForStubPrivateDrive = new EntityKey(Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'));
+const driveKeyForStubPrivateDrive = new VersionedDriveKey(
+	Buffer.from('VTAOuxuewJbRRFeCXiFifHipwJKXzXKxvZaKqyCht/s', 'base64'),
+	DriveSignatureType.v1
+);
 
 // prettier-ignore
 const stubPrivateDriveGetDataResult = Buffer.from(Uint8Array.from([
@@ -163,6 +182,26 @@ const stubPrivateDriveGetDataResult = Buffer.from(Uint8Array.from([
 ]));
 
 describe('ArFSPrivateDriveBuilder', () => {
+	it('handles empty app version when building from node', async () => {
+		const nodeWithEmptyAppVersion = {
+			...stubPrivateDriveGQLNode,
+			tags: stubPrivateDriveGQLNode.tags?.map((tag) => (tag.name === 'App-Version' ? { ...tag, value: '' } : tag))
+		};
+
+		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
+			nodeWithEmptyAppVersion as GQLNodeInterface,
+			gatewayApi,
+			driveKeyForStubPrivateDrive
+		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
+
+		const driveMetaData = await builder.build(nodeWithEmptyAppVersion as GQLNodeInterface);
+
+		expect(driveMetaData.appVersion).to.equal('');
+		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
+		expect(`${driveMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
+	});
+
 	it('constructs expected drive from node', async () => {
 		const builder = ArFSPrivateDriveBuilder.fromArweaveNode(
 			stubPrivateDriveGQLNode as GQLNodeInterface,
@@ -176,7 +215,7 @@ describe('ArFSPrivateDriveBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
 		expect(driveMetaData.appVersion).to.equal('1.1.2');
-		expect(driveMetaData.arFS).to.equal('0.11');
+		expect(driveMetaData.arFS).to.equal('0.15');
 		expect(driveMetaData.contentType).to.equal('application/octet-stream');
 		expect(`${driveMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
 		expect(driveMetaData.entityType).to.equal('drive');
@@ -242,6 +281,56 @@ describe('SafeArFSDriveBuilder', () => {
 	const stubPrivateKeyData = new PrivateKeyData({ driveKeys: [driveKeyForStubPrivateDrive] });
 	const emptyPrivateKeyData = new PrivateKeyData({});
 
+	it('handles empty app version when building public drive', async () => {
+		const nodeWithEmptyAppVersion = {
+			...stubPublicDriveGQLNode,
+			tags: stubPublicDriveGQLNode.tags?.map((tag) => (tag.name === 'App-Version' ? { ...tag, value: '' } : tag))
+		};
+
+		stub(gatewayApi, 'gqlRequest').resolves({
+			edges: [{ node: nodeWithEmptyAppVersion }]
+		} as GQLTransactionsResultInterface);
+
+		const builder = new SafeArFSDriveBuilder({
+			entityId: EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e'),
+			gatewayApi,
+			privateKeyData: emptyPrivateKeyData
+		});
+
+		stub(builder, 'getDataForTxID').resolves(stubPublicDriveGetDataResult);
+
+		const driveMetaData = await builder.build();
+
+		expect(driveMetaData.appVersion).to.equal('');
+		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
+		expect(`${driveMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
+	});
+
+	it('handles empty app version when building private drive', async () => {
+		const nodeWithEmptyAppVersion = {
+			...stubPrivateDriveGQLNode,
+			tags: stubPrivateDriveGQLNode.tags?.map((tag) => (tag.name === 'App-Version' ? { ...tag, value: '' } : tag))
+		};
+
+		stub(gatewayApi, 'gqlRequest').resolves({
+			edges: [{ node: nodeWithEmptyAppVersion }]
+		} as GQLTransactionsResultInterface);
+
+		const builder = new SafeArFSDriveBuilder({
+			entityId: EID('5ca7ddfe-effa-4fc5-8796-8f3e0502854a'),
+			gatewayApi,
+			privateKeyData: stubPrivateKeyData
+		});
+
+		stub(builder, 'getDataForTxID').resolves(stubPrivateDriveGetDataResult);
+
+		const driveMetaData = (await builder.build()) as ArFSPrivateDrive;
+
+		expect(driveMetaData.appVersion).to.equal('');
+		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
+		expect(`${driveMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
+	});
+
 	it('constructs expected public drive from node', async () => {
 		const builder = SafeArFSDriveBuilder.fromArweaveNode(
 			stubPublicDriveGQLNode as GQLNodeInterface,
@@ -255,7 +344,7 @@ describe('SafeArFSDriveBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
 		expect(driveMetaData.appVersion).to.equal('1.1.4');
-		expect(driveMetaData.arFS).to.equal('0.11');
+		expect(driveMetaData.arFS).to.equal('0.15');
 		expect(driveMetaData.contentType).to.equal('application/json');
 		expect(`${driveMetaData.driveId}`).to.equal('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
 		expect(driveMetaData.entityType).to.equal('drive');
@@ -283,7 +372,7 @@ describe('SafeArFSDriveBuilder', () => {
 		// Ensure GQL tags on metadata are consistent
 		expect(driveMetaData.appName).to.equal('ArDrive-CLI');
 		expect(driveMetaData.appVersion).to.equal('1.1.2');
-		expect(driveMetaData.arFS).to.equal('0.11');
+		expect(driveMetaData.arFS).to.equal('0.15');
 		expect(driveMetaData.contentType).to.equal('application/octet-stream');
 		expect(`${driveMetaData.driveId}`).to.equal('5ca7ddfe-effa-4fc5-8796-8f3e0502854a');
 		expect(driveMetaData.entityType).to.equal('drive');

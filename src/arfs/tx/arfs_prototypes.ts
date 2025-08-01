@@ -89,7 +89,7 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 		super(customMetaDataTags);
 
 		// Get the current time so the app can display the "created" data later on
-		this.unixTime = new UnixTime(Math.round(Date.now() / 1000));
+		this.unixTime = new UnixTime(Date.now());
 	}
 
 	protected get protectedTags(): GQLTagInterface[] {
@@ -148,7 +148,8 @@ export class ArFSPrivateDriveMetaDataPrototype extends ArFSDriveMetaDataPrototyp
 		for (const tag of [
 			{ name: 'Cipher', value: this.objectData.cipher },
 			{ name: 'Cipher-IV', value: this.objectData.cipherIV },
-			{ name: 'Drive-Auth-Mode', value: this.objectData.driveAuthMode }
+			{ name: 'Drive-Auth-Mode', value: this.objectData.driveAuthMode },
+			{ name: 'Signature-Type', value: this.objectData.driveSignatureType.toString() }
 		]) {
 			tags.push(tag);
 		}

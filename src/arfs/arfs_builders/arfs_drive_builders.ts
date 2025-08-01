@@ -2,7 +2,6 @@ import { driveDecrypt } from '../../utils/crypto';
 import { PrivateKeyData } from '../private_key_data';
 import {
 	CipherIV,
-	DriveKey,
 	FolderID,
 	EID,
 	EntityID,
@@ -13,14 +12,20 @@ import {
 	EntityMetaDataTransactionData
 } from '../../types';
 import { BufferToString } from '../../utils/common';
-import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId } from '../../utils/constants';
+import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId, gqlTagNameRecord } from '../../utils/constants';
 import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
 	ArFSMetadataEntityBuilder,
 	ArFSMetadataEntityBuilderParams,
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
-import { ArFSPrivateDriveKeyless, ArweaveAddress } from '../../exports';
+import {
+	ArFSPrivateDriveKeyless,
+	ArweaveAddress,
+	DriveKey,
+	DriveSignatureType,
+	parseDriveSignatureType
+} from '../../exports';
 import { GatewayAPI } from '../../utils/gateway_api';
 
 export interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {
@@ -75,7 +80,6 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 	protected async buildEntity(): Promise<ArFSPublicDrive> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -100,7 +104,7 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 
 			return new ArFSPublicDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
@@ -127,11 +131,20 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 	driveAuthMode?: DriveAuthMode;
 	cipher?: string;
 	cipherIV?: CipherIV;
+
+	driveSignatureType?: DriveSignatureType;
 	private readonly driveKey: DriveKey;
 
-	constructor({ entityId: driveId, key: driveKey, owner, gatewayApi }: ArFSPrivateMetadataEntityBuilderParams) {
+	constructor({
+		entityId: driveId,
+		key: driveKey,
+		owner,
+		gatewayApi,
+		driveSignatureType
+	}: ArFSPrivateMetadataEntityBuilderParams) {
 		super({ entityId: driveId, owner, gatewayApi });
 		this.driveKey = driveKey;
+		this.driveSignatureType = driveSignatureType;
 	}
 
 	getGqlQueryParameters(): GQLTagInterface[] {
@@ -152,7 +165,17 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 		if (!driveId) {
 			throw new Error('Drive-ID tag missing!');
 		}
-		const fileBuilder = new ArFSPrivateDriveBuilder({ entityId: EID(driveId), key: driveKey, gatewayApi });
+
+		const driveSignatureTypeTagData = tags.find((tag) => tag.name === 'Signature-Type')?.value;
+		const driveSignatureType = driveSignatureTypeTagData
+			? parseDriveSignatureType(driveSignatureTypeTagData)
+			: undefined;
+		const fileBuilder = new ArFSPrivateDriveBuilder({
+			entityId: EID(driveId),
+			key: driveKey,
+			gatewayApi,
+			driveSignatureType: driveSignatureType ?? DriveSignatureType.v1
+		});
 		return fileBuilder;
 	}
 
@@ -172,7 +195,10 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 				case 'Drive-Auth-Mode':
 					this.driveAuthMode = value as DriveAuthMode;
 					break;
-				case 'Drive-Privacy':
+				case 'Signature-Type':
+					this.driveSignatureType = parseDriveSignatureType(value);
+					break;
+				case gqlTagNameRecord.drivePrivacy:
 					this.drivePrivacy = value as DrivePrivacy;
 					break;
 				default:
@@ -186,7 +212,6 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 	protected async buildEntity(): Promise<ArFSPrivateDrive> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -211,7 +236,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 
 			return new ArFSPrivateDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,
@@ -225,6 +250,7 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 				this.cipher,
 				this.cipherIV,
 				this.driveKey,
+				this.driveSignatureType ?? DriveSignatureType.v1,
 				this.boost,
 				this.customMetaData.metaDataGqlTags,
 				this.customMetaData.metaDataJson
@@ -245,6 +271,7 @@ export class EncryptedEntityID extends EntityID {
 
 export interface SafeArFSPrivateMetadataEntityBuilderParams extends ArFSMetadataEntityBuilderParams {
 	privateKeyData: PrivateKeyData;
+	driveSignatureType?: DriveSignatureType;
 }
 
 export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
@@ -253,12 +280,19 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 	driveAuthMode?: DriveAuthMode;
 	cipher?: string;
 	cipherIV?: CipherIV;
+	driveSignatureType?: DriveSignatureType;
 
 	private readonly privateKeyData: PrivateKeyData;
 
-	constructor({ entityId: driveId, privateKeyData, gatewayApi }: SafeArFSPrivateMetadataEntityBuilderParams) {
+	constructor({
+		entityId: driveId,
+		privateKeyData,
+		gatewayApi,
+		driveSignatureType
+	}: SafeArFSPrivateMetadataEntityBuilderParams) {
 		super({ entityId: driveId, gatewayApi });
 		this.privateKeyData = privateKeyData;
+		this.driveSignatureType = driveSignatureType;
 	}
 
 	getGqlQueryParameters(): GQLTagInterface[] {
@@ -278,11 +312,19 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 		if (!driveId) {
 			throw new Error('Drive-ID tag missing!');
 		}
+
+		const driveSignatureTypeTagData = tags.find((tag) => tag.name === 'Signature-Type')?.value;
+		const driveSignatureType =
+			!privateKeyData || !driveSignatureTypeTagData
+				? undefined
+				: parseDriveSignatureType(driveSignatureTypeTagData);
+
 		const driveBuilder = new SafeArFSDriveBuilder({
 			entityId: EID(driveId),
 			// TODO: Make all private builders optionally take driveKey and fail gracefully, populating fields with 'ENCRYPTED'
 			privateKeyData,
-			gatewayApi
+			gatewayApi,
+			driveSignatureType
 		});
 		return driveBuilder;
 	}
@@ -306,6 +348,9 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 				case 'Drive-Privacy':
 					this.drivePrivacy = value as DrivePrivacy;
 					break;
+				case 'Signature-Type':
+					this.driveSignatureType = parseDriveSignatureType(value);
+					break;
 				default:
 					unparsedTags.push(tag);
 					break;
@@ -317,7 +362,6 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 	protected async buildEntity(): Promise<ArFSDriveEntity> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -344,7 +388,8 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 							this.cipherIV,
 							this.entityId,
 							dataBuffer,
-							placeholderDriveData
+							placeholderDriveData,
+							this.driveSignatureType
 						);
 					}
 					throw new Error('Invalid private drive state');
@@ -388,7 +433,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 
 				return new ArFSPrivateDriveKeyless(
 					this.appName,
-					this.appVersion,
+					this.appVersion ?? '',
 					this.arFS,
 					this.contentType,
 					this.driveId,
@@ -401,6 +446,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 					this.driveAuthMode,
 					this.cipher,
 					this.cipherIV,
+					this.driveSignatureType ?? DriveSignatureType.v1,
 					this.boost,
 					this.customMetaData.metaDataGqlTags,
 					this.customMetaData.metaDataJson
@@ -408,7 +454,7 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 			}
 			return new ArFSPublicDrive(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,

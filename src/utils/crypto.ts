@@ -7,14 +7,16 @@ import hkdf from 'futoin-hkdf';
 import utf8 from 'utf8';
 import jwkToPem, { JWK } from 'jwk-to-pem';
 import { authTagLength } from './constants';
-import { DriveKey, EntityKey, FileKey } from '../types';
+import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
+import { VersionedDriveKey } from '../types/entity_key';
+import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
 const keyHash = 'SHA-256';
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file
-export async function getArweaveWalletSigningKey(jwk: JWK, data: Uint8Array): Promise<Uint8Array> {
+export async function generateWalletSignatureV1(jwk: JWK, data: Uint8Array): Promise<Uint8Array> {
 	const sign = crypto.createSign('sha256');
 	sign.update(data);
 	const pem: string = jwkToPem(jwk, { private: true });
@@ -26,19 +28,115 @@ export async function getArweaveWalletSigningKey(jwk: JWK, data: Uint8Array): Pr
 	return signature;
 }
 
-// Derive a key from the user's ArDrive ID, JWK and Data Encryption Password (also their login password)
+// Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file using data item (equivalent to Wander's signDataItem())
+export async function generateWalletSignatureV2(jwk: JWKInterface, data: Uint8Array): Promise<Uint8Array> {
+	const signer = new ArweaveSigner(jwk);
+	// Override sign to use 0 saltLength
+	signer.sign = function (message) {
+		return getCryptoDriver().sign(jwk, message, {
+			saltLength: 0
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		}) as any;
+	};
+	const dataItem = createData(data, signer, {
+		tags: [
+			{
+				name: 'Action',
+				value: 'Drive-Signature-V2'
+			}
+		]
+	});
+	await dataItem.sign(signer);
+	return new Uint8Array(dataItem.rawSignature);
+}
+
+// Derive a key from the user's Drive ID, JWK and Data Encryption Password (also their login password)
+// Defaults to DriveSignatureType.v1 for backwards compatibility.
+// ArFS v0.15 introduced stored encrypted v1 signatures which can be passed in here for decryption using a
+// v2 Drive key. Private Drives may also be created using v2 signatures. The drive's signature type is stored
+// as "Signature"
+export interface DeriveDriveKeyParams {
+	dataEncryptionKey: crypto.BinaryLike;
+	driveId: string;
+	walletPrivateKey: string;
+	driveSignatureType?: DriveSignatureType;
+	encryptedSignatureData?: {
+		cipherIV: string;
+		encryptedData: Buffer;
+	};
+}
+
+// Backwards compatibility overload pre ArFS v0.15
 export async function deriveDriveKey(
 	dataEncryptionKey: crypto.BinaryLike,
 	driveId: string,
 	walletPrivateKey: string
+): Promise<DriveKey>;
+
+// Updated signature for ArFS v0.15 and later
+export async function deriveDriveKey(params: DeriveDriveKeyParams): Promise<DriveKey>;
+
+// Implementation
+export async function deriveDriveKey(
+	dataEncryptionKeyOrParams: crypto.BinaryLike | DeriveDriveKeyParams,
+	driveId?: string,
+	walletPrivateKey?: string
 ): Promise<DriveKey> {
-	const driveIdBytes: Buffer = Buffer.from(parse(driveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
+	// Handle backwards compatibility
+	let params: DeriveDriveKeyParams;
+	if (typeof dataEncryptionKeyOrParams === 'object' && 'dataEncryptionKey' in dataEncryptionKeyOrParams) {
+		// New object-style call
+		params = dataEncryptionKeyOrParams;
+	} else {
+		// Old three-parameter call
+		params = {
+			dataEncryptionKey: dataEncryptionKeyOrParams as crypto.BinaryLike,
+			driveId: driveId!,
+			walletPrivateKey: walletPrivateKey!,
+			driveSignatureType: DriveSignatureType.v1
+		};
+	}
+
+	const {
+		dataEncryptionKey,
+		driveId: paramDriveId,
+		walletPrivateKey: paramWalletPrivateKey,
+		driveSignatureType = DriveSignatureType.v1,
+		encryptedSignatureData
+	} = params;
+	const driveIdBytes: Buffer = Buffer.from(parse(paramDriveId) as Uint8Array); // The UUID of the driveId is the SALT used for the drive key
 	const driveBuffer: Buffer = Buffer.from(utf8.encode('drive'));
 	const signingKey: Buffer = Buffer.concat([driveBuffer, driveIdBytes]);
-	const walletSignature: Uint8Array = await getArweaveWalletSigningKey(JSON.parse(walletPrivateKey), signingKey);
+
+	let walletSignature: Uint8Array;
+
+	if (driveSignatureType === DriveSignatureType.v1) {
+		if (encryptedSignatureData) {
+			// create v2 drive key and use to decrypt encrypted v1 signature
+			const driveKeyV2 = await deriveDriveKey({
+				dataEncryptionKey,
+				driveId: paramDriveId,
+				walletPrivateKey: paramWalletPrivateKey,
+				driveSignatureType: DriveSignatureType.v2
+			});
+			walletSignature = await driveDecrypt(
+				encryptedSignatureData.cipherIV,
+				driveKeyV2,
+				encryptedSignatureData.encryptedData
+			);
+		} else {
+			walletSignature = await generateWalletSignatureV1(JSON.parse(paramWalletPrivateKey), signingKey);
+		}
+	} else if (driveSignatureType === DriveSignatureType.v2) {
+		// v2 signature uses equivalent to Wander's signDataItem()
+		walletSignature = await generateWalletSignatureV2(JSON.parse(paramWalletPrivateKey), signingKey);
+	} else {
+		throw new Error(`Unknown signature type: ${driveSignatureType}`);
+	}
+
 	const info: string = utf8.encode(dataEncryptionKey as string);
 	const driveKey: Buffer = hkdf(Buffer.from(walletSignature), keyByteLength, { info, hash: keyHash });
-	return new EntityKey(driveKey);
+	return new VersionedDriveKey(driveKey, driveSignatureType);
 }
 
 // Derive a key from the user's Drive Key and the File Id

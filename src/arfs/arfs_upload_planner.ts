@@ -1,4 +1,3 @@
-import { serializeTags } from 'arbundles/src/parser';
 import { ByteCount, EID, FeeMultiple, GQLTagInterface, UploadStats } from '../types';
 import {
 	ArFSUploadPlannerConstructorParams,
@@ -18,6 +17,7 @@ import { getFileEstimationInfo, getFolderEstimationInfo } from '../pricing/estim
 import { BundlePacker, LowestIndexBundlePacker } from '../utils/bundle_packer';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { ArFSTagAssembler } from './tags/tag_assembler';
+import { serializeTags } from '@dha-team/arbundles';
 
 export interface UploadPlanner {
 	planUploadAllEntities(uploadStats: UploadStats[]): Promise<UploadPlan>;

@@ -2,7 +2,6 @@ import { deriveFileKey, fileDecrypt } from '../../utils/crypto';
 import {
 	ArweaveAddress,
 	CipherIV,
-	DriveKey,
 	FileID,
 	FileKey,
 	ByteCount,
@@ -12,13 +11,14 @@ import {
 	GQLNodeInterface,
 	GQLTagInterface,
 	EntityMetaDataTransactionData,
-	DataContentType
+	DataContentType,
+	DriveKey
 } from '../../types';
 import { BufferToString, extToMime } from '../../utils/common';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';
-
+import { FileBuilderValidation, InvalidFileStateException } from '../../types/exceptions';
 export interface FileMetaDataTransactionData extends EntityMetaDataTransactionData {
 	// FIXME: do we need our safe types here? This interface refers to a JSON with primitive types
 	name: string;
@@ -65,7 +65,6 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 	protected async buildEntity(): Promise<ArFSPublicFile> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -86,22 +85,16 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.dataTxId = new TransactionID(dataJSON.dataTxId);
 			this.dataContentType = dataJSON.dataContentType ?? extToMime(this.name);
 
-			if (
-				!this.name ||
-				this.size === undefined ||
-				!this.lastModifiedDate ||
-				!this.dataTxId ||
-				!this.dataContentType ||
-				!(this.entityType === 'file')
-			) {
-				throw new Error('Invalid file state');
-			}
+			const fileBuilderValidation = new FileBuilderValidation();
+			fileBuilderValidation.validateFileProperties(this);
+			fileBuilderValidation.throwIfMissingProperties();
+
 			this.parseCustomMetaDataFromDataJson(dataJSON);
 
 			return Promise.resolve(
 				new ArFSPublicFile(
 					this.appName,
-					this.appVersion,
+					this.appVersion ?? '',
 					this.arFS,
 					this.contentType,
 					this.driveId,
@@ -172,7 +165,6 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 	protected async buildEntity(): Promise<ArFSPrivateFile> {
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -188,6 +180,10 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			const dataBuffer = Buffer.from(txData);
 			const fileKey = this.fileKey ?? (await deriveFileKey(`${this.fileId}`, this.driveKey));
 
+			if (!fileKey) {
+				throw new InvalidFileStateException(['fileKey']);
+			}
+
 			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer);
 			const decryptedFileString: string = BufferToString(decryptedFileBuffer);
 			const decryptedFileJSON: FileMetaDataTransactionData = await JSON.parse(decryptedFileString);
@@ -199,23 +195,15 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
 
-			if (
-				!this.name ||
-				this.size === undefined ||
-				!this.lastModifiedDate ||
-				!this.dataTxId ||
-				!this.dataContentType ||
-				!fileKey ||
-				!(this.entityType === 'file')
-			) {
-				throw new Error('Invalid file state');
-			}
+			const fileBuilderValidation = new FileBuilderValidation();
+			fileBuilderValidation.validateFileProperties(this);
+			fileBuilderValidation.throwIfMissingProperties();
 
 			this.parseCustomMetaDataFromDataJson(decryptedFileJSON);
 
 			return new ArFSPrivateFile(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,

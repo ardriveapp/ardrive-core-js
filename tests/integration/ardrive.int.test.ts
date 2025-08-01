@@ -97,11 +97,11 @@ describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
 
 	const getStubDriveKey = async (): Promise<DriveKey> => {
-		const key = await deriveDriveKey(
-			'stubPassword',
-			`${stubEntityID}`,
-			JSON.stringify((wallet as JWKWallet).getPrivateKey())
-		);
+		const key = await deriveDriveKey({
+			dataEncryptionKey: 'stubPassword',
+			driveId: `${stubEntityID}`,
+			walletPrivateKey: JSON.stringify((wallet as JWKWallet).getPrivateKey())
+		});
 		return key;
 	};
 
@@ -184,6 +184,7 @@ describe('ArDrive class - integrated', () => {
 	);
 
 	const walletOwner = stubArweaveAddress();
+
 	// Use copies to expose any issues with object equality in tested code
 	const expectedDriveId = EID(stubEntityID.toString());
 	const unexpectedDriveId = EID(stubEntityIDAlt.toString());
@@ -220,6 +221,7 @@ describe('ArDrive class - integrated', () => {
 		stub(walletDao, 'walletHasBalance').resolves(true);
 		stub(wallet, 'getAddress').resolves(walletOwner);
 		stub(arfsDao, 'getDriveIDForEntityId').resolves(expectedDriveId);
+		stub(arfsDao, 'assertDrivePrivacy').resolves();
 	});
 
 	describe('utility function', () => {
@@ -322,7 +324,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertCreateDriveExpectations({
 					result,
-					driveFee: W(2809),
+					driveFee: W(2815),
 					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true
@@ -438,7 +440,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertCreateDriveExpectations({
 					result,
-					driveFee: W(2973),
+					driveFee: W(2996),
 					expectedEntityName: validEntityName,
 					folderFee: W(37),
 					isBundled: true,
@@ -1502,7 +1504,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertUploadFileExpectations({
 					result,
-					fileFee: W(5959),
+					fileFee: W(5962),
 					metadataFee: W(166),
 					expectedTip: W(1),
 					expectedEntityName: 'test_wallet.json',
@@ -1784,7 +1786,7 @@ describe('ArDrive class - integrated', () => {
 				});
 				assertUploadFileExpectations({
 					result,
-					fileFee: W(6097),
+					fileFee: W(6100),
 					metadataFee: W(187),
 					expectedTip: W(1),
 					expectPrivateKey: true,
@@ -2790,7 +2792,7 @@ describe('ArDrive class - integrated', () => {
 				conflictResolution: 'replace'
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(186), W(1), existingFileId);
+			assertUploadManifestExpectations(result, W(336), W(189), W(1), existingFileId);
 		});
 
 		it('returns the correct ArFSManifestResult revision if destination folder has a conflicting FILE name and conflictResolution is set to upsert', async () => {
@@ -2802,7 +2804,7 @@ describe('ArDrive class - integrated', () => {
 				conflictResolution: 'upsert'
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(186), W(1), existingFileId);
+			assertUploadManifestExpectations(result, W(336), W(189), W(1), existingFileId);
 		});
 
 		it('returns an empty ArFSManifestResult if destination folder has a conflicting FILE name and conflictResolution is set to skip', async () => {
@@ -2842,7 +2844,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(336), W(183), W(1));
+			assertUploadManifestExpectations(result, W(336), W(186), W(1));
 		});
 
 		it('returns the correct bundled ArFSManifestResult', async () => {
@@ -2852,7 +2854,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(3127), W(183), W(1), undefined, undefined, true);
+			assertUploadManifestExpectations(result, W(3133), W(186), W(1), undefined, undefined, true);
 		});
 
 		it('returns the correct turbo ArFSResult for manifest', async () => {
@@ -2872,7 +2874,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(475), W(183), W(1), undefined, true);
+			assertUploadManifestExpectations(result, W(475), W(186), W(1), undefined, true);
 		});
 
 		it('throws an error if target folder has no files to put in the manifest', async () => {
@@ -2938,7 +2940,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(5959),
+				fileFee: W(5962),
 				metadataFee: W(166),
 				expectedTip: W(1),
 				expectedEntityName: 'test_wallet.json',
@@ -3020,7 +3022,7 @@ describe('ArDrive class - integrated', () => {
 
 			const bundleTxId = created[2].bundleTxId!;
 			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(3116);
+			expect(+fees[`${bundleTxId}`]).to.equal(3122);
 		});
 
 		it('throws an error if two files with the same destination name are sent to the same destination folder', async () => {
@@ -3110,7 +3112,7 @@ describe('ArDrive class - integrated', () => {
 			expect(+fees[`${file2DataTxId}`]).to.equal(+MAX_BUNDLE_SIZE + 1);
 
 			expect(feeKeys[2]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(4471);
+			expect(+fees[`${bundleTxId}`]).to.equal(4480);
 		});
 
 		it('returns an empty result if a folder name conflicts with a folder name and use chooses to skip the folder via an ask prompt', async () => {
@@ -3154,7 +3156,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(16331);
+			expect(+fees[`${bundleTxId}`]).to.equal(16355);
 		});
 
 		// Legacy bulk method test for to confirm backwards compatibility and coverage
@@ -3177,7 +3179,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
-			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17183);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17207);
 		});
 
 		it('returns the expected ArFSResult with a folder that has conflicting names within its tree and uses --skip conflictResolution', async () => {
@@ -3297,7 +3299,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[3]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(17803);
+			expect(+fees[`${bundleTxId}`]).to.equal(17812);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3357,7 +3359,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[3]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(17828);
+			expect(+fees[`${bundleTxId}`]).to.equal(17837);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3418,7 +3420,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[2]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(11904);
+			expect(+fees[`${bundleTxId}`]).to.equal(11910);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3473,7 +3475,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[2]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(2731);
+			expect(+fees[`${bundleTxId}`]).to.equal(2737);
 		});
 
 		it('throws an error if a folder name conflicts with a file name', async () => {
@@ -3510,7 +3512,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(6097),
+				fileFee: W(6100),
 				metadataFee: W(182),
 				expectedTip: W(1),
 				expectPrivateKey: true,
@@ -3639,7 +3641,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2756),
+				fileFee: W(2759),
 				metadataFee: W(159),
 				expectedTip: W(1),
 				isBundled: true,
@@ -3659,7 +3661,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2764),
+				fileFee: W(2767),
 				metadataFee: W(163),
 				expectedTip: W(1),
 				isBundled: true,
@@ -3680,7 +3682,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2900),
+				fileFee: W(2903),
 				metadataFee: W(179),
 				expectedTip: W(1),
 				expectPrivateKey: true,
@@ -3707,7 +3709,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2904),
+				fileFee: W(2907),
 				metadataFee: W(179),
 				expectedTip: W(1),
 				expectPrivateKey: true,

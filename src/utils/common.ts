@@ -16,7 +16,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey, FileKey } from '../types';
+import { ByteCount, DriveKey, DriveSignatureType, FileKey } from '../types';
 import Arweave from 'arweave';
 
 // Pauses application
@@ -375,11 +375,11 @@ export async function createPrivateFileSharingLink(
 ): Promise<string> {
 	let fileSharingUrl = '';
 	try {
-		const driveKey: DriveKey = await deriveDriveKey(
-			user.dataProtectionKey,
-			fileToShare.driveId,
-			user.walletPrivateKey
-		);
+		const driveKey: DriveKey = await deriveDriveKey({
+			dataEncryptionKey: user.dataProtectionKey,
+			driveId: fileToShare.driveId,
+			walletPrivateKey: user.walletPrivateKey
+		});
 		const fileKey: FileKey = await deriveFileKey(fileToShare.fileId, driveKey);
 		fileSharingUrl = stagingAppUrl.concat(
 			'/#/file/',
@@ -421,12 +421,19 @@ export function createPublicDriveSharingLink(driveToShare: types.ArFSDriveMetaDa
 	return driveSharingUrl;
 }
 
+/** @deprecated use Uint8ArrayToString */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function Utf8ArrayToStr(array: Uint8Array | any): string {
+	return Uint8ArrayToString(array);
+}
 export function BufferToString(buffer: Buffer): string {
-	let out, i, c;
-	let char2, char3;
-
 	// to keep our existing logic
 	const array = new Uint8Array(buffer);
+	return Uint8ArrayToString(array);
+}
+export function Uint8ArrayToString(array: Uint8Array): string {
+	let out, i, c;
+	let char2, char3;
 
 	out = '';
 	const len = array.length;
@@ -556,3 +563,15 @@ export function encryptedDataSize(dataSize: ByteCount): ByteCount {
 	}
 	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
 }
+
+export const parseDriveSignatureType = (value: string): DriveSignatureType => {
+	switch (value) {
+		case '1':
+			return DriveSignatureType.v1;
+		case '2':
+			return DriveSignatureType.v2;
+		default:
+			// Added default case for robustness
+			throw new Error(`Unknown DriveSignatureType value: ${value}`);
+	}
+};

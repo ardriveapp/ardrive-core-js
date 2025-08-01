@@ -78,7 +78,6 @@ import {
 	MetaDataBaseCosts,
 	RenamePublicDriveParams,
 	RenamePrivateDriveParams,
-	DriveKey,
 	W,
 	TransactionID,
 	ArFSFees,
@@ -88,7 +87,9 @@ import {
 	RetryPublicArFSFileParams,
 	RetryPublicArFSFileByFileIdParams,
 	RetryPublicArFSFileByDestFolderIdParams,
-	emptyArFSResult
+	emptyArFSResult,
+	DriveSignatureInfo,
+	DriveKey
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
@@ -159,7 +160,13 @@ export class ArDrive extends ArDriveAnonymous {
 	 * @remarks Presumes that there's a sufficient wallet balance
 	 */
 	async sendCommunityTip({ communityWinstonTip, assertBalance = false }: CommunityTipParams): Promise<TipResult> {
-		const tokenHolder: ArweaveAddress = await this.communityOracle.selectTokenHolder();
+		let tokenHolder: ArweaveAddress;
+		try {
+			tokenHolder = await this.communityOracle.selectTokenHolder();
+		} catch (error) {
+			console.error(`Failed to select token holder: ${error}. Cannot send community tip.`);
+			throw new Error('Failed to select a token holder to receive the community tip.');
+		}
 		const arTransferBaseFee = await this.priceEstimator.getBaseWinstonPriceForByteCount(new ByteCount(0));
 
 		const transferResult = await this.walletDao.sendARToAddress(
@@ -585,8 +592,11 @@ export class ArDrive extends ArDriveAnonymous {
 		for (const entity of entitiesToUpload) {
 			const { destFolderId } = entity;
 			const destDriveId = await this.arFsDao.getDriveIdForFolderId(destFolderId);
-
 			const owner = await this.wallet.getAddress();
+
+			// Assert that the drive has the correct privacy settings
+			await this.arFsDao.assertDrivePrivacy(destDriveId, owner, entity.driveKey);
+
 			preparedEntities.push({ ...entity, destDriveId, owner });
 		}
 
@@ -1023,6 +1033,9 @@ export class ArDrive extends ArDriveAnonymous {
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.wallet.getAddress();
 
+		// Assert that the drive is public
+		await this.arFsDao.assertDrivePrivacy(driveId, owner);
+
 		// Assert that there are no duplicate names in the destination folder
 		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
 			parentFolderId,
@@ -1087,6 +1100,9 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const driveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
 		const owner = await this.wallet.getAddress();
+
+		// Assert that the drive is private
+		await this.arFsDao.assertDrivePrivacy(driveId, owner, driveKey);
 
 		// Assert that there are no duplicate names in the destination folder
 		const entityNamesInParentFolder = await this.arFsDao.getPrivateEntityNamesInFolder(
@@ -1288,7 +1304,8 @@ export class ArDrive extends ArDriveAnonymous {
 					drive.rootFolderId,
 					drive.driveAuthMode,
 					drive.cipher,
-					drive.cipherIV
+					drive.cipherIV,
+					drive.driveSignatureType
 				);
 	}
 
@@ -1534,6 +1551,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.wallet.getAddress();
 		const file = await this.getPrivateFile({ fileId, driveKey, owner });
 		const driveId = await this.getDriveIdForFileId(fileId);
+
 		if (file.name === newName) {
 			throw new Error(`To rename a file, the new name must be different`);
 		}
@@ -1592,6 +1610,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const owner = await this.wallet.getAddress();
 		const folder = await this.getPublicFolder({ folderId, owner });
 		const driveId = await this.getDriveIdForFolderId(folderId);
+
 		if (`${folder.parentFolderId}` === ROOT_FOLDER_ID_PLACEHOLDER) {
 			throw new Error(
 				`The root folder with ID '${folderId}' cannot be renamed as it shares its name with its parent drive. Consider renaming the drive instead.`
@@ -1703,6 +1722,7 @@ export class ArDrive extends ArDriveAnonymous {
 	async renamePublicDrive({ driveId, newName }: RenamePublicDriveParams): Promise<ArFSResult> {
 		const owner = await this.wallet.getAddress();
 		const drive = await this.getPublicDrive({ driveId, owner });
+
 		if (drive.name === newName) {
 			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
 		}
@@ -1923,5 +1943,15 @@ export class ArDrive extends ArDriveAnonymous {
 		} else if (this.arFsDao.anonymousIncSync?.setCachedSyncState) {
 			this.arFsDao.anonymousIncSync.setCachedSyncState(driveId, syncState);
 		}
+	}
+
+	async getDriveSignatureInfo({
+		driveId,
+		owner
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+	}): Promise<DriveSignatureInfo> {
+		return this.arFsDao.getDriveSignatureInfo(driveId, owner);
 	}
 }

@@ -76,13 +76,14 @@ describe('ArFSManifestToUpload class', () => {
 	});
 
 	it('gatherFileInfo function returns the expected results', () => {
-		const currentUnixTimeMs = Math.round(Date.now() / 1000);
+		const currentUnixTimeMs = Date.now();
 		const manifest = new ArFSManifestToUpload(stubPublicEntitiesWithPaths, 'TestManifest.json');
 
 		const { dataContentType, lastModifiedDateMS, fileSize } = manifest.gatherFileInfo();
 
 		expect(dataContentType).to.equal('application/x.arweave-manifest+json');
-		expect(+lastModifiedDateMS).to.equal(currentUnixTimeMs);
+		// Allow small time difference due to execution time
+		expect(Math.abs(+lastModifiedDateMS - currentUnixTimeMs)).to.be.lessThan(1000);
 		expect(+fileSize).to.equal(336);
 	});
 

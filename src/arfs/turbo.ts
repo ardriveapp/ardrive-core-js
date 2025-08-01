@@ -1,12 +1,14 @@
-import { DataItem } from 'arbundles';
 import { Readable } from 'node:stream';
+import { DataItem } from '@dha-team/arbundles';
 
 import { TurboUnauthenticatedClient, TurboUploadDataItemResponse, TurboFactory } from '@ardrive/turbo-sdk';
 import { defaultTurboPaymentUrl, defaultTurboUploadUrl } from '../utils/constants';
 
 export interface TurboSettings {
-	turboUploadUrl: URL;
-	turboPaymentUrl: URL;
+	/** @deprecated Use turboUploadUrl instead */
+	turboUrl?: URL;
+	turboUploadUrl?: URL;
+	turboPaymentUrl?: URL;
 }
 
 export interface TurboCachesResponse {
@@ -20,10 +22,15 @@ export class Turbo {
 	private turbo: TurboUnauthenticatedClient;
 
 	constructor({
-		turboUploadUrl = defaultTurboUploadUrl,
+		turboUploadUrl,
 		turboPaymentUrl = defaultTurboPaymentUrl,
+		turboUrl,
 		isDryRun = false
-	}: Partial<TurboSettings> & { isDryRun?: boolean }) {
+	}: TurboSettings & { isDryRun?: boolean }) {
+		if (turboUrl) {
+			turboUploadUrl ??= turboUrl;
+		}
+		turboUploadUrl ??= defaultTurboUploadUrl;
 		this.isDryRun = isDryRun;
 		this.turbo = TurboFactory.unauthenticated({
 			uploadServiceConfig: {

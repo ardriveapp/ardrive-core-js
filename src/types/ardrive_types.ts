@@ -10,15 +10,14 @@ import {
 	FileID,
 	FileConflictPrompts,
 	FileNameConflictResolution,
-	FolderConflictPrompts,
-	DriveKey
+	FolderConflictPrompts
 } from '.';
 import { WithDriveKey } from '../arfs/arfs_entity_result_factory';
 import { ArFSFolderToUpload, ArFSFileToUpload, ArFSDataToUpload } from '../arfs/arfs_file_wrapper';
 import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
-import { EntityKey } from './entity_key';
+import { DriveKey, EntityKey } from './entity_key';
 import { EntityName, SourceUri } from './types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
@@ -257,7 +256,6 @@ export interface DownloadPublicDriveParameters {
 }
 
 export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
-
 export interface RenamePublicFileParams {
 	fileId: FileID;
 	newName: string;

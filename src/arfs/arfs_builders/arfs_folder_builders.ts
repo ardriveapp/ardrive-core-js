@@ -2,12 +2,12 @@ import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import {
 	ArweaveAddress,
 	CipherIV,
-	DriveKey,
 	FolderID,
 	EID,
 	EntityID,
 	GQLNodeInterface,
-	GQLTagInterface
+	GQLTagInterface,
+	DriveKey
 } from '../../types';
 import { fileDecrypt } from '../../utils/crypto';
 import { BufferToString } from '../../utils/common';
@@ -64,7 +64,6 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -89,7 +88,7 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			return Promise.resolve(
 				new ArFSPublicFolder(
 					this.appName,
-					this.appVersion,
+					this.appVersion ?? '',
 					this.arFS,
 					this.contentType,
 					this.driveId,
@@ -164,7 +163,6 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 
 		if (
 			this.appName?.length &&
-			this.appVersion?.length &&
 			this.arFS?.length &&
 			this.contentType?.length &&
 			this.driveId &&
@@ -194,7 +192,7 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 
 			return new ArFSPrivateFolder(
 				this.appName,
-				this.appVersion,
+				this.appVersion ?? '',
 				this.arFS,
 				this.contentType,
 				this.driveId,

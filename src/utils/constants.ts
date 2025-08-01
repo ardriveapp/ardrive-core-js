@@ -6,13 +6,16 @@ import { CipherType } from '../types/type_guards';
 export const ENCRYPTED_DATA_PLACEHOLDER = 'ENCRYPTED';
 export type ENCRYPTED_DATA_PLACEHOLDER_TYPE = 'ENCRYPTED';
 
-export const ArFS_O_11 = '0.11';
-export const CURRENT_ARFS_VERSION = ArFS_O_11;
+export const ArFS_O_15 = '0.15';
+export const CURRENT_ARFS_VERSION = ArFS_O_15;
 export const DEFAULT_APP_NAME = 'ArDrive-Core';
 export { DEFAULT_APP_VERSION };
 
 export const prodAppUrl = 'https://app.ardrive.io';
 export const stagingAppUrl = 'https://staging.ardrive.io';
+
+/** @deprecated use defaultTurboProdUploadUrl */
+export const turboProdUrl = new URL('https://upload.ardrive.io/');
 
 export const defaultTurboUploadUrl = new URL('https://upload.ardrive.io/');
 export const defaultTurboPaymentUrl = new URL('https://payment.ardrive.io/');
@@ -89,7 +92,8 @@ export const gqlTagNameRecord = {
 	drivePrivacy: 'Drive-Privacy',
 	cipher: 'Cipher',
 	cipherIv: 'Cipher-IV',
-	driveAuthMode: 'Drive-Auth-Mode'
+	driveAuthMode: 'Drive-Auth-Mode',
+	signatureType: 'Signature-Type'
 } as const;
 
 export const gqlTagNameArray = Object.values(gqlTagNameRecord);
