@@ -922,7 +922,7 @@ describe('ArLocal Integration Tests', function () {
 					expectedCommunityTip: W(154_544_268_902),
 					expectedDataTxReward: W(1_030_295_126_016),
 					// We expect a metaData reward to exist
-					expectedMetaDataTxReward: W(5_504_334_732)
+					expectedMetaDataTxReward: W(5_516_125_524)
 				});
 
 				// File MetaData should now be valid
