@@ -137,7 +137,6 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				}
 
 				const driveIdTag = edges[0].node.tags.find((t) => t.name === 'Drive-Id');
-				console.log('driveIdTag', driveIdTag);
 				if (driveIdTag) {
 					return EID(driveIdTag.value);
 				}
@@ -164,8 +163,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	// Convenience function for known-public use cases
-	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress): Promise<ArFSPublicDrive> {
-		const cacheKey = { driveId, owner };
+	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicDrive> {
+		const cacheKey = { driveId, owner: Array.isArray(owner) ? owner[0] : owner };
 		const cachedDrive = this.caches.publicDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			return cachedDrive;
@@ -181,8 +180,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	// Convenience function for known-private use cases
-	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress): Promise<ArFSPublicFolder> {
-		const cacheKey = { folderId, owner };
+	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicFolder> {
+		const cacheKey = { folderId, owner: Array.isArray(owner) ? owner[0] : owner };
 		const cachedFolder = this.caches.publicFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			return cachedFolder;
@@ -197,8 +196,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		);
 	}
 
-	async getPublicFile(fileId: FileID, owner: ArweaveAddress): Promise<ArFSPublicFile> {
-		const cacheKey = { fileId, owner };
+	async getPublicFile(fileId: FileID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicFile> {
+		const cacheKey = { fileId, owner: Array.isArray(owner) ? owner[0] : owner };
 		const cachedFile = this.caches.publicFileCache.get(cacheKey);
 		if (cachedFile) {
 			return cachedFile;
@@ -214,7 +213,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	async getAllDrivesForAddress(
-		address: ArweaveAddress,
+		address: ArweaveAddress | ArweaveAddress[],
 		privateKeyData: PrivateKeyData,
 		latestRevisionsOnly = true
 	): Promise<ArFSDriveEntity[]> {
@@ -236,7 +235,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				const driveBuilder = SafeArFSDriveBuilder.fromArweaveNode(node, this.gatewayApi, privateKeyData);
 				const drive = await driveBuilder.build(node);
 				if (drive.drivePrivacy === 'public') {
-					const cacheKey = { driveId: drive.driveId, owner: address };
+					const cacheKey = { driveId: drive.driveId, owner: Array.isArray(address) ? address[0] : address };
 					return this.caches.publicDriveCache.put(cacheKey, Promise.resolve(drive as ArFSPublicDrive));
 				} else {
 					// TODO: No access to private drive cache from here
@@ -252,7 +251,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	async getPublicFilesWithParentFolderIds(
 		folderIDs: FolderID[],
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveId: DriveID,
 		latestRevisionsOnly = false
 	): Promise<ArFSPublicFile[]> {
@@ -280,7 +279,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					cursor = edge.cursor;
 					const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 					const file = await fileBuilder.build(node);
-					const cacheKey = { fileId: file.fileId, owner };
+					const cacheKey = { fileId: file.fileId, owner: Array.isArray(owner) ? owner[0] : owner };
 					return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
 					// If the file is broken, skip it
@@ -334,7 +333,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				try {
 					const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
 					const folder = await folderBuilder.build(node);
-					const cacheKey = { folderId: folder.entityId, owner };
+					const cacheKey = { folderId: folder.entityId, owner: Array.isArray(owner) ? owner[0] : owner };
 					await this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
 					return folder;
 				} catch (e) {

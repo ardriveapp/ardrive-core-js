@@ -59,7 +59,10 @@ export class ArFSPublicDriveBuilder extends ArFSDriveBuilder<ArFSPublicDrive> {
 		];
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {
@@ -178,7 +181,10 @@ export class ArFSPrivateDriveBuilder extends ArFSDriveBuilder<ArFSPrivateDrive> 
 		return fileBuilder;
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {
@@ -328,7 +334,10 @@ export class SafeArFSDriveBuilder extends ArFSDriveBuilder<ArFSDriveEntity> {
 		return driveBuilder;
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {

@@ -1493,7 +1493,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		await this.sendTransactionsAsChunks([transaction], true);
 	}
 
-	public async getDriveSignatureInfo(driveId: DriveID, address: ArweaveAddress): Promise<DriveSignatureInfo> {
+	public async getDriveSignatureInfo(
+		driveId: DriveID,
+		address: ArweaveAddress | ArweaveAddress[]
+	): Promise<DriveSignatureInfo> {
 		const gqlDriveQuery = buildQuery({
 			tags: [
 				{ name: 'Drive-Id', value: `${driveId}` },
@@ -1505,7 +1508,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
 
-		console.log('driveTransactions', driveTransactions);
 		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
 		);
@@ -1536,7 +1538,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
-			console.log('transactions', transactions);
 			if (transactions.edges.length > 0) {
 				const txId = transactions.edges[0].node.id;
 				const cipherIV = transactions.edges[0].node.tags.find((t) => t.name === gqlTagNameRecord.cipherIv);
@@ -1563,8 +1564,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	// Convenience function for known-private use cases
-	async getPrivateDrive(driveId: DriveID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateDrive> {
-		const cacheKey = { driveId, driveKey, owner };
+	async getPrivateDrive(
+		driveId: DriveID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress | ArweaveAddress[]
+	): Promise<ArFSPrivateDrive> {
+		const cacheKey = {
+			driveId,
+			driveKey,
+			owner: Array.isArray(owner) ? owner[0] : owner
+		};
 		const cachedDrive = this.caches.privateDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			return cachedDrive;
@@ -1584,8 +1593,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	// Convenience function for known-private use cases
-	async getPrivateFolder(folderId: FolderID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFolder> {
-		const cacheKey = { folderId, driveKey, owner };
+	async getPrivateFolder(
+		folderId: FolderID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress | ArweaveAddress[]
+	): Promise<ArFSPrivateFolder> {
+		const cacheKey = { folderId, driveKey, owner: Array.isArray(owner) ? owner[0] : owner };
 		const cachedFolder = this.caches.privateFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			return cachedFolder;
@@ -1596,9 +1609,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	async getPrivateFile(fileId: FileID, driveKey: DriveKey, owner: ArweaveAddress): Promise<ArFSPrivateFile> {
+	async getPrivateFile(
+		fileId: FileID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress | ArweaveAddress[]
+	): Promise<ArFSPrivateFile> {
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
-		const cacheKey = { fileId, owner, fileKey };
+		const cacheKey = { fileId, owner: Array.isArray(owner) ? owner[0] : owner, fileKey };
 		const cachedFile = this.caches.privateFileCache.get(cacheKey);
 		if (cachedFile) {
 			return cachedFile;
@@ -1640,7 +1657,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 					// Build the folder so that we don't add something invalid to the cache
 					const folder = await folderBuilder.build(node);
-					const cacheKey = { folderId: folder.entityId, owner, driveKey };
+					const cacheKey = {
+						folderId: folder.entityId,
+						owner: Array.isArray(owner) ? owner[0] : owner,
+						driveKey
+					};
 					return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
 				} catch (e) {
 					// If the folder is broken, skip it
@@ -1666,7 +1687,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getPrivateFilesWithParentFolderIds(
 		folderIDs: FolderID[],
 		driveKey: DriveKey,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveId: DriveID,
 		latestRevisionsOnly = false
 	): Promise<ArFSPrivateFile[]> {
@@ -1698,7 +1719,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
 					const cacheKey = {
 						fileId: file.fileId,
-						owner,
+						owner: Array.isArray(owner) ? owner[0] : owner,
 						fileKey
 					};
 					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
@@ -1719,7 +1740,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
 		parentFolderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		builder: (
 			node: GQLNodeInterface,
 			entityType: 'file' | 'folder'
@@ -1771,7 +1792,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateEntitiesInFolder(
 		parentFolderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveKey: DriveKey,
 		driveId: DriveID,
 		latestRevisionsOnly = true
@@ -1790,7 +1811,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPublicEntitiesInFolder(
 		parentFolderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveId: DriveID,
 		latestRevisionsOnly = true
 	): Promise<(ArFSPublicFile | ArFSPublicFolder)[]> {
@@ -1816,7 +1837,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateEntityNamesInFolder(
 		folderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveKey: DriveKey,
 		driveId: DriveID
 	): Promise<string[]> {
@@ -1824,17 +1845,21 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
-	async getPublicEntityNamesInFolder(folderId: FolderID, owner: ArweaveAddress, driveId: DriveID): Promise<string[]> {
+	async getPublicEntityNamesInFolder(
+		folderId: FolderID,
+		owner: ArweaveAddress | ArweaveAddress[],
+		driveId: DriveID
+	): Promise<string[]> {
 		const childrenOfFolder = await this.getPublicEntitiesInFolder(folderId, owner, driveId, true);
 		return childrenOfFolder.map(entityToNameMap);
 	}
 
 	async getPublicNameConflictInfoInFolder(
 		folderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveId: DriveID
 	): Promise<NameConflictInfo> {
-		const cacheKey = { folderId, owner };
+		const cacheKey = { folderId, owner: Array.isArray(owner) ? owner[0] : owner, driveId };
 		const cachedConflictInfo = this.caches.publicConflictCache.get(cacheKey);
 		if (cachedConflictInfo) {
 			return cachedConflictInfo;
@@ -1854,11 +1879,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async getPrivateNameConflictInfoInFolder(
 		folderId: FolderID,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveKey: DriveKey,
 		driveId: DriveID
 	): Promise<NameConflictInfo> {
-		const cacheKey = { folderId, owner, driveKey };
+		const cacheKey = { folderId, owner: Array.isArray(owner) ? owner[0] : owner, driveKey };
 		const cachedConflictInfo = this.caches.privateConflictCache.get(cacheKey);
 		if (cachedConflictInfo) {
 			return cachedConflictInfo;
@@ -1908,7 +1933,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		);
 	}
 
-	public async isPublicDrive(driveId: DriveID, address: ArweaveAddress): Promise<boolean> {
+	public async isPublicDrive(driveId: DriveID, address: ArweaveAddress | ArweaveAddress[]): Promise<boolean> {
 		const gqlQuery = buildQuery({
 			tags: [
 				{ name: 'Entity-Type', value: 'drive' },
@@ -1927,7 +1952,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		return drivePrivacyFromTag?.value === 'public';
 	}
 
-	public async assertDrivePrivacy(driveId: DriveID, address: ArweaveAddress, driveKey?: DriveKey): Promise<void> {
+	public async assertDrivePrivacy(
+		driveId: DriveID,
+		address: ArweaveAddress | ArweaveAddress[],
+		driveKey?: DriveKey
+	): Promise<void> {
 		const _isPublicDrive = await this.isPublicDrive(driveId, address);
 
 		// Private drive uploads require a drive key
@@ -1964,7 +1993,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 
 				const edgeOfFirstDrive = edges[0];
-				console.log('edgeOfFirstDrive', edgeOfFirstDrive);
 				const driveOwnerAddress = edgeOfFirstDrive.node.owner.address;
 				const driveOwner = new ArweaveAddress(driveOwnerAddress);
 
@@ -1980,7 +2008,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				}
 
 				if (driveKey) {
-					console.log('edgeOfFirstDrive', edgeOfFirstDrive);
 					const cipherIVFromTag = edgeOfFirstDrive.node.tags.find((t) => t.name === 'Cipher-IV');
 
 					if (!cipherIVFromTag) {
@@ -2112,7 +2139,6 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			edges.forEach((edge) => {
 				cursor = edge.cursor;
 				const { node } = edge;
-				console.log('node', node);
 				const { tags } = node;
 				const txId = TxID(node.id);
 				const cipherIVTag = tags.find((tag) => tag.name === 'Cipher-IV');
@@ -2449,7 +2475,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async separatedHierarchyOfFolder(
 		folder: ArFSPrivateFolder,
-		owner: ArweaveAddress,
+		owner: ArweaveAddress | ArweaveAddress[],
 		driveKey: DriveKey,
 		maxDepth: number
 	): Promise<SeparatedFolderHierarchy<ArFSPrivateFile, ArFSPrivateFolder>> {

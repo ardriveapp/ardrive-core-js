@@ -42,7 +42,7 @@ type Sort = typeof ASCENDING_ORDER | typeof DESCENDING_ORDER;
 export interface BuildGQLQueryParams {
 	tags: GQLQueryTagInterface[];
 	cursor?: string;
-	owner?: ArweaveAddress;
+	owner?: ArweaveAddress | ArweaveAddress[];
 	sort?: Sort;
 	ids?: TransactionID[];
 }
@@ -72,7 +72,7 @@ export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, 
 				first: ${singleResult ? latestResult : pageLimit}
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
-				${owner === undefined ? '' : `owners: ["${owner}"]`}
+				${owner === undefined ? '' : `owners: [${Array.isArray(owner) ? owner.map((o) => `"${o}"`) : `"${owner}"`}]`}
 				tags: [
 					${queryTags}
 				]

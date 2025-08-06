@@ -51,7 +51,10 @@ export class WalletDAO {
 	}
 
 	async getWalletWinstonBalance(wallet: Wallet): Promise<Winston> {
-		return this.getAddressWinstonBalance(await wallet.getAddress());
+		const address = await wallet.getAddress();
+
+		// When a wallet has an array of addresses, the ETH L1 address is the first one and will be used for balance checks
+		return this.getAddressWinstonBalance(Array.isArray(address) ? address[0] : address);
 	}
 
 	async getAddressWinstonBalance(address: ArweaveAddress): Promise<Winston> {
@@ -101,7 +104,9 @@ export class WalletDAO {
 
 		if (assertBalance) {
 			const fromAddress = await fromWallet.getAddress();
-			const balanceInWinston = await this.getAddressWinstonBalance(fromAddress);
+			const balanceInWinston = await this.getAddressWinstonBalance(
+				Array.isArray(fromAddress) ? fromAddress[0] : fromAddress
+			);
 			const total = W(transaction.reward).plus(W(transaction.quantity));
 			if (total.isGreaterThan(balanceInWinston)) {
 				throw new Error(

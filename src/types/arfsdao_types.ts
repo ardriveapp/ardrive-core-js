@@ -154,7 +154,7 @@ export interface ArFSListPublicFolderParams {
 	folderId: FolderID;
 	maxDepth: number;
 	includeRoot: boolean;
-	owner: ArweaveAddress;
+	owner: ArweaveAddress | ArweaveAddress[];
 	withKeys?: boolean;
 	withPathsFactory?: (
 		entity: ArFSPrivateFile | ArFSPrivateFolder,
@@ -166,7 +166,7 @@ export type ArFSListPrivateFolderParams = ArFSListPublicFolderParams & WithDrive
 
 export interface ArFSAllPublicFoldersOfDriveParams {
 	driveId: DriveID;
-	owner: ArweaveAddress;
+	owner: ArweaveAddress | ArweaveAddress[];
 	latestRevisionsOnly: boolean;
 }
 export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDriveParams & WithDriveKey;
@@ -174,7 +174,7 @@ export type ArFSAllPrivateFoldersOfDriveParams = ArFSAllPublicFoldersOfDrivePara
 export interface ArFSGetPublicChildFolderIdsParams {
 	folderId: FolderID;
 	driveId: DriveID;
-	owner: ArweaveAddress;
+	owner: ArweaveAddress | ArweaveAddress[];
 }
 export type ArFSGetPrivateChildFolderIdsParams = ArFSGetPublicChildFolderIdsParams & WithDriveKey;
 
@@ -216,7 +216,7 @@ export interface ArFSDownloadPublicFolderParams {
 	destFolderPath: string;
 	customFolderName?: string;
 	maxDepth: number;
-	owner: ArweaveAddress;
+	owner: ArweaveAddress | ArweaveAddress[];
 }
 
 export interface ArFSDownloadPrivateFolderParams {
@@ -224,7 +224,7 @@ export interface ArFSDownloadPrivateFolderParams {
 	destFolderPath: string;
 	customFolderName?: string;
 	maxDepth: number;
-	owner: ArweaveAddress;
+	owner: ArweaveAddress | ArweaveAddress[];
 	driveKey: DriveKey;
 }
 

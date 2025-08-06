@@ -884,7 +884,9 @@ describe('ArLocal Integration Tests', function () {
 				});
 				await mineArLocalBlock(arweave);
 
-				async function deriveLastTxInfoFromGqlForOwner(owner: ArweaveAddress): Promise<TransactionID> {
+				async function deriveLastTxInfoFromGqlForOwner(
+					owner: ArweaveAddress | ArweaveAddress[]
+				): Promise<TransactionID> {
 					const gqlResp: GQLResultInterface = (
 						await arweave.api.post('graphql', buildQuery({ tags: [], owner }))
 					).data;

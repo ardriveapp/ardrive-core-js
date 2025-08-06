@@ -30,7 +30,10 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 	'folder',
 	T
 > {
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const tags = await super.parseFromArweaveNode(node, owner);
 		return tags.filter((tag) => tag.name !== 'Folder-Id');
 	}
@@ -115,7 +118,7 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 		readonly folderId: FolderID,
 		readonly gatewayApi: GatewayAPI,
 		protected readonly driveKey: DriveKey,
-		readonly owner?: ArweaveAddress
+		readonly owner?: ArweaveAddress | ArweaveAddress[]
 	) {
 		super({ entityId: folderId, owner, gatewayApi });
 	}
@@ -134,7 +137,10 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 		return folderBuilder;
 	}
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {

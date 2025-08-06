@@ -1,25 +1,20 @@
-import { Wallet as EthersWallet } from 'ethers';
 import { EthereumSigner } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 
 import { PublicKey, ArweaveAddress, ADDR } from './types';
-import { bufferTob64Url } from './utils/wallet_utils';
+import { bufferTob64Url, ownerToAddress, toB64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
 import { ec as EC } from 'elliptic';
 import Arweave from 'arweave';
 import { fromJWK, SECP256k1PublicKey } from 'arweave/node/lib/crypto/keys';
-import { Base64String } from '@ardrive/turbo-sdk/lib/types/types';
-import { createHash } from 'crypto';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export class EthereumWallet implements Wallet {
-	private readonly wallet: EthersWallet;
 	private readonly signer: EthereumSigner;
 	private readonly jwk: JsonWebKey;
 
 	constructor(privateKey: string) {
-		this.wallet = new EthersWallet(privateKey);
-		this.signer = new EthereumSigner(this.wallet.privateKey);
+		this.signer = new EthereumSigner(privateKey);
 		const ec = new EC('secp256k1');
 
 		const key = ec.keyFromPrivate(privateKey, 'hex');
@@ -50,14 +45,19 @@ export class EthereumWallet implements Wallet {
 		return bufferTob64Url(Buffer.from(await pubKey.identifier()));
 	}
 
-	async getAddress(): Promise<ArweaveAddress> {
-		return ADDR(
+	async getAddress(): Promise<ArweaveAddress[]> {
+		const ethNormalizedL1Address = ADDR(
 			await Arweave.init({
 				host: 'arweave.net',
 				port: 443,
 				protocol: 'https'
 			}).wallets.jwkToAddress(await fromJWK(this.jwk))
 		);
+
+		const pubKeyFromSigner = toB64Url(this.signer.publicKey);
+		const ethNormalizedL2Address = ownerToAddress(pubKeyFromSigner);
+
+		return [ethNormalizedL1Address, ADDR(ethNormalizedL2Address)];
 	}
 
 	async sign(data: Uint8Array): Promise<Uint8Array> {
@@ -93,8 +93,4 @@ export async function secp256k1OwnerFromTx(tx: any): Promise<string> {
 	});
 
 	return Buffer.from(await publicKey.identifier()).toString('base64url');
-}
-
-export function sha256B64Url(input: Buffer): Base64String {
-	return bufferTob64Url(createHash('sha256').update(input).digest());
 }

@@ -851,7 +851,7 @@ export class ArDrive extends ArDriveAnonymous {
 		return undefined;
 	}
 
-	private async assertFolderExists(destinationFolderId: FolderID, owner: ArweaveAddress) {
+	private async assertFolderExists(destinationFolderId: FolderID, owner: ArweaveAddress | ArweaveAddress[]) {
 		try {
 			await this.arFsDao.getPublicFolder(destinationFolderId, owner);
 		} catch (error) {
@@ -1271,7 +1271,14 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	async assertOwnerAddress(owner: ArweaveAddress): Promise<void> {
-		if (!owner.equals(await this.wallet.getAddress())) {
+		const walletAddress = await this.wallet.getAddress();
+		let includesOwner = false;
+		if (Array.isArray(walletAddress)) {
+			includesOwner = walletAddress.includes(owner);
+		} else {
+			includesOwner = owner === walletAddress;
+		}
+		if (!includesOwner) {
 			throw new Error('Supplied wallet is not the owner of this drive!');
 		}
 	}
@@ -1873,7 +1880,7 @@ export class ArDrive extends ArDriveAnonymous {
 		owner
 	}: {
 		driveId: DriveID;
-		owner: ArweaveAddress;
+		owner: ArweaveAddress | ArweaveAddress[];
 	}): Promise<DriveSignatureInfo> {
 		return this.arFsDao.getDriveSignatureInfo(driveId, owner);
 	}

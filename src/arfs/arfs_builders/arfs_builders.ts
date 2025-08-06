@@ -27,7 +27,7 @@ import { GatewayAPI } from '../../utils/gateway_api';
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
 	gatewayApi: GatewayAPI;
-	owner?: ArweaveAddress;
+	owner?: ArweaveAddress | ArweaveAddress[];
 }
 export type ArFSPublicMetadataEntityBuilderParams = ArFSMetadataEntityBuilderParams;
 export interface ArFSPrivateMetadataEntityBuilderParams extends ArFSMetadataEntityBuilderParams {
@@ -54,7 +54,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	boost?: FeeMultiple;
 	protected readonly entityId: AnyEntityID;
 	protected readonly gatewayApi: GatewayAPI;
-	protected readonly owner?: ArweaveAddress;
+	protected readonly owner?: ArweaveAddress | ArweaveAddress[];
 
 	customMetaData: CustomMetaData = {};
 
@@ -80,7 +80,10 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	 *
 	 * @returns an array of unparsed tags
 	 */
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		if (!node) {
 			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
@@ -195,7 +198,10 @@ export abstract class ArFSFileOrFolderBuilder<
 > extends ArFSMetadataEntityBuilder<T> {
 	parentFolderId?: FolderID;
 
-	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+	protected async parseFromArweaveNode(
+		node?: GQLNodeInterface,
+		owner?: ArweaveAddress | ArweaveAddress[]
+	): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
 		tags.forEach((tag: GQLTagInterface) => {

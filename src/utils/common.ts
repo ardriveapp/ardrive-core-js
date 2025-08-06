@@ -124,7 +124,7 @@ export function checkFolderExistsSync(folderPath: string): boolean {
 			return false; // not a directory
 		}
 	} catch (err) {
-		return false; // directory doesnt exist
+		return false; // directory doesn't exist
 	}
 }
 

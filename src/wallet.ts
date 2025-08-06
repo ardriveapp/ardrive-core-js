@@ -5,7 +5,7 @@ import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export interface Wallet {
 	getPublicKey(): Promise<PublicKey>;
-	getAddress(): Promise<ArweaveAddress>;
+	getAddress(): Promise<ArweaveAddress | ArweaveAddress[]>;
 	sign(data: Uint8Array): Promise<Uint8Array>;
 	signTransaction(tx: Transaction): Promise<void>;
 	getSigner(): Signer;

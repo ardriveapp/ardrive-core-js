@@ -219,7 +219,6 @@ export async function fileDecrypt(cipherIV: string, fileKey: FileKey, data: Buff
 		const decryptedFile: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
 		return decryptedFile;
 	} catch (err) {
-		// console.log (err);
 		console.log('Error decrypting file data');
 		return Buffer.from('Error', 'ascii');
 	}
@@ -284,7 +283,6 @@ export async function decryptText(
 		decrypted = Buffer.concat([decrypted, decipher.final()]);
 		return decrypted.toString();
 	} catch (err) {
-		// console.log(err);
 		return 'ERROR';
 	}
 }
