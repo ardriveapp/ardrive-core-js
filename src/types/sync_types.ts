@@ -93,6 +93,8 @@ export interface SyncStats {
 	lowestBlockHeight: number;
 	/** Highest block height seen during sync */
 	highestBlockHeight: number;
+	/** Number of entities that failed to process (optional) */
+	failedEntities?: number;
 }
 
 /**

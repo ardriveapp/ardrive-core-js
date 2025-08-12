@@ -8,6 +8,7 @@ import { DriveSyncState, UnixTime, IncrementalSyncResult, DriveKey } from './typ
 import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfs/arfsdao_anonymous_incremental_sync';
 import { JWKWallet } from './jwk_wallet';
 import { ArFSDAO } from './arfs/arfsdao';
+import { ArFSDAOIncrementalSync } from './arfs/arfsdao_incremental_sync';
 import { WalletDAO } from './wallet_dao';
 import { CommunityOracle } from './community/community_oracle';
 import { GatewayAPI } from './utils/gateway_api';
@@ -114,7 +115,7 @@ describe('ArDrive incremental sync methods', () => {
 		});
 
 		it('should use wallet address when owner not provided', async () => {
-			const walletAddress = stubArweaveAddress('wallet123');
+			const walletAddress = stubArweaveAddress();
 			stub(wallet, 'getAddress').resolves(walletAddress);
 
 			const mockIncSync = {
@@ -158,10 +159,12 @@ describe('ArDrive incremental sync methods', () => {
 
 	describe('ArDrive.syncPrivateDrive', () => {
 		it('should sync private drive using incremental sync DAO', async () => {
-			// Mock ArFSDAOIncrementalSync
-			const mockIncSyncDao = {
-				getPrivateDriveIncrementalSync: stub().resolves(createMockSyncResult())
-			} as typeof arFSDaoStub;
+			// Create a mock that extends ArFSDAOIncrementalSync
+			const mockIncSyncDao = Object.create(ArFSDAOIncrementalSync.prototype);
+			mockIncSyncDao.getPrivateDriveIncrementalSync = stub().resolves(createMockSyncResult());
+			mockIncSyncDao.anonymousIncSync = {
+				getPublicDriveIncrementalSync: stub()
+			};
 
 			(arDrive as any).arFsDao = mockIncSyncDao;
 
@@ -196,16 +199,20 @@ describe('ArDrive incremental sync methods', () => {
 		it('should track progress through callback', async () => {
 			const progressUpdates: Array<{ processed: number; total: number }> = [];
 
-			const mockIncSyncDao = {
-				getPrivateDriveIncrementalSync: stub().callsFake(async (_driveId, _driveKey, _owner, options) => {
+			const mockIncSyncDao = Object.create(ArFSDAOIncrementalSync.prototype);
+			mockIncSyncDao.anonymousIncSync = {
+				getPublicDriveIncrementalSync: stub()
+			};
+			mockIncSyncDao.getPrivateDriveIncrementalSync = stub().callsFake(
+				async (_driveId, _driveKey, _owner, options) => {
 					// Simulate progress updates
 					if (options.onProgress) {
 						options.onProgress(5, -1);
 						options.onProgress(10, -1);
 					}
 					return createMockSyncResult();
-				})
-			} as typeof arFSDaoStub;
+				}
+			);
 
 			(arDrive as any).arFsDao = mockIncSyncDao;
 
@@ -231,9 +238,11 @@ describe('ArDrive incremental sync methods', () => {
 				entityStates: new Map()
 			};
 
-			const mockIncSyncDao = {
-				getCachedSyncState: stub().resolves(cachedState)
-			} as typeof arFSDaoStub;
+			const mockIncSyncDao = Object.create(ArFSDAOIncrementalSync.prototype);
+			mockIncSyncDao.getCachedSyncState = stub().resolves(cachedState);
+			mockIncSyncDao.anonymousIncSync = {
+				getPublicDriveIncrementalSync: stub()
+			};
 
 			(arDrive as any).arFsDao = mockIncSyncDao;
 
@@ -291,9 +300,11 @@ describe('ArDrive incremental sync methods', () => {
 				entityStates: new Map()
 			};
 
-			const mockIncSyncDao = {
-				setCachedSyncState: stub()
-			} as typeof arFSDaoStub;
+			const mockIncSyncDao = Object.create(ArFSDAOIncrementalSync.prototype);
+			mockIncSyncDao.setCachedSyncState = stub();
+			mockIncSyncDao.anonymousIncSync = {
+				getPublicDriveIncrementalSync: stub()
+			};
 
 			(arDrive as any).arFsDao = mockIncSyncDao;
 

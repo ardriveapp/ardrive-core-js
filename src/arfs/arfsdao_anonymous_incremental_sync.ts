@@ -319,7 +319,20 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			return folder;
 		});
 
-		return Promise.all(folders);
+		const results = await Promise.allSettled(folders);
+		const successfulFolders: ArFSPublicFolder[] = [];
+
+		for (const result of results) {
+			if (result.status === 'fulfilled') {
+				successfulFolders.push(result.value);
+			} else {
+				// Log error but continue processing other entities
+				console.warn(`Failed to process folder: ${result.reason?.message || 'Unknown error'}`);
+				stats.failedEntities = (stats.failedEntities || 0) + 1;
+			}
+		}
+
+		return successfulFolders;
 	}
 
 	/**
@@ -359,7 +372,20 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			return file;
 		});
 
-		return Promise.all(files);
+		const results = await Promise.allSettled(files);
+		const successfulFiles: ArFSPublicFile[] = [];
+
+		for (const result of results) {
+			if (result.status === 'fulfilled') {
+				successfulFiles.push(result.value);
+			} else {
+				// Log error but continue processing other entities
+				console.warn(`Failed to process file: ${result.reason?.message || 'Unknown error'}`);
+				stats.failedEntities = (stats.failedEntities || 0) + 1;
+			}
+		}
+
+		return successfulFiles;
 	}
 
 	/**

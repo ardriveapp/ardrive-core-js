@@ -12,11 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing Commands
 - `yarn test` - Run all tests with code coverage (uses Mocha with parallel execution)
-- `yarn test -g 'test name'` - Run specific tests matching the pattern
+- `yarn test -g 'pattern'` - Run specific tests matching the pattern
 - `yarn coverage` - Generate detailed HTML coverage report
-- `yarn power-assert -g 'test name'` - Debug specific test with detailed assertions (runs without parallel)
+- `yarn power-assert -g 'pattern'` - Debug specific test with detailed assertions (runs without parallel)
 - `yarn arlocal-docker-test` - Run integration tests against local Arweave instance
-- `yarn test:sync` - Run all incremental sync tests (no parallel)
+- `yarn test:sync` - Run all incremental sync tests (no parallel, uses --grep incremental)
 - `yarn test:sync:unit` - Run unit tests for incremental sync features
 - `yarn test:sync:integration` - Run integration tests for incremental sync
 
@@ -24,6 +24,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `yarn lint` - Run ESLint on all TypeScript files
 - `yarn lintfix` - Automatically fix linting issues
 - `yarn format` - Format code with Prettier
+
+### CI Commands
+- `yarn ci` - Run integration tests and build (arlocal-docker-test + build)
 
 ## High-Level Architecture
 
