@@ -8,7 +8,9 @@ import {
 	stubEntityIDAlt,
 	stubTxID,
 	stubTxIDAlt,
-	stubPublicDrive
+	stubPublicDrive,
+	stubPublicFolder,
+	stubPublicFile
 } from '../../tests/stubs';
 import {
 	DriveSyncState,
@@ -59,7 +61,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		tags: [
 			{ name: 'Drive-Id', value: mockDriveId.toString() },
 			{ name: 'Entity-Type', value: 'folder' },
-			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() }
+			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
+			{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+			{ name: 'ArFS', value: '0.13' },
+			{ name: 'Unix-Time', value: '1640000000' }
 		],
 		block: {
 			id: 'test-block-id',
@@ -76,7 +81,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		node: node || createMockGQLNode()
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		caches = {
 			...defaultArFSIncrementalSyncCache,
 			syncStateCache: new PromiseCache<DriveID, DriveSyncState>({
@@ -93,6 +98,12 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		gatewayApiStub = stub(gatewayApi, 'gqlRequest');
 
 		arfsDaoIncSync = new ArFSDAOAnonymousIncrementalSync(fakeArweave, 'test_app', '0.0', caches, gatewayApi);
+
+		// Stub the processFolderBatch and processFileBatch methods to return mock entities
+		const mockFolder = await stubPublicFolder({ folderId: stubEntityIDAlt });
+		const mockFile = await stubPublicFile({ fileId: stubEntityIDAlt });
+		stub(arfsDaoIncSync as any, 'processFolderBatch').resolves([mockFolder]);
+		stub(arfsDaoIncSync as any, 'processFileBatch').resolves([mockFile]);
 	});
 
 	afterEach(() => {
@@ -205,7 +216,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 							tags: [
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: EID('folder-1').toString() }
+								{ name: 'Folder-Id', value: EID('11111111-1111-1111-1111-111111111111').toString() },
+								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+								{ name: 'ArFS', value: '0.13' },
+								{ name: 'Unix-Time', value: '1640000000' }
 							]
 						})
 					)
@@ -221,7 +235,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 							tags: [
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: EID('folder-2').toString() }
+								{ name: 'Folder-Id', value: EID('22222222-2222-2222-2222-222222222222').toString() },
+								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+								{ name: 'ArFS', value: '0.13' },
+								{ name: 'Unix-Time', value: '1640000000' }
 							]
 						})
 					)
@@ -264,8 +281,8 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			// Return 11 entities, but 10th one is known
 			const edges: GQLEdgeInterface[] = [];
 			for (let i = 0; i < 11; i++) {
-				const entityId = i === 9 ? stubEntityIDAlt : EID(`entity-${i}`);
-				const txId = i === 9 ? stubTxID : TxID(`tx-${i}`);
+				const entityId = i === 9 ? stubEntityIDAlt : EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa0${i}`);
+				const txId = i === 9 ? stubTxID : TxID(`000000000000000000000000000000000000000000${i}`);
 
 				edges.push(
 					createMockGQLEdge(
@@ -274,7 +291,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 							tags: [
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: entityId.toString() }
+								{ name: 'Folder-Id', value: entityId.toString() },
+								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+								{ name: 'ArFS', value: '0.13' },
+								{ name: 'Unix-Time', value: '1640000000' }
 							]
 						})
 					)
@@ -404,7 +424,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		});
 
 		it('should return undefined for non-cached drive', async () => {
-			const retrieved = await arfsDaoIncSync.getCachedSyncState(EID('non-existent'));
+			const retrieved = await arfsDaoIncSync.getCachedSyncState(EID('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'));
 			expect(retrieved).to.be.undefined;
 		});
 	});

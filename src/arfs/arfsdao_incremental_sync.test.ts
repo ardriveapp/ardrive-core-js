@@ -65,8 +65,11 @@ describe('ArFSDAOIncrementalSync class', () => {
 			{ name: 'Drive-Id', value: mockDriveId.toString() },
 			{ name: 'Entity-Type', value: 'folder' },
 			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
+			{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
 			{ name: 'Cipher', value: 'AES256-GCM' },
-			{ name: 'Cipher-IV', value: '1234567890abcdef' }
+			{ name: 'Cipher-IV', value: '1234567890abcdef' },
+			{ name: 'ArFS', value: '0.13' },
+			{ name: 'Unix-Time', value: '1640000000' }
 		],
 		block: {
 			id: 'test-block-id',
@@ -120,6 +123,13 @@ describe('ArFSDAOIncrementalSync class', () => {
 			caches,
 			gatewayApi
 		);
+
+		// Stub the batch processing methods to return mock entities
+		const { stubPrivateFolder, stubPrivateFile } = await import('../../tests/stubs');
+		const mockFolder = await stubPrivateFolder({ folderId: stubEntityIDAlt });
+		const mockFile = await stubPrivateFile({ fileId: stubEntityIDAlt });
+		stub(arfsDaoIncSync as any, 'processPrivateFolderBatch').resolves([mockFolder]);
+		stub(arfsDaoIncSync as any, 'processPrivateFileBatch').resolves([mockFile]);
 	});
 
 	afterEach(() => {
@@ -158,8 +168,12 @@ describe('ArFSDAOIncrementalSync class', () => {
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'file' },
 					{ name: 'File-Id', value: stubEntityIDAlt.toString() },
+					{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
 					{ name: 'Cipher', value: 'AES256-GCM' },
-					{ name: 'Cipher-IV', value: '1234567890abcdef' }
+					{ name: 'Cipher-IV', value: '1234567890abcdef' },
+					{ name: 'ArFS', value: '0.13' },
+					{ name: 'Unix-Time', value: '1640000000' },
+					{ name: 'Content-Type', value: 'application/octet-stream' }
 				]
 			});
 
@@ -226,8 +240,12 @@ describe('ArFSDAOIncrementalSync class', () => {
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'file' },
 					{ name: 'File-Id', value: stubEntityIDAlt.toString() },
+					{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
 					{ name: 'Cipher', value: 'AES256-GCM' },
-					{ name: 'Cipher-IV', value: 'invalid-iv' }
+					{ name: 'Cipher-IV', value: 'invalid-iv' },
+					{ name: 'ArFS', value: '0.13' },
+					{ name: 'Unix-Time', value: '1640000000' },
+					{ name: 'Content-Type', value: 'application/octet-stream' }
 				]
 			});
 
@@ -297,8 +315,8 @@ describe('ArFSDAOIncrementalSync class', () => {
 			// Return multiple entities including known one
 			const edges: GQLEdgeInterface[] = [];
 			for (let i = 0; i < 5; i++) {
-				const entityId = i === 2 ? stubEntityIDAlt : EID(`entity-${i}`);
-				const txId = i === 2 ? stubTxID : TxID(`tx-${i}`);
+				const entityId = i === 2 ? stubEntityIDAlt : EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa0${i}`);
+				const txId = i === 2 ? stubTxID : TxID(`000000000000000000000000000000000000000000${i}`);
 
 				edges.push(
 					createMockGQLEdge(
@@ -307,7 +325,12 @@ describe('ArFSDAOIncrementalSync class', () => {
 							tags: [
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: entityId.toString() }
+								{ name: 'Folder-Id', value: entityId.toString() },
+								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+								{ name: 'Cipher', value: 'AES256-GCM' },
+								{ name: 'Cipher-IV', value: '0000000000000000000000000000' },
+								{ name: 'ArFS', value: '0.13' },
+								{ name: 'Unix-Time', value: '1640000000' }
 							]
 						})
 					)
