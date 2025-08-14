@@ -113,6 +113,10 @@ describe('ArFSDAOIncrementalSync class', () => {
 
 		gatewayApiStub = stub(gatewayApi, 'gqlRequest');
 
+		// Stub getTxData to return mock encrypted metadata
+		const getTxDataStub = stub(gatewayApi, 'getTxData');
+		getTxDataStub.resolves(Buffer.from(JSON.stringify({ name: 'Test Folder' })));
+
 		arfsDaoIncSync = new ArFSDAOIncrementalSync(
 			wallet,
 			fakeArweave,
@@ -123,13 +127,6 @@ describe('ArFSDAOIncrementalSync class', () => {
 			caches,
 			gatewayApi
 		);
-
-		// Stub the batch processing methods to return mock entities
-		const { stubPrivateFolder, stubPrivateFile } = await import('../../tests/stubs');
-		const mockFolder = await stubPrivateFolder({ folderId: stubEntityIDAlt });
-		const mockFile = await stubPrivateFile({ fileId: stubEntityIDAlt });
-		stub(arfsDaoIncSync as any, 'processPrivateFolderBatch').resolves([mockFolder]);
-		stub(arfsDaoIncSync as any, 'processPrivateFileBatch').resolves([mockFile]);
 	});
 
 	afterEach(() => {
@@ -141,11 +138,12 @@ describe('ArFSDAOIncrementalSync class', () => {
 			// Mock drive metadata fetch
 			stub(arfsDaoIncSync, 'getPrivateDrive').resolves(await stubPrivateDrive());
 
-			// Mock GraphQL responses
+			// Mock GraphQL responses - folders query
 			gatewayApiStub.onFirstCall().resolves({
 				edges: [createMockGQLEdge()],
 				pageInfo: { hasNextPage: false }
 			});
+			// Mock GraphQL responses - files query
 			gatewayApiStub.onSecondCall().resolves({
 				edges: [],
 				pageInfo: { hasNextPage: false }

@@ -9,8 +9,7 @@ import {
 	stubTxID,
 	stubTxIDAlt,
 	stubPublicDrive,
-	stubPublicFolder,
-	stubPublicFile
+	stubPublicFolder
 } from '../../tests/stubs';
 import {
 	DriveSyncState,
@@ -41,6 +40,7 @@ const fakeArweave = Arweave.init({
 describe('ArFSDAOAnonymousIncrementalSync class', () => {
 	let arfsDaoIncSync: ArFSDAOAnonymousIncrementalSync;
 	let gatewayApiStub: SinonStub;
+	let getTxDataStub: SinonStub;
 	let caches: ArFSIncrementalSyncCache;
 
 	const mockDriveId = stubEntityID;
@@ -59,6 +59,9 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		quantity: { winston: '0', ar: '0' },
 		data: { size: 0, type: 'application/json' },
 		tags: [
+			{ name: 'App-Name', value: 'ArDrive-Core' },
+			{ name: 'App-Version', value: '0.0.1' },
+			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Drive-Id', value: mockDriveId.toString() },
 			{ name: 'Entity-Type', value: 'folder' },
 			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
@@ -97,23 +100,27 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 
 		gatewayApiStub = stub(gatewayApi, 'gqlRequest');
 
-		arfsDaoIncSync = new ArFSDAOAnonymousIncrementalSync(fakeArweave, 'test_app', '0.0', caches, gatewayApi);
+		// Stub getTxData to return mock folder/file metadata
+		getTxDataStub = stub(gatewayApi, 'getTxData');
+		getTxDataStub.resolves(Buffer.from(JSON.stringify({ name: 'Test Folder' })));
 
-		// Stub the processFolderBatch and processFileBatch methods to return mock entities
-		const mockFolder = await stubPublicFolder({ folderId: stubEntityIDAlt });
-		const mockFile = await stubPublicFile({ fileId: stubEntityIDAlt });
-		stub(arfsDaoIncSync as any, 'processFolderBatch').resolves([mockFolder]);
-		stub(arfsDaoIncSync as any, 'processFileBatch').resolves([mockFile]);
+		arfsDaoIncSync = new ArFSDAOAnonymousIncrementalSync(fakeArweave, 'test_app', '0.0', caches, gatewayApi);
 	});
 
 	afterEach(() => {
 		gatewayApiStub.restore();
+		getTxDataStub.restore();
 	});
 
 	describe('getPublicDriveIncrementalSync', () => {
 		it('should perform initial sync when no previous state exists', async () => {
 			// Mock drive metadata fetch
 			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Stub the processFolderBatch to return a mock folder for this test
+			const mockFolder = await stubPublicFolder({ folderId: stubEntityIDAlt });
+			stub(arfsDaoIncSync as any, 'processFolderBatch').resolves([mockFolder]);
+			stub(arfsDaoIncSync as any, 'processFileBatch').resolves([]);
 
 			// Mock GraphQL responses
 			gatewayApiStub.onFirstCall().resolves({
@@ -188,6 +195,9 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'folder' },
 					{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
+					{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+					{ name: 'ArFS', value: '0.13' },
+					{ name: 'Unix-Time', value: '1640000000' },
 					{ name: 'Name', value: 'new-name' }
 				]
 			});
@@ -281,14 +291,23 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			// Return 11 entities, but 10th one is known
 			const edges: GQLEdgeInterface[] = [];
 			for (let i = 0; i < 11; i++) {
-				const entityId = i === 9 ? stubEntityIDAlt : EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa0${i}`);
-				const txId = i === 9 ? stubTxID : TxID(`000000000000000000000000000000000000000000${i}`);
+				const entityId =
+					i === 9
+						? stubEntityIDAlt
+						: EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa${i.toString().padStart(3, '0')}`);
+				const txId =
+					i === 9
+						? stubTxID
+						: TxID(`0000000000000000000000000000000000000000${i.toString().padStart(3, '0')}`);
 
 				edges.push(
 					createMockGQLEdge(
 						createMockGQLNode({
 							id: txId.toString(),
 							tags: [
+								{ name: 'App-Name', value: 'ArDrive-Core' },
+								{ name: 'App-Version', value: '0.0.1' },
+								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
 								{ name: 'Folder-Id', value: entityId.toString() },
