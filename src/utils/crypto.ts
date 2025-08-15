@@ -11,6 +11,7 @@ import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
 import { VersionedDriveKey } from '../types/entity_key';
 import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
 import { Wallet } from '../wallet';
+import { isJWKInterface } from './common';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
@@ -34,8 +35,15 @@ export async function generateWalletSignatureV2(
 	walletOrArweaveJWK: JWKInterface | Wallet,
 	data: Uint8Array
 ): Promise<Uint8Array> {
-	const signer = 'n' in walletOrArweaveJWK ? new ArweaveSigner(walletOrArweaveJWK) : walletOrArweaveJWK.getSigner();
-	const jwk = 'n' in walletOrArweaveJWK ? walletOrArweaveJWK : walletOrArweaveJWK.getPrivateKey();
+	let signer: Signer;
+	let jwk: JWKInterface;
+	if (isJWKInterface(walletOrArweaveJWK)) {
+		jwk = walletOrArweaveJWK;
+		signer = new ArweaveSigner(walletOrArweaveJWK);
+	} else {
+		jwk = walletOrArweaveJWK.getPrivateKey();
+		signer = walletOrArweaveJWK.getSigner();
+	}
 	if (signer instanceof ArweaveSigner) {
 		// Override sign to use 0 saltLength
 		signer.sign = function (message: Uint8Array): Promise<Uint8Array> {

@@ -162,7 +162,7 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave } from '../utils/common';
+import { gatewayUrlForArweave, isJWKInterface } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
 import { ArFSTagSettings } from './arfs_tag_settings';
@@ -201,14 +201,22 @@ export class PrivateDriveKeyData {
 	static async from(drivePassword: string, walletOrArweaveJWK: JWKInterface | Wallet): Promise<PrivateDriveKeyData> {
 		const driveId = uuidv4();
 
+		let walletPrivateKey: JWKInterface;
+		let wallet: Wallet | undefined;
+
+		if (isJWKInterface(walletOrArweaveJWK)) {
+			walletPrivateKey = walletOrArweaveJWK;
+		} else {
+			walletPrivateKey = walletOrArweaveJWK.getPrivateKey();
+			wallet = walletOrArweaveJWK;
+		}
+
 		const driveKey = await deriveDriveKey({
 			dataEncryptionKey: drivePassword,
 			driveId,
-			walletPrivateKey: JSON.stringify(
-				'n' in walletOrArweaveJWK ? walletOrArweaveJWK : walletOrArweaveJWK.getPrivateKey()
-			),
+			walletPrivateKey: JSON.stringify(walletPrivateKey),
 			driveSignatureType: DriveSignatureType.v2,
-			wallet: 'n' in walletOrArweaveJWK ? undefined : walletOrArweaveJWK
+			wallet
 		});
 		return new PrivateDriveKeyData(EID(driveId), driveKey);
 	}

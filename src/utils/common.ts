@@ -575,3 +575,7 @@ export const parseDriveSignatureType = (value: string): DriveSignatureType => {
 			throw new Error(`Unknown DriveSignatureType value: ${value}`);
 	}
 };
+
+export function isJWKInterface(wallet: Wallet | JWKInterface): wallet is JWKInterface {
+	return 'n' in wallet;
+}
