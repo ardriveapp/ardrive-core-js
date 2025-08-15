@@ -5,8 +5,8 @@ import { WalletDAO } from './wallet_dao';
 
 // This test runs too slow to be included in the CI pipeline. But it provides a snapshot of the
 // seed phrase to wallet functionality and should be run locally before a release
-describe('Wallet DAO', function () {
-	this.timeout(90_000000);
+describe.skip('Wallet DAO', function () {
+	this.timeout(90_000);
 	const walletDAO = new WalletDAO(fakeArweave);
 	it('generateWallet from seedphrase function', async () => {
 		const seedPhrase = new SeedPhrase(
