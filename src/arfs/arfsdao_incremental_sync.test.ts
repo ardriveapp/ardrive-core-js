@@ -62,6 +62,9 @@ describe('ArFSDAOIncrementalSync class', () => {
 		quantity: { winston: '0', ar: '0' },
 		data: { size: 0, type: 'application/json' },
 		tags: [
+			{ name: 'App-Name', value: 'ArDrive-Core' },
+			{ name: 'App-Version', value: '0.0.1' },
+			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Drive-Id', value: mockDriveId.toString() },
 			{ name: 'Entity-Type', value: 'folder' },
 			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
@@ -163,6 +166,8 @@ describe('ArFSDAOIncrementalSync class', () => {
 			// Create a file node with encrypted metadata
 			const fileNode = createMockGQLNode({
 				tags: [
+					{ name: 'App-Name', value: 'ArDrive-Core' },
+					{ name: 'App-Version', value: '0.0.1' },
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'file' },
 					{ name: 'File-Id', value: stubEntityIDAlt.toString() },
@@ -235,6 +240,8 @@ describe('ArFSDAOIncrementalSync class', () => {
 			// Create a file node that will fail decryption (keyless)
 			const keylessFileNode = createMockGQLNode({
 				tags: [
+					{ name: 'App-Name', value: 'ArDrive-Core' },
+					{ name: 'App-Version', value: '0.0.1' },
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'file' },
 					{ name: 'File-Id', value: stubEntityIDAlt.toString() },
@@ -273,9 +280,17 @@ describe('ArFSDAOIncrementalSync class', () => {
 
 			const folderNode = createMockGQLNode({
 				tags: [
+					{ name: 'App-Name', value: 'ArDrive-Core' },
+					{ name: 'App-Version', value: '0.0.1' },
+					{ name: 'Content-Type', value: 'application/json' },
 					{ name: 'Drive-Id', value: mockDriveId.toString() },
 					{ name: 'Entity-Type', value: 'folder' },
-					{ name: 'Folder-Id', value: cachedFolder.entityId.toString() }
+					{ name: 'Folder-Id', value: cachedFolder.entityId.toString() },
+					{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+					{ name: 'Cipher', value: 'AES256-GCM' },
+					{ name: 'Cipher-IV', value: '1234567890abcdef' },
+					{ name: 'ArFS', value: '0.13' },
+					{ name: 'Unix-Time', value: '1640000000' }
 				]
 			});
 
@@ -321,6 +336,9 @@ describe('ArFSDAOIncrementalSync class', () => {
 						createMockGQLNode({
 							id: txId.toString(),
 							tags: [
+								{ name: 'App-Name', value: 'ArDrive-Core' },
+								{ name: 'App-Version', value: '0.0.1' },
+								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
 								{ name: 'Folder-Id', value: entityId.toString() },

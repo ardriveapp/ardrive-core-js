@@ -234,6 +234,9 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 					createMockGQLEdge(
 						createMockGQLNode({
 							tags: [
+								{ name: 'App-Name', value: 'ArDrive-Core' },
+								{ name: 'App-Version', value: '0.0.1' },
+								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
 								{ name: 'Folder-Id', value: EID('11111111-1111-1111-1111-111111111111').toString() },
@@ -253,6 +256,9 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 					createMockGQLEdge(
 						createMockGQLNode({
 							tags: [
+								{ name: 'App-Name', value: 'ArDrive-Core' },
+								{ name: 'App-Version', value: '0.0.1' },
+								{ name: 'Content-Type', value: 'application/json' },
 								{ name: 'Drive-Id', value: mockDriveId.toString() },
 								{ name: 'Entity-Type', value: 'folder' },
 								{ name: 'Folder-Id', value: EID('22222222-2222-2222-2222-222222222222').toString() },
