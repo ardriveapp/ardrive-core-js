@@ -51,10 +51,7 @@ export class WalletDAO {
 	}
 
 	async getWalletWinstonBalance(wallet: Wallet): Promise<Winston> {
-		const address = await wallet.getAddress();
-
-		// When a wallet has an array of addresses, the ETH L1 address is the first one and will be used for balance checks
-		return this.getAddressWinstonBalance(address);
+		return this.getAddressWinstonBalance(await wallet.getAddress());
 	}
 
 	async getAddressWinstonBalance(address: ArweaveAddress): Promise<Winston> {
