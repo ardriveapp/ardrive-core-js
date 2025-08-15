@@ -9,7 +9,7 @@ import jwkToPem, { JWK } from 'jwk-to-pem';
 import { authTagLength } from './constants';
 import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
 import { VersionedDriveKey } from '../types/entity_key';
-import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
+import { ArweaveSigner, JWKInterface, Signer, createData, getCryptoDriver } from '@dha-team/arbundles';
 import { Wallet } from '../wallet';
 import { isJWKInterface } from './common';
 
