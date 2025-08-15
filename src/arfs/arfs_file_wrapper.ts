@@ -179,7 +179,7 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 		};
 
 		// Create new current unix, as we just created this manifest
-		this.lastModifiedDateMS = new UnixTime(Math.round(Date.now() / 1000));
+		this.lastModifiedDateMS = new UnixTime(Date.now());
 	}
 
 	public getLinksOutput(dataTxId: TransactionID, gateway = new URL(defaultArweaveGatewayPath)): string[] {
