@@ -45,7 +45,8 @@ export class EthereumWallet implements Wallet {
 		return bufferTob64Url(Buffer.from(await pubKey.identifier()));
 	}
 
-	async getAddress(): Promise<ArweaveAddress[]> {
+	/** L1 Normalized Arweave Address for ETH Wallet. This address needs AR tokens funded to post to L1 */
+	async getAddress(): Promise<ArweaveAddress> {
 		const ethNormalizedL1Address = ADDR(
 			await Arweave.init({
 				host: 'arweave.net',
@@ -53,11 +54,15 @@ export class EthereumWallet implements Wallet {
 				protocol: 'https'
 			}).wallets.jwkToAddress(await fromJWK(this.jwk))
 		);
+		return ethNormalizedL1Address;
+	}
 
-		const pubKeyFromSigner = toB64Url(this.signer.publicKey);
-		const ethNormalizedL2Address = ownerToAddress(pubKeyFromSigner);
-
-		return [ethNormalizedL1Address, ADDR(ethNormalizedL2Address)];
+	/**
+	 * Returns array of normalized Arweave owners for the wallet.
+	 * L1 arweave-js normalized address and L2 arbundles normalized address
+	 */
+	async getOwner(): Promise<ArweaveAddress[]> {
+		return [await this.getAddress(), ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))];
 	}
 
 	async sign(data: Uint8Array): Promise<Uint8Array> {

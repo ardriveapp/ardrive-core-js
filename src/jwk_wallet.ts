@@ -26,6 +26,11 @@ export class JWKWallet implements Wallet {
 		return Promise.resolve(ADDR(bufferTob64Url(result)));
 	}
 
+	async getOwner(): Promise<ArweaveAddress[]> {
+		const address = await this.getAddress();
+		return [address]; // Only one type of address for Arweave wallets
+	}
+
 	// Use cases: generating drive keys, file keys, etc.
 	sign(data: Uint8Array, saltLength = 0): Promise<Uint8Array> {
 		const sign = crypto.createSign('sha256');

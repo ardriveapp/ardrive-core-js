@@ -2078,13 +2078,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async assertValidPassword(password: string): Promise<void> {
 		const wallet = this.wallet;
-		const walletAddress = await wallet.getAddress();
+		const owner = await wallet.getOwner();
 		const query = buildQuery({
 			tags: [
 				{ name: 'Entity-Type', value: 'drive' },
 				{ name: 'Drive-Privacy', value: 'private' }
 			],
-			owner: walletAddress,
+			owner,
 			sort: ASCENDING_ORDER
 		});
 		const transactions = await this.gatewayApi.gqlRequest(query);
@@ -2120,13 +2120,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
 		const result: CipherIVQueryResult[] = [];
 		const wallet = this.wallet;
-		const walletAddress = await wallet.getAddress();
+		const owner = await wallet.getOwner();
 		let cursor = '';
 		let hasNextPage = true;
 		while (hasNextPage) {
 			const query = buildQuery({
 				tags: [],
-				owner: walletAddress,
+				owner,
 				ids: txIDs,
 				cursor
 			});
