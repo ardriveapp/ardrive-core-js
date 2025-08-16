@@ -170,8 +170,8 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				)
 			]);
 
-			// Combine all entities
-			const allEntities: ArFSFileOrFolderEntity<'file' | 'folder'>[] = [...folders, ...files];
+			// Combine all entities (with blockHeight added)
+			const allEntities = [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[];
 
 			// Apply revision filter if requested
 			const entities = includeRevisions ? allEntities : allEntities.filter(latestRevisionFilter);
@@ -219,10 +219,10 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		stats: SyncStats,
 		stopAfterKnownCount: number,
 		currentSyncState: DriveSyncState
-	): Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless)[]> {
+	): Promise<((ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number })[]> {
 		let cursor = '';
 		let hasNextPage = true;
-		const allFolders: (ArFSPrivateFolder | ArFSPrivateFolderKeyless)[] = [];
+		const allFolders: ((ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number })[] = [];
 		let knownEntityCount = 0;
 
 		while (hasNextPage) {
@@ -247,12 +247,16 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			const batchFolders = await this.processPrivateFolderBatch(edges, driveKey, owner, stats);
 
 			// Check for known entities (optimization)
-			for (const folder of batchFolders) {
+			let addedUpToIndex = -1;
+			for (let i = 0; i < batchFolders.length; i++) {
+				const folder = batchFolders[i];
 				const existing = currentSyncState.entityStates.get(`${folder.entityId}`);
 				if (existing && existing.txId.equals(folder.txId)) {
 					knownEntityCount++;
 					if (knownEntityCount >= stopAfterKnownCount) {
 						hasNextPage = false;
+						// Only add folders up to and including this one
+						addedUpToIndex = i;
 						break;
 					}
 				} else {
@@ -260,7 +264,12 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				}
 			}
 
-			allFolders.push(...batchFolders);
+			// Add folders based on whether we early stopped
+			if (addedUpToIndex >= 0) {
+				allFolders.push(...batchFolders.slice(0, addedUpToIndex + 1));
+			} else {
+				allFolders.push(...batchFolders);
+			}
 			stats.totalProcessed += edges.length;
 
 			// Report progress
@@ -287,10 +296,10 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		stats: SyncStats,
 		stopAfterKnownCount: number,
 		currentSyncState: DriveSyncState
-	): Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless)[]> {
+	): Promise<((ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number })[]> {
 		let cursor = '';
 		let hasNextPage = true;
-		const allFiles: (ArFSPrivateFile | ArFSPrivateFileKeyless)[] = [];
+		const allFiles: ((ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number })[] = [];
 		let knownEntityCount = 0;
 
 		while (hasNextPage) {
@@ -315,12 +324,16 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			const batchFiles = await this.processPrivateFileBatch(edges, driveKey, owner, stats);
 
 			// Check for known entities
-			for (const file of batchFiles) {
+			let addedUpToIndex = -1;
+			for (let i = 0; i < batchFiles.length; i++) {
+				const file = batchFiles[i];
 				const existing = currentSyncState.entityStates.get(`${file.entityId}`);
 				if (existing && existing.txId.equals(file.txId)) {
 					knownEntityCount++;
 					if (knownEntityCount >= stopAfterKnownCount) {
 						hasNextPage = false;
+						// Only add files up to and including this one
+						addedUpToIndex = i;
 						break;
 					}
 				} else {
@@ -328,7 +341,12 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				}
 			}
 
-			allFiles.push(...batchFiles);
+			// Add files based on whether we early stopped
+			if (addedUpToIndex >= 0) {
+				allFiles.push(...batchFiles.slice(0, addedUpToIndex + 1));
+			} else {
+				allFiles.push(...batchFiles);
+			}
 			stats.totalProcessed += edges.length;
 
 			onProgress?.(stats.totalProcessed, -1);
@@ -349,8 +367,8 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		driveKey: DriveKey,
 		owner: ArweaveAddress,
 		stats: SyncStats
-	): Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless)[]> {
-		const folders: Promise<ArFSPrivateFolder | ArFSPrivateFolderKeyless>[] = edges.map(async (edge) => {
+	): Promise<((ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number })[]> {
+		const folders: Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number }>[] = edges.map(async (edge) => {
 			const { node } = edge;
 
 			// Update block height stats
@@ -365,7 +383,8 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 
 			if (cached) {
 				stats.fromCache++;
-				return cached;
+				// Add blockHeight to cached entity
+				return Object.assign(await cached, { blockHeight });
 			}
 
 			// Build from network
@@ -373,10 +392,13 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 			const folder = await folderBuilder.build(node);
 
+			// Add blockHeight to the entity
+			const folderWithBlockHeight = Object.assign(folder, { blockHeight });
+
 			// Cache the result with proper cache key
 			this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
 
-			return folder;
+			return folderWithBlockHeight;
 		});
 
 		return Promise.all(folders);
@@ -390,8 +412,8 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		driveKey: DriveKey,
 		owner: ArweaveAddress,
 		stats: SyncStats
-	): Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless)[]> {
-		const files: Promise<ArFSPrivateFile | ArFSPrivateFileKeyless>[] = edges.map(async (edge) => {
+	): Promise<((ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number })[]> {
+		const files: Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number }>[] = edges.map(async (edge) => {
 			const { node } = edge;
 
 			// Update block height stats
@@ -421,7 +443,10 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				this.caches.privateFileCache.put(cacheKey, Promise.resolve(file as ArFSPrivateFile));
 			}
 
-			return file;
+			// Add blockHeight to the entity
+			const fileWithBlockHeight = Object.assign(file, { blockHeight });
+
+			return fileWithBlockHeight;
 		});
 
 		return Promise.all(files);
@@ -442,7 +467,7 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 	 * Detects changes between current entities and sync state
 	 */
 	private detectChanges(
-		entities: ArFSFileOrFolderEntity<'file' | 'folder'>[],
+		entities: (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[],
 		syncState: DriveSyncState
 	): SyncChangeSet {
 		const added: EntitySyncState[] = [];
@@ -486,7 +511,7 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 	 */
 	private updateSyncState(
 		currentState: DriveSyncState,
-		entities: ArFSFileOrFolderEntity<'file' | 'folder'>[],
+		entities: (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[],
 		stats: SyncStats
 	): DriveSyncState {
 		const newEntityStates = new Map(currentState.entityStates);

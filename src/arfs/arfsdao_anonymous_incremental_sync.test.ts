@@ -46,19 +46,8 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 	const mockDriveId = stubEntityID;
 	const mockOwner = stubArweaveAddress();
 
-	const createMockGQLNode = (overrides?: Partial<GQLNodeInterface>): GQLNodeInterface => ({
-		id: stubTxID.toString(),
-		anchor: 'test-anchor',
-		signature: 'test-signature',
-		recipient: 'test-recipient',
-		owner: {
-			address: mockOwner.toString(),
-			key: 'test-owner-key'
-		},
-		fee: { winston: '0', ar: '0' },
-		quantity: { winston: '0', ar: '0' },
-		data: { size: 0, type: 'application/json' },
-		tags: [
+	const createMockGQLNode = (overrides?: Partial<GQLNodeInterface>): GQLNodeInterface => {
+		const defaultTags = [
 			{ name: 'App-Name', value: 'ArDrive-Core' },
 			{ name: 'App-Version', value: '0.0.1' },
 			{ name: 'Content-Type', value: 'application/json' },
@@ -68,16 +57,47 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
 			{ name: 'ArFS', value: '0.13' },
 			{ name: 'Unix-Time', value: '1640000000' }
-		],
-		block: {
-			id: 'test-block-id',
-			height: 1000000,
-			timestamp: 1640000000,
-			previous: 'test-prev-block'
-		},
-		parent: { id: 'test-parent' },
-		...overrides
-	});
+		];
+
+		// If overrides has tags, use them to replace/update default tags
+		let finalTags = [...defaultTags];
+		if (overrides?.tags) {
+			// Replace matching tags and add new ones
+			overrides.tags.forEach(overrideTag => {
+				const existingIndex = finalTags.findIndex(t => t.name === overrideTag.name);
+				if (existingIndex >= 0) {
+					finalTags[existingIndex] = overrideTag;
+				} else {
+					finalTags.push(overrideTag);
+				}
+			});
+		}
+
+		const { tags: _, ...overridesWithoutTags } = overrides || {};
+
+		return {
+			id: stubTxID.toString(),
+			anchor: 'test-anchor',
+			signature: 'test-signature',
+			recipient: 'test-recipient',
+			owner: {
+				address: mockOwner.toString(),
+				key: 'test-owner-key'
+			},
+			fee: { winston: '0', ar: '0' },
+			quantity: { winston: '0', ar: '0' },
+			data: { size: 0, type: 'application/json' },
+			block: {
+				id: 'test-block-id',
+				height: 1000000,
+				timestamp: 1640000000,
+				previous: 'test-prev-block'
+			},
+			parent: { id: 'test-parent' },
+			...overridesWithoutTags,
+			tags: finalTags
+		};
+	};
 
 	const createMockGQLEdge = (node?: GQLNodeInterface): GQLEdgeInterface => ({
 		cursor: 'mock-cursor',
@@ -85,8 +105,17 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 	});
 
 	beforeEach(async () => {
+		// Create fresh caches for each test to avoid cross-test pollution
+		const { PromiseCache } = await import('@ardrive/ardrive-promise-cache');
+		const { defaultCacheParams } = await import('./arfsdao_anonymous');
+		
 		caches = {
-			...defaultArFSIncrementalSyncCache,
+			ownerCache: new PromiseCache(defaultCacheParams),
+			driveIdCache: new PromiseCache(defaultCacheParams),
+			publicDriveCache: new PromiseCache(defaultCacheParams),
+			publicFolderCache: new PromiseCache(defaultCacheParams),
+			publicFileCache: new PromiseCache(defaultCacheParams),
+			publicConflictCache: new PromiseCache(defaultCacheParams),
 			syncStateCache: new PromiseCache<DriveID, DriveSyncState>({
 				cacheCapacity: 100,
 				cacheTTL: 1000 * 60 * 5
@@ -228,54 +257,54 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		it('should handle batch processing with multiple pages', async () => {
 			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
 
-			// First call returns batch with hasNextPage true
-			gatewayApiStub.onCall(0).resolves({
-				edges: [
-					createMockGQLEdge(
-						createMockGQLNode({
-							tags: [
-								{ name: 'App-Name', value: 'ArDrive-Core' },
-								{ name: 'App-Version', value: '0.0.1' },
-								{ name: 'Content-Type', value: 'application/json' },
-								{ name: 'Drive-Id', value: mockDriveId.toString() },
-								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: EID('11111111-1111-1111-1111-111111111111').toString() },
-								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
-								{ name: 'ArFS', value: '0.13' },
-								{ name: 'Unix-Time', value: '1640000000' }
-							]
-						})
-					)
-				],
-				pageInfo: { hasNextPage: true }
-			});
-
-			// Second call returns another batch
-			gatewayApiStub.onCall(1).resolves({
-				edges: [
-					createMockGQLEdge(
-						createMockGQLNode({
-							tags: [
-								{ name: 'App-Name', value: 'ArDrive-Core' },
-								{ name: 'App-Version', value: '0.0.1' },
-								{ name: 'Content-Type', value: 'application/json' },
-								{ name: 'Drive-Id', value: mockDriveId.toString() },
-								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: EID('22222222-2222-2222-2222-222222222222').toString() },
-								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
-								{ name: 'ArFS', value: '0.13' },
-								{ name: 'Unix-Time', value: '1640000000' }
-							]
-						})
-					)
-				],
-				pageInfo: { hasNextPage: false }
-			});
-
-			// Files query
-			gatewayApiStub.onCall(2).resolves({
-				edges: [],
-				pageInfo: { hasNextPage: false }
+			let folderCallCount = 0;
+			
+			// Stub based on query content, not call order
+			gatewayApiStub.callsFake(async (gqlQuery: any) => {
+				const query = gqlQuery.query;
+				
+				if (query.includes('Entity-Type') && query.includes('folder')) {
+					// Folder queries
+					folderCallCount++;
+					if (folderCallCount === 1) {
+						// First folder batch
+						return {
+							edges: [
+								createMockGQLEdge(
+									createMockGQLNode({
+										tags: [
+											{ name: 'Folder-Id', value: EID('11111111-1111-1111-1111-111111111111').toString() }
+										]
+									})
+								)
+							],
+							pageInfo: { hasNextPage: true }
+						};
+					} else {
+						// Second folder batch
+						return {
+							edges: [
+								createMockGQLEdge(
+									createMockGQLNode({
+										tags: [
+											{ name: 'Folder-Id', value: EID('22222222-2222-2222-2222-222222222222').toString() }
+										]
+									})
+								)
+							],
+							pageInfo: { hasNextPage: false }
+						};
+					}
+				} else if (query.includes('Entity-Type') && query.includes('file')) {
+					// File query
+					return {
+						edges: [],
+						pageInfo: { hasNextPage: false }
+					};
+				}
+				
+				// Default
+				return { edges: [], pageInfo: { hasNextPage: false } };
 			});
 
 			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, { batchSize: 1 });
@@ -321,15 +350,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 						createMockGQLNode({
 							id: txId.toString(),
 							tags: [
-								{ name: 'App-Name', value: 'ArDrive-Core' },
-								{ name: 'App-Version', value: '0.0.1' },
-								{ name: 'Content-Type', value: 'application/json' },
-								{ name: 'Drive-Id', value: mockDriveId.toString() },
-								{ name: 'Entity-Type', value: 'folder' },
-								{ name: 'Folder-Id', value: entityId.toString() },
-								{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
-								{ name: 'ArFS', value: '0.13' },
-								{ name: 'Unix-Time', value: '1640000000' }
+								{ name: 'Folder-Id', value: entityId.toString() }
 							]
 						})
 					)
