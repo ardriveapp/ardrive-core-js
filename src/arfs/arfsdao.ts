@@ -239,7 +239,7 @@ export interface ArFSCache extends ArFSAnonymousCache {
 
 export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
-	public readonly anonymousIncSync: ArFSDAOAnonymousIncrementalSync;
+	public readonly anonymousIncSync?: ArFSDAOAnonymousIncrementalSync;
 
 	constructor(
 		private readonly wallet: Wallet,
@@ -272,8 +272,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	) {
 		super(arweave, undefined, undefined, caches);
 
-		// Initialize anonymous incremental sync instance
-		this.anonymousIncSync = new ArFSDAOAnonymousIncrementalSync(arweave, appName, appVersion, caches, gatewayApi);
+		// Initialize anonymous incremental sync instance only if caches support it
+		// This will be set by ArFSDAOIncrementalSync subclass
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';

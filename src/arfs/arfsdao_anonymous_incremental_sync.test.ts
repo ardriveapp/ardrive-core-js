@@ -8,8 +8,7 @@ import {
 	stubEntityIDAlt,
 	stubTxID,
 	stubTxIDAlt,
-	stubPublicDrive,
-	stubPublicFolder
+	stubPublicDrive
 } from '../../tests/stubs';
 import {
 	DriveSyncState,
@@ -22,12 +21,7 @@ import {
 	IncrementalSyncResult,
 	DriveID
 } from '../types';
-import {
-	ArFSDAOAnonymousIncrementalSync,
-	ArFSIncrementalSyncCache,
-	defaultArFSIncrementalSyncCache
-} from './arfsdao_anonymous_incremental_sync';
-import { PromiseCache } from '@ardrive/ardrive-promise-cache';
+import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfsdao_anonymous_incremental_sync';
 import { GatewayAPI } from '../utils/gateway_api';
 
 const fakeArweave = Arweave.init({
@@ -60,11 +54,11 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		];
 
 		// If overrides has tags, use them to replace/update default tags
-		let finalTags = [...defaultTags];
+		const finalTags = [...defaultTags];
 		if (overrides?.tags) {
 			// Replace matching tags and add new ones
-			overrides.tags.forEach(overrideTag => {
-				const existingIndex = finalTags.findIndex(t => t.name === overrideTag.name);
+			overrides.tags.forEach((overrideTag) => {
+				const existingIndex = finalTags.findIndex((t) => t.name === overrideTag.name);
 				if (existingIndex >= 0) {
 					finalTags[existingIndex] = overrideTag;
 				} else {
@@ -73,7 +67,8 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			});
 		}
 
-		const { tags: _, ...overridesWithoutTags } = overrides || {};
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { tags, ...overridesWithoutTags } = overrides || {};
 
 		return {
 			id: stubTxID.toString(),
@@ -108,14 +103,13 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 		// Create fresh caches for each test to avoid cross-test pollution
 		const { PromiseCache } = await import('@ardrive/ardrive-promise-cache');
 		const { defaultCacheParams } = await import('./arfsdao_anonymous');
-		
+
 		caches = {
 			ownerCache: new PromiseCache(defaultCacheParams),
 			driveIdCache: new PromiseCache(defaultCacheParams),
 			publicDriveCache: new PromiseCache(defaultCacheParams),
 			publicFolderCache: new PromiseCache(defaultCacheParams),
 			publicFileCache: new PromiseCache(defaultCacheParams),
-			publicConflictCache: new PromiseCache(defaultCacheParams),
 			syncStateCache: new PromiseCache<DriveID, DriveSyncState>({
 				cacheCapacity: 100,
 				cacheTTL: 1000 * 60 * 5
@@ -258,11 +252,11 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
 
 			let folderCallCount = 0;
-			
+
 			// Stub based on query content, not call order
 			gatewayApiStub.callsFake(async (gqlQuery: any) => {
 				const query = gqlQuery.query;
-				
+
 				if (query.includes('Entity-Type') && query.includes('folder')) {
 					// Folder queries
 					folderCallCount++;
@@ -273,7 +267,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 								createMockGQLEdge(
 									createMockGQLNode({
 										tags: [
-											{ name: 'Folder-Id', value: EID('11111111-1111-1111-1111-111111111111').toString() }
+											{
+												name: 'Folder-Id',
+												value: EID('11111111-1111-1111-1111-111111111111').toString()
+											}
 										]
 									})
 								)
@@ -287,7 +284,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 								createMockGQLEdge(
 									createMockGQLNode({
 										tags: [
-											{ name: 'Folder-Id', value: EID('22222222-2222-2222-2222-222222222222').toString() }
+											{
+												name: 'Folder-Id',
+												value: EID('22222222-2222-2222-2222-222222222222').toString()
+											}
 										]
 									})
 								)
@@ -302,7 +302,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 						pageInfo: { hasNextPage: false }
 					};
 				}
-				
+
 				// Default
 				return { edges: [], pageInfo: { hasNextPage: false } };
 			});
@@ -337,9 +337,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			const edges: GQLEdgeInterface[] = [];
 			for (let i = 0; i < 11; i++) {
 				const entityId =
-					i === 9
-						? stubEntityIDAlt
-						: EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa${i.toString().padStart(4, '0')}`);
+					i === 9 ? stubEntityIDAlt : EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa${i.toString().padStart(4, '0')}`);
 				const txId =
 					i === 9
 						? stubTxID
@@ -349,9 +347,7 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 					createMockGQLEdge(
 						createMockGQLNode({
 							id: txId.toString(),
-							tags: [
-								{ name: 'Folder-Id', value: entityId.toString() }
-							]
+							tags: [{ name: 'Folder-Id', value: entityId.toString() }]
 						})
 					)
 				);

@@ -42,6 +42,7 @@ import { Wallet } from '../exports';
 import Arweave from 'arweave';
 import { defaultCacheParams } from './arfsdao_anonymous';
 import { GatewayAPI } from '../utils/gateway_api';
+import { SyncStateStore } from '../utils/sync_state_store';
 
 /**
  * Extended cache interface for private drive sync
@@ -78,6 +79,7 @@ export const defaultArFSPrivateIncrementalSyncCache: ArFSPrivateIncrementalSyncC
 export class ArFSDAOIncrementalSync extends ArFSDAO {
 	declare protected caches: ArFSPrivateIncrementalSyncCache;
 	public anonymousIncSync: ArFSDAOAnonymousIncrementalSync;
+	private syncStateStore?: SyncStateStore;
 
 	constructor(
 		wallet: Wallet,
@@ -87,17 +89,20 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		appVersion?: string,
 		arFSTagSettings?: ArFSTagSettings,
 		caches?: ArFSPrivateIncrementalSyncCache,
-		gatewayApi?: GatewayAPI
+		gatewayApi?: GatewayAPI,
+		syncStateStore?: SyncStateStore
 	) {
 		super(wallet, arweave, dryRun, appName, appVersion, arFSTagSettings, caches, gatewayApi);
+		this.syncStateStore = syncStateStore;
 
-		// Create anonymous incremental sync instance with same gateway
+		// Create anonymous incremental sync instance with same gateway and storage
 		this.anonymousIncSync = new ArFSDAOAnonymousIncrementalSync(
 			arweave,
 			appName,
 			appVersion,
 			caches as ArFSIncrementalSyncCache,
-			gatewayApi
+			gatewayApi,
+			syncStateStore
 		);
 	}
 
@@ -171,7 +176,9 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			]);
 
 			// Combine all entities (with blockHeight added)
-			const allEntities = [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[];
+			const allEntities = [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & {
+				blockHeight: number;
+			})[];
 
 			// Apply revision filter if requested
 			const entities = includeRevisions ? allEntities : allEntities.filter(latestRevisionFilter);
@@ -183,7 +190,7 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			const newSyncState = this.updateSyncState(currentSyncState, entities, stats);
 
 			// Cache the new sync state
-			this.caches.syncStateCache.put(driveId, Promise.resolve(newSyncState));
+			await this.setCachedSyncState(driveId, newSyncState);
 
 			return {
 				entities,
@@ -368,38 +375,40 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<((ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number })[]> {
-		const folders: Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number }>[] = edges.map(async (edge) => {
-			const { node } = edge;
+		const folders: Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number }>[] = edges.map(
+			async (edge) => {
+				const { node } = edge;
 
-			// Update block height stats
-			const blockHeight = node.block?.height || 0;
-			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
-			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
+				// Update block height stats
+				const blockHeight = node.block?.height || 0;
+				stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
+				stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-			// Check cache first
-			const folderId = this.extractEntityId(node, 'Folder-Id');
-			const folderCacheKey = { folderId, owner, driveKey };
-			const cached = this.caches.privateFolderCache.get(folderCacheKey);
+				// Check cache first
+				const folderId = this.extractEntityId(node, 'Folder-Id');
+				const folderCacheKey = { folderId, owner, driveKey };
+				const cached = this.caches.privateFolderCache.get(folderCacheKey);
 
-			if (cached) {
-				stats.fromCache++;
-				// Add blockHeight to cached entity
-				return Object.assign(await cached, { blockHeight });
+				if (cached) {
+					stats.fromCache++;
+					// Add blockHeight to cached entity
+					return Object.assign(await cached, { blockHeight });
+				}
+
+				// Build from network
+				stats.fromNetwork++;
+				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+				const folder = await folderBuilder.build(node);
+
+				// Add blockHeight to the entity
+				const folderWithBlockHeight = Object.assign(folder, { blockHeight });
+
+				// Cache the result with proper cache key
+				this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
+
+				return folderWithBlockHeight;
 			}
-
-			// Build from network
-			stats.fromNetwork++;
-			const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-			const folder = await folderBuilder.build(node);
-
-			// Add blockHeight to the entity
-			const folderWithBlockHeight = Object.assign(folder, { blockHeight });
-
-			// Cache the result with proper cache key
-			this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
-
-			return folderWithBlockHeight;
-		});
+		);
 
 		return Promise.all(folders);
 	}
@@ -413,41 +422,43 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<((ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number })[]> {
-		const files: Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number }>[] = edges.map(async (edge) => {
-			const { node } = edge;
+		const files: Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number }>[] = edges.map(
+			async (edge) => {
+				const { node } = edge;
 
-			// Update block height stats
-			const blockHeight = node.block?.height || 0;
-			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
-			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
+				// Update block height stats
+				const blockHeight = node.block?.height || 0;
+				stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
+				stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-			// Check cache first
-			const fileId = this.extractEntityId(node, 'File-Id');
-			// For private files, we need the file key which we don't have yet
-			// So we can't use the cache effectively here
-			const cached = undefined;
+				// Check cache first
+				const fileId = this.extractEntityId(node, 'File-Id');
+				// For private files, we need the file key which we don't have yet
+				// So we can't use the cache effectively here
+				const cached = undefined;
 
-			if (cached) {
-				stats.fromCache++;
-				return cached;
+				if (cached) {
+					stats.fromCache++;
+					return cached;
+				}
+
+				// Build from network
+				stats.fromNetwork++;
+				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+				const file = await fileBuilder.build(node);
+
+				// Cache the result if we have a file key
+				if ('fileKey' in file && file.fileKey) {
+					const cacheKey = { fileId, owner, fileKey: file.fileKey };
+					this.caches.privateFileCache.put(cacheKey, Promise.resolve(file as ArFSPrivateFile));
+				}
+
+				// Add blockHeight to the entity
+				const fileWithBlockHeight = Object.assign(file, { blockHeight });
+
+				return fileWithBlockHeight;
 			}
-
-			// Build from network
-			stats.fromNetwork++;
-			const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-			const file = await fileBuilder.build(node);
-
-			// Cache the result if we have a file key
-			if ('fileKey' in file && file.fileKey) {
-				const cacheKey = { fileId, owner, fileKey: file.fileKey };
-				this.caches.privateFileCache.put(cacheKey, Promise.resolve(file as ArFSPrivateFile));
-			}
-
-			// Add blockHeight to the entity
-			const fileWithBlockHeight = Object.assign(file, { blockHeight });
-
-			return fileWithBlockHeight;
-		});
+		);
 
 		return Promise.all(files);
 	}
@@ -544,15 +555,34 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 
 	/**
 	 * Gets the cached sync state for a drive
+	 * First checks persistent storage, then falls back to memory cache
 	 */
 	async getCachedSyncState(driveId: DriveID): Promise<DriveSyncState | undefined> {
+		// Try persistent storage first
+		if (this.syncStateStore) {
+			const stored = await this.syncStateStore.load(driveId);
+			if (stored) {
+				// Also update memory cache for performance
+				this.caches.syncStateCache.put(driveId, Promise.resolve(stored));
+				return stored;
+			}
+		}
+
+		// Fall back to memory cache
 		return this.caches.syncStateCache.get(driveId);
 	}
 
 	/**
 	 * Sets the cached sync state for a drive
+	 * Saves to both memory cache and persistent storage if available
 	 */
-	setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): void {
+	async setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): Promise<void> {
+		// Save to memory cache
 		this.caches.syncStateCache.put(driveId, Promise.resolve(syncState));
+
+		// Save to persistent storage if available
+		if (this.syncStateStore) {
+			await this.syncStateStore.save(driveId, syncState);
+		}
 	}
 }

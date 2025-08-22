@@ -21,13 +21,9 @@ import {
 	EID,
 	TxID,
 	DriveKey,
-	IncrementalSyncResult
+	IncrementalSyncError
 } from '../types';
-import {
-	ArFSDAOIncrementalSync,
-	ArFSPrivateIncrementalSyncCache,
-	defaultArFSPrivateIncrementalSyncCache
-} from './arfsdao_incremental_sync';
+import { ArFSDAOIncrementalSync, ArFSPrivateIncrementalSyncCache } from './arfsdao_incremental_sync';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import { GatewayAPI } from '../utils/gateway_api';
@@ -65,11 +61,11 @@ describe('ArFSDAOIncrementalSync class', () => {
 		];
 
 		// If overrides has tags, use them to replace/update default tags
-		let finalTags = [...defaultTags];
+		const finalTags = [...defaultTags];
 		if (overrides?.tags) {
 			// Replace matching tags and add new ones
-			overrides.tags.forEach(overrideTag => {
-				const existingIndex = finalTags.findIndex(t => t.name === overrideTag.name);
+			overrides.tags.forEach((overrideTag) => {
+				const existingIndex = finalTags.findIndex((t) => t.name === overrideTag.name);
 				if (existingIndex >= 0) {
 					finalTags[existingIndex] = overrideTag;
 				} else {
@@ -78,7 +74,8 @@ describe('ArFSDAOIncrementalSync class', () => {
 			});
 		}
 
-		const { tags: _, ...overridesWithoutTags } = overrides || {};
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { tags, ...overridesWithoutTags } = overrides || {};
 
 		return {
 			id: stubTxID.toString(),
@@ -131,7 +128,7 @@ describe('ArFSDAOIncrementalSync class', () => {
 		// Create fresh caches for each test to avoid cross-test pollution
 		const { PromiseCache } = await import('@ardrive/ardrive-promise-cache');
 		const { defaultCacheParams } = await import('./arfsdao_anonymous');
-		
+
 		caches = {
 			ownerCache: new PromiseCache(defaultCacheParams),
 			driveIdCache: new PromiseCache(defaultCacheParams),
@@ -157,22 +154,19 @@ describe('ArFSDAOIncrementalSync class', () => {
 		gatewayApiStub = stub(gatewayApi, 'gqlRequest');
 
 		// Import crypto utilities for proper encryption
-		const { fileEncrypt, deriveFileKey } = await import('../utils/crypto');
+		const { deriveFileKey } = await import('../utils/crypto');
 		const crypto = await import('crypto');
-
-		// Map to store encrypted data by transaction ID for test consistency
-		const encryptedDataMap = new Map<string, Buffer>();
 
 		// Stub getTxData to return properly encrypted metadata
 		getTxDataStub = stub(gatewayApi, 'getTxData');
-		getTxDataStub.callsFake(async (txId: string) => {
+		getTxDataStub.callsFake(async () => {
 			// Create appropriate metadata for all entities
-			const metadata = { 
-				name: 'Test Entity', 
-				size: 1000, 
-				lastModifiedDate: 1640000000, 
-				dataTxId: stubTxID.toString(), 
-				dataContentType: 'text/plain' 
+			const metadata = {
+				name: 'Test Entity',
+				size: 1000,
+				lastModifiedDate: 1640000000,
+				dataTxId: stubTxID.toString(),
+				dataContentType: 'text/plain'
 			};
 			const metadataBuffer = Buffer.from(JSON.stringify(metadata));
 
@@ -185,12 +179,20 @@ describe('ArFSDAOIncrementalSync class', () => {
 				// Files use derived file key
 				const fileKey = await deriveFileKey(stubEntityIDAlt.toString(), driveKey);
 				const cipher = crypto.createCipheriv('aes-256-gcm', fileKey.keyData, iv, { authTagLength: 16 });
-				const encryptedBuffer = Buffer.concat([cipher.update(metadataBuffer), cipher.final(), cipher.getAuthTag()]);
+				const encryptedBuffer = Buffer.concat([
+					cipher.update(metadataBuffer),
+					cipher.final(),
+					cipher.getAuthTag()
+				]);
 				return encryptedBuffer;
 			} else {
 				// Folders use driveKey for encryption
 				const cipher = crypto.createCipheriv('aes-256-gcm', driveKey.keyData, iv, { authTagLength: 16 });
-				const encryptedBuffer = Buffer.concat([cipher.update(metadataBuffer), cipher.final(), cipher.getAuthTag()]);
+				const encryptedBuffer = Buffer.concat([
+					cipher.update(metadataBuffer),
+					cipher.final(),
+					cipher.getAuthTag()
+				]);
 				return encryptedBuffer;
 			}
 		});
@@ -483,8 +485,8 @@ describe('ArFSDAOIncrementalSync class', () => {
 			} catch (error) {
 				// The error might be the original gateway error if it fails before processing
 				// or IncrementalSyncError if it fails after processing some entities
-				if ((error as Error).name === 'IncrementalSyncError') {
-					const syncError = error as IncrementalSyncError;
+				if (error instanceof IncrementalSyncError) {
+					const syncError = error;
 					expect(syncError.partialResult).to.exist;
 					if (syncError.partialResult?.stats) {
 						expect(syncError.partialResult.stats.totalProcessed).to.be.greaterThan(0);

@@ -25,6 +25,7 @@ import { GatewayOracle } from './pricing/gateway_oracle';
 import { gatewayUrlForArweave } from './utils/common';
 import { ArFSCostCalculator, CostCalculator } from './arfs/arfs_cost_calculator';
 import { Turbo, TurboSettings } from './arfs/turbo';
+import { SyncStateStore } from './utils/sync_state_store';
 
 export interface ArDriveSettingsAnonymous {
 	arweave?: Arweave;
@@ -32,6 +33,7 @@ export interface ArDriveSettingsAnonymous {
 	appVersion?: string;
 	/** @deprecated App Name is an unused parameter on anonymous ArDrive and will be removed in a future release */
 	appName?: string;
+	syncStateStore?: SyncStateStore;
 }
 
 export interface ArDriveSettings extends ArDriveSettingsAnonymous {
@@ -51,6 +53,7 @@ export interface ArDriveSettings extends ArDriveSettingsAnonymous {
 	costCalculator?: CostCalculator;
 	arFSTagSettings?: ArFSTagSettings;
 	turboSettings?: TurboSettings;
+	syncStateStore?: SyncStateStore;
 }
 
 const defaultArweave = Arweave.init({

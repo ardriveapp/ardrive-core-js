@@ -60,3 +60,10 @@ export * from './utils/sort_functions';
 export * from './utils/upload_conflict_resolution';
 export * from './utils/wallet_utils';
 export * from './utils/sync_state';
+
+// Storage adapters for incremental sync
+export * from './utils/sync_state_store';
+export * from './utils/sync_state_store_fs';
+export * from './utils/sync_state_store_browser';
+// SQLite adapter requires better-sqlite3 as peer dependency
+// export * from './utils/sync_state_store_sqlite';

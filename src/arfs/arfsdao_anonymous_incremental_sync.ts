@@ -1,4 +1,6 @@
+import Arweave from 'arweave';
 import { ArFSDAOAnonymous, ArFSAnonymousCache, defaultArFSAnonymousCache } from './arfsdao_anonymous';
+import { GatewayAPI } from '../utils/gateway_api';
 import {
 	IncrementalSyncOptions,
 	IncrementalSyncResult,
@@ -23,6 +25,7 @@ import { buildQuery } from '../utils/query';
 import { ASCENDING_ORDER } from '../utils/query';
 import { latestRevisionFilter } from '../utils/filter_methods';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
+import { SyncStateStore } from '../utils/sync_state_store';
 
 /**
  * Extended cache interface that includes sync state caching
@@ -47,6 +50,19 @@ export const defaultArFSIncrementalSyncCache: ArFSIncrementalSyncCache = {
  */
 export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 	declare protected caches: ArFSIncrementalSyncCache;
+	private syncStateStore?: SyncStateStore;
+
+	constructor(
+		arweave: Arweave,
+		appName = 'ArDrive-Core',
+		appVersion = '0.0.0',
+		caches: ArFSIncrementalSyncCache = defaultArFSIncrementalSyncCache,
+		gatewayApi?: GatewayAPI,
+		syncStateStore?: SyncStateStore
+	) {
+		super(arweave, appName, appVersion, caches, gatewayApi);
+		this.syncStateStore = syncStateStore;
+	}
 
 	/**
 	 * Performs an incremental sync of a public drive
@@ -114,7 +130,9 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			]);
 
 			// Combine all entities (with blockHeight added)
-			const allEntities = [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[];
+			const allEntities = [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & {
+				blockHeight: number;
+			})[];
 
 			// Apply revision filter if requested
 			const entities = includeRevisions ? allEntities : allEntities.filter(latestRevisionFilter);
@@ -126,7 +144,7 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			const newSyncState = this.updateSyncState(currentSyncState, entities, stats);
 
 			// Cache the new sync state
-			this.caches.syncStateCache.put(driveId, Promise.resolve(newSyncState));
+			await this.setCachedSyncState(driveId, newSyncState);
 
 			return {
 				entities,
@@ -396,7 +414,7 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 
 			return fileWithBlockHeight;
-			});
+		});
 
 		const results = await Promise.allSettled(files);
 		const successfulFiles: (ArFSPublicFile & { blockHeight: number })[] = [];
@@ -427,16 +445,35 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 
 	/**
 	 * Gets the cached sync state for a drive
+	 * First checks persistent storage, then falls back to memory cache
 	 */
 	async getCachedSyncState(driveId: DriveID): Promise<DriveSyncState | undefined> {
+		// Try persistent storage first
+		if (this.syncStateStore) {
+			const stored = await this.syncStateStore.load(driveId);
+			if (stored) {
+				// Also update memory cache for performance
+				this.caches.syncStateCache.put(driveId, Promise.resolve(stored));
+				return stored;
+			}
+		}
+
+		// Fall back to memory cache
 		return this.caches.syncStateCache.get(driveId);
 	}
 
 	/**
 	 * Sets the cached sync state for a drive
+	 * Saves to both memory cache and persistent storage if available
 	 */
-	setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): void {
+	async setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): Promise<void> {
+		// Save to memory cache
 		this.caches.syncStateCache.put(driveId, Promise.resolve(syncState));
+
+		// Save to persistent storage if available
+		if (this.syncStateStore) {
+			await this.syncStateStore.save(driveId, syncState);
+		}
 	}
 
 	/**

@@ -1888,6 +1888,11 @@ export class ArDrive extends ArDriveAnonymous {
 		}
 
 		// Use the anonymous incremental sync for public drives
+		if (!this.arFsDao.anonymousIncSync) {
+			throw new Error(
+				'Incremental sync is not supported with the current ArFSDAO configuration. Use ArFSDAOIncrementalSync instead.'
+			);
+		}
 		return this.arFsDao.anonymousIncSync.getPublicDriveIncrementalSync(driveId, owner, options);
 	}
 
@@ -1937,11 +1942,11 @@ export class ArDrive extends ArDriveAnonymous {
 	 * @param driveId - The drive ID to set sync state for
 	 * @param syncState - The sync state to cache
 	 */
-	setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): void {
+	async setCachedSyncState(driveId: DriveID, syncState: DriveSyncState): Promise<void> {
 		if (this.arFsDao instanceof ArFSDAOIncrementalSync) {
-			this.arFsDao.setCachedSyncState(driveId, syncState);
+			await this.arFsDao.setCachedSyncState(driveId, syncState);
 		} else if (this.arFsDao.anonymousIncSync?.setCachedSyncState) {
-			this.arFsDao.anonymousIncSync.setCachedSyncState(driveId, syncState);
+			await this.arFsDao.anonymousIncSync.setCachedSyncState(driveId, syncState);
 		}
 	}
 
