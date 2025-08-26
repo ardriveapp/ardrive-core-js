@@ -24,7 +24,13 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
+import {
+	addressesFromOwner,
+	ArFSPublicFileWithPaths,
+	ArFSPublicFolderWithPaths,
+	publicEntityWithPathsFactory,
+	WalletAddresses
+} from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
@@ -163,8 +169,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	// Convenience function for known-public use cases
-	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicDrive> {
-		const cacheKey = { driveId, owner: Array.isArray(owner) ? owner[0] : owner };
+	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicDrive> {
+		const cacheKey = { driveId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
 		const cachedDrive = this.caches.publicDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			return cachedDrive;
@@ -174,14 +180,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicDriveBuilder({
 				entityId: driveId,
 				gatewayApi: this.gatewayApi,
-				owner
+				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
 			}).build()
 		);
 	}
 
 	// Convenience function for known-private use cases
-	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicFolder> {
-		const cacheKey = { folderId, owner: Array.isArray(owner) ? owner[0] : owner };
+	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicFolder> {
+		const cacheKey = { folderId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
 		const cachedFolder = this.caches.publicFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			return cachedFolder;
@@ -191,13 +197,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicFolderBuilder({
 				entityId: folderId,
 				gatewayApi: this.gatewayApi,
-				owner
+				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
 			}).build()
 		);
 	}
 
-	async getPublicFile(fileId: FileID, owner: ArweaveAddress | ArweaveAddress[]): Promise<ArFSPublicFile> {
-		const cacheKey = { fileId, owner: Array.isArray(owner) ? owner[0] : owner };
+	async getPublicFile(fileId: FileID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicFile> {
+		const cacheKey = { fileId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
 		const cachedFile = this.caches.publicFileCache.get(cacheKey);
 		if (cachedFile) {
 			return cachedFile;
@@ -207,13 +213,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicFileBuilder({
 				entityId: fileId,
 				gatewayApi: this.gatewayApi,
-				owner
+				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
 			}).build()
 		);
 	}
 
 	async getAllDrivesForAddress(
-		address: ArweaveAddress | ArweaveAddress[],
+		address: ArweaveAddress | WalletAddresses,
 		privateKeyData: PrivateKeyData,
 		latestRevisionsOnly = true
 	): Promise<ArFSDriveEntity[]> {
@@ -221,8 +227,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		let hasNextPage = true;
 		const allDrives: ArFSDriveEntity[] = [];
 
+		const { ownerAddresses } = addressesFromOwner(address);
+
 		while (hasNextPage) {
-			const gqlQuery = buildQuery({ tags: [{ name: 'Entity-Type', value: 'drive' }], cursor, owner: address });
+			const gqlQuery = buildQuery({
+				tags: [{ name: 'Entity-Type', value: 'drive' }],
+				cursor,
+				owner: ownerAddresses
+			});
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
@@ -251,13 +263,15 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	async getPublicFilesWithParentFolderIds(
 		folderIDs: FolderID[],
-		owner: ArweaveAddress | ArweaveAddress[],
+		owner: ArweaveAddress | WalletAddresses,
 		driveId: DriveID,
 		latestRevisionsOnly = false
 	): Promise<ArFSPublicFile[]> {
 		let cursor = '';
 		let hasNextPage = true;
 		const allFiles: ArFSPublicFile[] = [];
+
+		const { ownerAddresses, cacheKeyAddress } = addressesFromOwner(owner);
 
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
@@ -267,7 +281,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					{ name: 'Entity-Type', value: 'file' }
 				],
 				cursor,
-				owner
+				owner: ownerAddresses
 			});
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
@@ -279,7 +293,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					cursor = edge.cursor;
 					const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 					const file = await fileBuilder.build(node);
-					const cacheKey = { fileId: file.fileId, owner: Array.isArray(owner) ? owner[0] : owner };
+					const cacheKey = { fileId: file.fileId, owner: cacheKeyAddress };
 					return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
 					// If the file is broken, skip it
@@ -313,6 +327,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		let hasNextPage = true;
 		const allFolders: ArFSPublicFolder[] = [];
 
+		const { ownerAddresses, cacheKeyAddress } = addressesFromOwner(owner);
+
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({
 				tags: [
@@ -320,7 +336,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					{ name: 'Entity-Type', value: 'folder' }
 				],
 				cursor,
-				owner
+				owner: ownerAddresses
 			});
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
@@ -333,7 +349,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				try {
 					const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
 					const folder = await folderBuilder.build(node);
-					const cacheKey = { folderId: folder.entityId, owner: Array.isArray(owner) ? owner[0] : owner };
+					const cacheKey = { folderId: folder.entityId, owner: cacheKeyAddress };
 					await this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
 					return folder;
 				} catch (e) {

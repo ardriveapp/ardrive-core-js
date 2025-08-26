@@ -1,7 +1,7 @@
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import * as crypto from 'crypto';
 import jwkToPem, { JWK } from 'jwk-to-pem';
-import { PublicKey, ArweaveAddress, ADDR } from './types';
+import { PublicKey, ArweaveAddress, ADDR, WalletAddresses } from './types';
 import { b64UrlToBuffer, bufferTob64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
 import { ArweaveSigner } from '@dha-team/arbundles';
@@ -26,10 +26,7 @@ export class JWKWallet implements Wallet {
 		return Promise.resolve(ADDR(bufferTob64Url(result)));
 	}
 
-	async getAllAddresses(): Promise<{
-		networkAddress: ArweaveAddress;
-		ans104Address: ArweaveAddress;
-	}> {
+	async getAllAddresses(): Promise<WalletAddresses> {
 		const address = await this.getAddress();
 		return {
 			networkAddress: address,

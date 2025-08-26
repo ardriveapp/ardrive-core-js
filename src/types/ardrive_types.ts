@@ -18,7 +18,7 @@ import { PrivateDriveKeyData } from '../arfs/arfsdao';
 import { PrivateKeyData } from '../arfs/private_key_data';
 import { ArFSCreateFileMetaDataV2Plan, ArFSListPublicFolderParams } from './arfsdao_types';
 import { DriveKey, EntityKey } from './entity_key';
-import { EntityName, SourceUri } from './types';
+import { EntityName, SourceUri, WalletAddresses } from './types';
 
 export type ArFSEntityDataType = 'drive' | 'folder' | 'file' | 'bundle';
 
@@ -108,7 +108,7 @@ export interface ArDriveUploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> {
 /** Upload stats as determined by the ArDrive class */
 export interface UploadStats<T = ArFSDataToUpload | ArFSFolderToUpload> extends ArDriveUploadStats<T> {
 	destDriveId: DriveID;
-	owner: ArweaveAddress | ArweaveAddress[];
+	owner: ArweaveAddress | WalletAddresses;
 }
 
 export type FileUploadStats = UploadStats<ArFSDataToUpload>;
@@ -167,7 +167,7 @@ export interface CreatePrivateDriveParams extends CreatePublicDriveParams {
 }
 
 interface GetEntityParams {
-	owner?: ArweaveAddress | ArweaveAddress[];
+	owner?: ArweaveAddress | WalletAddresses;
 }
 export interface GetPublicDriveParams extends GetEntityParams {
 	driveId: DriveID;
@@ -191,7 +191,7 @@ export type GetPrivateFileParams = GetPublicFileParams & {
 } & WithDriveKey;
 
 export interface GetAllDrivesForAddressParams {
-	address: ArweaveAddress | ArweaveAddress[];
+	address: ArweaveAddress | WalletAddresses;
 	privateKeyData: PrivateKeyData;
 }
 
@@ -229,7 +229,7 @@ export interface DownloadPublicFolderParameters {
 	destFolderPath: string;
 	customFolderName?: string;
 	maxDepth: number;
-	owner?: ArweaveAddress | ArweaveAddress[];
+	owner?: ArweaveAddress | WalletAddresses;
 }
 
 export type DownloadPrivateFolderParameters = DownloadPublicFolderParameters & WithDriveKey;
@@ -239,7 +239,7 @@ export interface DownloadPublicDriveParameters {
 	destFolderPath: string;
 	customFolderName?: string;
 	maxDepth: number;
-	owner?: ArweaveAddress | ArweaveAddress[];
+	owner?: ArweaveAddress | WalletAddresses;
 }
 
 export type DownloadPrivateDriveParameters = DownloadPublicDriveParameters & WithDriveKey;
