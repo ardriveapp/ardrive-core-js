@@ -1,3 +1,4 @@
+import { WalletAddresses } from '../exports';
 import { Equatable } from './equatable';
 
 export class ArweaveAddress implements Equatable<ArweaveAddress> {
@@ -36,4 +37,14 @@ export class ArweaveAddress implements Equatable<ArweaveAddress> {
 
 export function ADDR(arAddress: string): ArweaveAddress {
 	return new ArweaveAddress(arAddress);
+}
+
+export function addressesFromOwner(owner: ArweaveAddress | WalletAddresses): {
+	ownerAddresses: ArweaveAddress[];
+	cacheKeyAddress: ArweaveAddress;
+} {
+	if (owner instanceof ArweaveAddress) {
+		return { ownerAddresses: [owner], cacheKeyAddress: owner };
+	}
+	return { ownerAddresses: Object.values(owner), cacheKeyAddress: owner.networkAddress };
 }

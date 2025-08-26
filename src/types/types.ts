@@ -1,4 +1,4 @@
-import { EntityID, Winston, FeeMultiple } from '.';
+import { EntityID, Winston, FeeMultiple, ArweaveAddress } from '.';
 import { EntityKey } from './entity_key';
 
 export const JSON_CONTENT_TYPE = 'application/json';
@@ -69,4 +69,9 @@ export type DriveSignatureInfo = {
 		cipherIV: string;
 		encryptedData: Buffer;
 	};
+};
+
+export type WalletAddresses = {
+	networkAddress: ArweaveAddress;
+	ans104Address: ArweaveAddress;
 };

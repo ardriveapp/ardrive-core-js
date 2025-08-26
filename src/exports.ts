@@ -9,6 +9,7 @@ export * from './ardrive_factory';
 export * from './wallet';
 export * from './wallet_dao';
 export * from './jwk_wallet';
+export * from './ethereum_wallet';
 
 // ArFSDao
 export * from './arfs/arfsdao';

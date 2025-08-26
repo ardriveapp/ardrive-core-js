@@ -124,7 +124,7 @@ export function checkFolderExistsSync(folderPath: string): boolean {
 			return false; // not a directory
 		}
 	} catch (err) {
-		return false; // directory doesnt exist
+		return false; // directory doesn't exist
 	}
 }
 
@@ -575,3 +575,7 @@ export const parseDriveSignatureType = (value: string): DriveSignatureType => {
 			throw new Error(`Unknown DriveSignatureType value: ${value}`);
 	}
 };
+
+export function isJWKInterface(wallet: Wallet | JWKInterface): wallet is JWKInterface {
+	return 'n' in wallet;
+}

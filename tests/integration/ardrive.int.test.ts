@@ -7,7 +7,7 @@ import { RootFolderID } from '../../src/arfs/arfs_builders/arfs_folder_builders'
 import { wrapFileOrFolder, ArFSFileToUpload, ArFSFolderToUpload } from '../../src/arfs/arfs_file_wrapper';
 import { ArFSDAO, PrivateDriveKeyData } from '../../src/arfs/arfsdao';
 import { ArDriveCommunityOracle } from '../../src/community/ardrive_community_oracle';
-import { deriveDriveKey, deriveFileKey } from '../../src/utils/crypto';
+import { deriveFileKey } from '../../src/utils/crypto';
 import { ARDataPriceRegressionEstimator } from '../../src/pricing/ar_data_price_regression_estimator';
 import { GatewayOracle } from '../../src/pricing/gateway_oracle';
 import {
@@ -60,10 +60,10 @@ import {
 	stubSmallFileToUpload,
 	stubSignedTransaction,
 	stubTxIDAlt,
-	stubTxIDAltTwo
+	stubTxIDAltTwo,
+	getStubDriveKey
 } from '../stubs';
 import { expectAsyncErrorThrow } from '../test_helpers';
-import { JWKWallet } from '../../src/jwk_wallet';
 import { WalletDAO } from '../../src/wallet_dao';
 import { ArFSUploadPlanner } from '../../src/arfs/arfs_upload_planner';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
@@ -95,15 +95,6 @@ enum EntityNameValidationErrorMessageType {
 
 describe('ArDrive class - integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json');
-
-	const getStubDriveKey = async (): Promise<DriveKey> => {
-		const key = await deriveDriveKey({
-			dataEncryptionKey: 'stubPassword',
-			driveId: `${stubEntityID}`,
-			walletPrivateKey: JSON.stringify((wallet as JWKWallet).getPrivateKey())
-		});
-		return key;
-	};
 
 	const arweaveOracle = new GatewayOracle();
 	const communityOracle = new ArDriveCommunityOracle(fakeArweave);
