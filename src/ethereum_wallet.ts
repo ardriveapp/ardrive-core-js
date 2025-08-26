@@ -9,8 +9,6 @@ import Arweave from 'arweave';
 import { fromJWK, SECP256k1PublicKey } from 'arweave/node/lib/crypto/keys';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
-// TODO: check for new arweave js ecdsa releases
-
 export class EthereumWallet implements Wallet {
 	private readonly signer: EthereumSigner;
 	private readonly jwk: JsonWebKey;
