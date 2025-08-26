@@ -10,20 +10,23 @@ Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more inf
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [API Reference](#api-reference)
-  - [Drive Operations](#drive-operations)
-  - [Folder Operations](#folder-operations)
-  - [File Operations](#file-operations)
-  - [Bulk Operations](#bulk-operations)
-  - [Download Operations](#download-operations)
-  - [Encryption & Security](#encryption--security)
-  - [Pricing & Cost Estimation](#pricing--cost-estimation)
-  - [Custom Metadata](#custom-metadata)
-  - [Conflict Resolution](#conflict-resolution)
+    - [Drive Operations](#drive-operations)
+    - [Folder Operations](#folder-operations)
+    - [File Operations](#file-operations)
+    - [Bulk Operations](#bulk-operations)
+    - [Download Operations](#download-operations)
+    - [Encryption & Security](#encryption--security)
+    - [Pricing & Cost Estimation](#pricing--cost-estimation)
+    - [Custom Metadata](#custom-metadata)
+    - [Conflict Resolution](#conflict-resolution)
 - [Advanced Features](#advanced-features)
-  - [Turbo Integration](#turbo-integration)
-  - [Bundle Support](#bundle-support)
-  - [Manifest Creation](#manifest-creation)
-  - [Progress Tracking](#progress-tracking)
+    - [Turbo Integration](#turbo-integration)
+    - [Bundle Support](#bundle-support)
+    - [Manifest Creation](#manifest-creation)
+    - [Progress Tracking](#progress-tracking)
+    - [Caching](#caching)
+    - [Anonymous Operations](#anonymous-operations)
+    - [Ethereum Address Normalization](#ethereum-address-normalization)
 - [Development](#development)
 - [Testing](#testing)
 - [Contributing](#contributing)
@@ -54,8 +57,8 @@ const myWallet = readJWKFile('/path/to/wallet.json');
 const arDrive = arDriveFactory({ wallet: myWallet });
 
 // Create a public drive and its root folder
-const createDriveResult = await arDrive.createPublicDrive({ 
-  driveName: 'My-Drive' 
+const createDriveResult = await arDrive.createPublicDrive({
+    driveName: 'My-Drive'
 });
 
 console.log('Drive ID:', createDriveResult.driveId);
@@ -67,6 +70,7 @@ console.log('Root Folder ID:', createDriveResult.rootFolderId);
 ### Entity Types
 
 ArDrive uses a hierarchical structure:
+
 - **Drives**: Top-level containers (public or private)
 - **Folders**: Organize files within drives
 - **Files**: Individual files stored on Arweave
@@ -83,6 +87,11 @@ const wallet = new JWKWallet(jwkKey);
 
 // Check wallet balance
 const balance = await wallet.getBalance();
+
+// Get all normalized wallet addresses (L1 and ANS-104)
+const { l1Address, ans104Address } = await wallet.getAllAddresses();
+console.log('Layer 1 Address:', l1Address);
+console.log('ANS-104 Address:', ans104Address); // Same for Arweave wallets, different for Ethereum
 ```
 
 ### Entity IDs
@@ -110,13 +119,13 @@ const fileId = new FileID('98765432a-eb5e-4134-8ae2-a3946a428ec7');
 ```typescript
 // Public drive
 const publicDrive = await arDrive.createPublicDrive({
-  driveName: 'My Public Drive'
+    driveName: 'My Public Drive'
 });
 
 // Private drive with password
 const privateDrive = await arDrive.createPrivateDrive({
-  driveName: 'My Private Drive',
-  drivePassword: 'mySecretPassword'
+    driveName: 'My Private Drive',
+    drivePassword: 'mySecretPassword'
 });
 ```
 
@@ -124,20 +133,20 @@ const privateDrive = await arDrive.createPrivateDrive({
 
 ```typescript
 // Get public drive
-const publicDriveInfo = await arDrive.getPublicDrive({ 
-  driveId 
+const publicDriveInfo = await arDrive.getPublicDrive({
+    driveId
 });
 
 // Get private drive (requires drive key)
-const privateDriveInfo = await arDrive.getPrivateDrive({ 
-  driveId, 
-  driveKey 
+const privateDriveInfo = await arDrive.getPrivateDrive({
+    driveId,
+    driveKey
 });
 
 // Get all drives for an address
-const allDrives = await arDrive.getAllDrivesForAddress({ 
-  address: walletAddress,
-  privateKeyData: wallet.getPrivateKey() 
+const allDrives = await arDrive.getAllDrivesForAddress({
+    address: walletAddress,
+    privateKeyData: wallet.getPrivateKey()
 });
 ```
 
@@ -146,15 +155,15 @@ const allDrives = await arDrive.getAllDrivesForAddress({
 ```typescript
 // Rename public drive
 await arDrive.renamePublicDrive({
-  driveId,
-  newName: 'Updated Drive Name'
+    driveId,
+    newName: 'Updated Drive Name'
 });
 
 // Rename private drive
 await arDrive.renamePrivateDrive({
-  driveId,
-  driveKey,
-  newName: 'Updated Private Name'
+    driveId,
+    driveKey,
+    newName: 'Updated Private Name'
 });
 ```
 
@@ -165,17 +174,17 @@ await arDrive.renamePrivateDrive({
 ```typescript
 // Public folder
 const publicFolder = await arDrive.createPublicFolder({
-  folderName: 'Documents',
-  driveId,
-  parentFolderId
+    folderName: 'Documents',
+    driveId,
+    parentFolderId
 });
 
 // Private folder
 const privateFolder = await arDrive.createPrivateFolder({
-  folderName: 'Secret Documents',
-  driveId,
-  driveKey,
-  parentFolderId
+    folderName: 'Secret Documents',
+    driveId,
+    driveKey,
+    parentFolderId
 });
 ```
 
@@ -184,16 +193,16 @@ const privateFolder = await arDrive.createPrivateFolder({
 ```typescript
 // List public folder
 const publicContents = await arDrive.listPublicFolder({
-  folderId,
-  maxDepth: 2, // Optional: limit recursion depth
-  includeRoot: true // Optional: include root folder in results
+    folderId,
+    maxDepth: 2, // Optional: limit recursion depth
+    includeRoot: true // Optional: include root folder in results
 });
 
 // List private folder
 const privateContents = await arDrive.listPrivateFolder({
-  folderId,
-  driveKey,
-  maxDepth: 1
+    folderId,
+    driveKey,
+    maxDepth: 1
 });
 ```
 
@@ -202,14 +211,14 @@ const privateContents = await arDrive.listPrivateFolder({
 ```typescript
 // Move folder
 await arDrive.movePublicFolder({
-  folderId,
-  newParentFolderId
+    folderId,
+    newParentFolderId
 });
 
 // Rename folder
 await arDrive.renamePublicFolder({
-  folderId,
-  newName: 'New Folder Name'
+    folderId,
+    newName: 'New Folder Name'
 });
 ```
 
@@ -225,16 +234,16 @@ const wrappedFile = wrapFileOrFolder('/path/to/file.pdf');
 
 // Upload public file
 const publicUpload = await arDrive.uploadPublicFile({
-  parentFolderId,
-  wrappedFile,
-  conflictResolution: 'upsert' // skip, replace, upsert, or error
+    parentFolderId,
+    wrappedFile,
+    conflictResolution: 'upsert' // skip, replace, upsert, or error
 });
 
 // Upload private file
 const privateUpload = await arDrive.uploadPrivateFile({
-  parentFolderId,
-  driveKey,
-  wrappedFile
+    parentFolderId,
+    driveKey,
+    wrappedFile
 });
 ```
 
@@ -245,9 +254,9 @@ const privateUpload = await arDrive.uploadPrivateFile({
 const publicFile = await arDrive.getPublicFile({ fileId });
 
 // Get private file metadata
-const privateFile = await arDrive.getPrivateFile({ 
-  fileId, 
-  driveKey 
+const privateFile = await arDrive.getPrivateFile({
+    fileId,
+    driveKey
 });
 ```
 
@@ -256,14 +265,14 @@ const privateFile = await arDrive.getPrivateFile({
 ```typescript
 // Move file
 await arDrive.movePublicFile({
-  fileId,
-  newParentFolderId
+    fileId,
+    newParentFolderId
 });
 
 // Rename file
 await arDrive.renamePublicFile({
-  fileId,
-  newName: 'renamed-file.pdf'
+    fileId,
+    newName: 'renamed-file.pdf'
 });
 ```
 
@@ -281,25 +290,25 @@ const file1 = wrapFileOrFolder('/path/to/file1.txt');
 
 // Upload everything in one operation
 const bulkUpload = await arDrive.uploadAllEntities({
-  entitiesToUpload: [
-    // Public folder
-    {
-      wrappedEntity: folder1,
-      destFolderId: rootFolderId
-    },
-    // Private folder
-    {
-      wrappedEntity: folder2,
-      destFolderId: rootFolderId,
-      driveKey: privateDriveKey
-    },
-    // Public file
-    {
-      wrappedEntity: file1,
-      destFolderId: someFolderId
-    }
-  ],
-  conflictResolution: 'upsert'
+    entitiesToUpload: [
+        // Public folder
+        {
+            wrappedEntity: folder1,
+            destFolderId: rootFolderId
+        },
+        // Private folder
+        {
+            wrappedEntity: folder2,
+            destFolderId: rootFolderId,
+            driveKey: privateDriveKey
+        },
+        // Public file
+        {
+            wrappedEntity: file1,
+            destFolderId: someFolderId
+        }
+    ],
+    conflictResolution: 'upsert'
 });
 
 // Results include all created entities
@@ -312,9 +321,9 @@ console.log('Total cost:', bulkUpload.totalCost.toString());
 ```typescript
 // Create folder and upload all children
 const folderWithContents = await arDrive.createPublicFolderAndUploadChildren({
-  parentFolderId,
-  wrappedFolder: wrapFileOrFolder('/path/to/folder'),
-  conflictResolution: 'skip'
+    parentFolderId,
+    wrappedFolder: wrapFileOrFolder('/path/to/folder'),
+    conflictResolution: 'skip'
 });
 ```
 
@@ -324,15 +333,15 @@ const folderWithContents = await arDrive.createPublicFolderAndUploadChildren({
 
 ```typescript
 // Download public file
-const publicData = await arDrive.downloadPublicFile({ 
-  fileId 
+const publicData = await arDrive.downloadPublicFile({
+    fileId
 });
 // publicData is a Buffer/Uint8Array
 
 // Download private file (automatically decrypted)
-const privateData = await arDrive.downloadPrivateFile({ 
-  fileId, 
-  driveKey 
+const privateData = await arDrive.downloadPrivateFile({
+    fileId,
+    driveKey
 });
 ```
 
@@ -341,15 +350,15 @@ const privateData = await arDrive.downloadPrivateFile({
 ```typescript
 // Download entire folder
 const folderData = await arDrive.downloadPublicFolder({
-  folderId,
-  destFolderPath: '/local/download/path'
+    folderId,
+    destFolderPath: '/local/download/path'
 });
 
 // Download private folder
 const privateFolderData = await arDrive.downloadPrivateFolder({
-  folderId,
-  driveKey,
-  destFolderPath: '/local/download/path'
+    folderId,
+    driveKey,
+    destFolderPath: '/local/download/path'
 });
 ```
 
@@ -361,11 +370,7 @@ const privateFolderData = await arDrive.downloadPrivateFolder({
 import { deriveDriveKey, deriveFileKey } from 'ardrive-core-js';
 
 // Derive drive key from password
-const driveKey = await deriveDriveKey(
-  'myPassword',
-  driveId.toString(),
-  JSON.stringify(wallet.getPrivateKey())
-);
+const driveKey = await deriveDriveKey('myPassword', driveId.toString(), JSON.stringify(wallet.getPrivateKey()));
 
 // File keys are automatically derived from drive keys
 const fileKey = await deriveFileKey(driveKey, fileId);
@@ -391,12 +396,12 @@ const priceEstimator = arDrive.getArDataPriceEstimator();
 
 // Estimate cost for data size
 const cost = await priceEstimator.getARPriceForByteCount(
-  new ByteCount(1024 * 1024) // 1MB
+    new ByteCount(1024 * 1024) // 1MB
 );
 
 // Get base Winston price (without tips)
 const basePrice = await priceEstimator.getBaseWinstonPriceForByteCount(
-  new ByteCount(5 * 1024 * 1024) // 5MB
+    new ByteCount(5 * 1024 * 1024) // 5MB
 );
 ```
 
@@ -405,28 +410,24 @@ const basePrice = await priceEstimator.getBaseWinstonPriceForByteCount(
 Attach custom metadata to files:
 
 ```typescript
-const fileWithMetadata = wrapFileOrFolder(
-  '/path/to/file.txt',
-  'text/plain',
-  {
-    metaDataJson: { 
-      'Custom-Field': 'Custom Value',
-      'Version': '1.0'
+const fileWithMetadata = wrapFileOrFolder('/path/to/file.txt', 'text/plain', {
+    metaDataJson: {
+        'Custom-Field': 'Custom Value',
+        Version: '1.0'
     },
     metaDataGqlTags: {
-      'App-Name': ['MyApp'],
-      'App-Version': ['1.0.0']
+        'App-Name': ['MyApp'],
+        'App-Version': ['1.0.0']
     },
     dataGqlTags: {
-      'Content-Type': ['text/plain']
+        'Content-Type': ['text/plain']
     }
-  }
-);
+});
 
 // Upload with custom metadata
 await arDrive.uploadPublicFile({
-  parentFolderId,
-  wrappedFile: fileWithMetadata
+    parentFolderId,
+    wrappedFile: fileWithMetadata
 });
 ```
 
@@ -480,14 +481,14 @@ Enable Turbo for optimized uploads:
 
 ```typescript
 // Enable Turbo
-const arDriveWithTurbo = arDriveFactory({ 
-  wallet: myWallet, 
-  turboSettings: {} 
+const arDriveWithTurbo = arDriveFactory({
+    wallet: myWallet,
+    turboSettings: {}
 });
 
 // Uploads will automatically use Turbo
 const result = await arDriveWithTurbo.uploadAllEntities({
-  entitiesToUpload: [{ wrappedEntity, destFolderId }]
+    entitiesToUpload: [{ wrappedEntity, destFolderId }]
 });
 ```
 
@@ -498,8 +499,8 @@ Large uploads are automatically bundled for efficiency:
 ```typescript
 // Bundling happens automatically for multiple files
 const bulkResult = await arDrive.uploadAllEntities({
-  entitiesToUpload: manyFiles,
-  // Bundling is handled internally
+    entitiesToUpload: manyFiles
+    // Bundling is handled internally
 });
 ```
 
@@ -510,9 +511,9 @@ Create Arweave manifests for web hosting:
 ```typescript
 // Create a manifest for a folder
 const manifest = await arDrive.uploadPublicManifest({
-  folderId,
-  destManifestName: 'index.html',
-  conflictResolution: 'upsert'
+    folderId,
+    destManifestName: 'index.html',
+    conflictResolution: 'upsert'
 });
 
 // Access: https://arweave.net/{manifestId}
@@ -528,6 +529,7 @@ export ARDRIVE_PROGRESS_LOG=1
 ```
 
 Progress will be logged to stderr:
+
 ```
 Uploading file transaction 1 of total 2 transactions...
 Transaction _GKQasQX194a364Hph8Oe-oku1AdfHwxWOw9_JC1yjc Upload Progress: 0%
@@ -547,6 +549,7 @@ Non-Windows: <os.homedir()>/.ardrive/caches/metadata
 ```
 
 Enable cache logging:
+
 ```bash
 export ARDRIVE_CACHE_LOG=1
 ```
@@ -572,11 +575,15 @@ Send tips to the ArDrive community:
 ```typescript
 // Send community tip
 await arDrive.sendCommunityTip({
-  tokenAmount: new Winston(1000000000000), // 1 AR
-  walletAddress,
-  communityWalletAddress
+    tokenAmount: new Winston(1000000000000), // 1 AR
+    walletAddress,
+    communityWalletAddress
 });
 ```
+
+### Ethereum Address Normalization
+
+Normalized addresses that are used for GQL queries are always base64url representation of a hash of the public key, ensuring consistency across different wallet implementations. For Ethereum wallets, the Arweave base layer uses a compressed public key format. ANS-104 instead uses an uncompressed public key. This results in two possible address representations for uploader of data stored on Arweave: one for L1 (base layer) and one for L2 (layer 2) solutions.
 
 ## Development
 
