@@ -1,7 +1,7 @@
 import { EthereumSigner } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
 
-import { PublicKey, ArweaveAddress, ADDR } from './types';
+import { PublicKey, ArweaveAddress, ADDR, WalletAddresses } from './types';
 import { bufferTob64Url, ownerToAddress, toB64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
 import { ec as EC } from 'elliptic';
@@ -64,10 +64,7 @@ export class EthereumWallet implements Wallet {
 	 * - `networkAddress`: L1 arweave-js normalized address
 	 * - `ans104Address`: L2 arbundles normalized address
 	 */
-	async getAllAddresses(): Promise<{
-		networkAddress: ArweaveAddress;
-		ans104Address: ArweaveAddress;
-	}> {
+	async getAllAddresses(): Promise<WalletAddresses> {
 		return {
 			networkAddress: await this.getAddress(),
 			ans104Address: ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))
