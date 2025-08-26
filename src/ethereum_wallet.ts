@@ -61,17 +61,17 @@ export class EthereumWallet implements Wallet {
 
 	/**
 	 * Returns an object containing the normalized Arweave owners for the wallet.
-	 * - `l1Address`: L1 arweave-js normalized address
-	 * - `ans104L2Address`: L2 arbundles normalized address
+	 * - `networkAddress`: L1 arweave-js normalized address
+	 * - `ans104Address`: L2 arbundles normalized address
 	 */
 	// TODO: change to  or similar
 	async getAllAddresses(): Promise<{
-		l1Address: ArweaveAddress;
-		ans104L2Address: ArweaveAddress;
+		networkAddress: ArweaveAddress;
+		ans104Address: ArweaveAddress;
 	}> {
 		return {
-			l1Address: await this.getAddress(),
-			ans104L2Address: ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))
+			networkAddress: await this.getAddress(),
+			ans104Address: ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))
 		};
 	}
 

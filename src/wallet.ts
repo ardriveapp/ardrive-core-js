@@ -12,8 +12,8 @@ export interface Wallet {
 	getAddress(): Promise<ArweaveAddress>;
 	/** Gets all potential L1 and L2 normalized arweave addresses for the wallet */
 	getAllAddresses(): Promise<{
-		l1Address: ArweaveAddress;
-		ans104L2Address: ArweaveAddress;
+		networkAddress: ArweaveAddress;
+		ans104Address: ArweaveAddress;
 	}>;
 	sign(data: Uint8Array): Promise<Uint8Array>;
 	signTransaction(tx: Transaction): Promise<void>;

@@ -89,9 +89,9 @@ const wallet = new JWKWallet(jwkKey);
 const balance = await wallet.getBalance();
 
 // Get all normalized wallet addresses (L1 and ANS-104)
-const { l1Address, ans104L2Address } = await wallet.getAllAddresses();
-console.log('Layer 1 Address:', l1Address);
-console.log('ANS-104 Address:', ans104L2Address); // Same for Arweave wallets, different for Ethereum
+const { networkAddress, ans104Address } = await wallet.getAllAddresses();
+console.log('Layer 1 Address:', networkAddress);
+console.log('ANS-104 Address:', ans104Address); // Same for Arweave wallets, different for Ethereum
 ```
 
 ### Entity IDs

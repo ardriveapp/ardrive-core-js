@@ -27,13 +27,13 @@ export class JWKWallet implements Wallet {
 	}
 
 	async getAllAddresses(): Promise<{
-		l1Address: ArweaveAddress;
-		ans104L2Address: ArweaveAddress;
+		networkAddress: ArweaveAddress;
+		ans104Address: ArweaveAddress;
 	}> {
 		const address = await this.getAddress();
 		return {
-			l1Address: address,
-			ans104L2Address: address // JWK wallets do not have a separate L2 address
+			networkAddress: address,
+			ans104Address: address // JWK wallets do not have a separate L2 address
 		};
 	}
 
