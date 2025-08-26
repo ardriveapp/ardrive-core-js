@@ -71,6 +71,7 @@ import {
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
+import { ArFSDAOAnonymousIncrementalSync } from './arfsdao_anonymous_incremental_sync';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
@@ -166,6 +167,7 @@ import { gatewayUrlForArweave } from '../utils/common';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
 import { ArFSTagSettings } from './arfs_tag_settings';
+export { ArFSTagSettings } from './arfs_tag_settings';
 import { TxPreparer } from './tx/tx_preparer';
 import {
 	ArFSPublicFolderTransactionData,
@@ -237,6 +239,8 @@ export interface ArFSCache extends ArFSAnonymousCache {
 
 export class ArFSDAO extends ArFSDAOAnonymous {
 	// TODO: Can we abstract Arweave type(s)?
+	public readonly anonymousIncSync?: ArFSDAOAnonymousIncrementalSync;
+
 	constructor(
 		private readonly wallet: Wallet,
 		arweave: Arweave,
@@ -267,6 +271,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		})
 	) {
 		super(arweave, undefined, undefined, caches);
+
+		// Initialize anonymous incremental sync instance only if caches support it
+		// This will be set by ArFSDAOIncrementalSync subclass
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';

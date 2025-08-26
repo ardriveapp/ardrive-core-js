@@ -18,3 +18,4 @@ export * from './cipher_iv_query_result';
 export * from './upload_conflict_types';
 export * from './entity_key';
 export * from './custom_metadata_types';
+export * from './sync_types';

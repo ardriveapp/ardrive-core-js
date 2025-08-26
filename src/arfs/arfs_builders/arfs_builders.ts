@@ -51,6 +51,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	name?: string;
 	txId?: TransactionID;
 	unixTime?: UnixTime;
+	blockHeight?: number;
 	boost?: FeeMultiple;
 	protected readonly entityId: AnyEntityID;
 	protected readonly gatewayApi: GatewayAPI;
@@ -96,6 +97,10 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 			node = edges[0].node;
 		}
 		this.txId = TxID(node.id);
+		// Extract block height if available
+		if (node.block) {
+			this.blockHeight = node.block.height;
+		}
 		const { tags } = node;
 		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;

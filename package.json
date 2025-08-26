@@ -76,7 +76,10 @@
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
 		"ci": "yarn arlocal-docker-test && yarn build",
 		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
-		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\""
+		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\"",
+		"test:sync": "npx mocha --config .mocharc.js --parallel false --grep incremental",
+		"test:sync:unit": "npx mocha --config .mocharc.js --parallel false src/**/*incremental*.test.ts src/**/sync_state.test.ts",
+		"test:sync:integration": "npx mocha --config .mocharc.js --parallel false tests/integration/incremental_sync.int.test.ts"
 	},
 	"directories": {
 		"test": "./"
