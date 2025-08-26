@@ -64,7 +64,6 @@ export class EthereumWallet implements Wallet {
 	 * - `networkAddress`: L1 arweave-js normalized address
 	 * - `ans104Address`: L2 arbundles normalized address
 	 */
-	// TODO: change to  or similar
 	async getAllAddresses(): Promise<{
 		networkAddress: ArweaveAddress;
 		ans104Address: ArweaveAddress;
