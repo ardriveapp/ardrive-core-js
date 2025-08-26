@@ -170,7 +170,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	// Convenience function for known-public use cases
 	async getPublicDrive(driveId: DriveID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicDrive> {
-		const cacheKey = { driveId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
+		const { cacheKeyAddress, ownerAddresses } = addressesFromOwner(owner);
+		const cacheKey = { driveId, owner: cacheKeyAddress };
 		const cachedDrive = this.caches.publicDriveCache.get(cacheKey);
 		if (cachedDrive) {
 			return cachedDrive;
@@ -180,14 +181,15 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicDriveBuilder({
 				entityId: driveId,
 				gatewayApi: this.gatewayApi,
-				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
+				owner: ownerAddresses
 			}).build()
 		);
 	}
 
 	// Convenience function for known-private use cases
 	async getPublicFolder(folderId: FolderID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicFolder> {
-		const cacheKey = { folderId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
+		const { cacheKeyAddress, ownerAddresses } = addressesFromOwner(owner);
+		const cacheKey = { folderId, owner: cacheKeyAddress };
 		const cachedFolder = this.caches.publicFolderCache.get(cacheKey);
 		if (cachedFolder) {
 			return cachedFolder;
@@ -197,13 +199,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicFolderBuilder({
 				entityId: folderId,
 				gatewayApi: this.gatewayApi,
-				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
+				owner: ownerAddresses
 			}).build()
 		);
 	}
 
 	async getPublicFile(fileId: FileID, owner: ArweaveAddress | WalletAddresses): Promise<ArFSPublicFile> {
-		const cacheKey = { fileId, owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress };
+		const { cacheKeyAddress, ownerAddresses } = addressesFromOwner(owner);
+		const cacheKey = { fileId, owner: cacheKeyAddress };
 		const cachedFile = this.caches.publicFileCache.get(cacheKey);
 		if (cachedFile) {
 			return cachedFile;
@@ -213,7 +216,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			new ArFSPublicFileBuilder({
 				entityId: fileId,
 				gatewayApi: this.gatewayApi,
-				owner: owner instanceof ArweaveAddress ? owner : owner.networkAddress
+				owner: ownerAddresses
 			}).build()
 		);
 	}
