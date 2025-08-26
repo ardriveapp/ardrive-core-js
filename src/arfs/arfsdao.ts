@@ -2086,7 +2086,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 	async assertValidPassword(password: string): Promise<void> {
 		const wallet = this.wallet;
-		const owner = await wallet.getOwner();
+		const owner = Object.values(await wallet.getAllAddresses());
 		const query = buildQuery({
 			tags: [
 				{ name: 'Entity-Type', value: 'drive' },
@@ -2128,7 +2128,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
 		const result: CipherIVQueryResult[] = [];
 		const wallet = this.wallet;
-		const owner = await wallet.getOwner();
+		const owner = Object.values(await wallet.getAllAddresses());
 		let cursor = '';
 		let hasNextPage = true;
 		while (hasNextPage) {

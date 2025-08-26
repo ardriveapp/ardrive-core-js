@@ -26,9 +26,15 @@ export class JWKWallet implements Wallet {
 		return Promise.resolve(ADDR(bufferTob64Url(result)));
 	}
 
-	async getOwner(): Promise<ArweaveAddress[]> {
+	async getAllAddresses(): Promise<{
+		l1Address: ArweaveAddress;
+		ans104L2Address: ArweaveAddress;
+	}> {
 		const address = await this.getAddress();
-		return [address]; // Only one type of address for Arweave wallets
+		return {
+			l1Address: address,
+			ans104L2Address: address // JWK wallets do not have a separate L2 address
+		};
 	}
 
 	// Use cases: generating drive keys, file keys, etc.

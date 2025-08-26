@@ -9,6 +9,8 @@ import Arweave from 'arweave';
 import { fromJWK, SECP256k1PublicKey } from 'arweave/node/lib/crypto/keys';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
+// TODO: check for new arweave js ecdsa releases
+
 export class EthereumWallet implements Wallet {
 	private readonly signer: EthereumSigner;
 	private readonly jwk: JsonWebKey;
@@ -58,11 +60,19 @@ export class EthereumWallet implements Wallet {
 	}
 
 	/**
-	 * Returns array of normalized Arweave owners for the wallet.
-	 * L1 arweave-js normalized address and L2 arbundles normalized address
+	 * Returns an object containing the normalized Arweave owners for the wallet.
+	 * - `l1Address`: L1 arweave-js normalized address
+	 * - `ans104L2Address`: L2 arbundles normalized address
 	 */
-	async getOwner(): Promise<ArweaveAddress[]> {
-		return [await this.getAddress(), ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))];
+	// TODO: change to  or similar
+	async getAllAddresses(): Promise<{
+		l1Address: ArweaveAddress;
+		ans104L2Address: ArweaveAddress;
+	}> {
+		return {
+			l1Address: await this.getAddress(),
+			ans104L2Address: ADDR(ownerToAddress(toB64Url(this.signer.publicKey)))
+		};
 	}
 
 	async sign(data: Uint8Array): Promise<Uint8Array> {
