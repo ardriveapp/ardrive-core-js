@@ -398,14 +398,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			childrenFolderEntities.unshift(folder);
 		}
 
-		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities: ArFSPublicFile[] = [];
-
-		for (const id of searchFolderIDs) {
-			(await this.getPublicFilesWithParentFolderIds([id], owner, driveIdOfFolder, true)).forEach((e) => {
-				childrenFileEntities.push(e);
-			});
-		}
+		// Fetch all file entities within all Folders of the drive using a single GraphQL query
+		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(
+			searchFolderIDs,
+			owner,
+			driveIdOfFolder,
+			true
+		);
 
 		const children: (ArFSPublicFolder | ArFSPublicFile)[] = [];
 		for (const en of childrenFolderEntities) {
@@ -489,20 +488,21 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			const childrenFiles = childrenFileEntities.filter(
 				(file) => `${file.parentFolderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */
 			);
-			for (const file of childrenFiles) {
+			// Download files in parallel batches to avoid overwhelming resources
+			const downloadPromises = childrenFiles.map(async (file) => {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
 					publicEntityWithPathsFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
-
-				/*
-				 * FIXME: Downloading all files at once consumes a lot of resources.
-				 * TODO: Implement a download manager for downloading in parallel
-				 * Doing it sequentially for now
-				 */
 				const dataStream = await this.getPublicDataStream(file.dataTxId);
 				const fileWrapper = new ArFSPublicFileToDownload(file, dataStream, absoluteLocalFilePath);
 				await fileWrapper.write();
+			});
+			// Process files in batches of 5 to avoid overwhelming the system
+			const batchSize = 5;
+			for (let i = 0; i < downloadPromises.length; i += batchSize) {
+				const batch = downloadPromises.slice(i, i + batchSize);
+				await Promise.all(batch);
 			}
 		}
 	}
