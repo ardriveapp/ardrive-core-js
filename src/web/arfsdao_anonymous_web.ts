@@ -2,7 +2,9 @@
 import type { GQLEdgeInterface, GQLNodeInterface, GQLTagInterface } from '../types/gql_Types';
 import { buildQuery, ASCENDING_ORDER } from '../utils/query';
 import { ADDR } from '../types/arweave_address';
+import { ROOT_FOLDER_ID_PLACEHOLDER } from '../arfs/arfs_builders/arfs_folder_builders';
 import { GatewayAPIWeb } from './gateway_api_web';
+import type { CustomMetaDataGqlTags, CustomMetaDataJsonFields } from '../types';
 
 export interface WebPublicDrive {
 	driveId: string;
@@ -27,6 +29,12 @@ export interface WebPublicFolder {
 	appName: string;
 	appVersion?: string;
 	arFS: string;
+	contentType?: string;
+	customMetaDataGqlTags?: CustomMetaDataGqlTags;
+	customMetaDataJson?: CustomMetaDataJsonFields;
+	path?: string;
+	txIdPath?: string;
+	entityIdPath?: string;
 }
 
 export interface WebPublicFile {
@@ -45,11 +53,74 @@ export interface WebPublicFile {
 	appName: string;
 	appVersion?: string;
 	arFS: string;
+	contentType?: string;
+	customMetaDataGqlTags?: CustomMetaDataGqlTags;
+	customMetaDataJson?: CustomMetaDataJsonFields;
+	path?: string;
+	txIdPath?: string;
+	entityIdPath?: string;
 }
 
 export type WebPublicEntity = WebPublicFolder | WebPublicFile;
 
 const td = new TextDecoder();
+
+const COMMON_TAG_NAMES = new Set([
+	'App-Name',
+	'App-Version',
+	'ArFS',
+	'Content-Type',
+	'Drive-Id',
+	'Entity-Type',
+	'Unix-Time',
+	'Boost'
+]);
+
+const FOLDER_TAG_NAMES = new Set([...COMMON_TAG_NAMES, 'Folder-Id', 'Parent-Folder-Id']);
+const FILE_TAG_NAMES = new Set([...COMMON_TAG_NAMES, 'File-Id', 'Parent-Folder-Id']);
+
+const FOLDER_JSON_PROTECTED_KEYS = ['name'] as const;
+const FILE_JSON_PROTECTED_KEYS = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'] as const;
+
+function collectCustomMetaDataGqlTags(
+	tags: GQLTagInterface[],
+	knownTagNames: Set<string>
+): CustomMetaDataGqlTags | undefined {
+	const custom: CustomMetaDataGqlTags = {};
+	for (const { name, value } of tags) {
+		if (knownTagNames.has(name)) {
+			continue;
+		}
+		const existing = custom[name];
+		if (existing === undefined) {
+			custom[name] = value;
+		} else if (Array.isArray(existing)) {
+			custom[name] = [...existing, value];
+		} else {
+			custom[name] = [existing, value];
+		}
+	}
+	return Object.keys(custom).length ? custom : undefined;
+}
+
+function collectCustomMetaDataJson(
+	data: Record<string, unknown>,
+	protectedKeys: readonly string[]
+): CustomMetaDataJsonFields | undefined {
+	const entries = Object.entries(data).filter(([key]) => !protectedKeys.includes(key));
+	if (!entries.length) {
+		return undefined;
+	}
+	const customMetaData: CustomMetaDataJsonFields = {};
+	for (const [key, value] of entries) {
+		customMetaData[key] = value as CustomMetaDataJsonFields[string];
+	}
+	return customMetaData;
+}
+
+function normalizeParentFolderId(parentFolderId?: string): string {
+	return parentFolderId ?? ROOT_FOLDER_ID_PLACEHOLDER;
+}
 
 function tagsToRecord(tags: GQLTagInterface[]): Record<string, string> {
 	const out: Record<string, string> = {};
@@ -63,6 +134,33 @@ function decodeJson(bytes: Uint8Array): Record<string, unknown> {
 
 export class ArFSDAOAnonymousWeb {
 	constructor(private gatewayApi: GatewayAPIWeb) {}
+
+	/**
+	 * Filters entities to keep only the latest revision of each entity ID.
+	 * This matches the behavior of the node implementation's latestRevisionFilter.
+	 */
+	private filterLatestRevisions<T extends WebPublicFolder | WebPublicFile>(entities: T[]): T[] {
+		const entityMap = new Map<string, T[]>();
+
+		// Group entities by their entityId
+		for (const entity of entities) {
+			const id = entity.entityId;
+			if (!entityMap.has(id)) {
+				entityMap.set(id, []);
+			}
+			entityMap.get(id)!.push(entity);
+		}
+
+		// For each entity ID, keep only the latest revision (highest unixTime)
+		const latestEntities: T[] = [];
+		for (const [, revisions] of entityMap) {
+			// Sort by unixTime descending to get the latest first
+			revisions.sort((a, b) => b.unixTime - a.unixTime);
+			latestEntities.push(revisions[0]);
+		}
+
+		return latestEntities;
+	}
 
 	async getOwnerForDriveId(driveId: string): Promise<string> {
 		const gqlQuery = buildQuery({
@@ -136,19 +234,25 @@ export class ArFSDAOAnonymousWeb {
 		const node = txs.edges[0]?.node as GQLNodeInterface | undefined;
 		if (!node) throw new Error(`Public folder not found: ${folderId}`);
 		const tags = tagsToRecord(node.tags);
+		const customMetaDataGqlTags = collectCustomMetaDataGqlTags(node.tags, FOLDER_TAG_NAMES);
 		const data = decodeJson(await this.gatewayApi.getTxData(node.id));
+		const customMetaDataJson = collectCustomMetaDataJson(data, FOLDER_JSON_PROTECTED_KEYS);
+		const parentFolderId = normalizeParentFolderId(tags['Parent-Folder-Id']);
 		return {
 			entityType: 'folder',
 			entityId: folderId,
 			folderId,
-			parentFolderId: tags['Parent-Folder-Id'],
+			parentFolderId,
 			name: data.name as string,
 			driveId: tags['Drive-Id'],
 			txId: node.id,
 			unixTime: Number(tags['Unix-Time'] ?? 0),
 			appName: tags['App-Name'],
 			appVersion: tags['App-Version'],
-			arFS: tags['ArFS']
+			arFS: tags['ArFS'],
+			contentType: tags['Content-Type'],
+			...(customMetaDataGqlTags ? { customMetaDataGqlTags } : {}),
+			...(customMetaDataJson ? { customMetaDataJson } : {})
 		};
 	}
 
@@ -164,12 +268,15 @@ export class ArFSDAOAnonymousWeb {
 		const node = txs.edges[0]?.node as GQLNodeInterface | undefined;
 		if (!node) throw new Error(`Public file not found: ${fileId}`);
 		const tags = tagsToRecord(node.tags);
+		const customMetaDataGqlTags = collectCustomMetaDataGqlTags(node.tags, FILE_TAG_NAMES);
 		const data = decodeJson(await this.gatewayApi.getTxData(node.id));
+		const customMetaDataJson = collectCustomMetaDataJson(data, FILE_JSON_PROTECTED_KEYS);
+		const parentFolderId = normalizeParentFolderId(tags['Parent-Folder-Id']);
 		return {
 			entityType: 'file',
 			entityId: fileId,
 			fileId,
-			parentFolderId: tags['Parent-Folder-Id'],
+			parentFolderId,
 			name: data.name as string,
 			size: Number(data.size),
 			lastModifiedDate: Number(data.lastModifiedDate),
@@ -180,7 +287,10 @@ export class ArFSDAOAnonymousWeb {
 			unixTime: Number(tags['Unix-Time'] ?? 0),
 			appName: tags['App-Name'],
 			appVersion: tags['App-Version'],
-			arFS: tags['ArFS']
+			arFS: tags['ArFS'],
+			contentType: tags['Content-Type'],
+			...(customMetaDataGqlTags ? { customMetaDataGqlTags } : {}),
+			...(customMetaDataJson ? { customMetaDataJson } : {})
 		};
 	}
 
@@ -197,7 +307,6 @@ export class ArFSDAOAnonymousWeb {
 		const { folderId, owner, maxDepth = Number.MAX_SAFE_INTEGER, includeRoot = false } = params;
 		const driveId = await this.getDriveIdForFolderId(folderId);
 
-		// 1) Fetch all folders for drive
 		const allFolders: WebPublicFolder[] = [];
 		let cursor = '';
 		let hasNext = true;
@@ -216,46 +325,107 @@ export class ArFSDAOAnonymousWeb {
 				cursor = edge.cursor;
 				const node = edge.node;
 				const tags = tagsToRecord(node.tags);
+				const customMetaDataGqlTags = collectCustomMetaDataGqlTags(node.tags, FOLDER_TAG_NAMES);
 				const data = decodeJson(await this.gatewayApi.getTxData(node.id));
-				const entity: WebPublicFolder = {
+				const customMetaDataJson = collectCustomMetaDataJson(data, FOLDER_JSON_PROTECTED_KEYS);
+				const folderEntityId = tags['Folder-Id'];
+				const parentFolderId = normalizeParentFolderId(tags['Parent-Folder-Id']);
+				const folder: WebPublicFolder = {
 					entityType: 'folder',
-					entityId: tags['Folder-Id'],
-					folderId: tags['Folder-Id'],
-					parentFolderId: tags['Parent-Folder-Id'],
+					entityId: folderEntityId,
+					folderId: folderEntityId,
+					parentFolderId,
 					name: data.name as string,
 					driveId: tags['Drive-Id'],
 					txId: node.id,
 					unixTime: Number(tags['Unix-Time'] ?? 0),
 					appName: tags['App-Name'],
 					appVersion: tags['App-Version'],
-					arFS: tags['ArFS']
+					arFS: tags['ArFS'],
+					contentType: tags['Content-Type'] ?? 'application/json',
+					...(customMetaDataGqlTags ? { customMetaDataGqlTags } : {}),
+					...(customMetaDataJson ? { customMetaDataJson } : {})
 				};
-				allFolders.push(entity);
+				allFolders.push(folder);
 			}
 		}
 
-		// 2) Compute subtree folder IDs to depth
+		const latestFolders = this.filterLatestRevisions(allFolders);
+		const folderMap = new Map<string, WebPublicFolder>();
+		for (const folder of latestFolders) {
+			folderMap.set(folder.folderId, folder);
+		}
+
+		const folderPaths = new Map<string, { path: string; txIdPath: string; entityIdPath: string }>();
+		const resolveFolderPaths = (id: string): { path: string; txIdPath: string; entityIdPath: string } => {
+			const memoized = folderPaths.get(id);
+			if (memoized) {
+				return memoized;
+			}
+			const folder = folderMap.get(id);
+			if (!folder) {
+				throw new Error(`Missing folder metadata for ${id}`);
+			}
+			let derivedPaths: { path: string; txIdPath: string; entityIdPath: string };
+			if (!folder.parentFolderId || folder.parentFolderId === ROOT_FOLDER_ID_PLACEHOLDER) {
+				derivedPaths = {
+					path: `/${folder.name}`,
+					txIdPath: `/${folder.txId}`,
+					entityIdPath: `/${folder.folderId}`
+				};
+			} else {
+				const parentPaths = resolveFolderPaths(folder.parentFolderId);
+				derivedPaths = {
+					path: `${parentPaths.path}/${folder.name}`,
+					txIdPath: `${parentPaths.txIdPath}/${folder.txId}`,
+					entityIdPath: `${parentPaths.entityIdPath}/${folder.folderId}`
+				};
+			}
+			folder.path = derivedPaths.path;
+			folder.txIdPath = derivedPaths.txIdPath;
+			folder.entityIdPath = derivedPaths.entityIdPath;
+			folderPaths.set(id, derivedPaths);
+			return derivedPaths;
+		};
+
+		for (const folder of latestFolders) {
+			resolveFolderPaths(folder.folderId);
+		}
+
 		const subIds: string[] = [];
 		const queue: Array<{ id: string; depth: number }> = [{ id: folderId, depth: 0 }];
 		while (queue.length) {
 			const { id, depth } = queue.shift()!;
 			subIds.push(id);
-			if (depth >= maxDepth!) continue;
-			const children = allFolders.filter((f) => (f.parentFolderId ?? '') === id);
-			for (const c of children) queue.push({ id: c.folderId, depth: depth + 1 });
+			if (depth >= maxDepth) {
+				continue;
+			}
+			const children = latestFolders.filter((f) => f.parentFolderId === id);
+			for (const child of children) {
+				queue.push({ id: child.folderId, depth: depth + 1 });
+			}
 		}
 
-		// 3) Collect folders
-		const result: WebPublicEntity[] = [];
-		const rootFolders = allFolders.filter((f) => f.folderId === folderId);
-		if (includeRoot && rootFolders.length) result.push(...rootFolders);
+		const folderResults: WebPublicFolder[] = [];
+		if (includeRoot) {
+			const rootFolder = folderMap.get(folderId);
+			if (rootFolder) {
+				folderResults.push(rootFolder);
+			}
+		}
 		for (const id of subIds) {
-			if (id === folderId) continue;
-			result.push(...allFolders.filter((f) => f.folderId === id));
+			if (id === folderId) {
+				continue;
+			}
+			const folder = folderMap.get(id);
+			if (folder) {
+				folderResults.push(folder);
+			}
 		}
 
-		// 4) Fetch files for subIds
+		const fileResults: WebPublicFile[] = [];
 		if (subIds.length) {
+			const allFiles: WebPublicFile[] = [];
 			cursor = '';
 			hasNext = true;
 			while (hasNext) {
@@ -274,12 +444,19 @@ export class ArFSDAOAnonymousWeb {
 					cursor = edge.cursor;
 					const node = edge.node;
 					const tags = tagsToRecord(node.tags);
+					const customMetaDataGqlTags = collectCustomMetaDataGqlTags(node.tags, FILE_TAG_NAMES);
 					const data = decodeJson(await this.gatewayApi.getTxData(node.id));
+					const customMetaDataJson = collectCustomMetaDataJson(data, FILE_JSON_PROTECTED_KEYS);
+					const fileParentFolderId = tags['Parent-Folder-Id'];
+					if (!fileParentFolderId) {
+						continue;
+					}
+					const fileIdTag = tags['File-Id'];
 					const file: WebPublicFile = {
 						entityType: 'file',
-						entityId: tags['File-Id'],
-						fileId: tags['File-Id'],
-						parentFolderId: tags['Parent-Folder-Id'],
+						entityId: fileIdTag,
+						fileId: fileIdTag,
+						parentFolderId: fileParentFolderId,
 						name: data.name as string,
 						size: Number(data.size),
 						lastModifiedDate: Number(data.lastModifiedDate),
@@ -290,12 +467,24 @@ export class ArFSDAOAnonymousWeb {
 						unixTime: Number(tags['Unix-Time'] ?? 0),
 						appName: tags['App-Name'],
 						appVersion: tags['App-Version'],
-						arFS: tags['ArFS']
+						arFS: tags['ArFS'],
+						contentType: tags['Content-Type'] ?? 'application/json',
+						...(customMetaDataGqlTags ? { customMetaDataGqlTags } : {}),
+						...(customMetaDataJson ? { customMetaDataJson } : {})
 					};
-					result.push(file);
+					const parentPaths = resolveFolderPaths(fileParentFolderId);
+					file.path = `${parentPaths.path}/${file.name}`;
+					file.txIdPath = `${parentPaths.txIdPath}/${file.txId}`;
+					file.entityIdPath = `${parentPaths.entityIdPath}/${file.fileId}`;
+					allFiles.push(file);
 				}
 			}
+			const latestFiles = this.filterLatestRevisions(allFiles);
+			fileResults.push(...latestFiles);
 		}
-		return result;
+
+		const combined: WebPublicEntity[] = [...folderResults, ...fileResults];
+		combined.sort((a, b) => (a.path ?? '').localeCompare(b.path ?? ''));
+		return combined;
 	}
 }
