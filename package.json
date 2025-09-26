@@ -11,6 +11,8 @@
 		"@ardrive/ardrive-promise-cache": "^1.1.4",
 		"@ardrive/turbo-sdk": "^1.0.1",
 		"@dha-team/arbundles": "^1.0.3",
+		"@noble/ciphers": "^2.0.1",
+		"@noble/hashes": "^2.0.1",
 		"arweave": "^1.15.7",
 		"axios": "^0.21.1",
 		"axios-retry": "^3.6.0",
@@ -29,6 +31,7 @@
 	},
 	"devDependencies": {
 		"@istanbuljs/nyc-config-typescript": "^1.0.2",
+		"@playwright/test": "^1.55.1",
 		"@types/bn.js": "^5.1.2",
 		"@types/chai": "^4.3.6",
 		"@types/human-crypto-keys": "^0.1.2",
@@ -47,14 +50,17 @@
 		"@typescript-eslint/eslint-plugin": "^6.2.1",
 		"@typescript-eslint/parser": "^6.2.1",
 		"chai": "^4.3.3",
+		"esbuild-plugin-polyfill-node": "^0.3.0",
 		"eslint": "^8.46.0",
 		"eslint-config-prettier": "^8.1.0",
 		"eslint-plugin-prettier": "latest",
 		"espower-typescript": "^10.0.0",
+		"http-server": "^14.1.1",
 		"husky": "^=6",
 		"lint-staged": "^11.0.0",
 		"mocha": "^8.3.1",
 		"nyc": "^15.1.0",
+		"playwright": "^1.55.1",
 		"power-assert": "^1.6.1",
 		"prettier": "^3.0.3",
 		"rimraf": "^5.0.5",
@@ -62,6 +68,7 @@
 		"source-map-support": "^0.5.21",
 		"ts-node": "^10.9.1",
 		"ts-sinon": "^2.0.2",
+		"tsup": "^8.0.1",
 		"typescript": "^5.2.2"
 	},
 	"scripts": {
@@ -76,7 +83,17 @@
 		"build": "yarn clean && tsc --project ./tsconfig.prod.json",
 		"ci": "yarn arlocal-docker-test && yarn build",
 		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
-		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\""
+		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\"",
+		"build:web": "node build-web.mjs",
+		"build:all": "yarn build && yarn build:web",
+		"test:playwright": "yarn build:all && playwright test",
+		"test:playwright:headed": "yarn build:all && playwright test --headed",
+		"test:playwright:ui": "yarn build:all && playwright test --ui",
+		"test:playwright:basic": "yarn build && playwright test tests/playwright/basic-setup.spec.ts",
+		"test:playwright:report": "playwright show-report",
+		"test:browser": "yarn test:playwright",
+		"test:headless": "yarn test:playwright",
+		"test:all": "yarn test && yarn test:playwright"
 	},
 	"directories": {
 		"test": "./"
@@ -97,6 +114,17 @@
 		"url": "https://github.com/ardriveapp/ardrive-core-js.git"
 	},
 	"files": [
-		"lib/**/*"
-	]
+		"lib/**/*",
+		"dist/web/**/*"
+	],
+	"exports": {
+		".": {
+			"import": "./lib/exports.js",
+			"types": "./lib/exports.d.ts"
+		},
+		"./web": {
+			"import": "./dist/web/index.js",
+			"types": "./dist/web/index.d.ts"
+		}
+	}
 }

@@ -18,7 +18,6 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
-	ArFSFileMetadataTransactionData,
 	ArFSObjectTransactionData,
 	ArFSPublicDriveTransactionData,
 	ArFSPrivateDriveTransactionData
@@ -220,7 +219,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
-					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
+					reward: (await this.estimateAndAssertCostOfFileRename(fileTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				};
 
@@ -297,7 +296,7 @@ export class ArDrive extends ArDriveAnonymous {
 		const fileMetaDataBaseReward = this.uploadPlanner.isTurboUpload()
 			? undefined
 			: {
-					reward: (await this.estimateAndAssertCostOfMoveFile(fileTransactionData)).metaDataBaseReward,
+					reward: (await this.estimateAndAssertCostOfFileRename(fileTransactionData)).metaDataBaseReward,
 					feeMultiple: this.feeMultiple
 				};
 
@@ -1377,17 +1376,31 @@ export class ArDrive extends ArDriveAnonymous {
 
 	/** Throw an error if wallet balance does not cover cost of the provided winston  */
 	async assertWalletBalance(winston: Winston): Promise<void> {
-		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet, winston);
+		const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
 
-		if (!walletHasBalance) {
-			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet);
-
-			throw new Error(`Wallet balance of ${walletBalance} Winston is not enough (${winston}) for this action!`);
+		if (walletBalance < winston) {
+			throw new Error(
+				`Insufficient funds for this transaction! Please add more AR to your wallet or reduce the size of this transaction.`
+			);
 		}
 	}
 
-	async estimateAndAssertCostOfMoveFile(metadata: ArFSFileMetadataTransactionData): Promise<MetaDataBaseCosts> {
-		return this.estimateAndAssertCostOfMetaDataTx(metadata);
+	/**
+	 * Sign arbitrary data and return a DataItem for cross-platform compatibility with web version
+	 * @param bytes - Data to sign
+	 * @param tags - Optional tags to include in the DataItem
+	 * @returns Signed DataItem
+	 */
+	async signData(bytes: Uint8Array, tags: { name: string; value: string }[] = []) {
+		// Import DataItem creation utilities
+		const { ArweaveSigner, createData } = await import('@dha-team/arbundles');
+		
+		// Cast wallet to access getPrivateKey method (assumes JWKWallet)
+		const jwkWallet = this.wallet as any;
+		const signer = new ArweaveSigner(jwkWallet.getPrivateKey());
+		const di = createData(bytes, signer, { tags });
+		await di.sign(signer);
+		return di; // Caller can post to a bundler or gateway endpoint
 	}
 
 	async estimateAndAssertCostOfFolderUpload(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
