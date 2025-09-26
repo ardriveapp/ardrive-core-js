@@ -17,6 +17,7 @@ export interface WebPublicDrive {
 
 export interface WebPublicFolder {
 	entityType: 'folder';
+	entityId: string;
 	folderId: string;
 	parentFolderId?: string; // root folders omit parent
 	name: string;
@@ -30,6 +31,7 @@ export interface WebPublicFolder {
 
 export interface WebPublicFile {
 	entityType: 'file';
+	entityId: string;
 	fileId: string;
 	parentFolderId: string;
 	name: string;
@@ -45,7 +47,7 @@ export interface WebPublicFile {
 	arFS: string;
 }
 
-type WebPublicEntity = WebPublicFolder | WebPublicFile;
+export type WebPublicEntity = WebPublicFolder | WebPublicFile;
 
 const td = new TextDecoder();
 
@@ -137,6 +139,7 @@ export class ArFSDAOAnonymousWeb {
 		const data = decodeJson(await this.gatewayApi.getTxData(node.id));
 		return {
 			entityType: 'folder',
+			entityId: folderId,
 			folderId,
 			parentFolderId: tags['Parent-Folder-Id'],
 			name: data.name as string,
@@ -164,6 +167,7 @@ export class ArFSDAOAnonymousWeb {
 		const data = decodeJson(await this.gatewayApi.getTxData(node.id));
 		return {
 			entityType: 'file',
+			entityId: fileId,
 			fileId,
 			parentFolderId: tags['Parent-Folder-Id'],
 			name: data.name as string,
@@ -194,7 +198,7 @@ export class ArFSDAOAnonymousWeb {
 		const driveId = await this.getDriveIdForFolderId(folderId);
 
 		// 1) Fetch all folders for drive
-		const allFolders: { [id: string]: WebPublicFolder } = {};
+		const allFolders: WebPublicFolder[] = [];
 		let cursor = '';
 		let hasNext = true;
 		while (hasNext) {
@@ -215,6 +219,7 @@ export class ArFSDAOAnonymousWeb {
 				const data = decodeJson(await this.gatewayApi.getTxData(node.id));
 				const entity: WebPublicFolder = {
 					entityType: 'folder',
+					entityId: tags['Folder-Id'],
 					folderId: tags['Folder-Id'],
 					parentFolderId: tags['Parent-Folder-Id'],
 					name: data.name as string,
@@ -225,7 +230,7 @@ export class ArFSDAOAnonymousWeb {
 					appVersion: tags['App-Version'],
 					arFS: tags['ArFS']
 				};
-				allFolders[entity.folderId] = entity;
+				allFolders.push(entity);
 			}
 		}
 
@@ -235,16 +240,18 @@ export class ArFSDAOAnonymousWeb {
 		while (queue.length) {
 			const { id, depth } = queue.shift()!;
 			subIds.push(id);
-			if (depth >= maxDepth) continue;
-			const children = Object.values(allFolders).filter((f) => (f.parentFolderId ?? '') === id);
+			if (depth >= maxDepth!) continue;
+			const children = allFolders.filter((f) => (f.parentFolderId ?? '') === id);
 			for (const c of children) queue.push({ id: c.folderId, depth: depth + 1 });
 		}
 
 		// 3) Collect folders
 		const result: WebPublicEntity[] = [];
-		if (includeRoot && allFolders[folderId]) result.push(allFolders[folderId]);
+		const rootFolders = allFolders.filter((f) => f.folderId === folderId);
+		if (includeRoot && rootFolders.length) result.push(...rootFolders);
 		for (const id of subIds) {
-			if (id !== folderId && allFolders[id]) result.push(allFolders[id]);
+			if (id === folderId) continue;
+			result.push(...allFolders.filter((f) => f.folderId === id));
 		}
 
 		// 4) Fetch files for subIds
@@ -270,6 +277,7 @@ export class ArFSDAOAnonymousWeb {
 					const data = decodeJson(await this.gatewayApi.getTxData(node.id));
 					const file: WebPublicFile = {
 						entityType: 'file',
+						entityId: tags['File-Id'],
 						fileId: tags['File-Id'],
 						parentFolderId: tags['Parent-Folder-Id'],
 						name: data.name as string,

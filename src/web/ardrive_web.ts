@@ -2,7 +2,7 @@ import { ArDriveAnonymousWeb } from './ardrive_anonymous_web';
 import { ArFSDAOAnonymousWeb } from './arfsdao_anonymous_web';
 import { GatewayAPIWeb } from './gateway_api_web';
 import { JWKWalletWeb } from './jwk_wallet_web';
-import type { JWKInterface, DataItem } from '@dha-team/arbundles';
+import type { DataItem } from '@dha-team/arbundles';
 import { ArweaveSigner, createData } from '@dha-team/arbundles';
 import { v4 as uuidv4 } from 'uuid';
 import type { WebFileToUpload } from './arfs_file_wrapper_web';
@@ -32,14 +32,15 @@ export interface UploadPublicFileResult {
 // Browser ArDrive with read-only parity and upload stubs.
 export class ArDriveWeb extends ArDriveAnonymousWeb {
 	private readonly signer: ArweaveSigner;
-	private readonly wallet: JWKWalletWeb;
+	// @ts-expect-error - Kept for future functionality
+	private readonly _wallet: JWKWalletWeb;
 	private readonly appName: string;
 	private readonly appVersion: string;
 
 	constructor(settings: ArDriveWebSettings) {
 		const gw = new GatewayAPIWeb({ gatewayUrl: settings.gatewayUrl ?? new URL('https://arweave.net/') });
 		super(new ArFSDAOAnonymousWeb(gw));
-		this.wallet = settings.wallet;
+		this._wallet = settings.wallet;
 		this.signer = new ArweaveSigner(settings.wallet.getPrivateKey());
 		this.appName = settings.appName ?? 'ArDrive-Core';
 		this.appVersion = settings.appVersion ?? 'web';

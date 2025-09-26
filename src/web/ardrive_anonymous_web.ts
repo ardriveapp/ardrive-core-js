@@ -3,7 +3,8 @@ import {
 	ArFSDAOAnonymousWeb,
 	type WebPublicDrive,
 	type WebPublicFolder,
-	type WebPublicFile
+	type WebPublicFile,
+	type WebPublicEntity
 } from './arfsdao_anonymous_web';
 
 export interface GetPublicDriveParamsWeb {
@@ -37,6 +38,10 @@ export class ArDriveAnonymousWeb {
 		return this.dao.getOwnerForDriveId(driveId);
 	}
 
+	async getOwnerForFolderId(folderId: string): Promise<string> {
+		return this.dao.getDriveIdForFolderId(folderId).then((driveId) => this.dao.getOwnerForDriveId(driveId));
+	}
+
 	async getOwnerForFileId(fileId: string): Promise<string> {
 		return this.dao.getDriveIdForFileId(fileId).then((driveId) => this.dao.getOwnerForDriveId(driveId));
 	}
@@ -60,11 +65,20 @@ export class ArDriveAnonymousWeb {
 		return this.dao.getPublicFile(fileId, ensuredOwner);
 	}
 
-	async listPublicFolder({ folderId, owner, maxDepth = 0, includeRoot = false }: ListPublicFolderParamsWeb) {
+	async listPublicFolder({
+		folderId,
+		owner,
+		maxDepth = Number.MAX_SAFE_INTEGER,
+		includeRoot = false
+	}: ListPublicFolderParamsWeb): Promise<WebPublicEntity[]> {
 		const ensuredOwner =
 			owner ?? (await this.dao.getDriveIdForFolderId(folderId).then((d) => this.dao.getOwnerForDriveId(d)));
 		if (!ensuredOwner) throw new Error('Could not determine owner for folder listing');
 		return this.dao.listPublicFolder({ folderId, owner: ensuredOwner, maxDepth, includeRoot });
+	}
+
+	async getPublicData(fileTxId: string): Promise<Uint8Array> {
+		return this.dao.getPublicData(fileTxId);
 	}
 
 	async downloadPublicFileBytes(fileId: string): Promise<Uint8Array> {

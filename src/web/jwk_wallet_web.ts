@@ -28,7 +28,7 @@ export class JWKWalletWeb {
 
 	// Simplified signing for browser - this would need to be implemented with Web Crypto API
 	// For now, we'll throw an error to indicate it's not implemented
-	async sign(data: Uint8Array): Promise<Uint8Array> {
+	async sign(_data: Uint8Array): Promise<Uint8Array> {
 		throw new Error('Wallet signing is not yet implemented in the browser build. Use ArweaveSigner from @dha-team/arbundles instead.');
 	}
 }
