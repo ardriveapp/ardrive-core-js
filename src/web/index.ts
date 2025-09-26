@@ -1,9 +1,6 @@
 // Public web entry: full API surface compatible with Node.js version
 
-// Web-specific implementations
-export { GatewayAPIWeb } from './gateway_api_web';
-export { ArFSMetadataCacheWeb } from './arfs_metadata_cache_web';
-export { wrapFile, wrapFiles, type WebFileToUpload } from './arfs_file_wrapper_web';
+// Web-specific implementations (crypto and wallet only)
 export {
 	aesGcmEncrypt,
 	aesGcmDecrypt,
@@ -12,22 +9,23 @@ export {
 	generateWalletSignatureV2,
 	type Bytes
 } from './crypto_web';
-export {
-	ArFSDAOAnonymousWeb,
-	type WebPublicDrive,
-	type WebPublicFolder,
-	type WebPublicFile,
-	type WebPublicEntity
-} from './arfsdao_anonymous_web';
-export { ArDriveAnonymousWeb } from './ardrive_anonymous_web';
-export { arDriveAnonymousFactory, arDriveFactory } from './ardrive_factory_web';
+export { JWKWalletWeb } from './jwk_wallet_web';
+export { wrapFile, wrapFiles, type WebFileToUpload } from './arfs_file_wrapper_web';
 export {
 	ArDriveWeb,
 	type ArDriveWebSettings,
 	type UploadPublicFileParams,
 	type UploadPublicFileResult
 } from './ardrive_web';
-export { JWKWalletWeb } from './jwk_wallet_web';
+
+// Core classes that work in browser (reuse instead of duplicating)
+export { GatewayAPI } from '../utils/gateway_api';
+export { ArFSDAOAnonymous } from '../arfs/arfsdao_anonymous';
+export { ArDriveAnonymous } from '../ardrive_anonymous';
+export { arDriveAnonymousFactory, arDriveFactory } from './ardrive_factory_web';
+
+// Browser-compatible wallet interface
+export { Wallet } from '../wallet';
 
 // Re-export all core types (browser-compatible)
 export * from '../types';
@@ -71,3 +69,7 @@ export * from '../utils/mapper_functions';
 export * from '../utils/query';
 export * from '../utils/sort_functions';
 export * from '../utils/upload_conflict_resolution';
+export * from '../utils/wallet_utils';
+
+// Re-export ArFS file wrapper (browser-compatible)
+export * from '../arfs/arfs_file_wrapper';

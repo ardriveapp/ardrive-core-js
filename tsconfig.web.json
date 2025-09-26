@@ -6,13 +6,13 @@
 		"moduleResolution": "node",
 		"declaration": true,
 		"declarationMap": true,
-		"outDir": "./dist/web-temp",
+		"outDir": "./dist",
 		"rootDir": "./src",
 		"sourceMap": true,
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"skipLibCheck": true
 	},
-	"include": ["src/web/**/*"],
-	"exclude": ["**/*.test.ts", "**/*.spec.ts"]
+	"include": ["src/**/*"],
+	"exclude": ["**/*.test.ts", "**/*.spec.ts", "src/ardrive.ts", "src/ardrive_factory.ts", "src/jwk_wallet.ts", "src/wallet_dao.ts"]
 }

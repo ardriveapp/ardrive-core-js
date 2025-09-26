@@ -136,14 +136,16 @@ export class GatewayAPI {
 		if (cachedData) {
 			return cachedData;
 		}
-		const { data: txData } = await this.retryRequestUntilMaxRetries<Buffer>(() =>
+		const { data: txData } = await this.retryRequestUntilMaxRetries<ArrayBuffer>(() =>
 			this.axiosInstance.get(`${this.gatewayUrl.href}${txId}`, {
 				responseType: 'arraybuffer'
 			})
 		);
 
-		await ArFSMetadataCache.put(txId, txData);
-		return txData;
+		// Convert ArrayBuffer to Buffer for consistent handling across Node.js and browser
+		const buffer = Buffer.from(txData);
+		await ArFSMetadataCache.put(txId, buffer);
+		return buffer;
 	}
 
 	/**

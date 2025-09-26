@@ -67,19 +67,20 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 			try {
 				// Dynamically import the ArDrive web bundle
 				const ArDriveModule = await import('/dist/web/index.js');
-				const { arDriveAnonymousFactory, ArDriveAnonymousWeb } = ArDriveModule;
+				const { arDriveAnonymousFactory, ArDriveAnonymous } = ArDriveModule;
 
 				const anon = arDriveAnonymousFactory();
 				return {
 					success: true,
-					isArDriveAnonymousWeb: anon instanceof ArDriveAnonymousWeb,
+					isArDriveAnonymous: anon instanceof ArDriveAnonymous,
 					hasGetPublicDrive: typeof anon.getPublicDrive === 'function',
 					hasGetPublicFolder: typeof anon.getPublicFolder === 'function'
 				};
 			} catch (error) {
 				return {
 					success: false,
-					error: error.message
+					error: error.message,
+					stack: error.stack
 				};
 			}
 		});
@@ -91,7 +92,7 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 		}
 
 		expect(result.success).toBe(true);
-		expect(result.isArDriveAnonymousWeb).toBe(true);
+		expect(result.isArDriveAnonymous).toBe(true);
 		expect(result.hasGetPublicDrive).toBe(true);
 		expect(result.hasGetPublicFolder).toBe(true);
 	});
@@ -236,22 +237,23 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 		const result = await page.evaluate(async () => {
 			try {
 				const ArDriveModule = await import('/dist/web/index.js');
-				const { GatewayAPIWeb } = ArDriveModule;
+				const { GatewayAPI } = ArDriveModule;
 
-				const gateway = new GatewayAPIWeb({});
+				const gateway = new GatewayAPI({ gatewayUrl: new URL('https://arweave.net/') });
 
 				return {
 					success: true,
-					isGatewayAPI: gateway instanceof GatewayAPIWeb,
+					isGatewayAPI: gateway instanceof GatewayAPI,
 					hasGetTxData: typeof gateway.getTxData === 'function',
 					hasGqlRequest: typeof gateway.gqlRequest === 'function',
-					hasPostWithRetry: typeof gateway.postWithRetry === 'function',
-					hasGetWithRetry: typeof gateway.getWithRetry === 'function'
+					hasPostChunk: typeof gateway.postChunk === 'function',
+					hasPostTxHeader: typeof gateway.postTxHeader === 'function'
 				};
 			} catch (error) {
 				return {
 					success: false,
-					error: error.message
+					error: error.message,
+					stack: error.stack
 				};
 			}
 		});
@@ -262,11 +264,11 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 		expect(result.isGatewayAPI).toBe(true);
 		expect(result.hasGetTxData).toBe(true);
 		expect(result.hasGqlRequest).toBe(true);
-		expect(result.hasPostWithRetry).toBe(true);
-		expect(result.hasGetWithRetry).toBe(true);
+		expect(result.hasPostChunk).toBe(true);
+		expect(result.hasPostTxHeader).toBe(true);
 	});
 
-	test('should handle metadata cache operations', async ({ page }) => {
+	test('should handle core ArFS DAO operations', async ({ page }) => {
 		page.on('console', (msg) => console.log('Browser console:', msg.text()));
 		page.on('pageerror', (error) => console.error('Browser error:', error));
 
@@ -275,31 +277,41 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 		const result = await page.evaluate(async () => {
 			try {
 				const ArDriveModule = await import('/dist/web/index.js');
-				const { ArFSMetadataCacheWeb } = ArDriveModule;
+				const { ArFSDAOAnonymous, GatewayAPI } = ArDriveModule;
 
-				const cache = new ArFSMetadataCacheWeb();
+				const gatewayApi = new GatewayAPI({ gatewayUrl: new URL('https://arweave.net/') });
+				const dao = new ArFSDAOAnonymous(
+					null, // arweave - not used by web methods
+					'test-app',
+					'test-version',
+					undefined, // use default cache
+					gatewayApi
+				);
 
 				return {
 					success: true,
-					isMetadataCache: cache instanceof ArFSMetadataCacheWeb,
-					canInstantiate: !!cache,
-					hasConstructor: typeof cache.constructor === 'function',
-					cacheType: cache.constructor.name
+					isArFSDAO: dao instanceof ArFSDAOAnonymous,
+					hasGetPublicDrive: typeof dao.getPublicDrive === 'function',
+					hasGetPublicFolder: typeof dao.getPublicFolder === 'function',
+					hasGetPublicFile: typeof dao.getPublicFile === 'function',
+					hasListPublicFolder: typeof dao.listPublicFolder === 'function'
 				};
 			} catch (error) {
 				return {
 					success: false,
-					error: error.message
+					error: error.message,
+					stack: error.stack
 				};
 			}
 		});
 
-		console.log('Metadata cache test result:', result);
+		console.log('ArFS DAO test result:', result);
 
 		expect(result.success).toBe(true);
-		expect(result.isMetadataCache).toBe(true);
-		expect(result.canInstantiate).toBe(true);
-		expect(result.hasConstructor).toBe(true);
-		expect(result.cacheType).toBe('ArFSMetadataCacheWeb');
+		expect(result.isArFSDAO).toBe(true);
+		expect(result.hasGetPublicDrive).toBe(true);
+		expect(result.hasGetPublicFolder).toBe(true);
+		expect(result.hasGetPublicFile).toBe(true);
+		expect(result.hasListPublicFolder).toBe(true);
 	});
 });
