@@ -21,11 +21,11 @@ const generateTypeDefinitions = () => {
 const bundle = async () => {
     console.log('Building ArDrive web bundle...');
 
-    // Build JavaScript bundle
+    // Build JavaScript bundle with optimizations
     await build({
         entryPoints: ['./src/web/index.ts'],
         bundle: true,
-        minify: false, // Keep unminified for debugging
+        minify: true, // Enable minification to reduce size
         platform: 'browser',
         target: ['es2020'],
         format: 'esm',
@@ -43,7 +43,11 @@ const bundle = async () => {
         ],
         external: ['fs', 'path', 'os'], // Keep some Node.js modules external
         outfile: './dist/web/index.js',
-        sourcemap: true
+        sourcemap: true,
+        // Enable tree shaking and dead code elimination
+        treeShaking: true,
+        // Optimize for size
+        legalComments: 'none'
     }).catch((e) => {
         console.error('Build failed:', e);
         process.exit(1);
