@@ -3,9 +3,11 @@ import { ArFSDAOAnonymous, defaultArFSAnonymousCache } from '../arfs/arfsdao_ano
 import { GatewayAPI } from '../utils/gateway_api';
 import { ArDriveWeb } from './ardrive_web';
 import { JWKWalletWeb } from './jwk_wallet_web';
-import type { JWKInterface } from '@dha-team/arbundles';
+import type { JWKInterface, ArweaveSigner } from '@dha-team/arbundles';
+import { ArconnectSigner } from '@dha-team/arbundles';
 import type Arweave from 'arweave';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
+import type { ArDriveSigner } from './ardrive_signer';
 
 export interface ArDriveSettingsAnonymousWeb {
 	gatewayUrl?: URL;
@@ -32,9 +34,50 @@ export function arDriveAnonymousFactory({
 	return new ArDriveAnonymous(dao);
 }
 
-// Wallet-backed factory for browser. Creates a wallet wrapper for Node.js compatibility.
-export function arDriveFactory(settings: { gatewayUrl?: URL; wallet: JWKInterface }) {
-	// Wrap the raw JWK in a wallet object that provides getPrivateKey() method for Node.js compatibility
-	const walletWrapper = new JWKWalletWeb(settings.wallet);
-	return new ArDriveWeb({ gatewayUrl: settings.gatewayUrl, wallet: walletWrapper });
+export interface ArDriveSettingsWeb {
+	gatewayUrl?: URL;
+	/** JWK wallet for browser (provide either wallet or signer) */
+	wallet?: JWKInterface;
+	/** ArDriveSigner, ArweaveSigner, or ArconnectSigner instance (provide either wallet or signer) */
+	signer?: ArDriveSigner | ArweaveSigner | ArconnectSigner;
+	appName?: string;
+	appVersion?: string;
+}
+
+/**
+ * Authenticated factory for browser
+ * Returns ArDriveWeb with full read/write capabilities via signer
+ *
+ * @param settings - Configuration object
+ * @param settings.wallet - JWK wallet (provide either wallet or signer)
+ * @param settings.signer - ArDriveSigner, ArweaveSigner, or ArconnectSigner instance (provide either wallet or signer)
+ * @param settings.gatewayUrl - Gateway URL (default: https://arweave.net/)
+ * @param settings.appName - Application name
+ * @param settings.appVersion - Application version
+ *
+ * @example Using ArDriveSigner (recommended for browser wallets)
+ * ```typescript
+ * const signer = new MyArConnectSigner(); // implements ArDriveSigner
+ * const arDrive = arDriveFactory({ signer });
+ * ```
+ *
+ * @example Using JWK wallet
+ * ```typescript
+ * const arDrive = arDriveFactory({ wallet: jwk });
+ * ```
+ */
+export function arDriveFactory(settings: ArDriveSettingsWeb): ArDriveWeb {
+	// Validate that either wallet or signer is provided
+	if (!settings.wallet && !settings.signer) {
+		throw new Error('Either wallet or signer must be provided to arDriveFactory');
+	}
+
+	// Return ArDriveWeb instance with authenticated DAO
+	return new ArDriveWeb({
+		gatewayUrl: settings.gatewayUrl,
+		wallet: settings.wallet ? new JWKWalletWeb(settings.wallet) : undefined,
+		signer: settings.signer,
+		appName: settings.appName,
+		appVersion: settings.appVersion
+	});
 }

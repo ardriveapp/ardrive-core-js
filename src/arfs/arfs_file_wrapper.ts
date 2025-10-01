@@ -14,17 +14,13 @@ import {
 	EntityType,
 	PRIVATE_CONTENT_TYPE
 } from '../types';
-import { encryptedDataSize, extToMime } from '../utils/common';
 import { errorOnConflict, skipOnConflicts, upsertOnConflicts } from '../types';
 import { alphabeticalOrder } from '../utils/sort_functions';
+import { encryptedDataSize, extToMime } from '../utils/common_browser';
 import { ArFSPrivateFile, ArFSPublicFile, ArFSWithPath } from './arfs_entities';
-import {
-	ArFSPublicFileWithPaths,
-	ArFSPublicFolderWithPaths,
-	assertCustomMetaData,
-	CustomMetaData,
-	SourceUri
-} from '../exports';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths } from './arfs_entities';
+import { assertCustomMetaData, CustomMetaData } from '../types/custom_metadata_types';
+import { SourceUri } from '../types/types';
 import { defaultArweaveGatewayPath } from '../utils/constants';
 
 const pipelinePromise = promisify(pipeline);

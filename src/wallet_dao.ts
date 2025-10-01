@@ -26,10 +26,31 @@ export type ARTransferResult = {
 	reward: NetworkReward;
 };
 
+/**
+ * Interface for WalletDAO implementations.
+ * Allows both Node.js and browser-compatible implementations.
+ */
+export interface IWalletDAO {
+	generateSeedPhrase(): Promise<SeedPhrase>;
+	generateJWKWallet(seedPhrase?: SeedPhrase): Promise<JWKWallet>;
+	getWalletWinstonBalance(wallet: Wallet): Promise<Winston>;
+	getAddressWinstonBalance(address: ArweaveAddress): Promise<Winston>;
+	walletHasBalance(wallet: Wallet, winstonPrice: Winston): Promise<boolean>;
+	sendARToAddress(
+		arAmount: AR,
+		fromWallet: Wallet,
+		toAddress: ArweaveAddress,
+		rewardSettings?: RewardSettings,
+		dryRun?: boolean,
+		tags?: GQLTagInterface[],
+		assertBalance?: boolean
+	): Promise<ARTransferResult>;
+}
+
 const algorithm = { id: 'rsa', modulusLength: 4096 } as const;
 const options = { privateKeyFormat: 'pkcs8-pem' } as const;
 
-export class WalletDAO {
+export class WalletDAO implements IWalletDAO {
 	constructor(
 		private readonly arweave: Arweave,
 		private readonly appName = DEFAULT_APP_NAME,

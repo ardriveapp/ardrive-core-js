@@ -5,24 +5,22 @@ import {
 	ArFSPublicFileMetaDataPrototype
 } from '../arfs/tx/arfs_prototypes';
 import {
-	ArFSDataToUpload,
-	ArFSFolderToUpload,
-	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPrivateDriveTransactionData,
-	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateFolderTransactionData,
-	ArFSPublicDriveMetaDataPrototype,
 	ArFSPublicDriveTransactionData,
-	ArFSPublicFolderMetaDataPrototype,
-	ArFSPublicFolderTransactionData,
-	ByteCount,
-	CreatePrivateDriveParams,
-	CreatePublicDriveParams,
-	CustomMetaData,
-	DriveKey,
-	DriveSignatureType,
-	encryptedDataSize
-} from '../exports';
+	ArFSPublicFolderTransactionData
+} from '../arfs/tx/arfs_tx_data_types';
+import {
+	ArFSPrivateDriveMetaDataPrototype,
+	ArFSPrivateFolderMetaDataPrototype,
+	ArFSPublicDriveMetaDataPrototype,
+	ArFSPublicFolderMetaDataPrototype
+} from '../arfs/tx/arfs_prototypes';
+import { ArFSDataToUpload, ArFSFolderToUpload } from '../arfs/arfs_file_wrapper';
+import { ByteCount, CreatePrivateDriveParams, CreatePublicDriveParams, CustomMetaData } from '../types';
+import { DriveKey } from '../types/entity_key';
+import { DriveSignatureType } from '../types/types';
+import { encryptedDataSize } from '../utils/common_browser';
 import { VersionedDriveKey } from '../types/entity_key';
 import { EstimateCreateDriveParams } from '../types/upload_planner_types';
 import { fakeEntityId, fakeTxID } from '../utils/constants';

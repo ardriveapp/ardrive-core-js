@@ -6,7 +6,7 @@ test.describe('Simple Web Bundle Tests', () => {
 	test('web bundle should exist and be built', async () => {
 		const webBundlePath = join(__dirname, '../../dist/web/index.js');
 		expect(existsSync(webBundlePath)).toBe(true);
-		
+
 		// Check that the bundle has reasonable size (not empty)
 		const fs = require('fs');
 		const stats = fs.statSync(webBundlePath);
@@ -33,17 +33,17 @@ test.describe('Simple Web Bundle Tests', () => {
 </html>`;
 
 		await page.setContent(htmlContent);
-		
+
 		// Wait for the script to run
 		await page.waitForFunction(() => window.testPassed === true);
-		
+
 		const status = await page.textContent('#status');
 		expect(status).toBe('Browser loaded successfully');
 	});
 
 	test('should be able to fetch web bundle file', async ({ page }) => {
 		await page.goto('about:blank');
-		
+
 		const result = await page.evaluate(async () => {
 			try {
 				// Try to fetch the web bundle

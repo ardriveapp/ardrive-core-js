@@ -25,7 +25,6 @@
 		"lodash": "^4.17.21",
 		"mime-types": "^2.1.35",
 		"regression": "^2.0.1",
-		"smartweave": "^0.4.49",
 		"utf8": "^3.0.0",
 		"uuid": "^9.0.1"
 	},

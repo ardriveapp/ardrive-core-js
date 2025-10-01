@@ -1,3 +1,4 @@
+/* eslint-env node */
 import { build } from 'esbuild';
 import { polyfillNode } from 'esbuild-plugin-polyfill-node';
 import { execSync } from 'child_process';
@@ -41,7 +42,14 @@ const bundle = async () => {
                 }
             })
         ],
-        external: ['fs', 'path', 'os'], // Keep some Node.js modules external
+        external: [
+            'fs', 'path', 'os', 'stream', 
+            'smartweave', 'node:crypto', 'crypto', 'human-crypto-keys',
+            'arweave/node/lib/wallet', 'arweave/node/lib/transaction', 'arweave/node/common'
+        ], // Keep Node.js built-ins and Node.js-specific arweave paths external
+        // Note: jwk-to-pem is imported by JWKWallet but not used in browser (we use JWKWalletWeb)
+        // Note: arweave is NOT external - we let esbuild bundle the browser-compatible parts
+        // Note: We also mark stream as external since it's a Node.js built-in
         outfile: './dist/web/index.js',
         sourcemap: true,
         // Enable tree shaking and dead code elimination

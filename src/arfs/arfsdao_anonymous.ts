@@ -24,8 +24,8 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
-import { gatewayUrlForArweave } from '../utils/common';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from './arfs_entities';
+import { gatewayUrlForArweave } from '../utils/common_browser';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
 

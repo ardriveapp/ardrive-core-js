@@ -57,3 +57,4 @@ node_modules
 dist
 playwright-results.json
 playwright-report
+test-results

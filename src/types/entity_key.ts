@@ -1,4 +1,4 @@
-import { urlEncodeHashKey } from '../utils/common';
+import { urlEncodeHashKey } from '../utils/common_browser';
 import { DriveSignatureType } from './types';
 
 export class EntityKey {

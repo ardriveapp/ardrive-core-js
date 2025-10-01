@@ -1,5 +1,5 @@
 import { deriveDriveKey, driveDecrypt } from '../utils/crypto';
-import { BufferToString } from '../utils/common';
+import { BufferToString } from '../utils/common_browser';
 import { CipherIV, DriveID, DriveKey, DriveSignatureType, EntityMetaDataTransactionData } from '../types';
 import { JWKWallet } from '../jwk_wallet';
 

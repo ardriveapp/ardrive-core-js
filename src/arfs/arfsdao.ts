@@ -64,13 +64,23 @@ import {
 import { FolderHierarchy } from './folder_hierarchy';
 
 import {
-	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
+	ArFSAnonymousCache,
 	ArFSPublicDriveCacheKey,
 	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
+import { IArFSDAO } from './iarfsdao';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
+import {
+	NameConflictInfo,
+	entityToNameMap,
+	fileConflictInfoMap,
+	folderToNameAndIdMap
+} from '../utils/mapper_functions';
+import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
+import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
@@ -101,18 +111,13 @@ import {
 	UploadStats
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
-import {
-	entityToNameMap,
-	NameConflictInfo,
-	fileConflictInfoMap,
-	folderToNameAndIdMap
-} from '../utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
+import { ArFSTagSettings } from './arfs_tag_settings';
+import { ArFSTagAssembler } from './tags/tag_assembler';
+import { TxPreparer } from './tx/tx_preparer';
 import { JWKWallet } from '../jwk_wallet';
-import { PromiseCache } from '@ardrive/ardrive-promise-cache';
-
-import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
+import { ArweaveSigner } from '@dha-team/arbundles';
+import { Turbo } from './turbo';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -162,11 +167,9 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave } from '../utils/common';
+import { gatewayUrlForArweave } from '../utils/common_browser';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
-import { ArFSTagSettings } from './arfs_tag_settings';
-import { TxPreparer } from './tx/tx_preparer';
 import {
 	ArFSPublicFolderTransactionData,
 	ArFSPublicDriveTransactionData,
@@ -175,21 +178,14 @@ import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData
 } from './tx/arfs_tx_data_types';
-import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
-import {
-	ArFSDataToUpload,
-	ArFSFolderToUpload,
-	DriveKey,
-	DrivePrivacy,
-	DriveSignatureInfo,
-	DriveSignatureType,
-	errorMessage,
-	parseDriveSignatureType
-} from '../exports';
-import { Turbo } from './turbo';
-import { ArweaveSigner } from '@dha-team/arbundles';
+import { ArFSDataToUpload, ArFSFolderToUpload } from './arfs_file_wrapper';
+import { DriveKey } from '../types/entity_key';
+import { DrivePrivacy } from '../types/type_guards';
+import { DriveSignatureInfo, DriveSignatureType } from '../types/types';
+import { errorMessage } from '../utils/error_message';
+import { parseDriveSignatureType } from '../utils/common_browser';
 import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -235,10 +231,12 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateConflictCache: PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
-export class ArFSDAO extends ArFSDAOAnonymous {
+export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
+	private readonly signer?: ArweaveSigner;
+
 	// TODO: Can we abstract Arweave type(s)?
 	constructor(
-		private readonly wallet: Wallet,
+		private readonly wallet: Wallet | undefined,
 		arweave: Arweave,
 		private readonly dryRun = false,
 		/** @deprecated App Name should be provided with ArFSTagSettings  */
@@ -255,9 +253,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			privateConflictCache: new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams)
 		},
 		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
+		signer?: ArweaveSigner, // Optional: for browser, use directly
 		protected txPreparer = new TxPreparer({
 			arweave: arweave,
-			wallet: wallet as JWKWallet,
+			wallet: wallet as JWKWallet | undefined,
+			signer: signer,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
 		protected turbo = new Turbo({
@@ -267,6 +267,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		})
 	) {
 		super(arweave, undefined, undefined, caches);
+		this.signer = signer;
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
@@ -293,12 +294,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderPrototypeFactory: ArFSFolderPrototypeFactory,
 		rewardSettings: RewardSettings
 	): Promise<ArFSCreateFolderResult> {
-		const { arFSObjects, folderId } = await this.prepareFolder({
+		const { arFSObjects, folderId } = await this.prepareFolder<Transaction>({
 			folderPrototypeFactory,
-			prepareArFSObject: (folderMetaData) =>
+			prepareArFSObject: (folderMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataTx({ objectMetaData: folderMetaData, rewardSettings })
 		});
-		const folderTx = arFSObjects[0];
+		const folderTx = arFSObjects[0] as Transaction;
 
 		await this.sendTransactionsAsChunks([folderTx]);
 
@@ -360,11 +361,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const driveId = generateDriveIdFn();
 
 		// Create ArFS root folder object
-		const { arFSObjects, folderId: rootFolderId } = await this.prepareFolder({
-			folderPrototypeFactory: (folderId) => rootFolderPrototypeFactory(folderId, driveId),
+		const { arFSObjects, folderId: rootFolderId } = await this.prepareFolder<T>({
+			folderPrototypeFactory: (folderId: FolderID) => rootFolderPrototypeFactory(folderId, driveId),
 			prepareArFSObject
 		});
-		const rootFolderArFSObject = arFSObjects[0];
+		const rootFolderArFSObject = arFSObjects[0] as T;
 
 		// Create ArFS drive object
 		const driveMetaData = await drivePrototypeFactory(driveId, rootFolderId);
@@ -436,7 +437,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async makeBdi(dataItems: DataItem[]): Promise<DataItem> {
-		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
+		// Use provided signer, or create from wallet
+		const signer =
+			this.signer || (this.wallet ? new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey()) : undefined);
+		if (!signer) {
+			throw new Error('Either wallet or signer must be provided to create bundles');
+		}
+
 		const bundle = await bundleAndSignData(dataItems, signer);
 		const bdi = createData(bundle.getRaw(), signer, {
 			// baseBundleTags includes:  Bundle Format/Version, App Name/Version
@@ -450,19 +457,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async createDriveToTurbo(
 		sharedPrepDriveParams: PartialPrepareDriveParams
 	): Promise<ArFSCreateDriveToTurboResult> {
-		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
+		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive<DataItem>({
 			...sharedPrepDriveParams,
-			prepareArFSObject: (objectMetaData) =>
+			prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData
 				})
 		});
 
-		const bdi = await this.makeBdi(arFSObjects);
+		const bdi = await this.makeBdi(arFSObjects as DataItem[]);
 
 		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(bdi);
 
-		const [rootFolderDataItem, driveDataItem] = arFSObjects;
+		const [rootFolderDataItem, driveDataItem] = arFSObjects as DataItem[];
 
 		return {
 			driveId,
@@ -1075,12 +1082,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				...uploadStats,
 				wrappedEntity: uploadStats.wrappedEntity
 			}),
-			prepareArFSObject: (objectMetaData) =>
+			prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData
 				})
 		});
-		const folderDataItem = arFSObjects[0];
+		const folderDataItem = arFSObjects[0] as DataItem;
 		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(folderDataItem);
 		return {
 			entityId: folderId,
@@ -1246,17 +1253,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					}
 
 					// Prepare folder data item and results
-					const { arFSObjects, folderId } = await this.prepareFolder({
+					const { arFSObjects, folderId } = await this.prepareFolder<DataItem>({
 						folderPrototypeFactory: await getPrepFolderFactoryParams({
 							...uploadStat,
 							wrappedEntity
 						}),
-						prepareArFSObject: (objectMetaData) =>
+						prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 							this.txPreparer.prepareMetaDataDataItem({
 								objectMetaData
 							})
 					});
-					const folderDataItem = arFSObjects[0];
+					const folderDataItem = arFSObjects[0] as DataItem;
 
 					dataItems.push(folderDataItem);
 					currentBundleResults.folderResults.push({
@@ -2042,6 +2049,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async assertValidPassword(password: string): Promise<void> {
+		if (!this.wallet) {
+			throw new Error('Wallet is required for password validation');
+		}
 		const wallet = this.wallet;
 		const walletAddress = await wallet.getAddress();
 		const query = buildQuery({
@@ -2083,6 +2093,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		if (!this.wallet) {
+			throw new Error('Wallet is required for fetching private transaction CipherIVs');
+		}
 		const result: CipherIVQueryResult[] = [];
 		const wallet = this.wallet;
 		const walletAddress = await wallet.getAddress();

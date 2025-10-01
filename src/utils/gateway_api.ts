@@ -1,4 +1,4 @@
-import Transaction from 'arweave/node/lib/transaction';
+import type Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
