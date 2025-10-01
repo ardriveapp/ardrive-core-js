@@ -2,15 +2,22 @@
 
 ## Project Structure & Module Organization
 - `src/`: TypeScript source modules. Public API is exported via `exports.ts` and compiled to `lib/`.
+- `src/web/`: Browser-compatible web build modules (see `docs/WEB_BUILD.md`).
 - `lib/`: Build output (do not edit by hand).
+- `dist/web/`: Web bundle output (JavaScript + TypeScript declarations).
 - `tests/`: Integration and example tests (e.g., `tests/integration/*.int.test.ts`).
+- `tests/playwright/`: Browser tests using Playwright.
+- `docs/`: Architecture and design documentation for AI and developers.
 - Config: `.mocharc.js`, `nyc.config.js`, `.eslintrc`, `.prettierrc`, `tsconfig*.json`.
 
 ## Build, Test, and Development Commands
 - `yarn install --check-cache`: Install dependencies (Yarn 3, Node >= 18).
 - `yarn build`: Clean and compile to `lib/`.
+- `yarn build:web`: Build browser-compatible web bundle to `dist/web/`.
+- `yarn build:all`: Build both Node.js and web versions.
 - `yarn dev`: Build in watch mode.
 - `yarn test`: Run Mocha tests via NYC.
+- `yarn test:playwright`: Run Playwright browser tests.
 - `yarn coverage`: Generate coverage report (text + HTML).
 - `yarn arlocal-docker-test`: Start ArLocal in Docker, run tests, then stop.
 - `yarn lint` / `yarn lintfix`: Lint (and fix) with ESLint.
@@ -53,3 +60,10 @@
 - Engines: Node >= 18 (`.nvmrc` present). Use Yarn 3 (`yarn set version berry` if needed) and `yarn install --check-cache` for reproducible installs.
 - Pre-flight locally: `yarn lint && yarn typecheck && yarn test && yarn build` before pushing.
 - Artifacts: build output in `lib/`; coverage HTML in `coverage/` for inspection.
+
+## Documentation for AI & Developers
+The `docs/` folder contains architecture and design documentation:
+- `docs/WEB_BUILD.md`: Comprehensive web build architecture, design decisions, and API reference
+- `docs/ARDRIVE_SIGNER.md`: ArDriveSigner interface documentation for browser wallet integration
+
+These documents provide context for AI assistants and developers working on the codebase.
