@@ -5,9 +5,11 @@ This directory contains architecture and design documentation for AI assistants 
 ## Documents
 
 ### [WEB_BUILD.md](./WEB_BUILD.md)
+
 **Comprehensive Web Build Architecture & Design**
 
 Complete documentation of the browser-compatible web build including:
+
 - Architecture overview and design principles
 - Key design decisions and rationale
 - Module structure and organization
@@ -22,6 +24,7 @@ Complete documentation of the browser-compatible web build including:
 **Audience**: AI assistants, developers implementing web features, architects reviewing design decisions
 
 **Use Cases**:
+
 - Understanding web build architecture
 - Implementing new web features
 - Debugging browser-specific issues
@@ -29,9 +32,11 @@ Complete documentation of the browser-compatible web build including:
 - Onboarding new developers
 
 ### [ARDRIVE_SIGNER.md](./ARDRIVE_SIGNER.md)
+
 **ArDriveSigner Interface Documentation**
 
 Detailed documentation of the ArDriveSigner interface for browser wallet integration:
+
 - Interface definition and rationale
 - Implementation examples
 - Usage in browser applications
@@ -43,6 +48,7 @@ Detailed documentation of the ArDriveSigner interface for browser wallet integra
 **Audience**: Application developers integrating ArDrive with browser wallets
 
 **Use Cases**:
+
 - Implementing browser wallet support
 - Understanding private drive access in browsers
 - Creating custom signer implementations
@@ -66,6 +72,7 @@ These documents serve multiple purposes:
 ## Maintenance
 
 These documents should be updated when:
+
 - Major architectural changes are made
 - New features are added to the web build
 - Design decisions change
@@ -82,6 +89,7 @@ These documents should be updated when:
 ## Contributing
 
 When adding new documentation:
+
 1. Follow the existing structure and format
 2. Include code examples where appropriate
 3. Explain the "why" not just the "what"

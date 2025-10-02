@@ -41,15 +41,9 @@ export class ArweaveWalletKitSigner implements ArDriveSigner {
     constructor(private walletKit: any) {}
 
     // Implement ArDriveSigner.signDataItem()
-    async signDataItem(
-        dataItem: DataItemToSign,
-        options?: SignDataItemOptions
-    ): Promise<Uint8Array> {
+    async signDataItem(dataItem: DataItemToSign, options?: SignDataItemOptions): Promise<Uint8Array> {
         // Use the browser wallet's signDataItem method
-        const signedDataItem = await window.arweaveWallet.signDataItem(
-            dataItem,
-            options
-        );
+        const signedDataItem = await window.arweaveWallet.signDataItem(dataItem, options);
         return new Uint8Array(signedDataItem);
     }
 
@@ -68,10 +62,7 @@ export class ArweaveWalletKitSigner implements ArDriveSigner {
     // Implement Signer.sign() (required by base Signer interface)
     async sign(message: Uint8Array): Promise<Uint8Array> {
         // Use the wallet's signature method
-        const signature = await window.arweaveWallet.signature(
-            message,
-            { hashAlgorithm: 'SHA-256' }
-        );
+        const signature = await window.arweaveWallet.signature(message, { hashAlgorithm: 'SHA-256' });
         return new Uint8Array(signature);
     }
 
@@ -186,12 +177,14 @@ if (isArDriveSigner(signer)) {
 If you were previously using direct `window.arweaveWallet` calls:
 
 **Before:**
+
 ```typescript
 // Library code directly accessing window.arweaveWallet
 const signed = await window.arweaveWallet.signDataItem(dataItem, { saltLength: 0 });
 ```
 
 **After:**
+
 ```typescript
 // Application provides ArDriveSigner implementation
 class MyWalletSigner implements ArDriveSigner {

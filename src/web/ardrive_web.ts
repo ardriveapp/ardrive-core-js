@@ -16,8 +16,11 @@ import {
 	ArFSPrivateFolderWithPaths,
 	ArFSPrivateFileWithPaths
 } from '../arfs/arfs_entities';
+import { ArFSPublicFolderTransactionData, ArFSPrivateFolderTransactionData } from '../arfs/tx/arfs_tx_data_types';
+import type { CustomMetaDataJsonFields } from '../types/custom_metadata_types';
 import Arweave from 'arweave';
 import type { ArDriveSigner } from './ardrive_signer';
+import { TurboWeb, TurboSettings } from './turbo_web';
 
 export interface ArDriveWebSettings {
 	gatewayUrl?: URL;
@@ -27,6 +30,10 @@ export interface ArDriveWebSettings {
 	signer?: ArDriveSigner | ArweaveSigner | ArconnectSigner;
 	appName?: string;
 	appVersion?: string;
+	/** Turbo settings for automatic upload handling */
+	turboSettings?: TurboSettings;
+	/** Dry run mode - doesn't actually upload to Turbo */
+	dryRun?: boolean;
 }
 
 export interface UploadPublicFileParams {
@@ -34,11 +41,48 @@ export interface UploadPublicFileParams {
 	parentFolderId: string;
 	file: WebFileToUpload;
 	customMetaDataJson?: Record<string, unknown>;
-	// App-provided uploader that posts a signed DataItem and returns its id (e.g., Bundlr upload)
-	postDataItem: (item: DataItem) => Promise<string>;
 }
 
 export interface UploadPublicFileResult {
+	fileId: string;
+	dataTxId: string;
+	metaDataTxId: string;
+}
+
+export interface CreatePublicFolderParams {
+	driveId: string;
+	parentFolderId: string;
+	folderName: string;
+	customMetaDataJson?: Record<string, unknown>;
+}
+
+export interface CreatePublicFolderResult {
+	folderId: string;
+	metaDataTxId: string;
+}
+
+export interface CreatePrivateFolderParams {
+	driveId: string;
+	parentFolderId: string;
+	folderName: string;
+	driveKey: DriveKey;
+	customMetaDataJson?: Record<string, unknown>;
+}
+
+export interface CreatePrivateFolderResult {
+	folderId: string;
+	metaDataTxId: string;
+}
+
+export interface UploadPrivateFileParams {
+	driveId: string;
+	parentFolderId: string;
+	file: WebFileToUpload;
+	driveKey: DriveKey;
+	customMetaDataJson?: Record<string, unknown>;
+}
+
+export interface UploadPrivateFileResult {
 	fileId: string;
 	dataTxId: string;
 	metaDataTxId: string;
@@ -51,6 +95,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 	private readonly _wallet: JWKWalletWeb;
 	private readonly appName: string;
 	private readonly appVersion: string;
+	private readonly turbo?: TurboWeb;
 
 	constructor(settings: ArDriveWebSettings) {
 		// Validate that either wallet or signer is provided
@@ -72,6 +117,26 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		this.signer = signer;
 		this.appName = appName;
 		this.appVersion = appVersion;
+
+		// Initialize Turbo if settings provided
+		if (settings.turboSettings) {
+			this.turbo = new TurboWeb({
+				...settings.turboSettings,
+				isDryRun: settings.dryRun
+			});
+		}
+	}
+
+	/**
+	 * Internal method to post a DataItem using Turbo
+	 */
+	private async postDataItem(dataItem: DataItem): Promise<string> {
+		if (!this.turbo) {
+			throw new Error('No Turbo uploader configured. Please provide turboSettings in ArDriveWeb constructor.');
+		}
+
+		const result = await this.turbo.sendDataItem(dataItem);
+		return result.id;
 	}
 
 	// Example: Sign arbitrary data item (useful for client apps and future upload wiring)
@@ -81,13 +146,12 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		return di; // Caller can post to a bundler or gateway endpoint
 	}
 
-	// Public file upload (metadata + data as DataItems). Caller supplies postDataItem implementation.
+	// Public file upload (metadata + data as DataItems) using internal Turbo.
 	async uploadPublicFile({
 		driveId,
 		parentFolderId,
 		file,
-		customMetaDataJson,
-		postDataItem
+		customMetaDataJson
 	}: UploadPublicFileParams): Promise<UploadPublicFileResult> {
 		const nowSec = Math.floor(Date.now() / 1000);
 		const fileId = uuidv4();
@@ -99,9 +163,10 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			{ name: 'App-Version', value: this.appVersion },
 			{ name: 'Content-Type', value: file.contentType }
 		];
+
 		const dataItem = createData(fileBytes, this.signer, { tags: dataTags });
 		await dataItem.sign(this.signer);
-		const dataTxId = await postDataItem(dataItem);
+		const dataTxId = await this.postDataItem(dataItem);
 
 		// 2) Build metadata JSON referencing dataTxId
 		const metaJson = {
@@ -120,22 +185,167 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			{ name: 'ArFS', value: '0.15' },
 			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Entity-Type', value: 'file' },
-			{ name: 'Drive-Id', value: driveId },
-			{ name: 'Parent-Folder-Id', value: parentFolderId },
-			{ name: 'File-Id', value: fileId },
-			{ name: 'Unix-Time', value: String(nowSec) }
+			{ name: 'Drive-Id', value: `${driveId}` },
+			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+			{ name: 'File-Id', value: `${fileId}` },
+			{ name: 'Unix-Time', value: `${nowSec}` }
 		];
 
 		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
 		await metaItem.sign(this.signer);
-		const metaDataTxId = await postDataItem(metaItem);
+		const metaDataTxId = await this.postDataItem(metaItem);
 
 		return { fileId, dataTxId, metaDataTxId };
 	}
 
-	// Placeholder: Private upload API to be implemented
-	async uploadPrivateFile(): Promise<never> {
-		throw new Error('uploadPrivateFile is not yet implemented in the browser build');
+	/**
+	 * Create a public folder using internal Turbo
+	 */
+	async createPublicFolder({
+		driveId,
+		parentFolderId,
+		folderName,
+		customMetaDataJson
+	}: CreatePublicFolderParams): Promise<CreatePublicFolderResult> {
+		const nowSec = Math.floor(Date.now() / 1000);
+		const folderId = uuidv4();
+
+		// Build folder metadata JSON
+		const folderData = new ArFSPublicFolderTransactionData(
+			folderName,
+			customMetaDataJson as CustomMetaDataJsonFields
+		);
+		const metaBytes = new TextEncoder().encode(folderData.asTransactionData());
+
+		const metaTags = [
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'ArFS', value: '0.15' },
+			{ name: 'Content-Type', value: 'application/json' },
+			{ name: 'Entity-Type', value: 'folder' },
+			{ name: 'Drive-Id', value: `${driveId}` },
+			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+			{ name: 'Folder-Id', value: `${folderId}` },
+			{ name: 'Unix-Time', value: `${nowSec}` }
+		];
+
+		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
+		await metaItem.sign(this.signer);
+		const metaDataTxId = await this.postDataItem(metaItem);
+
+		return { folderId, metaDataTxId };
+	}
+
+	/**
+	 * Create a private folder using internal Turbo
+	 */
+	async createPrivateFolder({
+		driveId,
+		parentFolderId,
+		folderName,
+		driveKey,
+		customMetaDataJson
+	}: CreatePrivateFolderParams): Promise<CreatePrivateFolderResult> {
+		const nowSec = Math.floor(Date.now() / 1000);
+		const folderId = uuidv4();
+
+		// Build encrypted folder metadata
+		const folderData = await ArFSPrivateFolderTransactionData.from(
+			folderName,
+			driveKey,
+			customMetaDataJson as CustomMetaDataJsonFields
+		);
+		const metaBytes = folderData.asTransactionData();
+
+		const metaTags = [
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'ArFS', value: '0.15' },
+			{ name: 'Content-Type', value: 'application/octet-stream' },
+			{ name: 'Entity-Type', value: 'folder' },
+			{ name: 'Drive-Id', value: `${driveId}` },
+			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+			{ name: 'Folder-Id', value: `${folderId}` },
+			{ name: 'Unix-Time', value: `${nowSec}` },
+			{ name: 'Cipher', value: folderData.cipher },
+			{ name: 'Cipher-IV', value: folderData.cipherIV },
+			{ name: 'Drive-Privacy', value: 'private' }
+		];
+
+		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
+		await metaItem.sign(this.signer);
+		const metaDataTxId = await this.postDataItem(metaItem);
+
+		return { folderId, metaDataTxId };
+	}
+
+	/**
+	 * Upload a private file (metadata + data as DataItems) using internal Turbo
+	 */
+	async uploadPrivateFile({
+		driveId,
+		parentFolderId,
+		file,
+		driveKey,
+		customMetaDataJson
+	}: UploadPrivateFileParams): Promise<UploadPrivateFileResult> {
+		const nowSec = Math.floor(Date.now() / 1000);
+		const fileId = uuidv4();
+
+		// 1) Encrypt and upload file data
+		const fileBytes = await file.getBytes();
+
+		// Derive file key and encrypt data
+		const { deriveFileKey, aesGcmEncrypt } = await import('./crypto_web');
+		const fileKey = deriveFileKey(fileId, new Uint8Array(driveKey.keyData));
+		const { cipherIV, data: encryptedData } = await aesGcmEncrypt(fileKey, Buffer.from(fileBytes));
+		const cipher = 'AES256-GCM';
+
+		const dataTags = [
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'Content-Type', value: 'application/octet-stream' },
+			{ name: 'Cipher', value: cipher },
+			{ name: 'Cipher-IV', value: cipherIV }
+		];
+		const dataItem = createData(encryptedData, this.signer, { tags: dataTags });
+		await dataItem.sign(this.signer);
+		const dataTxId = await this.postDataItem(dataItem);
+
+		// 2) Build encrypted metadata JSON referencing dataTxId
+		const metadataJson = {
+			name: file.name,
+			size: file.size,
+			lastModifiedDate: file.lastModifiedDateMS,
+			dataTxId,
+			dataContentType: file.contentType,
+			...(customMetaDataJson ?? {})
+		};
+		const metadataBytes = Buffer.from(JSON.stringify(metadataJson));
+		const { cipherIV: metaCipherIV, data: encryptedMetadata } = await aesGcmEncrypt(fileKey, metadataBytes);
+		const metaCipher = 'AES256-GCM';
+		const metaBytes = encryptedMetadata;
+
+		const metaTags = [
+			{ name: 'App-Name', value: this.appName },
+			{ name: 'App-Version', value: this.appVersion },
+			{ name: 'ArFS', value: '0.15' },
+			{ name: 'Content-Type', value: 'application/octet-stream' },
+			{ name: 'Entity-Type', value: 'file' },
+			{ name: 'Drive-Id', value: `${driveId}` },
+			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+			{ name: 'File-Id', value: `${fileId}` },
+			{ name: 'Unix-Time', value: `${nowSec}` },
+			{ name: 'Cipher', value: metaCipher },
+			{ name: 'Cipher-IV', value: metaCipherIV },
+			{ name: 'Drive-Privacy', value: 'private' }
+		];
+
+		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
+		await metaItem.sign(this.signer);
+		const metaDataTxId = await this.postDataItem(metaItem);
+
+		return { fileId, dataTxId, metaDataTxId };
 	}
 
 	/**

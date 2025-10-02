@@ -8,6 +8,7 @@ import { ArconnectSigner } from '@dha-team/arbundles';
 import type Arweave from 'arweave';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
 import type { ArDriveSigner } from './ardrive_signer';
+import type { TurboSettings } from './turbo_web';
 
 export interface ArDriveSettingsAnonymousWeb {
 	gatewayUrl?: URL;
@@ -42,6 +43,10 @@ export interface ArDriveSettingsWeb {
 	signer?: ArDriveSigner | ArweaveSigner | ArconnectSigner;
 	appName?: string;
 	appVersion?: string;
+	/** Turbo settings for automatic upload handling */
+	turboSettings?: TurboSettings;
+	/** Dry run mode - doesn't actually upload to Turbo */
+	dryRun?: boolean;
 }
 
 /**
@@ -54,6 +59,8 @@ export interface ArDriveSettingsWeb {
  * @param settings.gatewayUrl - Gateway URL (default: https://arweave.net/)
  * @param settings.appName - Application name
  * @param settings.appVersion - Application version
+ * @param settings.turboSettings - Turbo configuration for automatic uploads
+ * @param settings.dryRun - Dry run mode for testing
  *
  * @example Using ArDriveSigner (recommended for browser wallets)
  * ```typescript
@@ -78,6 +85,8 @@ export function arDriveFactory(settings: ArDriveSettingsWeb): ArDriveWeb {
 		wallet: settings.wallet ? new JWKWalletWeb(settings.wallet) : undefined,
 		signer: settings.signer,
 		appName: settings.appName,
-		appVersion: settings.appVersion
+		appVersion: settings.appVersion,
+		turboSettings: settings.turboSettings,
+		dryRun: settings.dryRun
 	});
 }

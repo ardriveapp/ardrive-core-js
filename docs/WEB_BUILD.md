@@ -20,8 +20,9 @@ The ArDrive web build provides a browser-compatible version of the ArDrive Core 
 src/web/
 ├── index.ts                      # Public API exports
 ├── ardrive_factory_web.ts        # Factory functions for browser
-├── ardrive_web.ts                # Authenticated ArDrive class
+├── ardrive_web.ts                # Authenticated ArDrive class with Turbo
 ├── ardrive_signer.ts             # ArDriveSigner interface
+├── turbo_web.ts                  # Browser-compatible Turbo wrapper
 ├── crypto_web.ts                 # Browser crypto implementations
 ├── arfsdao_authenticated_web.ts  # Authenticated DAO for browser
 ├── jwk_wallet_web.ts             # JWK wallet wrapper
@@ -37,12 +38,14 @@ src/web/
 **Decision**: Reuse `ArDriveAnonymous`, `GatewayAPI`, `ArFSDAOAnonymous` from core instead of creating web-specific versions.
 
 **Rationale**:
+
 - Reduces code duplication
 - Ensures behavior consistency
 - Simplifies maintenance
 - Leverages existing tests
 
 **Implementation**:
+
 - `ArDriveWeb` extends `ArDriveAnonymous`
 - `ArFSDAOAuthenticatedWeb` extends `ArFSDAOAnonymous`
 - Core classes work in browser without modification
@@ -52,12 +55,14 @@ src/web/
 **Decision**: Create `ArDriveSigner` interface to abstract browser wallet signing operations.
 
 **Rationale**:
+
 - Browser wallets don't expose JWK private keys
 - Need custom signing options (e.g., `saltLength: 0` for v2 drives)
 - Keeps wallet-specific code in application layer
 - Enables testing with mock signers
 
 **Interface**:
+
 ```typescript
 export interface ArDriveSigner extends Signer {
     signDataItem(dataItem: DataItemToSign, options?: SignDataItemOptions): Promise<Uint8Array>;
@@ -66,6 +71,7 @@ export interface ArDriveSigner extends Signer {
 ```
 
 **Usage Flow**:
+
 ```
 Browser App → ArweaveWalletKitSigner (implements ArDriveSigner)
                 ↓
@@ -79,12 +85,14 @@ Browser App → ArweaveWalletKitSigner (implements ArDriveSigner)
 **Decision**: Use `@noble/ciphers` and `@noble/hashes` for browser crypto instead of Node.js `crypto` module.
 
 **Rationale**:
+
 - Pure JavaScript implementation
 - Works in browser without polyfills
 - Smaller bundle size
 - Audited cryptography library
 
 **Key Functions**:
+
 - `aesGcmEncrypt/Decrypt`: AES-256-GCM encryption using @noble/ciphers
 - `hkdfSha256`: HKDF key derivation using @noble/hashes
 - `deriveDriveKeyWithSigner`: Drive key derivation with ArDriveSigner support
@@ -94,12 +102,14 @@ Browser App → ArweaveWalletKitSigner (implements ArDriveSigner)
 **Decision**: Use TypeScript compiler for declarations + esbuild for bundling.
 
 **Rationale**:
+
 - Automatic `.d.ts` generation
 - No manual type maintenance
 - Fast bundling with esbuild
 - Source maps for debugging
 
 **Build Process**:
+
 ```
 1. TypeScript Compiler (tsc)
    ├── Input: src/web/**/*.ts
@@ -121,12 +131,14 @@ Browser App → ArweaveWalletKitSigner (implements ArDriveSigner)
 **Decision**: Support private drives in browser using password + signer-based key derivation.
 
 **Rationale**:
+
 - Users want private drive access in browser
 - Browser wallets can sign DataItems
 - Password + signature = drive key (via HKDF)
 - No JWK exposure required
 
 **Key Derivation Flow**:
+
 ```
 1. User provides password + drive ID
 2. ArDriveSigner signs DataItem("drive" + UUID)
@@ -136,8 +148,42 @@ Browser App → ArweaveWalletKitSigner (implements ArDriveSigner)
 ```
 
 **Signature Types**:
+
 - **v1**: Legacy format with encrypted signature (supported)
 - **v2**: DataItem signing with `saltLength: 0` (recommended)
+
+### 6. Turbo Integration
+
+**Decision**: Integrate Turbo directly into the web build for upload operations.
+
+**Rationale**:
+
+- API parity with Node.js version
+- Simpler developer experience
+- No callback boilerplate required
+- Single responsibility (Turbo handles uploads)
+- Consistent behavior across platforms
+
+**Implementation**:
+
+- `TurboWeb` class wraps `@ardrive/turbo-sdk`
+- Uses `ReadableStream` instead of Node.js streams
+- Configured once at ArDrive construction
+- All upload methods use internal Turbo automatically
+
+**Usage**:
+
+```typescript
+const arDrive = arDriveFactory({
+    signer,
+    turboSettings: {
+        turboUploadUrl: new URL('https://upload.ardrive.io')
+    }
+});
+
+// Uploads automatically use Turbo
+await arDrive.uploadPublicFile({ driveId, parentFolderId, file });
+```
 
 ## API Surface
 
@@ -156,14 +202,17 @@ export { WalletDAOWeb } from './wallet_dao_web';
 export type { ArDriveSigner, DataItemToSign, SignDataItemOptions } from './ardrive_signer';
 export { isArDriveSigner } from './ardrive_signer';
 
+// Turbo Integration
+export { TurboWeb, type TurboSettings } from './turbo_web';
+
 // Crypto Functions
-export { 
-    aesGcmEncrypt, 
-    aesGcmDecrypt, 
+export {
+    aesGcmEncrypt,
+    aesGcmDecrypt,
     deriveDriveKeyV2,
     deriveDriveKeyWithSigner,
     deriveFileKey,
-    generateWalletSignatureV2 
+    generateWalletSignatureV2
 } from './crypto_web';
 
 // Core Classes (reused)
@@ -180,16 +229,18 @@ export * from '../arfs/arfs_entities';
 ### Usage Patterns
 
 #### Anonymous (Public) Drives
+
 ```typescript
 import { arDriveAnonymousFactory, EID } from 'ardrive-core-js/web';
 
 const arDrive = arDriveAnonymousFactory();
-const drive = await arDrive.getPublicDrive({ 
-    driveId: EID('drive-id') 
+const drive = await arDrive.getPublicDrive({
+    driveId: EID('drive-id')
 });
 ```
 
 #### Authenticated with JWK
+
 ```typescript
 import { arDriveFactory } from 'ardrive-core-js/web';
 
@@ -201,16 +252,32 @@ const drive = await arDrive.getPrivateDrive({
 ```
 
 #### Authenticated with Browser Wallet
+
 ```typescript
 import { arDriveFactory, type ArDriveSigner } from 'ardrive-core-js/web';
 
 // Application implements ArDriveSigner
 const signer: ArDriveSigner = new MyWalletSigner();
-const arDrive = arDriveFactory({ signer });
 
+// Configure with Turbo for uploads
+const arDrive = arDriveFactory({
+    signer,
+    turboSettings: {
+        turboUploadUrl: new URL('https://upload.ardrive.io')
+    }
+});
+
+// Read operations
 const drive = await arDrive.getPrivateDrive({
     driveId: EID('drive-id'),
     password: 'user-password'
+});
+
+// Upload operations (uses internal Turbo)
+const result = await arDrive.uploadPublicFile({
+    driveId: EID('drive-id'),
+    parentFolderId: EID('folder-id'),
+    file: wrappedFile
 });
 ```
 
@@ -221,10 +288,10 @@ const drive = await arDrive.getPrivateDrive({
 - **Framework**: Playwright for browser testing
 - **Browsers**: Chromium, Firefox (WebKit disabled on macOS)
 - **Test Types**:
-  - Basic browser functionality
-  - Cross-platform API compatibility
-  - Crypto operations
-  - Private drive access
+    - Basic browser functionality
+    - Cross-platform API compatibility
+    - Crypto operations
+    - Private drive access
 
 ### Test Suites
 
@@ -298,15 +365,19 @@ yarn lintfix
 ## Known Limitations
 
 ### 1. No Direct JWK Access
+
 Browser wallets don't expose JWK private keys for security. Use `ArDriveSigner` interface instead.
 
-### 2. No Transaction Submission
-Web build doesn't submit transactions directly. Use bundlers (Turbo, Bundlr) or gateway APIs.
+### 2. Turbo Required for Uploads
+
+Upload operations require Turbo configuration. Turbo handles DataItem submission to Arweave.
 
 ### 3. Limited Wallet DAO
+
 `WalletDAOWeb` provides stub implementations. Use external services for balance checking and AR transfers.
 
 ### 4. No Seed Phrase Generation
+
 Browser build doesn't generate seed phrases. Use wallet extensions or external tools.
 
 ## Future Enhancements
@@ -321,7 +392,7 @@ Browser build doesn't generate seed phrases. Use wallet extensions or external t
 
 ### API Additions
 
-1. **Upload Support**: Full upload pipeline with bundlers
+1. ~~**Upload Support**: Full upload pipeline with bundlers~~ ✅ **COMPLETE** (Turbo integrated)
 2. **Batch Operations**: Efficient multi-file operations
 3. **Progress Callbacks**: Upload/download progress tracking
 4. **Retry Logic**: Automatic retry for failed operations
@@ -342,6 +413,7 @@ If migrating from a previous web build:
 - **Removed**: `ArDriveAnonymousWeb`, `GatewayAPIWeb`, `ArFSMetadataCacheWeb`
 - **Replaced**: Use core classes instead
 - **New**: `ArDriveSigner` interface required for browser wallets
+- **New**: `turboSettings` required for upload operations (replaces callback pattern)
 
 ## Troubleshooting
 
@@ -370,6 +442,7 @@ If migrating from a previous web build:
 ## Status
 
 ✅ **Production Ready**
+
 - 18/18 tests passing
 - Full TypeScript support
 - Cross-platform compatibility

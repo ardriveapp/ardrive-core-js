@@ -16,8 +16,15 @@ export {
 	ArDriveWeb,
 	type ArDriveWebSettings,
 	type UploadPublicFileParams,
-	type UploadPublicFileResult
+	type UploadPublicFileResult,
+	type CreatePublicFolderParams,
+	type CreatePublicFolderResult,
+	type CreatePrivateFolderParams,
+	type CreatePrivateFolderResult,
+	type UploadPrivateFileParams,
+	type UploadPrivateFileResult
 } from './ardrive_web';
+export { TurboWeb, type TurboSettings } from './turbo_web';
 
 // Re-export signer types and classes for convenience
 export type { ArweaveSigner, Signer } from '@dha-team/arbundles';
