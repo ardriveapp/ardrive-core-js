@@ -254,7 +254,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			publicConflictCache: new PromiseCache<ArFSPublicFolderCacheKey, NameConflictInfo>(defaultCacheParams),
 			privateConflictCache: new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams)
 		},
-		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
+		gatewayApi?: GatewayAPI,
 		protected txPreparer = new TxPreparer({
 			arweave: arweave,
 			wallet: wallet as JWKWallet,
@@ -266,7 +266,7 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			isDryRun: dryRun
 		})
 	) {
-		super(arweave, undefined, undefined, caches);
+		super(arweave, undefined, undefined, caches, gatewayApi);
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';

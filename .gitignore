@@ -53,3 +53,4 @@ node_modules
 #Misc
 .idea
 *.db
+._*

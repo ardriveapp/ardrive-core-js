@@ -3,9 +3,76 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
 import { TransactionID } from '../types';
-import GQLResultInterface, { GQLTransactionsResultInterface } from '../types/gql_Types';
+import GQLResultInterface, {
+	GQLTransactionsResultInterface,
+	GQLEdgeInterface,
+	GQLNodeInterface
+} from '../types/gql_Types';
 import { FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
-import { GQLQuery } from './query';
+import { GQLQuery, BuildGQLQueryParams } from './query';
+
+// Type for QueryProvider from @arweave-query/core
+export interface QueryProvider {
+	getTransactions(filter: TransactionsQueryFilter): Promise<QueryResult<ArweaveTransaction>>;
+}
+
+export interface TransactionsQueryFilter {
+	first?: number;
+	after?: string;
+	ids?: string[];
+	owners?: string[];
+	recipients?: string[];
+	tags?: TagFilter[];
+	block?: {
+		min?: number;
+		max?: number;
+	};
+}
+
+export interface TagFilter {
+	name: string;
+	values: string[];
+}
+
+export interface QueryResult<T> {
+	data: T[];
+	hasNextPage: boolean;
+	cursor?: string;
+	next?: () => Promise<QueryResult<T>>;
+}
+
+export interface ArweaveTransaction {
+	id: string;
+	anchor?: string;
+	signature?: string;
+	recipient?: string;
+	owner?: {
+		address: string;
+		key?: string;
+	};
+	fee?: {
+		winston: string;
+		ar: string;
+	};
+	quantity?: {
+		winston: string;
+		ar: string;
+	};
+	data?: {
+		size: number;
+		type?: string;
+	};
+	tags: Array<{ name: string; value: string }>;
+	block?: {
+		id: string;
+		timestamp: number;
+		height: number;
+		previous?: string;
+	};
+	parent?: {
+		id: string;
+	};
+}
 
 interface GatewayAPIConstParams {
 	gatewayUrl: URL;
@@ -14,6 +81,7 @@ interface GatewayAPIConstParams {
 	fatalErrors?: string[];
 	validStatusCodes?: number[];
 	axiosInstance?: AxiosInstance;
+	queryProvider?: QueryProvider;
 }
 
 const rateLimitStatus = 429;
@@ -50,6 +118,7 @@ export class GatewayAPI {
 	private fatalErrors: string[];
 	private validStatusCodes: number[];
 	private axiosInstance: AxiosInstance;
+	private queryProvider?: QueryProvider;
 
 	constructor({
 		gatewayUrl,
@@ -57,7 +126,8 @@ export class GatewayAPI {
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
 		validStatusCodes = [200, 202],
-		axiosInstance = axios.create({ validateStatus: undefined })
+		axiosInstance = axios.create({ validateStatus: undefined }),
+		queryProvider
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
@@ -65,6 +135,7 @@ export class GatewayAPI {
 		this.fatalErrors = fatalErrors;
 		this.validStatusCodes = validStatusCodes;
 		this.axiosInstance = axiosInstance;
+		this.queryProvider = queryProvider;
 	}
 
 	private lastError = 'unknown error';
@@ -79,17 +150,23 @@ export class GatewayAPI {
 	}
 
 	public async gqlRequest(query: GQLQuery): Promise<GQLTransactionsResultInterface> {
+		// If queryProvider is available and we have query params, use it
+		if (this.queryProvider && query.params) {
+			return this.executeQueryWithProvider(query.params);
+		}
+
+		// Fall back to direct GraphQL request
 		try {
-			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', query);
+			const { data } = await this.postToEndpoint<GQLResultInterface>('graphql', { query: query.query });
 
 			if (data.errors) {
-				data.errors.forEach((error) => {
+				data.errors.forEach((error: { message: string }) => {
 					console.error(`GQL Error: ${error.message}`);
 				});
 			}
 
 			if (!data.data) {
-				const isTimeoutError = data.errors?.some((error) =>
+				const isTimeoutError = data.errors?.some((error: { message: string }) =>
 					error.message.includes('canceling statement due to statement timeout')
 				);
 
@@ -104,6 +181,112 @@ export class GatewayAPI {
 		} catch (error) {
 			throw Error(`GQL Error: ${(error as Error).message}`);
 		}
+	}
+
+	/**
+	 * Execute query using the QueryProvider and convert results to GQL format
+	 */
+	private async executeQueryWithProvider(params: BuildGQLQueryParams): Promise<GQLTransactionsResultInterface> {
+		if (!this.queryProvider) {
+			throw new Error('QueryProvider not configured');
+		}
+
+		// Convert BuildGQLQueryParams to TransactionsQueryFilter
+		const filter = this.buildGQLParamsToQueryFilter(params);
+		console.log(JSON.stringify(filter, null, 2));
+
+		try {
+			const result = await this.queryProvider.getTransactions(filter);
+			console.log(result);
+			return this.convertQueryResultToGQL(result);
+		} catch (error) {
+			throw Error(`QueryProvider Error: ${(error as Error).message}`);
+		}
+	}
+
+	/**
+	 * Convert BuildGQLQueryParams to TransactionsQueryFilter format
+	 */
+	private buildGQLParamsToQueryFilter(params: BuildGQLQueryParams): TransactionsQueryFilter {
+		const filter: TransactionsQueryFilter = {
+			first: params.cursor === undefined ? 1 : 100
+		};
+
+		if (params.cursor) {
+			filter.after = params.cursor;
+		}
+
+		if (params.owner) {
+			filter.owners = [params.owner.toString()];
+		}
+
+		if (params.ids && params.ids.length > 0) {
+			filter.ids = params.ids.map((id) => id.toString());
+		}
+
+		if (params.tags && params.tags.length > 0) {
+			filter.tags = params.tags.map((tag) => ({
+				name: tag.name,
+				values: Array.isArray(tag.value) ? tag.value : [tag.value]
+			}));
+		}
+
+		return filter;
+	}
+
+	/**
+	 * Convert QueryResult from @arweave-query/core to GQLTransactionsResultInterface
+	 */
+	private convertQueryResultToGQL(result: QueryResult<ArweaveTransaction>): GQLTransactionsResultInterface {
+		const edges: GQLEdgeInterface[] = result.data.map((tx) => {
+			const node: GQLNodeInterface = {
+				id: tx.id,
+				anchor: tx.anchor || '',
+				signature: tx.signature || '',
+				recipient: tx.recipient || '',
+				owner: {
+					address: tx.owner?.address || '',
+					key: tx.owner?.key || ''
+				},
+				fee: {
+					winston: tx.fee?.winston || '0',
+					ar: tx.fee?.ar || '0'
+				},
+				quantity: {
+					winston: tx.quantity?.winston || '0',
+					ar: tx.quantity?.ar || '0'
+				},
+				data: {
+					size: tx.data?.size || 0,
+					type: tx.data?.type || ''
+				},
+				tags: tx.tags.map((tag) => ({
+					name: tag.name,
+					value: tag.value
+				})),
+				block: {
+					id: tx.block?.id || '',
+					timestamp: tx.block?.timestamp || 0,
+					height: tx.block?.height || 0,
+					previous: tx.block?.previous || ''
+				},
+				parent: {
+					id: tx.parent?.id || ''
+				}
+			};
+
+			return {
+				cursor: result.cursor || '',
+				node
+			};
+		});
+
+		return {
+			pageInfo: {
+				hasNextPage: result.hasNextPage
+			},
+			edges
+		};
 	}
 
 	public async postToEndpoint<T = unknown>(endpoint: string, data?: unknown): Promise<AxiosResponse<T>> {

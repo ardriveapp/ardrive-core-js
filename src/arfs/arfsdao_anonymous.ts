@@ -28,6 +28,42 @@ import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPat
 import { gatewayUrlForArweave } from '../utils/common';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
+import type { QueryProvider } from '../utils/gateway_api';
+
+// Lazy-loaded QueryProvider factory
+let queryProviderFactory: (() => Promise<QueryProvider>) | undefined;
+
+async function getDefaultQueryProvider(): Promise<QueryProvider | undefined> {
+	if (!queryProviderFactory) {
+		queryProviderFactory = async () => {
+			console.log('🔧 Loading @arweave-query/core/node...');
+			// @ts-expect-error - Package has CommonJS exports but TypeScript moduleResolution: "node" doesn't recognize them
+			const { createNodeParquetProvider } = await import('@arweave-query/core/node');
+
+			console.log('🔧 Creating ParquetProvider with config...');
+			const provider = createNodeParquetProvider({
+				parquetUrls: {
+					blocks: 'http://localhost:4000/local/datasets/blocks/data/height=911404-1094394/blocks.parquet',
+					transactions:
+						'http://localhost:4000/local/datasets/transactions/data/height=911404-1094394/transactions.parquet',
+					tags: 'http://localhost:4000/local/datasets/tags/data/height=911404-1094394/tags.parquet'
+				},
+				duckdbConfig: {
+					memory: ':memory:',
+					readOnly: false
+				}
+			});
+			return provider;
+		};
+	}
+	try {
+		const result = await queryProviderFactory();
+		return result;
+	} catch (error) {
+		console.error('❌ Error loading ParquetProvider:', error);
+		throw error;
+	}
+}
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -75,6 +111,10 @@ export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
 export class ArFSDAOAnonymous extends ArFSDAOType {
+	private _gatewayApi?: GatewayAPI;
+	private gatewayApiPromise?: Promise<GatewayAPI>;
+	private isInitializing = false;
+
 	constructor(
 		protected readonly arweave: Arweave,
 		/** @deprecated App Name is an unused parameter on anonymous ArFSDAO */
@@ -82,9 +122,66 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		/** @deprecated App Version is an unused parameter on anonymous ArFSDAO */
 		protected appVersion = DEFAULT_APP_VERSION as string,
 		protected caches = defaultArFSAnonymousCache,
-		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) })
+		gatewayApi?: GatewayAPI
 	) {
 		super();
+		if (gatewayApi) {
+			this._gatewayApi = gatewayApi;
+		} else {
+			// Start initialization immediately
+			this.initializeQueryProvider();
+		}
+	}
+
+	protected get gatewayApi(): GatewayAPI {
+		if (!this._gatewayApi) {
+			// Create basic fallback if initialization hasn't completed
+			console.warn('GatewayAPI accessed before initialization completed, using basic GraphQL');
+			return new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(this.arweave) });
+		}
+		return this._gatewayApi;
+	}
+
+	/**
+	 * Ensures the GatewayAPI is fully initialized with QueryProvider before use
+	 */
+	private async ensureGatewayApiReady(): Promise<GatewayAPI> {
+		if (this.gatewayApiPromise) {
+			await this.gatewayApiPromise;
+		}
+		return this.gatewayApi;
+	}
+
+	private async initializeQueryProvider(): Promise<void> {
+		if (this.isInitializing || this._gatewayApi) return;
+		this.isInitializing = true;
+
+		this.gatewayApiPromise = (async () => {
+			try {
+				const queryProvider = await getDefaultQueryProvider();
+				if (!queryProvider) {
+					throw new Error('ParquetProvider is required but not available');
+				}
+				this._gatewayApi = new GatewayAPI({
+					gatewayUrl: gatewayUrlForArweave(this.arweave),
+					queryProvider
+				});
+				console.log('✓ ParquetProvider initialized successfully');
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error('❌ Failed to initialize ParquetProvider:', errorMessage);
+				if (error instanceof Error && error.stack) {
+					console.error('Stack trace:', error.stack);
+				}
+				throw new Error(`ParquetProvider initialization failed: ${errorMessage}`);
+			}
+			return this._gatewayApi!;
+		})().catch((error) => {
+			console.error('❌ ParquetProvider promise rejected:', error);
+			throw error;
+		});
+
+		await this.gatewayApiPromise;
 	}
 
 	public async getOwnerForDriveId(driveId: DriveID): Promise<ArweaveAddress> {
@@ -103,8 +200,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					],
 					sort: ASCENDING_ORDER
 				});
-				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const gatewayApi = await this.ensureGatewayApiReady();
+				const transactions = await gatewayApi.gqlRequest(gqlQuery);
 				const edges: GQLEdgeInterface[] = transactions.edges;
+				console.log(transactions);
 
 				if (!edges.length) {
 					throw new Error(`Could not find a transaction with "Drive-Id": ${driveId}`);
@@ -129,7 +228,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			(async () => {
 				const gqlQuery = buildQuery({ tags: [{ name: gqlTypeTag, value: `${entityId}` }] });
 
-				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				const gatewayApi = await this.ensureGatewayApiReady();
+				const transactions = await gatewayApi.gqlRequest(gqlQuery);
 				const edges: GQLEdgeInterface[] = transactions.edges;
 
 				if (!edges.length) {
@@ -224,7 +324,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		while (hasNextPage) {
 			const gqlQuery = buildQuery({ tags: [{ name: 'Entity-Type', value: 'drive' }], cursor, owner: address });
 
-			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+			const gatewayApi = await this.ensureGatewayApiReady();
+			const transactions = await gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
@@ -270,7 +371,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+			const gatewayApi = await this.ensureGatewayApiReady();
+			const transactions = await gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			const files: Promise<ArFSPublicFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
@@ -323,7 +425,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				owner
 			});
 
-			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+			const gatewayApi = await this.ensureGatewayApiReady();
+			const transactions = await gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 
 			hasNextPage = transactions.pageInfo.hasNextPage;
