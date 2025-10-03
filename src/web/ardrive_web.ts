@@ -7,7 +7,7 @@ import { ArweaveSigner, ArconnectSigner, createData } from '@dha-team/arbundles'
 import { v4 as uuidv4 } from 'uuid';
 import type { WebFileToUpload } from './arfs_file_wrapper_web';
 import { deriveDriveKeyWithSigner } from './crypto_web';
-import { DriveID, FolderID, FileID, ArweaveAddress, DriveSignatureInfo, DriveKey } from '../types';
+import { DriveID, FolderID, FileID, ArweaveAddress, DriveSignatureInfo, DriveKey, EID } from '../types';
 import { EntityKey } from '../types/entity_key';
 import {
 	ArFSPrivateDrive,
@@ -21,6 +21,8 @@ import type { CustomMetaDataJsonFields } from '../types/custom_metadata_types';
 import Arweave from 'arweave';
 import type { ArDriveSigner } from './ardrive_signer';
 import { TurboWeb, TurboSettings } from './turbo_web';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
+import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 
 export interface ArDriveWebSettings {
 	gatewayUrl?: URL;
@@ -106,11 +108,27 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		const gw = new GatewayAPI({ gatewayUrl: settings.gatewayUrl ?? new URL('https://arweave.net/') });
 		// Use provided signer or create one from wallet
 		const signer: Signer | ArDriveSigner = settings.signer ?? new ArweaveSigner(settings.wallet!.getPrivateKey());
-		const appName = settings.appName ?? 'ArDrive-Core';
-		const appVersion = settings.appVersion ?? 'web';
+		const appName = settings.appName ?? DEFAULT_APP_NAME;
+		const appVersion = settings.appVersion ?? DEFAULT_APP_VERSION;
 
-		// Use authenticated DAO with signer support
-		const dao = new ArFSDAOAuthenticatedWeb(signer, gw, appName, appVersion);
+		// Create tag settings with App-Platform tag for web
+		const arFSTagSettings = new ArFSTagSettings({
+			appName,
+			appVersion,
+			appPlatform: 'Web'
+		});
+
+		// Use authenticated DAO with signer support and turbo settings
+		const dao = new ArFSDAOAuthenticatedWeb(
+			signer,
+			gw,
+			appName,
+			appVersion,
+			arFSTagSettings,
+			undefined, // caches - use default
+			settings.turboSettings,
+			settings.dryRun
+		);
 
 		super(dao);
 		this._wallet = settings.wallet!;
@@ -118,7 +136,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		this.appName = appName;
 		this.appVersion = appVersion;
 
-		// Initialize Turbo if settings provided
+		// Initialize Turbo if settings provided (for direct use in ArDriveWeb methods)
 		if (settings.turboSettings) {
 			this.turbo = new TurboWeb({
 				...settings.turboSettings,
@@ -199,7 +217,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 	}
 
 	/**
-	 * Create a public folder using internal Turbo
+	 * Create a public folder using DAO (with proper validation and tag assembly)
 	 */
 	async createPublicFolder({
 		driveId,
@@ -207,37 +225,28 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		folderName,
 		customMetaDataJson
 	}: CreatePublicFolderParams): Promise<CreatePublicFolderResult> {
-		const nowSec = Math.floor(Date.now() / 1000);
-		const folderId = uuidv4();
-
-		// Build folder metadata JSON
+		// Build folder metadata
 		const folderData = new ArFSPublicFolderTransactionData(
 			folderName,
 			customMetaDataJson as CustomMetaDataJsonFields
 		);
-		const metaBytes = new TextEncoder().encode(folderData.asTransactionData());
 
-		const metaTags = [
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'ArFS', value: '0.15' },
-			{ name: 'Content-Type', value: 'application/json' },
-			{ name: 'Entity-Type', value: 'folder' },
-			{ name: 'Drive-Id', value: `${driveId}` },
-			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
-			{ name: 'Folder-Id', value: `${folderId}` },
-			{ name: 'Unix-Time', value: `${nowSec}` }
-		];
+		// Use DAO method which handles tag assembly and upload
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).createPublicFolder({
+			driveId: EID(driveId),
+			parentFolderId: EID(parentFolderId),
+			folderData,
+			rewardSettings: undefined // Turbo upload (no V2 tx)
+		});
 
-		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
-		await metaItem.sign(this.signer);
-		const metaDataTxId = await this.postDataItem(metaItem);
-
-		return { folderId, metaDataTxId };
+		return {
+			folderId: result.folderId.toString(),
+			metaDataTxId: result.metaDataTxId.toString()
+		};
 	}
 
 	/**
-	 * Create a private folder using internal Turbo
+	 * Create a private folder using DAO (with proper validation and tag assembly)
 	 */
 	async createPrivateFolder({
 		driveId,
@@ -246,37 +255,25 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		driveKey,
 		customMetaDataJson
 	}: CreatePrivateFolderParams): Promise<CreatePrivateFolderResult> {
-		const nowSec = Math.floor(Date.now() / 1000);
-		const folderId = uuidv4();
-
 		// Build encrypted folder metadata
 		const folderData = await ArFSPrivateFolderTransactionData.from(
 			folderName,
 			driveKey,
 			customMetaDataJson as CustomMetaDataJsonFields
 		);
-		const metaBytes = folderData.asTransactionData();
 
-		const metaTags = [
-			{ name: 'App-Name', value: this.appName },
-			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'ArFS', value: '0.15' },
-			{ name: 'Content-Type', value: 'application/octet-stream' },
-			{ name: 'Entity-Type', value: 'folder' },
-			{ name: 'Drive-Id', value: `${driveId}` },
-			{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
-			{ name: 'Folder-Id', value: `${folderId}` },
-			{ name: 'Unix-Time', value: `${nowSec}` },
-			{ name: 'Cipher', value: folderData.cipher },
-			{ name: 'Cipher-IV', value: folderData.cipherIV },
-			{ name: 'Drive-Privacy', value: 'private' }
-		];
+		// Use DAO method which handles tag assembly and upload
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).createPrivateFolder({
+			driveId: EID(driveId),
+			parentFolderId: EID(parentFolderId),
+			folderData,
+			rewardSettings: undefined // Turbo upload (no V2 tx)
+		});
 
-		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });
-		await metaItem.sign(this.signer);
-		const metaDataTxId = await this.postDataItem(metaItem);
-
-		return { folderId, metaDataTxId };
+		return {
+			folderId: result.folderId.toString(),
+			metaDataTxId: result.metaDataTxId.toString()
+		};
 	}
 
 	/**
@@ -337,8 +334,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			{ name: 'File-Id', value: `${fileId}` },
 			{ name: 'Unix-Time', value: `${nowSec}` },
 			{ name: 'Cipher', value: metaCipher },
-			{ name: 'Cipher-IV', value: metaCipherIV },
-			{ name: 'Drive-Privacy', value: 'private' }
+			{ name: 'Cipher-IV', value: metaCipherIV }
 		];
 
 		const metaItem = createData(metaBytes, this.signer, { tags: metaTags });

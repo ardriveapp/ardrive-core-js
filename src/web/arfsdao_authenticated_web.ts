@@ -1,18 +1,21 @@
 /**
  * Browser-compatible authenticated ArFS DAO
- * Extends ArFSDAOAnonymous with signer support for write operations
- * Does NOT import ArFSDAO to avoid Node.js dependencies
+ * Extends ArFSDAOAuthenticatedBase with browser-specific upload implementation
+ * Uses TurboWeb for DataItem uploads
  */
 
-import type { Signer } from '@dha-team/arbundles';
+import type { Signer, DataItem } from '@dha-team/arbundles';
 import type Arweave from 'arweave';
 import type { ArDriveSigner } from './ardrive_signer';
-import { ArFSDAOAnonymous, defaultArFSAnonymousCache, ArFSAnonymousCache } from '../arfs/arfsdao_anonymous';
+import { ArFSDAOAuthenticatedBase } from '../arfs/arfsdao_authenticated_base';
+import { defaultArFSAnonymousCache, ArFSAnonymousCache } from '../arfs/arfsdao_anonymous';
 import { GatewayAPI } from '../utils/gateway_api';
 import { TxPreparer } from '../arfs/tx/tx_preparer';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSTagAssembler } from '../arfs/tags/tag_assembler';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gqlTagNameRecord } from '../utils/constants';
+import { TurboWeb, TurboSettings } from './turbo_web';
+import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
 	DriveID,
 	ArweaveAddress,
@@ -45,10 +48,12 @@ import { InvalidFileStateException } from '../types/exceptions';
 /**
  * Authenticated DAO for browser that uses signer instead of wallet
  * Provides write operations without Node.js dependencies
+ * Uses TurboWeb for uploading DataItems
  */
-export class ArFSDAOAuthenticatedWeb extends ArFSDAOAnonymous {
-	public readonly txPreparer: TxPreparer;
+export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
+	protected readonly txPreparer: TxPreparer;
 	private readonly signer: Signer | ArDriveSigner;
+	private readonly turbo?: TurboWeb;
 
 	constructor(
 		signer: Signer | ArDriveSigner,
@@ -56,7 +61,9 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAnonymous {
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
 		arFSTagSettings: ArFSTagSettings = new ArFSTagSettings({ appName, appVersion }),
-		caches: ArFSAnonymousCache = defaultArFSAnonymousCache
+		caches: ArFSAnonymousCache = defaultArFSAnonymousCache,
+		turboSettings?: TurboSettings,
+		dryRun = false
 	) {
 		// Call parent with null arweave (not used in browser)
 		super(null as unknown as Arweave, appName, appVersion, caches, gatewayApi);
@@ -67,6 +74,14 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAnonymous {
 			signer: signer,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		});
+
+		// Initialize Turbo if settings provided
+		if (turboSettings) {
+			this.turbo = new TurboWeb({
+				...turboSettings,
+				isDryRun: dryRun
+			});
+		}
 	}
 
 	/**
@@ -74,6 +89,35 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAnonymous {
 	 */
 	getSigner(): Signer | ArDriveSigner {
 		return this.signer;
+	}
+
+	/**
+	 * Upload a DataItem using TurboWeb
+	 * Implements abstract method from ArFSDAOAuthenticatedBase
+	 */
+	protected async uploadDataItem(
+		dataItem: DataItem
+	): Promise<{ id: string } & Partial<Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>>> {
+		if (!this.turbo) {
+			throw new Error('No Turbo uploader configured. Please provide turboSettings in constructor.');
+		}
+
+		// Debug logging
+		console.log('Uploading DataItem:', {
+			id: dataItem.id,
+			tags: dataItem.tags,
+			dataSize: dataItem.getRaw().length
+		});
+
+		const result = await this.turbo.sendDataItem(dataItem);
+
+		console.log('Upload result:', result);
+
+		return {
+			id: result.id,
+			dataCaches: result.dataCaches,
+			fastFinalityIndexes: result.fastFinalityIndexes
+		};
 	}
 
 	/**
