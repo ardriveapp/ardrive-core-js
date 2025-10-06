@@ -102,16 +102,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			throw new Error('No Turbo uploader configured. Please provide turboSettings in constructor.');
 		}
 
-		// Debug logging
-		console.log('Uploading DataItem:', {
-			id: dataItem.id,
-			tags: dataItem.tags,
-			dataSize: dataItem.getRaw().length
-		});
-
 		const result = await this.turbo.sendDataItem(dataItem);
-
-		console.log('Upload result:', result);
 
 		return {
 			id: result.id,

@@ -225,18 +225,16 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		folderName,
 		customMetaDataJson
 	}: CreatePublicFolderParams): Promise<CreatePublicFolderResult> {
-		// Build folder metadata
 		const folderData = new ArFSPublicFolderTransactionData(
 			folderName,
-			customMetaDataJson as CustomMetaDataJsonFields
+			customMetaDataJson as CustomMetaDataJsonFields | undefined
 		);
 
-		// Use DAO method which handles tag assembly and upload
 		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).createPublicFolder({
 			driveId: EID(driveId),
 			parentFolderId: EID(parentFolderId),
 			folderData,
-			rewardSettings: undefined // Turbo upload (no V2 tx)
+			rewardSettings: undefined
 		});
 
 		return {
@@ -348,10 +346,269 @@ export class ArDriveWeb extends ArDriveAnonymous {
 	 * Helper method to get owner address from signer
 	 */
 	private async getOwnerAddress(): Promise<ArweaveAddress> {
+		// If signer has getActiveAddress method (ArDriveSigner), use it
+		if ('getActiveAddress' in this.signer && typeof this.signer.getActiveAddress === 'function') {
+			const address = await (this.signer as any).getActiveAddress();
+			return new ArweaveAddress(address);
+		}
+
+		// Otherwise derive from public key
 		const arweave = Arweave.init({});
 		const publicKey = this.signer.publicKey;
 		const address = await arweave.wallets.ownerToAddress(publicKey.toString());
 		return new ArweaveAddress(address);
+	}
+
+	/**
+	 * Create a public drive
+	 */
+	async createPublicDrive({ driveName }: { driveName: string }): Promise<{
+		driveId: string;
+		rootFolderId: string;
+		metaDataTxId: string;
+		rootFolderTxId: string;
+		bundleTxId: string;
+	}> {
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).createPublicDrive({ driveName });
+		return {
+			driveId: result.driveId.toString(),
+			rootFolderId: result.rootFolderId.toString(),
+			metaDataTxId: result.metaDataTxId.toString(),
+			rootFolderTxId: result.rootFolderTxId.toString(),
+			bundleTxId: result.bundleTxId.toString()
+		};
+	}
+
+	/**
+	 * Create a private drive
+	 *
+	 * @param newDriveData - PrivateDriveKeyData containing driveId and driveKey
+	 *                       Use PrivateDriveKeyData.from(password, signer) to create
+	 * @param driveName - Name for the new drive
+	 *
+	 * @example
+	 * ```typescript
+	 * import { PrivateDriveKeyData } from 'ardrive-core-js/web';
+	 *
+	 * const newDriveData = await PrivateDriveKeyData.from('my-password', signer);
+	 * const result = await arDrive.createPrivateDrive({
+	 *   driveName: 'My Private Drive',
+	 *   newDriveData
+	 * });
+	 * ```
+	 */
+	async createPrivateDrive({
+		driveName,
+		newDriveData
+	}: {
+		driveName: string;
+		newDriveData: { driveId: DriveID; driveKey: DriveKey };
+	}): Promise<{
+		driveId: string;
+		rootFolderId: string;
+		metaDataTxId: string;
+		rootFolderTxId: string;
+		bundleTxId: string;
+	}> {
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).createPrivateDrive({
+			driveName,
+			newDriveData
+		});
+		return {
+			driveId: result.driveId.toString(),
+			rootFolderId: result.rootFolderId.toString(),
+			metaDataTxId: result.metaDataTxId.toString(),
+			rootFolderTxId: result.rootFolderTxId.toString(),
+			bundleTxId: result.bundleTxId.toString()
+		};
+	}
+
+	/**
+	 * Move a public file to a new parent folder
+	 */
+	async movePublicFile({
+		fileId,
+		newParentFolderId
+	}: {
+		fileId: string;
+		newParentFolderId: string;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPublicFile({ fileId: EID(fileId), owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).movePublicFile({
+			fileId: EID(fileId),
+			newParentFolderId: EID(newParentFolderId),
+			originalMetaData
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Move a private file to a new parent folder
+	 */
+	async movePrivateFile({
+		fileId,
+		newParentFolderId,
+		driveKey
+	}: {
+		fileId: string;
+		newParentFolderId: string;
+		driveKey: DriveKey;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPrivateFile({ fileId: EID(fileId), driveKey, owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).movePrivateFile({
+			fileId: EID(fileId),
+			newParentFolderId: EID(newParentFolderId),
+			originalMetaData,
+			driveKey
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Move a public folder to a new parent folder
+	 */
+	async movePublicFolder({
+		folderId,
+		newParentFolderId
+	}: {
+		folderId: string;
+		newParentFolderId: string;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPublicFolder({ folderId: EID(folderId), owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).movePublicFolder({
+			folderId: EID(folderId),
+			newParentFolderId: EID(newParentFolderId),
+			originalMetaData
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Move a private folder to a new parent folder
+	 */
+	async movePrivateFolder({
+		folderId,
+		newParentFolderId,
+		driveKey
+	}: {
+		folderId: string;
+		newParentFolderId: string;
+		driveKey: DriveKey;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPrivateFolder({ folderId: EID(folderId), driveKey, owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).movePrivateFolder({
+			folderId: EID(folderId),
+			newParentFolderId: EID(newParentFolderId),
+			originalMetaData,
+			driveKey
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Rename a public file
+	 */
+	async renamePublicFile({
+		fileId,
+		newName
+	}: {
+		fileId: string;
+		newName: string;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPublicFile({ fileId: EID(fileId), owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePublicFile({
+			fileId: EID(fileId),
+			newName,
+			originalMetaData
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Rename a private file
+	 */
+	async renamePrivateFile({
+		fileId,
+		newName,
+		driveKey
+	}: {
+		fileId: string;
+		newName: string;
+		driveKey: DriveKey;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPrivateFile({ fileId: EID(fileId), driveKey, owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePrivateFile({
+			fileId: EID(fileId),
+			newName,
+			originalMetaData,
+			driveKey
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Rename a public folder
+	 */
+	async renamePublicFolder({
+		folderId,
+		newName
+	}: {
+		folderId: string;
+		newName: string;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPublicFolder({ folderId: EID(folderId), owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePublicFolder({
+			folderId: EID(folderId),
+			newName,
+			originalMetaData
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
+	}
+
+	/**
+	 * Rename a private folder
+	 */
+	async renamePrivateFolder({
+		folderId,
+		newName,
+		driveKey
+	}: {
+		folderId: string;
+		newName: string;
+		driveKey: DriveKey;
+	}): Promise<{ metaDataTxId: string }> {
+		const owner = await this.getOwnerAddress();
+		const originalMetaData = await this.getPrivateFolder({ folderId: EID(folderId), driveKey, owner });
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePrivateFolder({
+			folderId: EID(folderId),
+			newName,
+			originalMetaData,
+			driveKey
+		});
+
+		return { metaDataTxId: result.metaDataTxId.toString() };
 	}
 
 	/**

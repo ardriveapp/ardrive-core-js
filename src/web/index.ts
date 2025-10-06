@@ -8,6 +8,7 @@ export {
 	deriveDriveKeyWithSigner,
 	deriveFileKey,
 	generateWalletSignatureV2,
+	PrivateDriveKeyData,
 	type Bytes
 } from './crypto_web';
 export { JWKWalletWeb } from './jwk_wallet_web';

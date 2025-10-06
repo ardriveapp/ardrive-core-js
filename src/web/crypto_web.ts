@@ -1,10 +1,13 @@
 import { gcm } from '@noble/ciphers/aes.js';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { parse as uuidParse } from 'uuid';
+import { parse as uuidParse, v4 as uuidv4 } from 'uuid';
 import utf8 from 'utf8';
 import { ArweaveSigner, JWKInterface, createData, getCryptoDriver, type Signer } from '@dha-team/arbundles';
 import { ArDriveSigner, isArDriveSigner } from './ardrive_signer';
+import { DriveID, EID, DriveKey } from '../types';
+import { VersionedDriveKey } from '../types/entity_key';
+import { DriveSignatureType } from '../types';
 
 export type Bytes = Uint8Array;
 const KEY_LEN = 32;
@@ -233,4 +236,32 @@ export async function deriveDriveKeyWithSigner(params: {
 	// Derive key using HKDF
 	const info = new TextEncoder().encode(utf8.encode(dataEncryptionKey));
 	return hkdfSha256(walletSignature, info, KEY_LEN);
+}
+
+/**
+ * Utility class for holding the driveId and driveKey of a new private drive
+ * Matches the node library's PrivateDriveKeyData class
+ */
+export class PrivateDriveKeyData {
+	private constructor(
+		readonly driveId: DriveID,
+		readonly driveKey: DriveKey
+	) {}
+
+	/**
+	 * Create a new PrivateDriveKeyData with auto-generated drive ID
+	 * The drive key is derived using the generated ID and provided password/signer
+	 */
+	static async from(dataEncryptionKey: string, signer: Signer | ArDriveSigner): Promise<PrivateDriveKeyData> {
+		const driveId = uuidv4();
+		const driveKeyBytes = await deriveDriveKeyWithSigner({
+			dataEncryptionKey,
+			driveId,
+			signer,
+			driveSignatureType: 2 // v2 for new drives
+		});
+		// Use VersionedDriveKey to indicate this is a v2 signature
+		const driveKey = new VersionedDriveKey(Buffer.from(driveKeyBytes), DriveSignatureType.v2);
+		return new PrivateDriveKeyData(EID(driveId), driveKey);
+	}
 }
