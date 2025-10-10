@@ -145,9 +145,30 @@ export class ArFSManifestToUpload extends ArFSDataToUpload {
 		});
 
 		// TURN SORTED CHILDREN INTO MANIFEST
-		const pathMap: ManifestPathMap = {};
+		// Deduplicate files by dataTxId - keep only unique data transactions
+		const uniqueFiles = new Map<string, Partial<ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths>>();
+
 		castedChildren.forEach((child) => {
 			if (child.dataTxId && child.path && child.dataContentType !== MANIFEST_CONTENT_TYPE) {
+				// Only include files whose path starts with the base folder path
+				if (!child.path.startsWith(baseFolderPath)) {
+					return;
+				}
+
+				const dataTxIdStr = `${child.dataTxId}`;
+				const existing = uniqueFiles.get(dataTxIdStr);
+
+				// Keep the entity with the highest unixTime (latest revision)
+				if (!existing || (child.unixTime && existing.unixTime && child.unixTime > existing.unixTime)) {
+					uniqueFiles.set(dataTxIdStr, child);
+				}
+			}
+		});
+
+		// Build path map from deduplicated files
+		const pathMap: ManifestPathMap = {};
+		uniqueFiles.forEach((child) => {
+			if (child.dataTxId && child.path) {
 				const path = child.path
 					// Slice off base folder path and the leading "/" so manifest URLs path correctly
 					.slice(baseFolderPath.length + 1)

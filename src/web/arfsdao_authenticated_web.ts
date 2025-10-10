@@ -372,12 +372,16 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			);
 		}
 
+		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
+		// Keep only the latest revision (highest unixTime) for each unique fileId
+		const uniqueFiles = childFiles.filter(latestRevisionFilter);
+
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);
 		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>
 			subFolderIDs.some((folderId) => `${folderId}` === `${folder.entityId}`)
 		);
 
-		return { hierarchy, childFiles, childFolders };
+		return { hierarchy, childFiles: uniqueFiles, childFolders };
 	}
 
 	/**
