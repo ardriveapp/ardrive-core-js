@@ -17,9 +17,16 @@ import {
 	ArFSPrivateDriveMetaDataPrototype
 } from './tx/arfs_prototypes';
 import { ArFSCreateFolderResult } from './arfs_entity_result_factory';
-import { EID, TransactionID, TxID, FolderID, RewardSettings, DriveID, DriveKey, FileID } from '../types';
+import { EID, TransactionID, TxID, FolderID, RewardSettings, DriveID, DriveKey, FileID, Winston } from '../types';
 import { ArFSPrivateCreateFolderParams, ArFSPublicCreateFolderParams } from '../types/arfsdao_types';
-import { ArFSPublicFile, ArFSPrivateFile, ArFSPublicFolder, ArFSPrivateFolder } from './arfs_entities';
+import {
+	ArFSPublicFile,
+	ArFSPrivateFile,
+	ArFSPublicFolder,
+	ArFSPrivateFolder,
+	ArFSPublicDrive,
+	ArFSPrivateDrive
+} from './arfs_entities';
 import { ArFSPublicFileMetaDataPrototype, ArFSPrivateFileMetaDataPrototype } from './tx/arfs_prototypes';
 import { ArFSPublicFileMetadataTransactionData, ArFSPrivateFileMetadataTransactionData } from './tx/arfs_tx_data_types';
 import {
@@ -577,5 +584,87 @@ export abstract class ArFSDAOAuthenticatedBase extends ArFSDAOAnonymous {
 		);
 
 		return { metaDataTxId: id, dataCaches, fastFinalityIndexes };
+	}
+
+	/**
+	 * Rename a public drive by creating new metadata with updated name
+	 */
+	async renamePublicDrive({
+		drive,
+		newName,
+		metadataRewardSettings
+	}: {
+		drive: ArFSPublicDrive;
+		newName: string;
+		metadataRewardSettings?: RewardSettings;
+	}): Promise<
+		{ entityId: DriveID; metaDataTxId: TransactionID; metaDataTxReward?: Winston } & Partial<
+			Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>
+		>
+	> {
+		const objectMetaData = new ArFSPublicDriveMetaDataPrototype(
+			new ArFSPublicDriveTransactionData(newName, drive.rootFolderId, drive.customMetaDataJson),
+			drive.driveId,
+			drive.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getOwnerForDriveId(drive.driveId);
+		this.caches.publicDriveCache.remove({ driveId: drive.driveId, owner });
+
+		return {
+			entityId: drive.driveId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	/**
+	 * Rename a private drive by creating new encrypted metadata with updated name
+	 */
+	async renamePrivateDrive({
+		drive,
+		newName,
+		metadataRewardSettings,
+		driveKey
+	}: {
+		drive: ArFSPrivateDrive;
+		newName: string;
+		metadataRewardSettings?: RewardSettings;
+		driveKey: DriveKey;
+	}): Promise<
+		{ entityId: DriveID; metaDataTxId: TransactionID; metaDataTxReward?: Winston; driveKey: DriveKey } & Partial<
+			Pick<TurboUploadDataItemResponse, 'dataCaches' | 'fastFinalityIndexes'>
+		>
+	> {
+		const objectMetaData = new ArFSPrivateDriveMetaDataPrototype(
+			drive.driveId,
+			await ArFSPrivateDriveTransactionData.from(newName, drive.rootFolderId, driveKey, drive.customMetaDataJson),
+			drive.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Note: Cache invalidation for private drives would require access to privateDriveCache
+		// which is not available in the base class. Subclasses should handle this if needed.
+
+		return {
+			entityId: drive.driveId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			driveKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
 	}
 }

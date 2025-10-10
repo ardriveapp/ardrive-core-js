@@ -17,6 +17,7 @@ import {
 	ArFSPrivateFileWithPaths
 } from '../arfs/arfs_entities';
 import { ArFSPublicFolderTransactionData, ArFSPrivateFolderTransactionData } from '../arfs/tx/arfs_tx_data_types';
+import { TxID } from '../types';
 import type { CustomMetaDataJsonFields } from '../types/custom_metadata_types';
 import Arweave from 'arweave';
 import type { ArDriveSigner } from './ardrive_signer';
@@ -746,5 +747,129 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			includeRoot,
 			owner
 		});
+	}
+
+	/**
+	 * Rename a public drive
+	 */
+	async renamePublicDrive({ driveId, newName }: { driveId: string; newName: string }): Promise<{
+		driveId: string;
+		metaDataTxId: string;
+	}> {
+		const owner = await this.getOwnerAddress();
+		const drive = await this.arFsDao.getPublicDrive(EID(driveId), owner);
+
+		if (drive.name === newName) {
+			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
+		}
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePublicDrive({
+			drive,
+			newName,
+			metadataRewardSettings: undefined // Turbo upload
+		});
+
+		return {
+			driveId: result.entityId.toString(),
+			metaDataTxId: result.metaDataTxId.toString()
+		};
+	}
+
+	/**
+	 * Rename a private drive
+	 */
+	async renamePrivateDrive({
+		driveId,
+		newName,
+		driveKey
+	}: {
+		driveId: string;
+		newName: string;
+		driveKey: DriveKey;
+	}): Promise<{
+		driveId: string;
+		metaDataTxId: string;
+	}> {
+		const owner = await this.getOwnerAddress();
+		const drive = await (this.arFsDao as ArFSDAOAuthenticatedWeb).getPrivateDrive(EID(driveId), driveKey, owner);
+
+		if (drive.name === newName) {
+			throw new Error(`New drive name '${newName}' must be different from the current drive name!`);
+		}
+
+		const result = await (this.arFsDao as ArFSDAOAuthenticatedWeb).renamePrivateDrive({
+			drive,
+			newName,
+			metadataRewardSettings: undefined, // Turbo upload
+			driveKey
+		});
+
+		return {
+			driveId: result.entityId.toString(),
+			metaDataTxId: result.metaDataTxId.toString()
+		};
+	}
+
+	/**
+	 * Upload a public manifest for a folder
+	 * Creates an Arweave manifest that provides path-based access to files
+	 *
+	 * @param folderId - Root folder ID to create manifest for
+	 * @param destManifestName - Name for the manifest file (default: 'DriveManifest.json')
+	 * @param maxDepth - Maximum folder depth to include (default: unlimited)
+	 * @returns Manifest transaction ID and links
+	 */
+	async uploadPublicManifest({
+		folderId,
+		destManifestName = 'DriveManifest.json',
+		maxDepth = Number.MAX_SAFE_INTEGER
+	}: {
+		folderId: string;
+		destManifestName?: string;
+		maxDepth?: number;
+	}): Promise<{
+		manifestTxId: string;
+		links: string[];
+	}> {
+		const owner = await this.getOwnerAddress();
+		const children = await this.listPublicFolder({
+			folderId: EID(folderId),
+			maxDepth,
+			includeRoot: true,
+			owner
+		});
+
+		// Create manifest from folder contents
+		const { ArFSManifestToUpload } = await import('../arfs/arfs_file_wrapper');
+		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
+
+		// Upload manifest as a file
+		const manifestData = JSON.stringify(arweaveManifest.manifest, null, 2);
+		const manifestBlob = new Blob([manifestData], { type: 'application/x.arweave-manifest+json' });
+		const manifestFile = new File([manifestBlob], destManifestName, {
+			type: 'application/x.arweave-manifest+json'
+		});
+
+		const webFile = {
+			name: manifestFile.name,
+			size: manifestFile.size,
+			lastModifiedDateMS: manifestFile.lastModified,
+			contentType: manifestFile.type,
+			getBytes: async () => new Uint8Array(await manifestFile.arrayBuffer())
+		};
+
+		const uploadResult = await this.uploadPublicFile({
+			driveId: (await this.arFsDao.getDriveIdForFolderId(EID(folderId))).toString(),
+			parentFolderId: folderId,
+			file: webFile
+		});
+
+		const manifestTxId = uploadResult.dataTxId;
+		const links = arweaveManifest.getLinksOutput(TxID(manifestTxId), new URL('https://arweave.net'));
+
+		return {
+			manifestTxId,
+			links
+		};
 	}
 }
