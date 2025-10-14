@@ -120,11 +120,18 @@
 	"exports": {
 		".": {
 			"import": "./lib/exports.js",
+			"require": "./lib/exports.js",
 			"types": "./lib/exports.d.ts"
 		},
 		"./web": {
 			"import": "./dist/web/index.js",
 			"types": "./dist/web/index.d.ts"
-		}
+		},
+		"./lib/*": {
+			"import": "./lib/*.js",
+			"require": "./lib/*.js",
+			"types": "./lib/*.d.ts"
+		},
+		"./package.json": "./package.json"
 	}
 }
