@@ -1646,6 +1646,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/human-crypto-keys@npm:^0.1.3":
+  version: 0.1.3
+  resolution: "@types/human-crypto-keys@npm:0.1.3"
+  checksum: ff1c593c91f64125e855ed396b3f4634fd187ebd3822bc860459019cc51d1ec9f4a46c34871da19188ca102625b9384683aec9ab506cf5cfa398537130c079f1
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.12":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -2269,6 +2276,7 @@ __metadata:
     "@playwright/test": ^1.55.1
     "@types/bn.js": ^5.1.2
     "@types/chai": ^4.3.6
+    "@types/human-crypto-keys": ^0.1.3
     "@types/jwk-to-pem": ^2.0.0
     "@types/lodash": ^4
     "@types/mime-types": ^2.1.0
