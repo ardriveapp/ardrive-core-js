@@ -33,7 +33,6 @@
 		"@playwright/test": "^1.55.1",
 		"@types/bn.js": "^5.1.2",
 		"@types/chai": "^4.3.6",
-		"@types/human-crypto-keys": "^0.1.2",
 		"@types/jwk-to-pem": "^2.0.0",
 		"@types/lodash": "^4",
 		"@types/mime-types": "^2.1.0",
