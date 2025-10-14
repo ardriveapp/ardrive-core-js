@@ -1424,12 +1424,10 @@ export class ArDrive extends ArDriveAnonymous {
 	async assertWalletBalance(winston: Winston): Promise<void> {
 		this.assertWalletAvailable(); // Requires wallet for balance check
 
-		const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet!);
-
-		if (walletBalance < winston) {
-			throw new Error(
-				`Insufficient funds for this transaction! Please add more AR to your wallet or reduce the size of this transaction.`
-			);
+		const walletHasBalance = await this.walletDao.walletHasBalance(this.wallet!, winston);
+		if (!walletHasBalance) {
+			const walletBalance = await this.walletDao.getWalletWinstonBalance(this.wallet!);
+			throw new Error(`Wallet balance of ${walletBalance} Winston is not enough (${winston}) for this action!`);
 		}
 	}
 
