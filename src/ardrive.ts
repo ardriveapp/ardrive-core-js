@@ -18,6 +18,7 @@ import {
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
+	ArFSFileMetadataTransactionData,
 	ArFSObjectTransactionData,
 	ArFSPublicDriveTransactionData,
 	ArFSPrivateDriveTransactionData
@@ -1456,6 +1457,10 @@ export class ArDrive extends ArDriveAnonymous {
 		const di = createData(bytes, actualSigner, { tags });
 		await di.sign(actualSigner);
 		return di; // Caller can post to a bundler or gateway endpoint
+	}
+
+	async estimateAndAssertCostOfMoveFile(metadata: ArFSFileMetadataTransactionData): Promise<MetaDataBaseCosts> {
+		return this.estimateAndAssertCostOfMetaDataTx(metadata);
 	}
 
 	async estimateAndAssertCostOfFolderUpload(metaData: ArFSObjectTransactionData): Promise<MetaDataBaseCosts> {
