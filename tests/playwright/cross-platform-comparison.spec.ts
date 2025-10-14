@@ -290,10 +290,10 @@ test.describe('Cross-Platform Functionality Comparison', () => {
 		expect(browserAPI.hasGetPublicFile).toBe(nodeAPI.hasGetPublicFile); // Both true
 
 		// Document known differences (these reflect current implementation reality)
-		// Web implementation has limited drive/folder creation capabilities
-		expect(browserAPI.hasCreatePublicDrive).toBe(false); // Web: limited functionality
+		// Web implementation now has full drive/folder creation capabilities via Turbo
+		expect(browserAPI.hasCreatePublicDrive).toBe(true); // Web: full functionality via Turbo
 		expect(nodeAPI.hasCreatePublicDrive).toBe(true); // Node.js: full functionality
-		expect(browserAPI.hasCreatePublicFolder).toBe(false); // Web: limited functionality
+		expect(browserAPI.hasCreatePublicFolder).toBe(true); // Web: full functionality via Turbo
 		expect(nodeAPI.hasCreatePublicFolder).toBe(true); // Node.js: full functionality
 
 		// Crypto functions are available in web but not directly on Node.js ArDrive instance
@@ -303,5 +303,169 @@ test.describe('Cross-Platform Functionality Comparison', () => {
 		expect(nodeAPI.hasAesGcmDecrypt).toBe(false); // Node.js: crypto functions separate
 		expect(browserAPI.hasDeriveDriveKeyV2).toBe(true); // Web: crypto functions available
 		expect(nodeAPI.hasDeriveDriveKeyV2).toBe(false); // Node.js: crypto functions separate
+	});
+
+	test('should support private drive operations in web version', async ({ page }) => {
+		page.on('console', (msg) => console.log('Browser console:', msg.text()));
+		page.on('pageerror', (error) => console.error('Browser error:', error));
+
+		await page.goto('http://127.0.0.1:3000');
+
+		const browserResult = await page.evaluate(async (wallet) => {
+			try {
+				const ArDriveModule = await import('/dist/web/index.js');
+				const { arDriveFactory, PrivateDriveKeyData } = ArDriveModule;
+
+				const instance = arDriveFactory({ wallet });
+
+				// Check private drive methods
+				return {
+					success: true,
+					hasCreatePrivateDrive: typeof instance.createPrivateDrive === 'function',
+					hasCreatePrivateFolder: typeof instance.createPrivateFolder === 'function',
+					hasUploadPrivateFile: typeof instance.uploadPrivateFile === 'function',
+					hasGetPrivateDrive: typeof instance.getPrivateDrive === 'function',
+					hasGetPrivateFolder: typeof instance.getPrivateFolder === 'function',
+					hasGetPrivateFile: typeof instance.getPrivateFile === 'function',
+					hasListPrivateFolder: typeof instance.listPrivateFolder === 'function',
+					hasGetDriveSignatureInfo: typeof instance.getDriveSignatureInfo === 'function',
+					hasPrivateDriveKeyData: typeof PrivateDriveKeyData !== 'undefined'
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: error.message
+				};
+			}
+		}, testWallet);
+
+		console.log('Private drive operations test result:', browserResult);
+
+		// Verify all private drive operations are available
+		expect(browserResult.success).toBe(true);
+		expect(browserResult.hasCreatePrivateDrive).toBe(true);
+		expect(browserResult.hasCreatePrivateFolder).toBe(true);
+		expect(browserResult.hasUploadPrivateFile).toBe(true);
+		expect(browserResult.hasGetPrivateDrive).toBe(true);
+		expect(browserResult.hasGetPrivateFolder).toBe(true);
+		expect(browserResult.hasGetPrivateFile).toBe(true);
+		expect(browserResult.hasListPrivateFolder).toBe(true);
+		expect(browserResult.hasGetDriveSignatureInfo).toBe(true);
+		expect(browserResult.hasPrivateDriveKeyData).toBe(true);
+	});
+
+	test('should support rename operations in web version', async ({ page }) => {
+		page.on('console', (msg) => console.log('Browser console:', msg.text()));
+		page.on('pageerror', (error) => console.error('Browser error:', error));
+
+		await page.goto('http://127.0.0.1:3000');
+
+		const browserResult = await page.evaluate(async (wallet) => {
+			try {
+				const ArDriveModule = await import('/dist/web/index.js');
+				const { arDriveFactory } = ArDriveModule;
+
+				const instance = arDriveFactory({ wallet });
+
+				// Check rename methods
+				return {
+					success: true,
+					hasRenamePublicFile: typeof instance.renamePublicFile === 'function',
+					hasRenamePrivateFile: typeof instance.renamePrivateFile === 'function',
+					hasRenamePublicFolder: typeof instance.renamePublicFolder === 'function',
+					hasRenamePrivateFolder: typeof instance.renamePrivateFolder === 'function',
+					hasRenamePublicDrive: typeof instance.renamePublicDrive === 'function',
+					hasRenamePrivateDrive: typeof instance.renamePrivateDrive === 'function'
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: error.message
+				};
+			}
+		}, testWallet);
+
+		console.log('Rename operations test result:', browserResult);
+
+		// Verify all rename operations are available
+		expect(browserResult.success).toBe(true);
+		expect(browserResult.hasRenamePublicFile).toBe(true);
+		expect(browserResult.hasRenamePrivateFile).toBe(true);
+		expect(browserResult.hasRenamePublicFolder).toBe(true);
+		expect(browserResult.hasRenamePrivateFolder).toBe(true);
+		expect(browserResult.hasRenamePublicDrive).toBe(true);
+		expect(browserResult.hasRenamePrivateDrive).toBe(true);
+	});
+
+	test('should support move operations in web version', async ({ page }) => {
+		page.on('console', (msg) => console.log('Browser console:', msg.text()));
+		page.on('pageerror', (error) => console.error('Browser error:', error));
+
+		await page.goto('http://127.0.0.1:3000');
+
+		const browserResult = await page.evaluate(async (wallet) => {
+			try {
+				const ArDriveModule = await import('/dist/web/index.js');
+				const { arDriveFactory } = ArDriveModule;
+
+				const instance = arDriveFactory({ wallet });
+
+				// Check move methods
+				return {
+					success: true,
+					hasMovePublicFile: typeof instance.movePublicFile === 'function',
+					hasMovePrivateFile: typeof instance.movePrivateFile === 'function',
+					hasMovePublicFolder: typeof instance.movePublicFolder === 'function',
+					hasMovePrivateFolder: typeof instance.movePrivateFolder === 'function'
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: error.message
+				};
+			}
+		}, testWallet);
+
+		console.log('Move operations test result:', browserResult);
+
+		// Verify all move operations are available
+		expect(browserResult.success).toBe(true);
+		expect(browserResult.hasMovePublicFile).toBe(true);
+		expect(browserResult.hasMovePrivateFile).toBe(true);
+		expect(browserResult.hasMovePublicFolder).toBe(true);
+		expect(browserResult.hasMovePrivateFolder).toBe(true);
+	});
+
+	test('should support manifest upload in web version', async ({ page }) => {
+		page.on('console', (msg) => console.log('Browser console:', msg.text()));
+		page.on('pageerror', (error) => console.error('Browser error:', error));
+
+		await page.goto('http://127.0.0.1:3000');
+
+		const browserResult = await page.evaluate(async (wallet) => {
+			try {
+				const ArDriveModule = await import('/dist/web/index.js');
+				const { arDriveFactory } = ArDriveModule;
+
+				const instance = arDriveFactory({ wallet });
+
+				// Check manifest upload method
+				return {
+					success: true,
+					hasUploadPublicManifest: typeof instance.uploadPublicManifest === 'function'
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: error.message
+				};
+			}
+		}, testWallet);
+
+		console.log('Manifest upload test result:', browserResult);
+
+		// Verify manifest upload is available
+		expect(browserResult.success).toBe(true);
+		expect(browserResult.hasUploadPublicManifest).toBe(true);
 	});
 });
