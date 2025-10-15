@@ -14,11 +14,13 @@ import { ARDataPriceRegressionEstimator } from './pricing/ar_data_price_regressi
 import { GatewayOracle } from './pricing/gateway_oracle';
 import { ByteCount, UnixTime, stubTransactionID, W, FeeMultiple } from './types';
 import { readJWKFile } from './utils/common';
-import { expectAsyncErrorThrow } from '../tests/test_helpers';
+import { expectAsyncErrorThrow, TEST_WALLET_ADDRESS } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
 import { fakeArweave, stubEntityID } from '../tests/stubs';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
+import { ArweaveSigner } from '@dha-team/arbundles';
+import { JWKWallet } from './jwk_wallet';
 
 describe('ArDrive class', () => {
 	let arDrive: ArDrive;
@@ -227,6 +229,74 @@ describe('ArDrive class', () => {
 
 			const actual = await arDrive.estimateAndAssertCostOfMoveFile(stubPublicFileTransactionData);
 			expect(`${actual.metaDataBaseReward}`).to.equal('147');
+		});
+	});
+
+	describe('getOwnerAddress function', () => {
+		// Helper function to create common test setup
+		const createTestSetup = async () => {
+			const jwkWallet = wallet as JWKWallet;
+			expect((await jwkWallet.getAddress()).toString()).to.equal(TEST_WALLET_ADDRESS);
+			const arFSTagSettings = new ArFSTagSettings({ appName: 'Unit Test', appVersion: '1.2' });
+			const uploadPlanner = new ArFSUploadPlanner({
+				arFSTagSettings,
+				priceEstimator,
+				communityOracle: communityOracleStub
+			});
+			return { jwkWallet, arFSTagSettings, uploadPlanner };
+		};
+
+		it('returns correct address when instantiated with ArweaveSigner', async () => {
+			const { jwkWallet, arFSTagSettings, uploadPlanner } = await createTestSetup();
+			const signer = new ArweaveSigner(jwkWallet.getPrivateKey());
+
+			const arDriveWithSigner = new ArDrive(
+				undefined, // No wallet
+				walletDao,
+				new ArFSDAO(
+					undefined,
+					fakeArweave,
+					true,
+					'Unit Test',
+					'1.2',
+					arFSTagSettings,
+					undefined,
+					undefined,
+					signer
+				),
+				communityOracleStub,
+				'Unit Test',
+				'1.0',
+				priceEstimator,
+				new FeeMultiple(1.0),
+				true,
+				arFSTagSettings,
+				uploadPlanner,
+				undefined, // No cost calculator
+				signer
+			);
+
+			expect((await arDriveWithSigner.getOwnerAddress()).toString()).to.equal(TEST_WALLET_ADDRESS);
+		});
+
+		it('returns correct address when instantiated with JWKWallet', async () => {
+			const { jwkWallet, arFSTagSettings, uploadPlanner } = await createTestSetup();
+
+			const arDriveWithWallet = new ArDrive(
+				jwkWallet, // JWK wallet provided
+				walletDao,
+				new ArFSDAO(jwkWallet, fakeArweave, true, 'Unit Test', '1.2', arFSTagSettings),
+				communityOracleStub,
+				'Unit Test',
+				'1.0',
+				priceEstimator,
+				new FeeMultiple(1.0),
+				true,
+				arFSTagSettings,
+				uploadPlanner
+			);
+
+			expect((await arDriveWithWallet.getOwnerAddress()).toString()).to.equal(TEST_WALLET_ADDRESS);
 		});
 	});
 });

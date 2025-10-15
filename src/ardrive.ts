@@ -98,6 +98,7 @@ import Arweave from 'arweave';
 import { StreamDecrypt } from './utils/stream_decrypt';
 import { assertFolderExists } from './utils/assert_folder';
 import { join as joinPath } from 'path';
+import { bufferTob64Url } from './utils/wallet_utils';
 import {
 	assertLocalNameConflicts,
 	resolveFileNameConflicts,
@@ -162,10 +163,10 @@ export class ArDrive extends ArDriveAnonymous {
 	}
 
 	/**
-	 * Helper method to get owner address from wallet or signer
+	 * Get the owner address from wallet or signer
 	 * Works in both Node.js (with wallet) and browser (with signer)
 	 */
-	private async getOwnerAddress(): Promise<ArweaveAddress> {
+	public async getOwnerAddress(): Promise<ArweaveAddress> {
 		if (this.wallet) {
 			return await this.wallet.getAddress();
 		}
@@ -173,7 +174,7 @@ export class ArDrive extends ArDriveAnonymous {
 			// Get address from signer's public key
 			const arweave = Arweave.init({});
 			const publicKey = this.signer.publicKey;
-			const address = await arweave.wallets.ownerToAddress(publicKey.toString());
+			const address = await arweave.wallets.ownerToAddress(bufferTob64Url(publicKey));
 			return new ArweaveAddress(address);
 		}
 		throw new Error('No wallet or signer available to determine owner address');
