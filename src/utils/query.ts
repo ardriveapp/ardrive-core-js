@@ -30,7 +30,7 @@ const pageInfoFragment = `
 	}
 `;
 
-export type GQLQuery = { query: string };
+export type GQLQuery = { query: string; params?: BuildGQLQueryParams };
 
 export const ASCENDING_ORDER = 'HEIGHT_ASC';
 export const DESCENDING_ORDER = 'HEIGHT_DESC';
@@ -55,7 +55,8 @@ export interface BuildGQLQueryParams {
  * @example
  * const query = buildQuery([{ name: 'Folder-Id', value: folderId }]);
  */
-export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, ids }: BuildGQLQueryParams): GQLQuery {
+export function buildQuery(params: BuildGQLQueryParams): GQLQuery {
+	const { tags = [], cursor, owner, sort = DESCENDING_ORDER, ids } = params;
 	let queryTags = ``;
 
 	tags.forEach((t) => {
@@ -80,6 +81,7 @@ export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, 
 				${singleResult ? '' : pageInfoFragment}
 				${edgesFragment(singleResult)}
 			}
-		}`
+		}`,
+		params // Include the params so they can be passed to QueryProvider
 	};
 }

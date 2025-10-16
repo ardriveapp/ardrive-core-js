@@ -1,0 +1,60 @@
+services:
+  ar-io-node:
+    build:
+      context: https://github.com/ar-io/ar-io-node.git#develop
+      dockerfile: Dockerfile
+    container_name: ar-io-node
+    restart: unless-stopped
+    ports:
+      - "4000:4000" # Main AR-IO node API (includes GraphQL at /graphql)
+    environment:
+      # Core configuration
+      - GRAPHQL_HOST=arweave.net
+      - GRAPHQL_PORT=443
+      - START_HEIGHT=1761055
+      - ARNS_ROOT_HOST=localhost
+
+      # Enable datasets endpoint
+      - ENABLE_DATASETS_ENDPOINT=true
+
+      # Basic node configuration
+      - NODE_ENV=development
+      - LOG_LEVEL=info
+
+    volumes:
+      - ar-io-data:/app/data
+      - ar-io-logs:/app/logs
+      - ./fixtures/parquet/datasets:/app/data/datasets:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/ar-io/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ar-io-network
+
+  # Redis for caching (optional but recommended)
+  redis:
+    image: redis:7-alpine
+    container_name: ar-io-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - ar-io-network
+
+volumes:
+  ar-io-data:
+    driver: local
+  ar-io-logs:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  ar-io-network:
+    driver: bridge
