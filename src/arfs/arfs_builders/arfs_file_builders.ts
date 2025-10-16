@@ -83,7 +83,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.size = new ByteCount(dataJSON.size);
 			this.lastModifiedDate = new UnixTime(dataJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(dataJSON.dataTxId);
-			this.dataContentType = dataJSON.dataContentType ?? extToMime(this.name);
+			this.dataContentType = dataJSON.dataContentType || extToMime(this.name);
 
 			const fileBuilderValidation = new FileBuilderValidation();
 			fileBuilderValidation.validateFileProperties(this);
@@ -193,7 +193,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.size = new ByteCount(decryptedFileJSON.size);
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
-			this.dataContentType = decryptedFileJSON.dataContentType ?? extToMime(this.name);
+			this.dataContentType = decryptedFileJSON.dataContentType || extToMime(this.name);
 
 			const fileBuilderValidation = new FileBuilderValidation();
 			fileBuilderValidation.validateFileProperties(this);
