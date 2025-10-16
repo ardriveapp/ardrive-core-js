@@ -391,7 +391,7 @@ describe('ArFSDAOAnonymous class', () => {
 			expect(gqlRequestStub.callCount).to.equal(2);
 		});
 
-		it('skips invalid files and continues processing', async () => {
+		it('handles files with empty contentType by falling back to MIME detection', async () => {
 			const fileId1 = '9f7038c7-26bd-4856-a843-8de24b828d4e';
 			const fileId2 = '1f7038c7-26bd-4856-a843-8de24b828d4e';
 			const fileId3 = '2f7038c7-26bd-4856-a843-8de24b828d4e';
@@ -468,7 +468,7 @@ describe('ArFSDAOAnonymous class', () => {
 					dataContentType: 'application/json'
 				})
 			);
-			// Invalid file metadata missing dataContentType
+			// File metadata with empty dataContentType (will fallback to MIME detection)
 			const stubFileGetDataResultWithEmptyContentType = Buffer.from(
 				JSON.stringify({
 					name: '2',
@@ -502,10 +502,13 @@ describe('ArFSDAOAnonymous class', () => {
 
 			const files = await dao.getPublicFilesWithParentFolderIds(folderIds, owner, driveId, true);
 
-			// Verify that the invalid file was skipped
-			expect(files).to.have.lengthOf(2);
+			// Verify that all files are included (empty contentType now falls back to MIME detection)
+			expect(files).to.have.lengthOf(3);
 			expect(`${files[0].fileId}`).to.equal(fileId1);
-			expect(`${files[1].fileId}`).to.equal(fileId3);
+			expect(`${files[1].fileId}`).to.equal(fileId2);
+			expect(`${files[2].fileId}`).to.equal(fileId3);
+			// Verify that the file with empty contentType got the fallback MIME type
+			expect(files[1].dataContentType).to.equal('unknown');
 		});
 	});
 });
