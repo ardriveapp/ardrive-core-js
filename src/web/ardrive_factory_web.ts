@@ -14,6 +14,22 @@ export interface ArDriveSettingsAnonymousWeb {
 	gatewayUrl?: URL;
 }
 
+/**
+ * Creates a stub Arweave instance for web environments
+ * Only the gateway URL configuration is used; other methods are not called
+ */
+function createStubArweave(gatewayUrl: URL): Arweave {
+	return {
+		api: {
+			config: {
+				protocol: gatewayUrl.protocol.replace(':', ''),
+				host: gatewayUrl.hostname,
+				port: gatewayUrl.port || (gatewayUrl.protocol === 'https:' ? 443 : 80)
+			}
+		}
+	} as Arweave;
+}
+
 // Matches Node naming while targeting browser - now uses core classes!
 export function arDriveAnonymousFactory({
 	gatewayUrl = new URL('https://arweave.net/')
@@ -21,10 +37,12 @@ export function arDriveAnonymousFactory({
 	// Create GatewayAPI for web
 	const gatewayApi = new GatewayAPI({ gatewayUrl });
 
+	// Create stub Arweave instance with gateway config
+	const stubArweave = createStubArweave(gatewayUrl);
+
 	// Create ArFSDAOAnonymous with minimal dependencies
-	// We pass null for arweave since web doesn't use Node.js-specific methods
 	const dao = new ArFSDAOAnonymous(
-		null as unknown as Arweave, // arweave - not used by web methods
+		stubArweave,
 		DEFAULT_APP_NAME,
 		DEFAULT_APP_VERSION,
 		defaultArFSAnonymousCache,
