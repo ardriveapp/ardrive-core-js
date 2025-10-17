@@ -2,7 +2,7 @@
  * ArDriveSigner interface for browser wallet integration
  *
  * This interface abstracts the signing operations needed by ArDrive-Core
- * from the specific implementation details of browser wallets (ArConnect, etc.)
+ * from the specific implementation details of browser wallets (Wander, etc.)
  *
  * The browser application should provide an implementation of this interface
  * that wraps the browser wallet's signing capabilities.
