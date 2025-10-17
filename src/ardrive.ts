@@ -94,7 +94,7 @@ import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
 import { WalletDAO } from './wallet_dao';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
-import { ArweaveSigner } from '@dha-team/arbundles';
+import { ArweaveSigner, createData } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import { StreamDecrypt } from './utils/stream_decrypt';
 import { assertFolderExists } from './utils/assert_folder';
@@ -1441,9 +1441,6 @@ export class ArDrive extends ArDriveAnonymous {
 	 * @returns Signed DataItem
 	 */
 	async signData(bytes: Uint8Array, tags: { name: string; value: string }[] = []) {
-		// Import DataItem creation utilities
-		const { ArweaveSigner, createData } = await import('@dha-team/arbundles');
-
 		// Use provided signer, or create from wallet
 		let actualSigner = this.signer;
 		if (!actualSigner && this.wallet) {

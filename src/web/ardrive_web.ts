@@ -6,7 +6,8 @@ import type { DataItem, Signer } from '@dha-team/arbundles';
 import { ArweaveSigner, ArconnectSigner, createData } from '@dha-team/arbundles';
 import { v4 as uuidv4 } from 'uuid';
 import type { WebFileToUpload } from './arfs_file_wrapper_web';
-import { deriveDriveKeyWithSigner } from './crypto_web';
+import { deriveDriveKeyWithSigner, deriveFileKey, aesGcmEncrypt } from './crypto_web';
+import { ArFSManifestToUpload } from '../arfs/arfs_file_wrapper';
 import { DriveID, FolderID, FileID, ArweaveAddress, DriveSignatureInfo, DriveKey, EID } from '../types';
 import { EntityKey } from '../types/entity_key';
 import {
@@ -292,7 +293,6 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		const fileBytes = await file.getBytes();
 
 		// Derive file key and encrypt data
-		const { deriveFileKey, aesGcmEncrypt } = await import('./crypto_web');
 		const fileKey = deriveFileKey(fileId, new Uint8Array(driveKey.keyData));
 		const { cipherIV, data: encryptedData } = await aesGcmEncrypt(fileKey, Buffer.from(fileBytes));
 		const cipher = 'AES256-GCM';
@@ -347,13 +347,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 	 * Helper method to get owner address from signer
 	 */
 	private async getOwnerAddress(): Promise<ArweaveAddress> {
-		// If signer has getActiveAddress method (ArDriveSigner), use it
-		if ('getActiveAddress' in this.signer && typeof this.signer.getActiveAddress === 'function') {
-			const address = await (this.signer as any).getActiveAddress();
-			return new ArweaveAddress(address);
-		}
-
-		// Otherwise derive from public key
+		// Derive address from public key
 		const arweave = Arweave.init({});
 		const publicKey = this.signer.publicKey;
 		const address = await arweave.wallets.ownerToAddress(publicKey.toString());
@@ -840,7 +834,6 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		});
 
 		// Create manifest from folder contents
-		const { ArFSManifestToUpload } = await import('../arfs/arfs_file_wrapper');
 		const arweaveManifest = new ArFSManifestToUpload(children, destManifestName);
 
 		// Upload manifest as a file
