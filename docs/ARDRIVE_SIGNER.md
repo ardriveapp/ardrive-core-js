@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ArDriveSigner` interface abstracts the signing operations needed by ArDrive-Core from the specific implementation details of browser wallets (ArConnect, ArweaveWalletKit, etc.). This allows the library to define a clean interface while browser applications provide their own implementations.
+The `ArDriveSigner` interface abstracts the signing operations needed by ArDrive-Core from the specific implementation details of browser wallets (Wander, ArweaveWalletKit, etc.). This allows the library to define a clean interface while browser applications provide their own implementations.
 
 ## Why ArDriveSigner?
 
@@ -115,7 +115,7 @@ const privateDrive = await arDrive.getPrivateDrive({
 ## Key Benefits
 
 1. **Abstraction**: ArweaveWalletKit details stay in your application code, not in the library
-2. **Flexibility**: Easy to support different wallet implementations (ArConnect, ArweaveWalletKit, etc.)
+2. **Flexibility**: Easy to support different wallet implementations (Wander, ArweaveWalletKit, etc.)
 3. **Type Safety**: Clear interface contract with TypeScript support
 4. **Compatibility**: Works with both v1 and v2 private drives
 5. **Testing**: Easy to mock for unit tests

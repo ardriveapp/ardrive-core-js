@@ -79,7 +79,7 @@ The library supports two parallel signing approaches for maximum flexibility:
 - Web classes: `ArDriveWeb`, `ArFSDAOAuthenticatedWeb`, browser-compatible `TxPreparer`
 - Supports multiple signer types: `ArweaveSigner`, `ArconnectSigner`, and `ArDriveSigner`
 - Browser wallet integration via `ArDriveSigner` interface abstraction (see `docs/ARDRIVE_SIGNER.md`)
-- Enables wallet providers like ArConnect, ArweaveWalletKit without exposing private keys
+- Enables wallet providers like Wander (formerly ArConnect), ArweaveWalletKit without exposing private keys
 - Uses Turbo DataItem uploads instead of V2 Arweave transactions (the latter to be added later)
 
 The signer system allows browser applications to integrate with wallet providers while maintaining the same ArFS functionality as the Node.js implementation.
