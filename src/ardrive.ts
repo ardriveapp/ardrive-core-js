@@ -91,7 +91,7 @@ import {
 } from './types';
 import { errorMessage } from './utils/error_message';
 import { Wallet } from './wallet';
-import { IWalletDAO } from './wallet_dao';
+import { WalletDAO } from './wallet_dao';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 import { ArweaveSigner } from '@dha-team/arbundles';
 import Arweave from 'arweave';
@@ -128,7 +128,7 @@ export class ArDrive extends ArDriveAnonymous {
 
 	constructor(
 		private readonly wallet: Wallet | undefined,
-		private readonly walletDao: IWalletDAO,
+		private readonly walletDao: WalletDAO,
 		protected readonly arFsDao: ArFSDAO,
 		private readonly communityOracle: CommunityOracle,
 		/** @deprecated App Name should be provided with ArFSTagSettings  */

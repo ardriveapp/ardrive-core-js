@@ -36,7 +36,6 @@ export type { ArDriveSigner, DataItemToSign, SignDataItemOptions } from './ardri
 export { isArDriveSigner } from './ardrive_signer';
 
 // Browser-compatible implementations
-export { WalletDAOWeb } from './wallet_dao_web';
 export { CommunityOracleWeb } from './community_oracle_web';
 
 // Core classes that work in browser (reuse instead of duplicating)
