@@ -20,14 +20,14 @@
             window.arDriveFactory = ArDriveWeb.arDriveFactory;
             window.arDriveAnonymousFactory = ArDriveWeb.arDriveAnonymousFactory;
             window.ArDriveWeb = ArDriveWeb.ArDriveWeb;
-            window.ArDriveAnonymousWeb = ArDriveWeb.ArDriveAnonymousWeb;
+            window.ArDriveAnonymous = ArDriveWeb.ArDriveAnonymous; // Core class, not *Web version
             window.aesGcmEncrypt = ArDriveWeb.aesGcmEncrypt;
             window.aesGcmDecrypt = ArDriveWeb.aesGcmDecrypt;
             window.deriveDriveKeyV2 = ArDriveWeb.deriveDriveKeyV2;
             window.wrapFile = ArDriveWeb.wrapFile;
             window.wrapFiles = ArDriveWeb.wrapFiles;
-            window.GatewayAPIWeb = ArDriveWeb.GatewayAPIWeb;
-            window.ArFSMetadataCacheWeb = ArDriveWeb.ArFSMetadataCacheWeb;
+            window.GatewayAPI = ArDriveWeb.GatewayAPI; // Core class, not *Web version
+            window.ArFSDAOAnonymous = ArDriveWeb.ArFSDAOAnonymous; // Core class, not *Web version
             
             // Signal that loading is complete
             document.getElementById('status').textContent = 'ArDrive Web Bundle Loaded Successfully';

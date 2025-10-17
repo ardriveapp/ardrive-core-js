@@ -119,5 +119,5 @@ export * from '../utils/sort_functions';
 export * from '../utils/upload_conflict_resolution';
 export * from '../utils/wallet_utils';
 
-// Re-export ArFS file wrapper (browser-compatible)
-export * from '../arfs/arfs_file_wrapper';
+// Note: arfs_file_wrapper is Node.js-only (uses fs module)
+// Use arfs_file_wrapper_web.ts for browser (exported above)
