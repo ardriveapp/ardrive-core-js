@@ -35,9 +35,6 @@ export { ArconnectSigner } from '@dha-team/arbundles';
 export type { ArDriveSigner, DataItemToSign, SignDataItemOptions } from './ardrive_signer';
 export { isArDriveSigner } from './ardrive_signer';
 
-// Browser-compatible implementations
-export { CommunityOracleWeb } from './community_oracle_web';
-
 // Core classes that work in browser (reuse instead of duplicating)
 export { ArFSDAOAnonymous } from '../arfs/arfsdao_anonymous';
 // Note: ArFSDAO is not exported - it requires Node.js-specific Arweave types
