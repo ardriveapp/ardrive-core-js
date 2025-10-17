@@ -1,7 +1,8 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/`: TypeScript source modules. Public API is exported via `exports.ts` and compiled to `lib/`.
+
+- `src/`: TypeScript source modules and unit tests (e.g. \*.test.ts). Public API is exported via `exports.ts` and compiled to `lib/`.
 - `src/web/`: Browser-compatible web build modules (see `docs/WEB_BUILD.md`).
 - `lib/`: Build output (do not edit by hand).
 - `dist/web/`: Web bundle output (JavaScript + TypeScript declarations).
@@ -11,6 +12,7 @@
 - Config: `.mocharc.js`, `nyc.config.js`, `.eslintrc`, `.prettierrc`, `tsconfig*.json`.
 
 ## Build, Test, and Development Commands
+
 - `yarn install --check-cache`: Install dependencies (Yarn 3, Node >= 18).
 - `yarn build`: Clean and compile to `lib/`.
 - `yarn build:web`: Build browser-compatible web bundle to `dist/web/`.
@@ -25,12 +27,14 @@
 - `yarn typecheck`: TypeScript type checking.
 
 ## Coding Style & Naming Conventions
+
 - Language: TypeScript; 4‑space tabs, semicolons, single quotes, `printWidth: 120` (see `.prettierrc`).
 - Linting: ESLint with `@typescript-eslint` and Prettier integration; pre‑commit runs `prettier` and `eslint --fix` on `src/**/*.{ts,js,json}`.
 - Names: `camelCase` for variables/functions, `PascalCase` for classes/types, `SCREAMING_SNAKE_CASE` for constants.
 - Files: Implementation `*.ts`; tests `*.test.ts`; integration tests may use `*.int.test.ts` under `tests/`.
 
 ## Testing Guidelines
+
 - Frameworks: Mocha + Chai + Sinon; TypeScript via `ts-node/register` (`.mocharc.js`).
 - Locations: `src/**/*.test.ts` and `tests/**/*.test.ts`.
 - Run subsets: `yarn test -g "pattern"`.
@@ -38,31 +42,59 @@
 - ArLocal: Requires Docker; use `yarn arlocal-docker-test` for integration flows.
 
 ## Commit & Pull Request Guidelines
+
 - Commits: Follow Conventional Commits (e.g., `feat:`, `fix:`, `chore:`). Keep changes focused.
 - Before PR: `yarn lint`, `yarn typecheck`, `yarn test`, and `yarn build` must pass. Ensure Node >= 18 and Yarn are used.
 - PRs: Provide a clear description, link issues, note breaking changes, and include screenshots/logs when relevant.
 - Hooks: Enable once per clone with `yarn husky install`.
 
 ## Security & Configuration Tips
+
 - Do not commit real wallets/keys; `tests/test_wallet.json` is for testing only.
 - Optional envs: `ARDRIVE_PROGRESS_LOG=1`, `ARDRIVE_CACHE_LOG=1` for verbose logs.
 - Cache paths: macOS/Linux `~/.ardrive/caches/metadata`, Windows `%USERPROFILE%/ardrive-caches/metadata`.
 
 ## Architecture Overview
+
 - Core: `src/ardrive.ts` defines the `ArDrive` class; construct via `src/ardrive_factory.ts`. Anonymous reads live in `src/ardrive_anonymous.ts`.
 - ArFS: `src/arfs/**` contains entity models (drives/folders/files), builders, metadata factories, and tx types.
 - Pricing: `src/pricing/**` provides data price estimators and gateway/oracle integrations.
 - Community: `src/community/**` implements community tip/oracle logic.
 - Wallet & Types: `src/wallet*.ts`, `src/jwk_wallet.ts`, and `src/types/**`. All public exports are wired through `src/exports.ts`.
 
+### Signing Systems
+
+The library supports two parallel signing approaches for maximum flexibility:
+
+**JWK-based Signing (Node.js/Traditional):**
+
+- Uses raw JWK (JSON Web Key) interfaces with Node.js crypto primitives
+- Primary classes: `JWKWallet`, `ArFSDAO`, `TxPreparer`
+- Direct access to private keys for cryptographic operations
+- Suitable for server environments and CLI applications
+
+**Signer-based Signing (Browser/Universal):**
+
+- Uses `Signer` interface from `@dha-team/arbundles` for DataItem creation
+- Web classes: `ArDriveWeb`, `ArFSDAOAuthenticatedWeb`, browser-compatible `TxPreparer`
+- Supports multiple signer types: `ArweaveSigner`, `ArconnectSigner`, and `ArDriveSigner`
+- Browser wallet integration via `ArDriveSigner` interface abstraction (see `docs/ARDRIVE_SIGNER.md`)
+- Enables wallet providers like ArConnect, ArweaveWalletKit without exposing private keys
+- Uses Turbo DataItem uploads instead of V2 Arweave transactions (the latter to be added later)
+
+The signer system allows browser applications to integrate with wallet providers while maintaining the same ArFS functionality as the Node.js implementation.
+
 ## CI Tips
+
 - Local CI run: `yarn ci` (runs `arlocal-docker-test` then `build`). Requires Docker installed and available.
 - Engines: Node >= 18 (`.nvmrc` present). Use Yarn 3 (`yarn set version berry` if needed) and `yarn install --check-cache` for reproducible installs.
 - Pre-flight locally: `yarn lint && yarn typecheck && yarn test && yarn build` before pushing.
 - Artifacts: build output in `lib/`; coverage HTML in `coverage/` for inspection.
 
 ## Documentation for AI & Developers
+
 The `docs/` folder contains architecture and design documentation:
+
 - `docs/WEB_BUILD.md`: Comprehensive web build architecture, design decisions, and API reference
 - `docs/ARDRIVE_SIGNER.md`: ArDriveSigner interface documentation for browser wallet integration
 
