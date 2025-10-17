@@ -91,9 +91,10 @@ export function arDriveFactory({
 		appName,
 		appVersion,
 		arFSTagSettings,
-		undefined,
-		undefined,
-		undefined,
+		undefined, // caches
+		undefined, // gatewayApi
+		undefined, // signer (will be created from wallet)
+		undefined, // txPreparer
 		!turboSettings
 			? new Turbo({
 					...defaultTurboSettings,
@@ -119,7 +120,8 @@ export function arDriveFactory({
 		dryRun,
 		arFSTagSettings,
 		uploadPlanner,
-		costCalculator
+		costCalculator,
+		undefined // signer (Node.js uses wallet)
 	);
 }
 

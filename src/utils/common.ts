@@ -1,23 +1,26 @@
 // index.js
-import * as mime from 'mime-types';
 import * as fs from 'fs';
 import * as types from '../types/base_Types';
 import path from 'path';
 import { deriveDriveKey, deriveFileKey, fileEncrypt } from './crypto';
 import { ArDriveUser } from '../types/base_Types';
-import {
-	authTagLength,
-	defaultArweaveGatewayPath,
-	defaultGatewayHost,
-	defaultGatewayProtocol,
-	stagingAppUrl
-} from './constants';
+import { defaultArweaveGatewayPath, stagingAppUrl } from './constants';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 import { Wallet } from '../wallet';
 import { JWKWallet } from '../jwk_wallet';
 import axios from 'axios';
-import { ByteCount, DriveKey, DriveSignatureType, FileKey } from '../types';
-import Arweave from 'arweave';
+import { DriveKey, FileKey } from '../types';
+
+// Re-export browser-compatible functions from common_browser
+export {
+	gatewayUrlForArweave,
+	encryptedDataSize,
+	parseDriveSignatureType,
+	BufferToString,
+	urlEncodeHashKey,
+	Uint8ArrayToString,
+	extToMime
+} from './common_browser';
 
 // Pauses application
 export async function sleep(ms: number): Promise<number> {
@@ -44,14 +47,6 @@ export function formatBytes(bytes: number): string {
 	if (bytes < gigaBytes) return `${(bytes / megaBytes).toFixed(decimal)} MB`;
 	// return GB if less than a TB
 	return `${(bytes / gigaBytes).toFixed(decimal)} GB`;
-}
-
-export function extToMime(fullPath: string): string {
-	let extension = fullPath.substring(fullPath.lastIndexOf('.') + 1);
-	extension = extension.toLowerCase();
-	const m = mime.lookup(extension);
-
-	return m === false ? 'unknown' : m;
 }
 
 /* Copies one folder to another folder location
@@ -421,55 +416,6 @@ export function createPublicDriveSharingLink(driveToShare: types.ArFSDriveMetaDa
 	return driveSharingUrl;
 }
 
-/** @deprecated use Uint8ArrayToString */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function Utf8ArrayToStr(array: Uint8Array | any): string {
-	return Uint8ArrayToString(array);
-}
-export function BufferToString(buffer: Buffer): string {
-	// to keep our existing logic
-	const array = new Uint8Array(buffer);
-	return Uint8ArrayToString(array);
-}
-export function Uint8ArrayToString(array: Uint8Array): string {
-	let out, i, c;
-	let char2, char3;
-
-	out = '';
-	const len = array.length;
-	i = 0;
-
-	while (i < len) {
-		c = array[i++];
-		switch (c >> 4) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				// 0xxxxxxx
-				out += String.fromCharCode(c);
-				break;
-			case 12:
-			case 13:
-				// 110x xxxx   10xx xxxx
-				char2 = array[i++];
-				out += String.fromCharCode(((c & 0x1f) << 6) | (char2 & 0x3f));
-				break;
-			case 14:
-				// 1110 xxxx  10xx xxxx  10xx xxxx
-				char2 = array[i++];
-				char3 = array[i++];
-				out += String.fromCharCode(((c & 0x0f) << 12) | ((char2 & 0x3f) << 6) | ((char3 & 0x3f) << 0));
-				break;
-		}
-	}
-	return out;
-}
-
 // Used by the selectWeightedRanom function to determine who receives a tip
 export function weightedRandom(dict: Record<string, number>): string | undefined {
 	let sum = 0;
@@ -542,36 +488,3 @@ export async function fetchMempool(gateway = new URL(defaultArweaveGatewayPath))
 	const response = await axios.get(`${gateway.href}tx/pending`);
 	return response.data;
 }
-
-/** Derives gateway URL from provided Arweave instance */
-export function gatewayUrlForArweave(arweave: Arweave): URL {
-	const protocol = arweave.api.config.protocol ?? defaultGatewayProtocol;
-	const host = arweave.api.config.host ?? defaultGatewayHost;
-	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
-
-	return new URL(`${protocol}://${host}${portStr}/`);
-}
-
-export function urlEncodeHashKey(keyBuffer: Buffer): string {
-	return keyBuffer.toString('base64').replace('=', '');
-}
-
-/** Computes the size of a private file encrypted with AES256-GCM */
-export function encryptedDataSize(dataSize: ByteCount): ByteCount {
-	if (+dataSize > Number.MAX_SAFE_INTEGER - authTagLength) {
-		throw new Error(`Max un-encrypted dataSize allowed is ${Number.MAX_SAFE_INTEGER - authTagLength}!`);
-	}
-	return new ByteCount((+dataSize / authTagLength + 1) * authTagLength);
-}
-
-export const parseDriveSignatureType = (value: string): DriveSignatureType => {
-	switch (value) {
-		case '1':
-			return DriveSignatureType.v1;
-		case '2':
-			return DriveSignatureType.v2;
-		default:
-			// Added default case for robustness
-			throw new Error(`Unknown DriveSignatureType value: ${value}`);
-	}
-};

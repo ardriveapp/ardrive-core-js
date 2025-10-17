@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArDrive Core JS - Browser Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ArDrive Core JS - Browser Testing</h1>
+        <p>This page tests the ArDrive Core JS web bundle functionality.</p>
+        
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button onclick="runBasicTests()">Run Basic Tests</button>
+            <button onclick="runCryptoTests()">Run Crypto Tests</button>
+            <button onclick="runFileTests()">Run File Tests</button>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        // This will be populated by the test runner
+        window.testWallet = null;
+        window.testResults = [];
+
+        // Import ArDrive web bundle
+        import('../../dist/web/index.js').then(ardriveWeb => {
+            window.ArDriveWeb = ardriveWeb;
+            console.log('ArDrive Web bundle loaded successfully');
+            addResult('✅ ArDrive Web bundle loaded successfully', 'success');
+        }).catch(error => {
+            console.error('Failed to load ArDrive Web bundle:', error);
+            addResult(`❌ Failed to load ArDrive Web bundle: ${error.message}`, 'error');
+        });
+
+        window.addResult = function(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<pre>${message}</pre>`;
+            results.appendChild(div);
+            window.testResults.push({ message, type, timestamp: Date.now() });
+        };
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = '';
+            window.testResults = [];
+        };
+
+        window.runBasicTests = async function() {
+            addResult('🧪 Running basic tests...', 'info');
+            
+            try {
+                if (!window.ArDriveWeb) {
+                    throw new Error('ArDrive Web bundle not loaded');
+                }
+
+                const { arDriveFactory, arDriveAnonymousFactory, ArDriveWeb, ArDriveAnonymousWeb } = window.ArDriveWeb;
+
+                // Test factory functions
+                if (typeof arDriveFactory !== 'function') {
+                    throw new Error('arDriveFactory is not a function');
+                }
+                addResult('✅ arDriveFactory is available', 'success');
+
+                if (typeof arDriveAnonymousFactory !== 'function') {
+                    throw new Error('arDriveAnonymousFactory is not a function');
+                }
+                addResult('✅ arDriveAnonymousFactory is available', 'success');
+
+                // Test anonymous instance creation
+                const anon = arDriveAnonymousFactory();
+                if (!(anon instanceof ArDriveAnonymousWeb)) {
+                    throw new Error('Anonymous instance is not ArDriveAnonymousWeb');
+                }
+                addResult('✅ Anonymous instance created successfully', 'success');
+
+                // Test wallet-based instance (if wallet is available)
+                if (window.testWallet) {
+                    const instance = arDriveFactory({ wallet: window.testWallet });
+                    if (!(instance instanceof ArDriveWeb)) {
+                        throw new Error('Instance is not ArDriveWeb');
+                    }
+                    addResult('✅ Wallet-based instance created successfully', 'success');
+                } else {
+                    addResult('⚠️ No test wallet available for wallet-based tests', 'info');
+                }
+
+                addResult('🎉 All basic tests passed!', 'success');
+            } catch (error) {
+                addResult(`❌ Basic test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.runCryptoTests = async function() {
+            addResult('🔐 Running crypto tests...', 'info');
+            
+            try {
+                if (!window.ArDriveWeb) {
+                    throw new Error('ArDrive Web bundle not loaded');
+                }
+
+                const { aesGcmEncrypt, aesGcmDecrypt, deriveDriveKeyV2 } = window.ArDriveWeb;
+
+                // Test encryption/decryption
+                const testData = new TextEncoder().encode('Hello, ArDrive!');
+                const password = 'test-password-123';
+
+                const encrypted = await aesGcmEncrypt(testData, password);
+                addResult(`✅ Data encrypted (${encrypted.length} bytes)`, 'success');
+
+                const decrypted = await aesGcmDecrypt(encrypted, password);
+                const decryptedText = new TextDecoder().decode(decrypted);
+                
+                if (decryptedText !== 'Hello, ArDrive!') {
+                    throw new Error('Decrypted text does not match original');
+                }
+                addResult('✅ Data decrypted successfully', 'success');
+
+                // Test key derivation
+                if (typeof deriveDriveKeyV2 === 'function') {
+                    addResult('✅ deriveDriveKeyV2 function is available', 'success');
+                } else {
+                    throw new Error('deriveDriveKeyV2 is not available');
+                }
+
+                addResult('🎉 All crypto tests passed!', 'success');
+            } catch (error) {
+                addResult(`❌ Crypto test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.runFileTests = async function() {
+            addResult('📁 Running file tests...', 'info');
+            
+            try {
+                if (!window.ArDriveWeb) {
+                    throw new Error('ArDrive Web bundle not loaded');
+                }
+
+                const { wrapFile, wrapFiles } = window.ArDriveWeb;
+
+                // Create a test file
+                const testContent = 'This is test file content for ArDrive!';
+                const file = new File([testContent], 'test-file.txt', { 
+                    type: 'text/plain',
+                    lastModified: Date.now()
+                });
+
+                // Test file wrapping
+                const wrapped = wrapFile(file);
+                addResult(`✅ File wrapped: ${wrapped.name} (${wrapped.size} bytes)`, 'success');
+
+                // Test getting bytes
+                const bytes = await wrapped.getBytes();
+                const retrievedContent = new TextDecoder().decode(bytes);
+                
+                if (retrievedContent !== testContent) {
+                    throw new Error('Retrieved content does not match original');
+                }
+                addResult('✅ File bytes retrieved successfully', 'success');
+
+                // Test multiple files
+                const file2 = new File(['Second file'], 'test-file-2.txt', { type: 'text/plain' });
+                const wrappedFiles = wrapFiles([file, file2]);
+                
+                if (wrappedFiles.length !== 2) {
+                    throw new Error('wrapFiles did not return correct number of files');
+                }
+                addResult(`✅ Multiple files wrapped (${wrappedFiles.length} files)`, 'success');
+
+                addResult('🎉 All file tests passed!', 'success');
+            } catch (error) {
+                addResult(`❌ File test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.runAllTests = async function() {
+            clearResults();
+            addResult('🚀 Running all tests...', 'info');
+            
+            await runBasicTests();
+            await runCryptoTests();
+            await runFileTests();
+            
+            addResult('🏁 All tests completed!', 'info');
+        };
+
+        // Auto-run basic tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.ArDriveWeb) {
+                    runBasicTests();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

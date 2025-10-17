@@ -5,6 +5,13 @@ import { PublicKey, ArweaveAddress, ADDR } from './types';
 import { b64UrlToBuffer, bufferTob64Url } from './utils/wallet_utils';
 import { Wallet } from './wallet';
 
+/**
+ * Type guard to check if a Wallet is a JWKWallet with getPrivateKey method
+ */
+export function isJWKWallet(wallet: Wallet): wallet is JWKWallet {
+	return 'getPrivateKey' in wallet && typeof (wallet as JWKWallet).getPrivateKey === 'function';
+}
+
 export class JWKWallet implements Wallet {
 	constructor(private readonly jwk: JWKInterface) {}
 

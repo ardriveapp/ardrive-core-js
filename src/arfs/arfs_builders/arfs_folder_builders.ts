@@ -10,7 +10,7 @@ import {
 	DriveKey
 } from '../../types';
 import { fileDecrypt } from '../../utils/crypto';
-import { BufferToString } from '../../utils/common';
+import { BufferToString } from '../../utils/common_browser';
 
 import { ArFSPublicFolder, ArFSPrivateFolder } from '../arfs_entities';
 import { fakeEntityId } from '../../utils/constants';

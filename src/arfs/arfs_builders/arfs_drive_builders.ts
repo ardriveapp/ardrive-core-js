@@ -11,7 +11,7 @@ import {
 	GQLTagInterface,
 	EntityMetaDataTransactionData
 } from '../../types';
-import { BufferToString } from '../../utils/common';
+import { BufferToString } from '../../utils/common_browser';
 import { ENCRYPTED_DATA_PLACEHOLDER, fakeEntityId, gqlTagNameRecord } from '../../utils/constants';
 import { ArFSPublicDrive, ArFSPrivateDrive, ArFSDriveEntity } from '../arfs_entities';
 import {
@@ -19,13 +19,10 @@ import {
 	ArFSMetadataEntityBuilderParams,
 	ArFSPrivateMetadataEntityBuilderParams
 } from './arfs_builders';
-import {
-	ArFSPrivateDriveKeyless,
-	ArweaveAddress,
-	DriveKey,
-	DriveSignatureType,
-	parseDriveSignatureType
-} from '../../exports';
+import { ArweaveAddress, DriveKey } from '../../types';
+import { DriveSignatureType } from '../../types/types';
+import { parseDriveSignatureType } from '../../utils/common_browser';
+import { ArFSPrivateDriveKeyless } from '../arfs_entities';
 import { GatewayAPI } from '../../utils/gateway_api';
 
 export interface DriveMetaDataTransactionData extends EntityMetaDataTransactionData {

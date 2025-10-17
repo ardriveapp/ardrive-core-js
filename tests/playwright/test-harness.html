@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArDrive Test Harness</title>
+</head>
+<body>
+    <h1>ArDrive Test Harness</h1>
+    <div id="status">Loading...</div>
+    
+    <script type="module">
+        try {
+            console.log('Starting ArDrive web bundle import...');
+            // Import the ArDrive web bundle using absolute path from HTTP server
+            const ArDriveWeb = await import('/dist/web/index.js');
+            console.log('ArDrive web bundle imported successfully:', ArDriveWeb);
+            
+            // Make ArDrive available globally for tests
+            window.arDriveFactory = ArDriveWeb.arDriveFactory;
+            window.arDriveAnonymousFactory = ArDriveWeb.arDriveAnonymousFactory;
+            window.ArDriveWeb = ArDriveWeb.ArDriveWeb;
+            window.ArDriveAnonymous = ArDriveWeb.ArDriveAnonymous; // Core class, not *Web version
+            window.aesGcmEncrypt = ArDriveWeb.aesGcmEncrypt;
+            window.aesGcmDecrypt = ArDriveWeb.aesGcmDecrypt;
+            window.deriveDriveKeyV2 = ArDriveWeb.deriveDriveKeyV2;
+            window.wrapFile = ArDriveWeb.wrapFile;
+            window.wrapFiles = ArDriveWeb.wrapFiles;
+            window.GatewayAPI = ArDriveWeb.GatewayAPI; // Core class, not *Web version
+            window.ArFSDAOAnonymous = ArDriveWeb.ArFSDAOAnonymous; // Core class, not *Web version
+            
+            // Signal that loading is complete
+            document.getElementById('status').textContent = 'ArDrive Web Bundle Loaded Successfully';
+            window.arDriveLoaded = true;
+            
+            console.log('ArDrive Web Bundle loaded:', Object.keys(ArDriveWeb));
+        } catch (error) {
+            console.error('Failed to load ArDrive Web Bundle:', error);
+            document.getElementById('status').textContent = 'Failed to load ArDrive Web Bundle: ' + error.message;
+            window.arDriveLoaded = false;
+        }
+    </script>
+</body>
+</html>
