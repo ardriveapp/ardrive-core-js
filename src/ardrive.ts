@@ -12,6 +12,7 @@ import {
 	ArFSPrivateDriveKeyless,
 	ArFSPublicFile
 } from './arfs/arfs_entities';
+import { isJWKWallet } from './jwk_wallet';
 import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
@@ -1446,9 +1447,11 @@ export class ArDrive extends ArDriveAnonymous {
 		// Use provided signer, or create from wallet
 		let actualSigner = this.signer;
 		if (!actualSigner && this.wallet) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const jwkWallet = this.wallet as any;
-			actualSigner = new ArweaveSigner(jwkWallet.getPrivateKey());
+			if (isJWKWallet(this.wallet)) {
+				actualSigner = new ArweaveSigner(this.wallet.getPrivateKey());
+			} else {
+				throw new Error('Wallet must be a JWKWallet with getPrivateKey() method to create ArweaveSigner');
+			}
 		}
 
 		if (!actualSigner) {
