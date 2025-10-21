@@ -9,7 +9,7 @@ export interface WebFileToUpload {
 }
 
 export function wrapFile(file: File, customContentType?: string): WebFileToUpload {
-	const contentType = customContentType ?? file.type ?? 'application/octet-stream';
+	const contentType = customContentType || file.type || 'application/octet-stream';
 	return {
 		name: file.name,
 		size: file.size,
