@@ -1,4 +1,4 @@
-import Transaction from 'arweave/node/lib/transaction';
+import type Transaction from 'arweave/node/lib/transaction';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
@@ -136,14 +136,16 @@ export class GatewayAPI {
 		if (cachedData) {
 			return cachedData;
 		}
-		const { data: txData } = await this.retryRequestUntilMaxRetries<Buffer>(() =>
+		const { data: txData } = await this.retryRequestUntilMaxRetries<ArrayBuffer>(() =>
 			this.axiosInstance.get(`${this.gatewayUrl.href}${txId}`, {
 				responseType: 'arraybuffer'
 			})
 		);
 
-		await ArFSMetadataCache.put(txId, txData);
-		return txData;
+		// Convert ArrayBuffer to Buffer for consistent handling across Node.js and browser
+		const buffer = Buffer.from(txData);
+		await ArFSMetadataCache.put(txId, buffer);
+		return buffer;
 	}
 
 	/**

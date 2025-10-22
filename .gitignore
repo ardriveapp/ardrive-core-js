@@ -53,3 +53,8 @@ node_modules
 #Misc
 .idea
 *.db
+
+dist
+playwright-results.json
+playwright-report
+test-results

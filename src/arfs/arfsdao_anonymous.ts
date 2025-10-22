@@ -24,8 +24,8 @@ import { join as joinPath } from 'path';
 import { ArFSPublicFileToDownload, ArFSFolderToDownload } from './arfs_file_wrapper';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
-import { gatewayUrlForArweave } from '../utils/common';
+import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from './arfs_entities';
+import { gatewayUrlForArweave } from '../utils/common_browser';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
 
@@ -407,11 +407,15 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			});
 		}
 
+		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
+		// Keep only the latest revision (highest unixTime) for each unique fileId
+		const uniqueFiles = childrenFileEntities.filter(latestRevisionFilter);
+
 		const children: (ArFSPublicFolder | ArFSPublicFile)[] = [];
 		for (const en of childrenFolderEntities) {
 			children.push(en);
 		}
-		for (const en of childrenFileEntities) {
+		for (const en of uniqueFiles) {
 			children.push(en);
 		}
 

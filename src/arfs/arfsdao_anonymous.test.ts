@@ -508,7 +508,7 @@ describe('ArFSDAOAnonymous class', () => {
 			expect(`${files[1].fileId}`).to.equal(fileId2);
 			expect(`${files[2].fileId}`).to.equal(fileId3);
 			// Verify that the file with empty contentType got the fallback MIME type
-			expect(files[1].dataContentType).to.equal('unknown');
+			expect(files[1].dataContentType).to.equal('application/octet-stream');
 		});
 	});
 });

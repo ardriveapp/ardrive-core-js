@@ -14,7 +14,7 @@ import {
 	DataContentType,
 	DriveKey
 } from '../../types';
-import { BufferToString, extToMime } from '../../utils/common';
+import { BufferToString, extToMime } from '../../utils/common_browser';
 import { ArFSPublicFile, ArFSPrivateFile } from '../arfs_entities';
 import { ArFSFileOrFolderBuilder } from './arfs_builders';
 import { GatewayAPI } from '../../utils/gateway_api';

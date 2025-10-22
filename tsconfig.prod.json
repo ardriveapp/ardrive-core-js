@@ -3,6 +3,6 @@
 	"compilerOptions": {
 		"sourceMap": false
 	},
-	"include": ["src"],
-	"exclude": ["tests", "**/*.test.ts"]
+    "include": ["src"],
+    "exclude": ["tests", "**/*.test.ts", "src/web/**"]
 }

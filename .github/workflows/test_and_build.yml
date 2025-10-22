@@ -1,9 +1,8 @@
 name: Node.js CI
 
-on: [ push ]
+on: [push]
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -11,12 +10,11 @@ jobs:
       - name: Set Up node
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          cache: "yarn"
 
       - name: Install dependencies
-        run: yarn --immutable --immutable-cache
+        run: yarn install --immutable --check-cache
 
       - name: Test and Build Codebase
         run: yarn ci
-        

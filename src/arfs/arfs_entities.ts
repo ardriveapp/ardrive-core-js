@@ -25,7 +25,7 @@ import {
 	DriveKey
 } from '../types';
 import { VersionedDriveKey } from '../types/entity_key';
-import { encryptedDataSize } from '../utils/common';
+import { encryptedDataSize } from '../utils/common_browser';
 import { ENCRYPTED_DATA_PLACEHOLDER_TYPE } from '../utils/constants';
 
 // The primary ArFS entity that all other entities inherit from.

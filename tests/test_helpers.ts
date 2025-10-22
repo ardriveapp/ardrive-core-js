@@ -5,6 +5,8 @@ import { EntityMetaDataTransactionData, GQLTagInterface, TransactionID } from '.
 import { BufferToString } from '../src/utils/common';
 import { Wallet } from '../src/wallet';
 
+export const TEST_WALLET_ADDRESS = 'P8aFJizMVBl7HeoRAz2i1dNYkG_KoN7oB9tZpIw6lo4';
+
 interface expectAsyncErrorThrowParams {
 	promiseToError: Promise<unknown>;
 	// TODO: Define error types,
