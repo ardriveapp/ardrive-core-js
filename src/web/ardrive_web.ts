@@ -23,7 +23,7 @@ import type { CustomMetaDataJsonFields } from '../types/custom_metadata_types';
 import Arweave from 'arweave';
 import type { ArDriveSigner } from './ardrive_signer';
 import { TurboWeb, TurboSettings } from './turbo_web';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, defaultArweaveGatewayPath } from '../utils/constants';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 
 export interface ArDriveWebSettings {
@@ -107,7 +107,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			throw new Error('Either wallet or signer must be provided to ArDriveWeb');
 		}
 
-		const gw = new GatewayAPI({ gatewayUrl: settings.gatewayUrl ?? new URL('https://arweave.net/') });
+		const gw = new GatewayAPI({ gatewayUrl: settings.gatewayUrl ?? new URL(defaultArweaveGatewayPath) });
 		// Use provided signer or create one from wallet
 		const signer: Signer | ArDriveSigner = settings.signer ?? new ArweaveSigner(settings.wallet!.getPrivateKey());
 		const appName = settings.appName ?? DEFAULT_APP_NAME;
@@ -858,7 +858,7 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		});
 
 		const manifestTxId = uploadResult.dataTxId;
-		const links = arweaveManifest.getLinksOutput(TxID(manifestTxId), new URL('https://arweave.net'));
+		const links = arweaveManifest.getLinksOutput(TxID(manifestTxId), new URL(defaultArweaveGatewayPath));
 
 		return {
 			manifestTxId,

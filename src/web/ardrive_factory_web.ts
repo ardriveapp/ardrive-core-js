@@ -6,7 +6,7 @@ import { JWKWalletWeb } from './jwk_wallet_web';
 import type { JWKInterface, ArweaveSigner } from '@dha-team/arbundles';
 import { ArconnectSigner } from '@dha-team/arbundles';
 import type Arweave from 'arweave';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, defaultArweaveGatewayPath } from '../utils/constants';
 import type { ArDriveSigner } from './ardrive_signer';
 import type { TurboSettings } from './turbo_web';
 
@@ -32,7 +32,7 @@ function createStubArweave(gatewayUrl: URL): Arweave {
 
 // Matches Node naming while targeting browser - now uses core classes!
 export function arDriveAnonymousFactory({
-	gatewayUrl = new URL('https://arweave.net/')
+	gatewayUrl = new URL(defaultArweaveGatewayPath)
 }: ArDriveSettingsAnonymousWeb = {}) {
 	// Create GatewayAPI for web
 	const gatewayApi = new GatewayAPI({ gatewayUrl });
@@ -74,7 +74,7 @@ export interface ArDriveSettingsWeb {
  * @param settings - Configuration object
  * @param settings.wallet - JWK wallet (provide either wallet or signer)
  * @param settings.signer - ArDriveSigner, ArweaveSigner, or ArconnectSigner instance (provide either wallet or signer)
- * @param settings.gatewayUrl - Gateway URL (default: https://arweave.net/)
+ * @param settings.gatewayUrl - Gateway URL (default: https://ardrive.net/)
  * @param settings.appName - Application name
  * @param settings.appVersion - Application version
  * @param settings.turboSettings - Turbo configuration for automatic uploads

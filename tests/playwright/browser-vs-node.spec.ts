@@ -239,7 +239,7 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 				const ArDriveModule = await import('/dist/web/index.js');
 				const { GatewayAPI } = ArDriveModule;
 
-				const gateway = new GatewayAPI({ gatewayUrl: new URL('https://arweave.net/') });
+				const gateway = new GatewayAPI({ gatewayUrl: new URL('https://ardrive.net/') });
 
 				return {
 					success: true,
@@ -279,7 +279,7 @@ test.describe('Browser vs Node.js Build Comparison', () => {
 				const ArDriveModule = await import('/dist/web/index.js');
 				const { ArFSDAOAnonymous, GatewayAPI } = ArDriveModule;
 
-				const gatewayApi = new GatewayAPI({ gatewayUrl: new URL('https://arweave.net/') });
+				const gatewayApi = new GatewayAPI({ gatewayUrl: new URL('https://ardrive.net/') });
 				const dao = new ArFSDAOAnonymous(
 					null, // arweave - not used by web methods
 					'test-app',

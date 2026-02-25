@@ -94,7 +94,7 @@ export class ARDataPriceChunkEstimator extends AbstractARDataPriceAndCapacityEst
 
 		const numberOfChunksToUpload = Math.ceil(byteCount.valueOf() / byteCountPerChunk.valueOf());
 
-		// Every 5th chunk, arweave.net pricing adds 1 Winston, which they define as a
+		// Every 5th chunk, Arweave pricing adds 1 Winston, which they define as a
 		// mining reward as a proportion of the estimated transaction storage costs
 		const minerFeeShareResidual = W(Math.floor(numberOfChunksToUpload / 5));
 

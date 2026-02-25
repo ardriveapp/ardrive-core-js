@@ -100,12 +100,12 @@ describe('ArFSManifestToUpload class', () => {
 			const linksOutput = manifest.getLinksOutput(stubTransactionID);
 
 			expect(linksOutput.length).to.equal(4);
-			expect(linksOutput[0]).to.equal(`https://arweave.net/${stubTransactionID}`);
-			expect(linksOutput[1]).to.equal(`https://arweave.net/${stubTransactionID}/file-in-root`);
+			expect(linksOutput[0]).to.equal(`https://ardrive.net/${stubTransactionID}`);
+			expect(linksOutput[1]).to.equal(`https://ardrive.net/${stubTransactionID}/file-in-root`);
 			expect(linksOutput[2]).to.equal(
-				`https://arweave.net/${stubTransactionID}/parent-folder/child-folder/file-in-child`
+				`https://ardrive.net/${stubTransactionID}/parent-folder/child-folder/file-in-child`
 			);
-			expect(linksOutput[3]).to.equal(`https://arweave.net/${stubTransactionID}/parent-folder/file-in-parent`);
+			expect(linksOutput[3]).to.equal(`https://ardrive.net/${stubTransactionID}/parent-folder/file-in-parent`);
 		});
 
 		it('produces compatible links with a hierarchy of one single file', () => {
@@ -114,8 +114,8 @@ describe('ArFSManifestToUpload class', () => {
 			const linksOutput = manifest.getLinksOutput(stubTransactionID);
 
 			expect(linksOutput.length).to.equal(2);
-			expect(linksOutput[0]).to.equal(`https://arweave.net/${stubTransactionID}`);
-			expect(linksOutput[1]).to.equal(`https://arweave.net/${stubTransactionID}/file-in-root`);
+			expect(linksOutput[0]).to.equal(`https://ardrive.net/${stubTransactionID}`);
+			expect(linksOutput[1]).to.equal(`https://ardrive.net/${stubTransactionID}/file-in-root`);
 		});
 
 		it('produces compatible links with a hierarchy of one nested file', () => {
@@ -124,9 +124,9 @@ describe('ArFSManifestToUpload class', () => {
 			const linksOutput = manifest.getLinksOutput(stubTransactionID);
 
 			expect(linksOutput.length).to.equal(2);
-			expect(linksOutput[0]).to.equal(`https://arweave.net/${stubTransactionID}`);
+			expect(linksOutput[0]).to.equal(`https://ardrive.net/${stubTransactionID}`);
 			expect(linksOutput[1]).to.equal(
-				`https://arweave.net/${stubTransactionID}/parent-folder/child-folder/file-in-child`
+				`https://ardrive.net/${stubTransactionID}/parent-folder/child-folder/file-in-child`
 			);
 		});
 
@@ -136,15 +136,15 @@ describe('ArFSManifestToUpload class', () => {
 			const linksOutput = manifest.getLinksOutput(stubTransactionID);
 
 			expect(linksOutput.length).to.equal(4);
-			expect(linksOutput[0]).to.equal(`https://arweave.net/${stubTransactionID}`);
+			expect(linksOutput[0]).to.equal(`https://ardrive.net/${stubTransactionID}`);
 			expect(linksOutput[1]).to.equal(
-				`https://arweave.net/${stubTransactionID}/%25%26%40*(%25%26(%40*%3A%22%3E%3F%7B%7D%5B%5D`
+				`https://ardrive.net/${stubTransactionID}/%25%26%40*(%25%26(%40*%3A%22%3E%3F%7B%7D%5B%5D`
 			);
 			expect(linksOutput[2]).to.equal(
-				`https://arweave.net/${stubTransactionID}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/'/''_%5C___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!%40%23%24%25%5E%26*()_%2B%7B%7D%3A%22%3E%3F`
+				`https://ardrive.net/${stubTransactionID}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/'/''_%5C___''_'__/'___'''_/QWERTYUIOPASDFGHJKLZXCVBNM!%40%23%24%25%5E%26*()_%2B%7B%7D%3A%22%3E%3F`
 			);
 			expect(linksOutput[3]).to.equal(
-				`https://arweave.net/${stubTransactionID}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
+				`https://ardrive.net/${stubTransactionID}/~!%40%23%24%25%5E%26*()_%2B%7B%7D%7C%5B%5D%3A%22%3B%3C%3E%3F%2C./%60/dwijqndjqwnjNJKNDKJANKDNJWNJIvmnbzxnmvbcxvbm%2Cuiqwerioeqwndjkla`
 			);
 		});
 	});

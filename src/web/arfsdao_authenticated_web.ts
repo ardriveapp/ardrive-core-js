@@ -13,7 +13,7 @@ import { GatewayAPI } from '../utils/gateway_api';
 import { TxPreparer } from '../arfs/tx/tx_preparer';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSTagAssembler } from '../arfs/tags/tag_assembler';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gqlTagNameRecord } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, defaultArweaveGatewayPath, gqlTagNameRecord } from '../utils/constants';
 import { TurboWeb, TurboSettings } from './turbo_web';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
@@ -174,7 +174,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 				} else {
 					// Fetch the encrypted signature data using gateway URL directly
 					// Can't use getPublicDataStream because it requires arweave instance (null in browser)
-					const gatewayUrl = new URL(txId, this.gatewayApi['gatewayUrl'] || 'https://arweave.net/');
+					const gatewayUrl = new URL(txId, this.gatewayApi['gatewayUrl'] || defaultArweaveGatewayPath);
 					const dataUrl = gatewayUrl.href;
 					const response = await fetch(dataUrl);
 					if (!response.ok) {
