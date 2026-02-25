@@ -13,7 +13,7 @@ import { GatewayAPI } from '../utils/gateway_api';
 import { TxPreparer } from '../arfs/tx/tx_preparer';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSTagAssembler } from '../arfs/tags/tag_assembler';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, gqlTagNameRecord } from '../utils/constants';
+import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, defaultArweaveGatewayPath, gqlTagNameRecord } from '../utils/constants';
 import { TurboWeb, TurboSettings } from './turbo_web';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
