@@ -20,7 +20,7 @@ export const turboProdUrl = new URL('https://upload.ardrive.io/');
 export const defaultTurboUploadUrl = new URL('https://upload.ardrive.io/');
 export const defaultTurboPaymentUrl = new URL('https://payment.ardrive.io/');
 
-export const defaultGatewayHost = 'arweave.net';
+export const defaultGatewayHost = 'ardrive.net';
 export const defaultGatewayProtocol = 'https';
 export const defaultGatewayPort = 443;
 export const defaultArweaveGatewayPath = `${defaultGatewayProtocol}://${defaultGatewayHost}/`;
@@ -33,7 +33,7 @@ export const fakeTxID = TxID('0000000000000000000000000000000000000000000');
 
 /**
  * Minimum ArDrive community tip from the Community Improvement Proposal Doc:
- * https://arweave.net/Yop13NrLwqlm36P_FDCdMaTBwSlj0sdNGAC4FqfRUgo
+ * https://ardrive.net/Yop13NrLwqlm36P_FDCdMaTBwSlj0sdNGAC4FqfRUgo
  *
  * Voted on by the ArDrive community (vote #82):
  * https://community.xyz/#-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ/votes/

@@ -174,7 +174,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 				} else {
 					// Fetch the encrypted signature data using gateway URL directly
 					// Can't use getPublicDataStream because it requires arweave instance (null in browser)
-					const gatewayUrl = new URL(txId, this.gatewayApi['gatewayUrl'] || 'https://arweave.net/');
+					const gatewayUrl = new URL(txId, this.gatewayApi['gatewayUrl'] || defaultArweaveGatewayPath);
 					const dataUrl = gatewayUrl.href;
 					const response = await fetch(dataUrl);
 					if (!response.ok) {

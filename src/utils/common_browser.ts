@@ -4,15 +4,12 @@
  */
 
 import { ByteCount, DriveSignatureType } from '../types';
-import { authTagLength } from './constants';
+import { authTagLength, defaultGatewayHost, defaultGatewayProtocol } from './constants';
 
 /** Derives gateway URL from provided Arweave instance */
 export function gatewayUrlForArweave(arweave: {
 	api: { config: { protocol?: string; host?: string; port?: string | number } };
 }): URL {
-	const defaultGatewayProtocol = 'https';
-	const defaultGatewayHost = 'arweave.net';
-
 	const protocol = arweave.api.config.protocol ?? defaultGatewayProtocol;
 	const host = arweave.api.config.host ?? defaultGatewayHost;
 	const portStr = arweave.api.config.port ? `:${arweave.api.config.port}` : '';
