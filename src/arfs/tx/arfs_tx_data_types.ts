@@ -142,21 +142,36 @@ export class ArFSPrivateDriveTransactionData extends ArFSDriveTransactionData {
 	}
 }
 
-export abstract class ArFSFolderTransactionData extends ArFSObjectTransactionData {}
+export abstract class ArFSFolderTransactionData extends ArFSObjectTransactionData {
+	protected static get protectedDataJsonFields(): string[] {
+		const dataJsonFields = super.protectedDataJsonFields;
+
+		// `isHidden` is a first-class metadata field (mirrors ardrive-web); reserve its name from custom metadata
+		dataJsonFields.push('isHidden');
+
+		return dataJsonFields;
+	}
+}
 
 export class ArFSPublicFolderTransactionData extends ArFSFolderTransactionData {
-	private baseDataJson: { name: string };
+	private baseDataJson: { name: string; isHidden?: boolean };
 	private fullDataJson: EntityMetaDataTransactionData;
 
 	constructor(
 		private readonly name: string,
-		protected readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+		protected readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {},
+		// Only serialized when explicitly set (mirrors ardrive-web's includeIfNull:false),
+		// so ordinary renames never start emitting an `isHidden` field.
+		private readonly isHidden?: boolean
 	) {
 		super();
 
 		this.baseDataJson = {
 			name: this.name
 		};
+		if (this.isHidden !== undefined) {
+			this.baseDataJson.isHidden = this.isHidden;
+		}
 
 		this.fullDataJson = ArFSPublicFolderTransactionData.parseCustomDataJsonFields(
 			this.baseDataJson,
@@ -183,11 +198,16 @@ export class ArFSPrivateFolderTransactionData extends ArFSFolderTransactionData 
 	static async from(
 		name: string,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+		dataJsonCustomMetaData: CustomMetaDataJsonFields = {},
+		// Only serialized when explicitly set (mirrors ardrive-web's includeIfNull:false)
+		isHidden?: boolean
 	): Promise<ArFSPrivateFolderTransactionData> {
-		const baseDataJson = {
+		const baseDataJson: { name: string; isHidden?: boolean } = {
 			name: name
 		};
+		if (isHidden !== undefined) {
+			baseDataJson.isHidden = isHidden;
+		}
 		const fullDataJson = ArFSPrivateFolderTransactionData.parseCustomDataJsonFields(
 			baseDataJson,
 			dataJsonCustomMetaData
@@ -213,13 +233,15 @@ export abstract class ArFSFileMetadataTransactionData extends ArFSObjectTransact
 		dataJsonFields.push('lastModifiedDate');
 		dataJsonFields.push('dataTxId');
 		dataJsonFields.push('dataContentType');
+		// `isHidden` is a first-class metadata field (mirrors ardrive-web); reserve its name from custom metadata
+		dataJsonFields.push('isHidden');
 
 		return dataJsonFields;
 	}
 }
 
 export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTransactionData {
-	private baseDataJson: FileMetaDataTransactionData;
+	private baseDataJson: FileMetaDataTransactionData & { isHidden?: boolean };
 	private fullDataJson: EntityMetaDataTransactionData;
 
 	constructor(
@@ -228,7 +250,10 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 		private readonly lastModifiedDate: UnixTime,
 		private readonly dataTxId: TransactionID,
 		private readonly dataContentType: DataContentType,
-		private readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+		private readonly dataJsonCustomMetaData: CustomMetaDataJsonFields = {},
+		// Only serialized when explicitly set (mirrors ardrive-web's includeIfNull:false),
+		// so ordinary renames never start emitting an `isHidden` field.
+		private readonly isHidden?: boolean
 	) {
 		super();
 
@@ -239,6 +264,9 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 			dataTxId: `${this.dataTxId}`,
 			dataContentType: this.dataContentType
 		};
+		if (this.isHidden !== undefined) {
+			this.baseDataJson.isHidden = this.isHidden;
+		}
 
 		this.fullDataJson = ArFSPublicFileMetadataTransactionData.parseCustomDataJsonFields(
 			this.baseDataJson,
@@ -270,15 +298,27 @@ export class ArFSPrivateFileMetadataTransactionData extends ArFSFileMetadataTran
 		dataContentType: DataContentType,
 		fileId: FileID,
 		driveKey: DriveKey,
-		dataJsonCustomMetaData: CustomMetaDataJsonFields = {}
+		dataJsonCustomMetaData: CustomMetaDataJsonFields = {},
+		// Only serialized when explicitly set (mirrors ardrive-web's includeIfNull:false)
+		isHidden?: boolean
 	): Promise<ArFSPrivateFileMetadataTransactionData> {
-		const baseDataJson = {
+		const baseDataJson: {
+			name: string;
+			size: number;
+			lastModifiedDate: number;
+			dataTxId: string;
+			dataContentType: DataContentType;
+			isHidden?: boolean;
+		} = {
 			name: name,
 			size: +size,
 			lastModifiedDate: +lastModifiedDate,
 			dataTxId: `${dataTxId}`,
 			dataContentType: dataContentType
 		};
+		if (isHidden !== undefined) {
+			baseDataJson.isHidden = isHidden;
+		}
 		const fullDataJson = ArFSPrivateFileMetadataTransactionData.parseCustomDataJsonFields(
 			baseDataJson,
 			dataJsonCustomMetaData

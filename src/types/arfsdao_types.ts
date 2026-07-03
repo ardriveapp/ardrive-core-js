@@ -207,6 +207,29 @@ export type ArFSRenamePrivateDriveParams = ArFSRenamePublicDriveParams &
 		drive: ArFSPrivateDrive;
 	};
 
+// Hide/unhide params. The `isHidden` boolean is data (hide=true, unhide=false), so a single DAO
+// method per entity kind serves both directions. Drive-level hide intentionally deferred (CORE-4).
+export interface ArFSHideParams {
+	isHidden: boolean;
+	metadataRewardSettings?: RewardSettings;
+}
+
+export interface ArFSHidePublicFileParams extends ArFSHideParams {
+	file: ArFSPublicFile;
+}
+export type ArFSHidePrivateFileParams = ArFSHidePublicFileParams &
+	WithDriveKey & {
+		file: ArFSPrivateFile;
+	};
+
+export interface ArFSHidePublicFolderParams extends ArFSHideParams {
+	folder: ArFSPublicFolder;
+}
+export type ArFSHidePrivateFolderParams = ArFSHidePublicFolderParams &
+	WithDriveKey & {
+		folder: ArFSPrivateFolder;
+	};
+
 export type CommunityTipSettings = {
 	communityTipTarget: ArweaveAddress;
 	communityWinstonTip: Winston;

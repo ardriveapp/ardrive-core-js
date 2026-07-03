@@ -26,6 +26,9 @@ export interface FileMetaDataTransactionData extends EntityMetaDataTransactionDa
 	lastModifiedDate: number;
 	dataTxId: string;
 	dataContentType: DataContentType;
+	// NOTE: `isHidden` is intentionally not declared here — this interface extends the
+	// Record<string, JsonSerializable> index type, which an optional `boolean | undefined`
+	// property cannot satisfy. It is read (and narrowed) directly in buildEntity below.
 }
 export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile> extends ArFSFileOrFolderBuilder<
 	'file',
@@ -35,6 +38,7 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	lastModifiedDate?: UnixTime;
 	dataTxId?: TransactionID;
 	dataContentType?: DataContentType;
+	isHidden?: boolean;
 
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
@@ -48,7 +52,14 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 		return tags.filter((tag) => tag.name !== 'File-Id');
 	}
 
-	protected readonly protectedDataJsonKeys = ['name', 'size', 'lastModifiedDate', 'dataTxId', 'dataContentType'];
+	protected readonly protectedDataJsonKeys = [
+		'name',
+		'size',
+		'lastModifiedDate',
+		'dataTxId',
+		'dataContentType',
+		'isHidden'
+	];
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
@@ -84,6 +95,7 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.lastModifiedDate = new UnixTime(dataJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(dataJSON.dataTxId);
 			this.dataContentType = dataJSON.dataContentType || extToMime(this.name);
+			this.isHidden = typeof dataJSON.isHidden === 'boolean' ? dataJSON.isHidden : undefined;
 
 			const fileBuilderValidation = new FileBuilderValidation();
 			fileBuilderValidation.validateFileProperties(this);
@@ -91,27 +103,27 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 
 			this.parseCustomMetaDataFromDataJson(dataJSON);
 
-			return Promise.resolve(
-				new ArFSPublicFile(
-					this.appName,
-					this.appVersion ?? '',
-					this.arFS,
-					this.contentType,
-					this.driveId,
-					this.name,
-					this.txId,
-					this.unixTime,
-					this.parentFolderId,
-					this.entityId,
-					this.size,
-					this.lastModifiedDate,
-					this.dataTxId,
-					this.dataContentType,
-					this.boost,
-					this.customMetaData.metaDataGqlTags,
-					this.customMetaData.metaDataJson
-				)
+			const publicFile = new ArFSPublicFile(
+				this.appName,
+				this.appVersion ?? '',
+				this.arFS,
+				this.contentType,
+				this.driveId,
+				this.name,
+				this.txId,
+				this.unixTime,
+				this.parentFolderId,
+				this.entityId,
+				this.size,
+				this.lastModifiedDate,
+				this.dataTxId,
+				this.dataContentType,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
+			publicFile.isHidden = this.isHidden;
+			return Promise.resolve(publicFile);
 		}
 		throw new Error('Invalid file state');
 	}
@@ -194,6 +206,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			this.lastModifiedDate = new UnixTime(decryptedFileJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(decryptedFileJSON.dataTxId);
 			this.dataContentType = decryptedFileJSON.dataContentType || extToMime(this.name);
+			this.isHidden = typeof decryptedFileJSON.isHidden === 'boolean' ? decryptedFileJSON.isHidden : undefined;
 
 			const fileBuilderValidation = new FileBuilderValidation();
 			fileBuilderValidation.validateFileProperties(this);
@@ -201,7 +214,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 
 			this.parseCustomMetaDataFromDataJson(decryptedFileJSON);
 
-			return new ArFSPrivateFile(
+			const privateFile = new ArFSPrivateFile(
 				this.appName,
 				this.appVersion ?? '',
 				this.arFS,
@@ -224,6 +237,8 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				this.customMetaData.metaDataGqlTags,
 				this.customMetaData.metaDataJson
 			);
+			privateFile.isHidden = this.isHidden;
+			return privateFile;
 		}
 		throw new Error('Invalid file state');
 	}
