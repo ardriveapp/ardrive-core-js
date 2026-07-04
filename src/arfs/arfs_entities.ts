@@ -258,6 +258,11 @@ export interface ArFSFileFolderEntity extends ArFSEntity {
 export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	extends ArFSEntity implements ArFSFileFolderEntity
 {
+	// Set from the entity metadata JSON when present (mirrors ardrive-web). Undefined when the
+	// field is absent, so hidden-visibility filtering stays a consumer concern. Populated by the
+	// builders after construction to avoid threading through every positional entity constructor.
+	public isHidden?: boolean;
+
 	constructor(
 		appName: string,
 		appVersion: string,
@@ -386,6 +391,7 @@ export class ArFSPublicFileWithPaths extends ArFSPublicFile implements ArFSWithP
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -473,6 +479,7 @@ export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWit
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -522,6 +529,7 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 		// @ts-expect-error
 		delete this.driveKey;
 		// @ts-expect-error
@@ -589,6 +597,7 @@ export class ArFSPublicFolderWithPaths extends ArFSPublicFolder implements ArFSW
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -662,6 +671,7 @@ export class ArFSPrivateFolderWithPaths extends ArFSPrivateFolder implements ArF
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -702,6 +712,7 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.customMetaDataGqlTags,
 			entity.customMetaDataJson
 		);
+		this.isHidden = entity.isHidden;
 		// @ts-expect-error
 		delete this.driveKey;
 	}

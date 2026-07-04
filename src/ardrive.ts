@@ -57,6 +57,10 @@ import {
 	RenamePrivateFileParams,
 	RenamePublicFolderParams,
 	RenamePrivateFolderParams,
+	HidePublicFileParams,
+	HidePrivateFileParams,
+	HidePublicFolderParams,
+	HidePrivateFolderParams,
 	CommunityTipParams,
 	TipResult,
 	MovePublicFileParams,
@@ -1778,6 +1782,254 @@ export class ArDrive extends ArDriveAnonymous {
 					metadataTxId: metaDataTxId,
 					key: driveKey,
 					entityName: newName,
+					dataCaches,
+					fastFinalityIndexes
+				}
+			],
+			tips: [],
+			fees: {}
+		};
+
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
+		}
+
+		return arFSResult;
+	}
+
+	/**
+	 * Hide/unhide a file or folder by writing a new metadata revision that flips its `isHidden`
+	 * flag. This is structurally a no-op rename: name, size and (critically) lastModifiedDate are
+	 * preserved on the wire, so it never trips downstream edit-detection. There is no cascade —
+	 * hiding a folder writes exactly one revision for that folder. Deciding whether hidden entities
+	 * are shown or filtered is left to the consumer. Mirrors ardrive-web.
+	 *
+	 * NOTE: drive-level hide (hidePublicDrive/etc.) is intentionally deferred (see CORE-4). It is a
+	 * cheap follow-up mirroring these methods against the drive rename/tx-data layer.
+	 */
+	async hidePublicFile({ fileId }: HidePublicFileParams): Promise<ArFSResult> {
+		return this.setPublicFileHidden(fileId, true);
+	}
+
+	async unhidePublicFile({ fileId }: HidePublicFileParams): Promise<ArFSResult> {
+		return this.setPublicFileHidden(fileId, false);
+	}
+
+	async hidePrivateFile({ fileId, driveKey }: HidePrivateFileParams): Promise<ArFSResult> {
+		return this.setPrivateFileHidden(fileId, driveKey, true);
+	}
+
+	async unhidePrivateFile({ fileId, driveKey }: HidePrivateFileParams): Promise<ArFSResult> {
+		return this.setPrivateFileHidden(fileId, driveKey, false);
+	}
+
+	async hidePublicFolder({ folderId }: HidePublicFolderParams): Promise<ArFSResult> {
+		return this.setPublicFolderHidden(folderId, true);
+	}
+
+	async unhidePublicFolder({ folderId }: HidePublicFolderParams): Promise<ArFSResult> {
+		return this.setPublicFolderHidden(folderId, false);
+	}
+
+	async hidePrivateFolder({ folderId, driveKey }: HidePrivateFolderParams): Promise<ArFSResult> {
+		return this.setPrivateFolderHidden(folderId, driveKey, true);
+	}
+
+	async unhidePrivateFolder({ folderId, driveKey }: HidePrivateFolderParams): Promise<ArFSResult> {
+		return this.setPrivateFolderHidden(folderId, driveKey, false);
+	}
+
+	private async setPublicFileHidden(fileId: FileID, isHidden: boolean): Promise<ArFSResult> {
+		const owner = await this.getOwnerAddress();
+		const file = await this.getPublicFile({ fileId, owner });
+
+		// No-op rename: re-use the file's current name/size/lastModifiedDate, only toggling isHidden.
+		const fileMetadataTxDataStub = new ArFSPublicFileMetadataTransactionData(
+			file.name,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType,
+			file.customMetaDataJson,
+			isHidden
+		);
+
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+				};
+
+		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
+			await this.arFsDao.hidePublicFile({
+				file,
+				isHidden,
+				metadataRewardSettings
+			});
+
+		const arFSResult: ArFSResult = {
+			created: [
+				{
+					type: 'file',
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					entityName: file.name,
+					dataCaches,
+					fastFinalityIndexes
+				}
+			],
+			tips: [],
+			fees: {}
+		};
+
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
+		}
+
+		return arFSResult;
+	}
+
+	private async setPrivateFileHidden(fileId: FileID, driveKey: DriveKey, isHidden: boolean): Promise<ArFSResult> {
+		const owner = await this.getOwnerAddress();
+		const file = await this.getPrivateFile({ fileId, driveKey, owner });
+
+		const fileMetadataTxDataStub = await ArFSPrivateFileMetadataTransactionData.from(
+			file.name,
+			file.size,
+			file.lastModifiedDate,
+			file.dataTxId,
+			file.dataContentType,
+			file.fileId,
+			driveKey,
+			file.customMetaDataJson,
+			isHidden
+		);
+
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(fileMetadataTxDataStub)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+				};
+
+		const { entityId, fileKey, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
+			await this.arFsDao.hidePrivateFile({
+				file,
+				isHidden,
+				metadataRewardSettings,
+				driveKey
+			});
+
+		const arFSResult: ArFSResult = {
+			created: [
+				{
+					type: 'file',
+					entityId: entityId,
+					key: fileKey,
+					metadataTxId: metaDataTxId,
+					entityName: file.name,
+					dataCaches,
+					fastFinalityIndexes
+				}
+			],
+			tips: [],
+			fees: {}
+		};
+
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
+		}
+
+		return arFSResult;
+	}
+
+	private async setPublicFolderHidden(folderId: FolderID, isHidden: boolean): Promise<ArFSResult> {
+		const owner = await this.getOwnerAddress();
+		const folder = await this.getPublicFolder({ folderId, owner });
+
+		const folderMetadataTxDataStub = new ArFSPublicFolderTransactionData(
+			folder.name,
+			folder.customMetaDataJson,
+			isHidden
+		);
+
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+				};
+
+		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
+			await this.arFsDao.hidePublicFolder({
+				folder,
+				isHidden,
+				metadataRewardSettings
+			});
+
+		const arFSResult: ArFSResult = {
+			created: [
+				{
+					type: 'folder',
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					entityName: folder.name,
+					dataCaches,
+					fastFinalityIndexes
+				}
+			],
+			tips: [],
+			fees: {}
+		};
+
+		if (metaDataTxReward) {
+			arFSResult.fees = { [`${metaDataTxId}`]: metaDataTxReward };
+		}
+
+		return arFSResult;
+	}
+
+	private async setPrivateFolderHidden(
+		folderId: FolderID,
+		driveKey: DriveKey,
+		isHidden: boolean
+	): Promise<ArFSResult> {
+		const owner = await this.getOwnerAddress();
+		const folder = await this.getPrivateFolder({ folderId, driveKey, owner });
+
+		const folderMetadataTxDataStub = await ArFSPrivateFolderTransactionData.from(
+			folder.name,
+			driveKey,
+			folder.customMetaDataJson,
+			isHidden
+		);
+
+		const metadataRewardSettings = this.uploadPlanner.isTurboUpload()
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfFolderUpload(folderMetadataTxDataStub))
+						.metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+				};
+
+		const { entityId, metaDataTxId, dataCaches, fastFinalityIndexes, metaDataTxReward } =
+			await this.arFsDao.hidePrivateFolder({
+				folder,
+				isHidden,
+				metadataRewardSettings,
+				driveKey
+			});
+
+		const arFSResult: ArFSResult = {
+			created: [
+				{
+					type: 'folder',
+					entityId: entityId,
+					metadataTxId: metaDataTxId,
+					key: driveKey,
+					entityName: folder.name,
 					dataCaches,
 					fastFinalityIndexes
 				}

@@ -141,6 +141,10 @@ import {
 	ArFSRenamePublicDriveParams,
 	ArFSRenamePublicFolderParams,
 	ArFSRenamePrivateFileParams,
+	ArFSHidePublicFileParams,
+	ArFSHidePrivateFileParams,
+	ArFSHidePublicFolderParams,
+	ArFSHidePrivateFolderParams,
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
 	CommunityTipSettings,
@@ -2294,6 +2298,157 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			folder.driveId,
 			folder.entityId,
 			await ArFSPrivateFolderTransactionData.from(newName, driveKey, folder.customMetaDataJson),
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
+		this.caches.privateFolderCache.remove({ folderId: folder.entityId, owner, driveKey });
+
+		return {
+			entityId: folder.folderId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			driveKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	// Hide/unhide: writes a new metadata revision that only flips `isHidden`. Structurally a no-op
+	// rename — the entity's name, size, dataTxId and (critically) lastModifiedDate are re-written
+	// unchanged, so downstream edit-detection that keys on lastModifiedDate sees no change.
+	public async hidePublicFile({
+		file,
+		isHidden,
+		metadataRewardSettings
+	}: ArFSHidePublicFileParams): Promise<ArFSRenamePublicFileResult> {
+		const entityId = file.fileId;
+		const objectMetaData = new ArFSPublicFileMetaDataPrototype(
+			new ArFSPublicFileMetadataTransactionData(
+				file.name,
+				file.size,
+				file.lastModifiedDate,
+				file.dataTxId,
+				file.dataContentType,
+				file.customMetaDataJson,
+				isHidden
+			),
+			file.driveId,
+			entityId,
+			file.parentFolderId,
+			file.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFileId(entityId);
+		this.caches.publicFileCache.remove({ fileId: entityId, owner });
+
+		return {
+			entityId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePrivateFile({
+		file,
+		isHidden,
+		metadataRewardSettings,
+		driveKey
+	}: ArFSHidePrivateFileParams): Promise<ArFSRenamePrivateFileResult> {
+		const entityId = file.fileId;
+		const objectMetaData = new ArFSPrivateFileMetaDataPrototype(
+			await ArFSPrivateFileMetadataTransactionData.from(
+				file.name,
+				file.size,
+				file.lastModifiedDate,
+				file.dataTxId,
+				file.dataContentType,
+				entityId,
+				driveKey,
+				file.customMetaDataJson,
+				isHidden
+			),
+			file.driveId,
+			entityId,
+			file.parentFolderId,
+			file.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFileId(entityId);
+		this.caches.privateFileCache.remove({ fileId: entityId, fileKey: file.fileKey, owner });
+
+		return {
+			entityId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			fileKey: file.fileKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePublicFolder({
+		folder,
+		isHidden,
+		metadataRewardSettings
+	}: ArFSHidePublicFolderParams): Promise<ArFSRenamePublicFolderResult> {
+		const objectMetaData = new ArFSPublicFolderMetaDataPrototype(
+			new ArFSPublicFolderTransactionData(folder.name, folder.customMetaDataJson, isHidden),
+			folder.driveId,
+			folder.entityId,
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
+		this.caches.publicFolderCache.remove({ folderId: folder.entityId, owner });
+
+		return {
+			entityId: folder.folderId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePrivateFolder({
+		folder,
+		isHidden,
+		metadataRewardSettings,
+		driveKey
+	}: ArFSHidePrivateFolderParams): Promise<ArFSRenamePrivateFolderResult> {
+		const objectMetaData = new ArFSPrivateFolderMetaDataPrototype(
+			folder.driveId,
+			folder.entityId,
+			await ArFSPrivateFolderTransactionData.from(folder.name, driveKey, folder.customMetaDataJson, isHidden),
 			folder.parentFolderId,
 			folder.customMetaDataGqlTags
 		);

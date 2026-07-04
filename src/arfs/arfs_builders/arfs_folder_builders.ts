@@ -30,6 +30,8 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 	'folder',
 	T
 > {
+	isHidden?: boolean;
+
 	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
 		const tags = await super.parseFromArweaveNode(node, owner);
 		return tags.filter((tag) => tag.name !== 'Folder-Id');
@@ -42,7 +44,7 @@ export abstract class ArFSFolderBuilder<T extends ArFSPublicFolder | ArFSPrivate
 		];
 	}
 
-	protected readonly protectedDataJsonKeys = ['name'];
+	protected readonly protectedDataJsonKeys = ['name', 'isHidden'];
 }
 
 export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder> {
@@ -83,25 +85,26 @@ export class ArFSPublicFolderBuilder extends ArFSFolderBuilder<ArFSPublicFolder>
 			if (!this.name) {
 				throw new Error('Invalid public folder state: name not found!');
 			}
+			this.isHidden = typeof dataJSON.isHidden === 'boolean' ? dataJSON.isHidden : undefined;
 			this.parseCustomMetaDataFromDataJson(dataJSON);
 
-			return Promise.resolve(
-				new ArFSPublicFolder(
-					this.appName,
-					this.appVersion ?? '',
-					this.arFS,
-					this.contentType,
-					this.driveId,
-					this.name,
-					this.txId,
-					this.unixTime,
-					this.parentFolderId,
-					this.entityId,
-					this.boost,
-					this.customMetaData.metaDataGqlTags,
-					this.customMetaData.metaDataJson
-				)
+			const publicFolder = new ArFSPublicFolder(
+				this.appName,
+				this.appVersion ?? '',
+				this.arFS,
+				this.contentType,
+				this.driveId,
+				this.name,
+				this.txId,
+				this.unixTime,
+				this.parentFolderId,
+				this.entityId,
+				this.boost,
+				this.customMetaData.metaDataGqlTags,
+				this.customMetaData.metaDataJson
 			);
+			publicFolder.isHidden = this.isHidden;
+			return Promise.resolve(publicFolder);
 		}
 		throw new Error('Invalid public folder state');
 	}
@@ -187,10 +190,12 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 			if (!this.name) {
 				throw new Error('Invalid private folder state: name not found!');
 			}
+			this.isHidden =
+				typeof decryptedFolderJSON.isHidden === 'boolean' ? decryptedFolderJSON.isHidden : undefined;
 
 			this.parseCustomMetaDataFromDataJson(decryptedFolderJSON);
 
-			return new ArFSPrivateFolder(
+			const privateFolder = new ArFSPrivateFolder(
 				this.appName,
 				this.appVersion ?? '',
 				this.arFS,
@@ -208,6 +213,8 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 				this.customMetaData.metaDataGqlTags,
 				this.customMetaData.metaDataJson
 			);
+			privateFolder.isHidden = this.isHidden;
+			return privateFolder;
 		}
 		throw new Error('Invalid private folder state');
 	}
