@@ -1513,6 +1513,12 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
 
+		if (!driveTransactions.edges.length) {
+			throw new Error(
+				`Drive with Drive-Id "${driveId}" not found (check the drive id and that the owner address is correct)`
+			);
+		}
+
 		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
 		);
@@ -1925,6 +1931,12 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		});
 
 		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+		if (!transactions.edges.length) {
+			throw new Error(
+				`Drive with Drive-Id "${driveId}" not found (check the drive id and that the owner address is correct)`
+			);
+		}
 
 		const drivePrivacyFromTag = transactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
