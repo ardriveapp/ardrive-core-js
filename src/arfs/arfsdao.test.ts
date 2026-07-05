@@ -1030,6 +1030,73 @@ describe('The ArFSDAO class', () => {
 	});
 });
 
+// These GQL empty-edges guard tests live in their own describe with a minimal
+// fixture that does NOT derive a stub drive key, so they exercise the drive
+// lookup guards directly without depending on private-key crypto helpers.
+describe('The ArFSDAO class GQL empty-edges guards', () => {
+	const emptyEdgesWallet = readJWKFile('./test_wallet.json');
+	const emptyEdgesArweave = Arweave.init({
+		host: 'localhost',
+		port: 443,
+		protocol: 'https',
+		timeout: 600000
+	});
+	const emptyEdgesTagSettings = new ArFSTagSettings({ appName: 'ArFSDAO-Test', appVersion: '1.0' });
+
+	let emptyEdgesGatewayApi: GatewayAPI;
+	let emptyEdgesDao: ArFSDAO;
+
+	beforeEach(() => {
+		emptyEdgesGatewayApi = new GatewayAPI({ gatewayUrl: new URL('http://test.net:1337') });
+		const caches: ArFSCache = {
+			...defaultArFSAnonymousCache,
+			privateDriveCache: new PromiseCache<ArFSPrivateDriveCacheKey, ArFSPrivateDrive>(defaultCacheParams),
+			privateFolderCache: new PromiseCache<ArFSPrivateFolderCacheKey, ArFSPrivateFolder>(defaultCacheParams),
+			privateFileCache: new PromiseCache<ArFSPrivateFileCacheKey, ArFSPrivateFile>(defaultCacheParams),
+			privateConflictCache: new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams),
+			publicConflictCache: new PromiseCache<ArFSPublicFolderCacheKey, NameConflictInfo>(defaultCacheParams)
+		};
+		emptyEdgesDao = new ArFSDAO(
+			emptyEdgesWallet,
+			emptyEdgesArweave,
+			true,
+			'ArFSDAO-Test',
+			'1.0',
+			emptyEdgesTagSettings,
+			caches,
+			emptyEdgesGatewayApi
+		);
+	});
+
+	describe('getDriveSignatureInfo function', () => {
+		it('throws a clear "drive not found" error when the GQL query returns zero edges', async () => {
+			stub(emptyEdgesGatewayApi, 'gqlRequest').resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			await expectAsyncErrorThrow({
+				promiseToError: emptyEdgesDao.getDriveSignatureInfo(stubEntityID, stubArweaveAddress()),
+				errorMessage: `Drive with Drive-Id "${stubEntityID}" not found (check the drive id and that the owner address is correct)`
+			});
+		});
+	});
+
+	describe('isPublicDrive function', () => {
+		it('throws a clear "drive not found" error when the GQL query returns zero edges', async () => {
+			stub(emptyEdgesGatewayApi, 'gqlRequest').resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			await expectAsyncErrorThrow({
+				promiseToError: emptyEdgesDao.isPublicDrive(stubEntityID, stubArweaveAddress()),
+				errorMessage: `Drive with Drive-Id "${stubEntityID}" not found (check the drive id and that the owner address is correct)`
+			});
+		});
+	});
+});
+
 const entityIdRegex = /^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$/i;
 const txIdRegex = /^(\w|-){43}$/;
 

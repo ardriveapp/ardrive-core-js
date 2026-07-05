@@ -235,6 +235,18 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateConflictCache: PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
+/**
+ * Throws a clear "drive not found" error when a drive GQL query returns zero edges,
+ * so callers get an actionable message instead of a `TypeError` from `edges[0]`.
+ */
+function assertDriveEdgesFound(driveId: DriveID, edges: GQLEdgeInterface[]): void {
+	if (!edges.length) {
+		throw new Error(
+			`Drive with Drive-Id "${driveId}" not found (check the drive id and that the owner address is correct)`
+		);
+	}
+}
+
 export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	private readonly signer?: ArweaveSigner;
 
@@ -1513,6 +1525,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
 
+		assertDriveEdgesFound(driveId, driveTransactions.edges);
+
 		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
 		);
@@ -1925,6 +1939,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		});
 
 		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+
+		assertDriveEdgesFound(driveId, transactions.edges);
 
 		const drivePrivacyFromTag = transactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
