@@ -22,7 +22,12 @@ describe('MultiChunkTxUploader class', () => {
 	let txWithOneChunkOfData: Transaction;
 	let txWithTwentyChunksOfData: Transaction;
 
-	before(async () => {
+	// Regular function (not an arrow) so mocha's `this.timeout` applies. This hook
+	// does genuinely expensive LOCAL crypto — RSA wallet generation + creating,
+	// signing, and chunk-hashing a 5 MB transaction, twice — with no network. Under
+	// CI load that intermittently exceeds mocha's 5s default, so give it real headroom.
+	before(async function () {
+		this.timeout(60_000);
 		const wallet = await arweave.wallets.generate();
 
 		const oneChunkOfData = new Uint8Array(5);
