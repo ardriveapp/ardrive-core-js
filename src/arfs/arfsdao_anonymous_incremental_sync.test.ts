@@ -6,6 +6,7 @@ import {
 	stubArweaveAddress,
 	stubEntityID,
 	stubEntityIDAlt,
+	stubEntityIDAltTwo,
 	stubTxID,
 	stubTxIDAlt,
 	stubPublicDrive
@@ -187,9 +188,10 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 				syncState: previousState
 			});
 
-			// Verify minBlock parameter was used
+			// Verify minBlock parameter was used with the reorg look-back window:
+			// max(0, lastSyncedBlockHeight - SYNC_BLOCK_HEIGHT_LOOK_BACK) = 999999 - 240.
 			const gqlCall = gatewayApiStub.firstCall.args[0];
-			expect(gqlCall.query).to.include('min: 1000000'); // Previous + 1
+			expect(gqlCall.query).to.include('min: 999759');
 			expect(result.changes.added).to.have.lengthOf(1);
 		});
 
@@ -492,6 +494,139 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 					expect(syncError.partialResult.stats.totalProcessed).to.be.greaterThanOrEqual(0);
 				}
 			}
+		});
+	});
+
+	describe('reorg look-back window reconciliation', () => {
+		it('applies the 240-block look-back to the query lower bound', async () => {
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map()
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			gatewayApiStub.onFirstCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, { syncState: previousState });
+
+			// 1000000 - 240 = 999760 (re-scans the last 240 blocks, not lastHeight + 1)
+			expect(gatewayApiStub.firstCall.args[0].query).to.include('min: 999760');
+		});
+
+		it('de-dups multiple revisions of one entity fetched across the overlap', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Two revisions of the SAME entity (default Folder-Id) at different heights
+			const revLow = createMockGQLNode({
+				id: stubTxID.toString(),
+				block: { id: 'b1', height: 999800, timestamp: 1639900000, previous: 'p0' }
+			});
+			const revHigh = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				block: { id: 'b2', height: 1000050, timestamp: 1640050000, previous: 'b1' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(revLow), createMockGQLEdge(revHigh)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			// Collapsed to a single latest revision (not two stale duplicates)
+			expect(result.entities).to.have.lengthOf(1);
+			expect(result.entities[0].entityId.equals(stubEntityIDAlt)).to.be.true;
+		});
+
+		it('reports unreachable only for entities inside the re-fetched window', async () => {
+			const inWindow: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 999900, // >= 999760 -> inside window
+				name: 'in-window',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const belowWindow: EntitySyncState = {
+				entityId: stubEntityIDAltTwo,
+				txId: stubTxIDAlt,
+				blockHeight: 500000, // < 999760 -> below window, not re-queried
+				name: 'below-window',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map([
+					[stubEntityIDAlt.toString(), inWindow],
+					[stubEntityIDAltTwo.toString(), belowWindow]
+				])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			gatewayApiStub.onFirstCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			// Only the in-window entity may be declared unreachable; the below-window
+			// entity was never re-queried and must not be falsely reported.
+			expect(result.changes.unreachable.map((e) => e.entityId.toString())).to.deep.equal([
+				stubEntityIDAlt.toString()
+			]);
+		});
+
+		it('surfaces a since-hidden entity as a modified revision carrying isHidden', async () => {
+			const known: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 999900,
+				name: 'folder',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map([[stubEntityIDAlt.toString(), known]])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			// Entity metadata now marks the entity hidden
+			getTxDataStub.resolves(Buffer.from(JSON.stringify({ name: 'Test Folder', isHidden: true })));
+
+			// A new revision (different txId) mined within the look-back window
+			const hiddenRev = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				tags: [{ name: 'Folder-Id', value: stubEntityIDAlt.toString() }],
+				block: { id: 'bh', height: 1000010, timestamp: 1640010000, previous: 'p' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(hiddenRev)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			expect(result.changes.modified).to.have.lengthOf(1);
+			expect(result.changes.unreachable).to.have.lengthOf(0);
+			const entity = result.entities.find((e) => e.entityId.equals(stubEntityIDAlt));
+			expect(entity, 'hidden entity should be present in results').to.exist;
+			expect((entity as any).isHidden).to.equal(true);
 		});
 	});
 

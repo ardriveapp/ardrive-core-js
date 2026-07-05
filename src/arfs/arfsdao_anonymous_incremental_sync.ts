@@ -22,8 +22,8 @@ import { ArFSPublicFile, ArFSPublicFolder, ArFSFileOrFolderEntity } from './arfs
 import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import { buildQuery } from '../utils/query';
-import { ASCENDING_ORDER } from '../utils/query';
-import { latestRevisionFilter } from '../utils/filter_methods';
+import { DESCENDING_ORDER } from '../utils/query';
+import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { SyncStateStore } from '../utils/sync_state_store';
 
@@ -100,10 +100,11 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 				entityStates: new Map()
 			};
 
-			// Set minimum block height for queries
-			const minBlock = syncState?.lastSyncedBlockHeight
-				? syncState.lastSyncedBlockHeight + 1 // Start from next block
-				: undefined;
+			// Set minimum block height for queries. Apply a reorg look-back window
+			// (max(0, lastSyncedBlockHeight - 240)) so a chain reorganization or a
+			// same-height/late revision near the previous tip is re-fetched and
+			// reconciled rather than silently missed.
+			const minBlock = incrementalMinBlock(syncState?.lastSyncedBlockHeight);
 
 			// Fetch all entities with optional block height filter
 			const [folders, files] = await Promise.all([
@@ -134,11 +135,13 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 				blockHeight: number;
 			})[];
 
-			// Apply revision filter if requested
-			const entities = includeRevisions ? allEntities : allEntities.filter(latestRevisionFilter);
+			// Apply revision filter if requested. selectLatestRevisions is
+			// order-independent and reconciles the re-fetched look-back overlap,
+			// keeping only the newest revision per entity (see reorg look-back).
+			const entities = includeRevisions ? allEntities : selectLatestRevisions(allEntities);
 
-			// Detect changes
-			const changes = this.detectChanges(entities, currentSyncState);
+			// Detect changes (minBlock scopes unreachable detection to the re-fetched window)
+			const changes = this.detectChanges(entities, currentSyncState, minBlock);
 
 			// Update sync state with new information
 			const newSyncState = this.updateSyncState(currentSyncState, entities, stats);
@@ -194,7 +197,7 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 				cursor,
 				owner,
 				minBlock,
-				sort: ASCENDING_ORDER, // Process oldest first for consistent state
+				sort: DESCENDING_ORDER, // Newest first: so the stopAfterKnownCount early-stop trips only after passing all recent changes
 				first: batchSize
 			});
 
@@ -270,7 +273,7 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 				cursor,
 				owner,
 				minBlock,
-				sort: ASCENDING_ORDER,
+				sort: DESCENDING_ORDER,
 				first: batchSize
 			});
 
@@ -481,7 +484,8 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 	 */
 	private detectChanges(
 		entities: (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[],
-		syncState: DriveSyncState
+		syncState: DriveSyncState,
+		minBlock?: number
 	): SyncChangeSet {
 		const added: EntitySyncState[] = [];
 		const modified: EntitySyncState[] = [];
@@ -508,10 +512,22 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			}
 		}
 
-		// Detect unreachable entities (e.g. permissions changed, ownership transferred)
+		// Detect unreachable entities (e.g. reorged out, permissions changed,
+		// ownership transferred). An incremental sync only re-queries the
+		// [minBlock, tip] window, so a stored entity whose last-known revision
+		// lives *below* that window was intentionally not re-fetched and MUST NOT
+		// be reported unreachable — only entities that fell inside the re-fetched
+		// window yet are now absent are genuinely unreachable. A full sync
+		// (minBlock === undefined) evaluates every stored entity.
+		//
+		// Note: an entity that became hidden since last sync surfaces as a new
+		// (modified) revision carrying `isHidden`, not as an unreachable entity.
 		const unreachable: EntitySyncState[] = [];
 		for (const [entityId, state] of syncState.entityStates) {
-			if (!entityIds.has(entityId)) {
+			if (entityIds.has(entityId)) {
+				continue;
+			}
+			if (minBlock === undefined || state.blockHeight >= minBlock) {
 				unreachable.push(state);
 			}
 		}
@@ -529,8 +545,10 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 	): DriveSyncState {
 		const newEntityStates = new Map(currentState.entityStates);
 
-		// Update entity states
-		for (const entity of entities) {
+		// Update entity states. Collapse to the latest revision per entity first so
+		// the stored state is order-independent (the fetch is newest-first and, with
+		// includeRevisions, may carry several revisions of the same entity).
+		for (const entity of selectLatestRevisions(entities)) {
 			const entityState: EntitySyncState = {
 				entityId: entity.entityId,
 				txId: entity.txId,

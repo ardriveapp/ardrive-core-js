@@ -6,7 +6,10 @@ import {
 	syncStateFromJSON,
 	mergeSyncStates,
 	createEmptySyncState,
-	SerializedDriveSyncState
+	SerializedDriveSyncState,
+	incrementalMinBlock,
+	selectLatestRevisions,
+	SYNC_BLOCK_HEIGHT_LOOK_BACK
 } from './sync_state';
 import { DriveSyncState, EntitySyncState, UnixTime, EID, TxID, DrivePrivacy } from '../types';
 import { stubEntityID, stubEntityIDAlt, stubTxID, stubTxIDAlt } from '../../tests/stubs';
@@ -241,6 +244,77 @@ describe('sync_state utilities', () => {
 
 			expect(empty.drivePrivacy).to.equal('private');
 			expect(empty.lastSyncedBlockHeight).to.equal(0);
+		});
+	});
+
+	describe('incrementalMinBlock (reorg look-back)', () => {
+		it('uses a 240-block look-back window', () => {
+			expect(SYNC_BLOCK_HEIGHT_LOOK_BACK).to.equal(240);
+		});
+
+		it('returns undefined for a full sync (no prior height)', () => {
+			expect(incrementalMinBlock(undefined)).to.be.undefined;
+			expect(incrementalMinBlock(0)).to.be.undefined;
+		});
+
+		it('subtracts the look-back window from the last synced height', () => {
+			expect(incrementalMinBlock(1_000_000)).to.equal(1_000_000 - 240);
+			expect(incrementalMinBlock(999_999)).to.equal(999_759);
+			expect(incrementalMinBlock(241)).to.equal(1);
+		});
+
+		it('clamps the lower bound to 0 for shallow chains', () => {
+			expect(incrementalMinBlock(240)).to.equal(0);
+			expect(incrementalMinBlock(100)).to.equal(0);
+		});
+	});
+
+	describe('selectLatestRevisions (overlap de-dup)', () => {
+		// Minimal RevisionLike shape accepted by selectLatestRevisions
+		const rev = (entityId: ReturnType<typeof EID>, blockHeight: number, unixTime: number, txId: string) => ({
+			entityId,
+			blockHeight,
+			unixTime: new UnixTime(unixTime),
+			txId
+		});
+
+		it('keeps distinct entities re-fetched across the look-back overlap', () => {
+			// One entity whose latest revision is at the previous tip (lastHeight),
+			// and a different entity mined within the 240-block window. Both survive.
+			const atLastHeight = rev(stubEntityID, 1_000_000, 1_640_000_000, 'txA');
+			const withinWindow = rev(stubEntityIDAlt, 999_800, 1_639_900_000, 'txB');
+
+			const result = selectLatestRevisions([atLastHeight, withinWindow]);
+
+			expect(result).to.have.lengthOf(2);
+			expect(result.map((r) => r.txId)).to.have.members(['txA', 'txB']);
+		});
+
+		it('de-dups multiple revisions of one entity down to the highest block', () => {
+			const older = rev(stubEntityID, 999_800, 1_639_900_000, 'txOld');
+			const newer = rev(stubEntityID, 1_000_000, 1_640_000_000, 'txNew');
+
+			// Input order should not matter
+			expect(selectLatestRevisions([older, newer])[0].txId).to.equal('txNew');
+			expect(selectLatestRevisions([newer, older])[0].txId).to.equal('txNew');
+			expect(selectLatestRevisions([older, newer])).to.have.lengthOf(1);
+		});
+
+		it('lets a reorged same-height revision (later timestamp) win', () => {
+			// A reorg replaces the known revision at the SAME block height with a
+			// competing revision carrying a later ArFS timestamp.
+			const knownAtHeight = rev(stubEntityID, 1_000_000, 1_640_000_000, 'txKnown');
+			const reorgAtSameHeight = rev(stubEntityID, 1_000_000, 1_640_005_000, 'txReorg');
+
+			expect(selectLatestRevisions([knownAtHeight, reorgAtSameHeight])[0].txId).to.equal('txReorg');
+			expect(selectLatestRevisions([reorgAtSameHeight, knownAtHeight])[0].txId).to.equal('txReorg');
+		});
+
+		it('breaks a full tie by input order (later element wins)', () => {
+			const first = rev(stubEntityID, 1_000_000, 1_640_000_000, 'txFirst');
+			const second = rev(stubEntityID, 1_000_000, 1_640_000_000, 'txSecond');
+
+			expect(selectLatestRevisions([first, second])[0].txId).to.equal('txSecond');
 		});
 	});
 });
