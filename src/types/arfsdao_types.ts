@@ -156,6 +156,13 @@ export interface ArFSListPublicFolderParams {
 	includeRoot: boolean;
 	owner: ArweaveAddress;
 	withKeys?: boolean;
+	/**
+	 * Whether to use the snapshot-accelerated listing path (defaults to `true`).
+	 * Set `false` to force the legacy full-history replay. The snapshot path always
+	 * falls back to full replay on the absence of snapshots or any snapshot failure,
+	 * so this only exists for explicit opt-out / A-B verification.
+	 */
+	useSnapshots?: boolean;
 	withPathsFactory?: (
 		entity: ArFSPrivateFile | ArFSPrivateFolder,
 		hierarchy: FolderHierarchy,

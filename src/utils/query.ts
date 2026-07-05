@@ -14,6 +14,9 @@ const nodeFragment = `
 			value
 		}
 		${ownerFragment}
+		block {
+			height
+		}
 	}
 `;
 
@@ -45,6 +48,14 @@ export interface BuildGQLQueryParams {
 	owner?: ArweaveAddress;
 	sort?: Sort;
 	ids?: TransactionID[];
+	/**
+	 * Optional inclusive lower block-height bound. Emitted as `block: { min }`.
+	 * Used by the snapshot-accelerated listing path to fetch only the "live
+	 * tail" of a drive's history (heights not covered by any snapshot).
+	 */
+	minBlockHeight?: number;
+	/** Optional inclusive upper block-height bound. Emitted as `block: { max }`. */
+	maxBlockHeight?: number;
 }
 
 /**
@@ -55,7 +66,15 @@ export interface BuildGQLQueryParams {
  * @example
  * const query = buildQuery([{ name: 'Folder-Id', value: folderId }]);
  */
-export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, ids }: BuildGQLQueryParams): GQLQuery {
+export function buildQuery({
+	tags = [],
+	cursor,
+	owner,
+	sort = DESCENDING_ORDER,
+	ids,
+	minBlockHeight,
+	maxBlockHeight
+}: BuildGQLQueryParams): GQLQuery {
 	let queryTags = ``;
 
 	tags.forEach((t) => {
@@ -65,6 +84,15 @@ export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, 
 
 	const singleResult = cursor === undefined;
 
+	const blockFilterParts: string[] = [];
+	if (minBlockHeight !== undefined) {
+		blockFilterParts.push(`min: ${minBlockHeight}`);
+	}
+	if (maxBlockHeight !== undefined) {
+		blockFilterParts.push(`max: ${maxBlockHeight}`);
+	}
+	const blockFilter = blockFilterParts.length ? `block: { ${blockFilterParts.join(', ')} }` : '';
+
 	return {
 		query: `query {
 			transactions(
@@ -73,6 +101,7 @@ export function buildQuery({ tags = [], cursor, owner, sort = DESCENDING_ORDER, 
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
 				${owner === undefined ? '' : `owners: ["${owner}"]`}
+				${blockFilter}
 				tags: [
 					${queryTags}
 				]
