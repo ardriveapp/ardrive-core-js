@@ -1723,6 +1723,22 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					};
 					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
+					// CORE-6: Tolerate individual broken private files instead of aborting the
+					// whole drive listing. When a private file's data cannot be decrypted,
+					// fileDecrypt() swallows the error and returns the "Error" sentinel buffer,
+					// so JSON.parse() of the "decrypted" metadata throws a SyntaxError. The public
+					// file-listing path (getPublicFilesWithParentFolderIds) and the private
+					// folder-listing path (getAllFoldersOfPrivateDrive) already skip such entities;
+					// the private file path did not, so one undecryptable/incomplete file killed
+					// the entire private-drive reconstruction. Mirror the public path exactly:
+					// skip SyntaxError (unparseable/undecryptable metadata) and
+					// InvalidFileStateException (metadata missing required properties), but keep
+					// re-throwing any other error so genuine/unexpected failures are not masked.
+					if (e instanceof SyntaxError) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
 					if (e instanceof InvalidFileStateException) {
 						console.error(`Error building file. Skipping... Error: ${e}`);
 						return null;

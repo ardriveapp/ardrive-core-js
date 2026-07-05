@@ -60,6 +60,23 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 		'dataContentType',
 		'isHidden'
 	];
+
+	// CORE-6: Enumerates which required top-level (pre-decryption) properties are absent, so
+	// buildEntity() can throw a descriptive InvalidFileStateException that the file-listing
+	// paths tolerate/skip instead of aborting the whole drive. Mirrors the buildEntity() guard.
+	protected getMissingRequiredProperties(): string[] {
+		const missingProperties: string[] = [];
+		if (!this.appName?.length) missingProperties.push('appName');
+		if (!this.arFS?.length) missingProperties.push('arFS');
+		if (!this.contentType?.length) missingProperties.push('contentType');
+		if (!this.driveId) missingProperties.push('driveId');
+		if (!this.entityType?.length) missingProperties.push('entityType');
+		if (!this.txId) missingProperties.push('txId');
+		if (!this.unixTime) missingProperties.push('unixTime');
+		if (!this.parentFolderId) missingProperties.push('parentFolderId');
+		if (!this.entityId) missingProperties.push('entityId');
+		return missingProperties;
+	}
 }
 
 export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
@@ -125,7 +142,14 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			publicFile.isHidden = this.isHidden;
 			return Promise.resolve(publicFile);
 		}
-		throw new Error('Invalid file state');
+		// CORE-6: A file entity that is missing a required top-level property (a genuinely
+		// incomplete/legacy metadata tx) previously threw a plain Error('Invalid file state').
+		// That plain Error is not caught by the file-listing paths, so a single incomplete
+		// entity aborted the entire drive reconstruction. Throw the semantically-correct
+		// InvalidFileStateException instead — the listing paths already skip it (see
+		// getPublicFilesWithParentFolderIds / getPrivateFilesWithParentFolderIds) — and name
+		// exactly which properties are missing.
+		throw new InvalidFileStateException(this.getMissingRequiredProperties());
 	}
 }
 
@@ -240,6 +264,21 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 			privateFile.isHidden = this.isHidden;
 			return privateFile;
 		}
-		throw new Error('Invalid file state');
+		// CORE-6: A private file missing a required top-level property (observed live: legacy
+		// entities with no `Cipher` tag) previously threw a plain Error('Invalid file state'),
+		// which the private file-listing path does not catch, aborting the entire private-drive
+		// listing. Throw the semantically-correct InvalidFileStateException instead — which
+		// getPrivateFilesWithParentFolderIds already skips — naming the missing properties
+		// (e.g. `cipher`). This runs BEFORE any decryption, so it does not mask a decryption
+		// failure (those surface as a SyntaxError from the fileDecrypt "Error" sentinel).
+		throw new InvalidFileStateException(this.getMissingRequiredProperties());
+	}
+
+	// CORE-6: private files additionally require the Cipher / Cipher-IV tags.
+	protected getMissingRequiredProperties(): string[] {
+		const missingProperties = super.getMissingRequiredProperties();
+		if (!this.cipher?.length) missingProperties.push('cipher');
+		if (!this.cipherIV?.length) missingProperties.push('cipherIV');
+		return missingProperties;
 	}
 }
