@@ -9,7 +9,8 @@ import {
 	stubEntityIDAltTwo,
 	stubTxID,
 	stubTxIDAlt,
-	stubPublicDrive
+	stubPublicDrive,
+	stubPublicFolder
 } from '../../tests/stubs';
 import {
 	DriveSyncState,
@@ -583,6 +584,35 @@ describe('ArFSDAOAnonymousIncrementalSync class', () => {
 			expect(result.changes.unreachable.map((e) => e.entityId.toString())).to.deep.equal([
 				stubEntityIDAlt.toString()
 			]);
+		});
+
+		it('does not reuse a stale cached revision for a newer revision of the same entity', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Cache holds an OLD revision of the entity (carrying its own txId)
+			const stale = stubPublicFolder({ folderId: stubEntityIDAlt });
+			caches.publicFolderCache.put({ folderId: stubEntityIDAlt, owner: mockOwner }, Promise.resolve(stale));
+
+			// The gateway returns a NEWER revision (different txId, higher block)
+			const newerRev = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				tags: [{ name: 'Folder-Id', value: stubEntityIDAlt.toString() }],
+				block: { id: 'bnew', height: 1000500, timestamp: 1640500000, previous: 'p' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(newerRev)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			const entity = result.entities.find((e) => e.entityId.equals(stubEntityIDAlt));
+			expect(entity, 'entity should be present').to.exist;
+			// Must reflect the NEWER revision, never the stale cached txId
+			expect(entity!.txId.toString()).to.equal(stubTxIDAlt.toString());
+			expect(entity!.txId.equals(stale.txId), 'must not be the stale cached revision').to.be.false;
+			expect(result.stats.fromNetwork).to.be.greaterThan(0);
 		});
 
 		it('surfaces a since-hidden entity as a modified revision carrying isHidden', async () => {

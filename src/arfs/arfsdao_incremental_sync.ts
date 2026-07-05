@@ -387,15 +387,20 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
 				stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-				// Check cache first
+				// Check cache first. Only reuse the cached entity when it is the SAME
+				// revision as this node (matching txId); reusing it for a different
+				// revision would return stale metadata and mislabel latest-revision
+				// selection. Block height is deterministic per txId.
 				const folderId = this.extractEntityId(node, 'Folder-Id');
 				const folderCacheKey = { folderId, owner, driveKey };
 				const cached = this.caches.privateFolderCache.get(folderCacheKey);
 
 				if (cached) {
-					stats.fromCache++;
-					// Add blockHeight to cached entity
-					return Object.assign(await cached, { blockHeight });
+					const cachedFolder = await cached;
+					if (`${cachedFolder.txId}` === node.id) {
+						stats.fromCache++;
+						return Object.assign(cachedFolder, { blockHeight });
+					}
 				}
 
 				// Build from network
@@ -403,13 +408,11 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 				const folder = await folderBuilder.build(node);
 
-				// Add blockHeight to the entity
-				const folderWithBlockHeight = Object.assign(folder, { blockHeight });
-
-				// Cache the result with proper cache key
+				// Cache this revision (overwrites any older cached revision for the entity)
 				this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
 
-				return folderWithBlockHeight;
+				// Add blockHeight to the entity
+				return Object.assign(folder, { blockHeight });
 			}
 		);
 

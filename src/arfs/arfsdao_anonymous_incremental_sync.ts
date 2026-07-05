@@ -337,15 +337,22 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
 			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-			// Check cache first
+			// Check cache first. The cache is keyed by entityId and holds a single
+			// revision, so it may ONLY be reused when it is the SAME revision as this
+			// node (matching txId) — reusing it for a different revision would return
+			// stale metadata and mislabel the latest-revision selection (a real reorg
+			// / multi-revision correctness bug). Block height is deterministic per
+			// txId, so the returned blockHeight is correct for a same-revision hit.
 			const folderId = this.extractEntityId(node, 'Folder-Id');
 			const cacheKey = { folderId, owner };
 			const cached = this.caches.publicFolderCache.get(cacheKey);
 
 			if (cached) {
-				stats.fromCache++;
-				// Add blockHeight to cached entity
-				return Object.assign(await cached, { blockHeight });
+				const cachedFolder = await cached;
+				if (`${cachedFolder.txId}` === node.id) {
+					stats.fromCache++;
+					return Object.assign(cachedFolder, { blockHeight });
+				}
 			}
 
 			// Build from network
@@ -353,13 +360,11 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
 			const folder = await folderBuilder.build(node);
 
-			// Add blockHeight to the entity
-			const folderWithBlockHeight = Object.assign(folder, { blockHeight });
-
-			// Cache the result
+			// Cache this revision (overwrites any older cached revision for the entity)
 			this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
 
-			return folderWithBlockHeight;
+			// Add blockHeight to the entity
+			return Object.assign(folder, { blockHeight });
 		});
 
 		const results = await Promise.allSettled(folders);
@@ -394,15 +399,22 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
 			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-			// Check cache first
+			// Check cache first. The cache is keyed by entityId and holds a single
+			// revision, so it may ONLY be reused when it is the SAME revision as this
+			// node (matching txId) — reusing it for a different revision would return
+			// stale metadata and mislabel the latest-revision selection (a real reorg
+			// / multi-revision correctness bug). Block height is deterministic per
+			// txId, so the returned blockHeight is correct for a same-revision hit.
 			const fileId = this.extractEntityId(node, 'File-Id');
 			const cacheKey = { fileId, owner };
 			const cached = this.caches.publicFileCache.get(cacheKey);
 
 			if (cached) {
-				stats.fromCache++;
-				// Add blockHeight to cached entity
-				return Object.assign(await cached, { blockHeight });
+				const cachedFile = await cached;
+				if (`${cachedFile.txId}` === node.id) {
+					stats.fromCache++;
+					return Object.assign(cachedFile, { blockHeight });
+				}
 			}
 
 			// Build from network
@@ -410,13 +422,11 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
 			const file = await fileBuilder.build(node);
 
-			// Add blockHeight to the entity
-			const fileWithBlockHeight = Object.assign(file, { blockHeight });
-
-			// Cache the result
+			// Cache this revision (overwrites any older cached revision for the entity)
 			this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
 
-			return fileWithBlockHeight;
+			// Add blockHeight to the entity
+			return Object.assign(file, { blockHeight });
 		});
 
 		const results = await Promise.allSettled(files);

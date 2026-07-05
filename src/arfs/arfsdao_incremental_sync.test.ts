@@ -371,6 +371,9 @@ describe('ArFSDAOIncrementalSync class', () => {
 			caches.privateFolderCache.put(cacheKey, Promise.resolve(cachedFolder));
 
 			const folderNode = createMockGQLNode({
+				// The node must carry the SAME txId as the cached revision, otherwise
+				// the (correct) revision-aware cache rebuilds instead of reusing it.
+				id: cachedFolder.txId.toString(),
 				tags: [
 					{ name: 'App-Name', value: 'ArDrive-Core' },
 					{ name: 'App-Version', value: '0.0.1' },
