@@ -485,7 +485,10 @@ describe('ArDrive class - integrated', () => {
 
 			beforeEach(() => {
 				// These stubbed drives have no snapshots → exercise the full-replay path.
-				stub(arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> }, 'fetchDriveSnapshotsWithBodies').resolves(null);
+				stub(
+					arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> },
+					'fetchDriveSnapshotsWithBodies'
+				).resolves(null);
 				stub(arfsDao, 'getAllFoldersOfPublicDrive').resolves(stubPublicFolders);
 				stub(arfsDao, 'getPublicFilesWithParentFolderIds').callsFake(async (searchFolderIDs) =>
 					stubFileEntities.filter((entity) =>
@@ -630,7 +633,10 @@ describe('ArDrive class - integrated', () => {
 				];
 
 				// These stubbed drives have no snapshots → exercise the full-replay path.
-				stub(arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> }, 'fetchDriveSnapshotsWithBodies').resolves(null);
+				stub(
+					arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> },
+					'fetchDriveSnapshotsWithBodies'
+				).resolves(null);
 				stub(arfsDao, 'getAllFoldersOfPrivateDrive').resolves(stubFolderEntities);
 				stub(arfsDao, 'getPrivateFilesWithParentFolderIds').callsFake(async (searchFolderIDs) =>
 					stubFileEntities.filter((entity) =>

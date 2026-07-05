@@ -36,7 +36,12 @@ function node(params: {
 	} as unknown as GQLNodeInterface;
 }
 
-function snapshot(blockStart: number, blockEnd: number, txId: string, txSnapshots: SnapshotData['txSnapshots']): SnapshotWithBody {
+function snapshot(
+	blockStart: number,
+	blockEnd: number,
+	txId: string,
+	txSnapshots: SnapshotData['txSnapshots']
+): SnapshotWithBody {
 	return { blockStart, blockEnd, txId: TxID(txId.padEnd(43, 'a')), data: { txSnapshots } };
 }
 
@@ -90,7 +95,11 @@ describe('DriveHistoryComposite', () => {
 
 	describe('buildDriveHistoryComposite', () => {
 		it('returns an all-live tail and no nodes for empty snapshots', () => {
-			const result = buildDriveHistoryComposite({ snapshotsNewestFirst: [], owner: ADDR(OWNER), isPrivate: false });
+			const result = buildDriveHistoryComposite({
+				snapshotsNewestFirst: [],
+				owner: ADDR(OWNER),
+				isPrivate: false
+			});
 			expect(result.snapshotNodes).to.deep.equal([]);
 			expect(result.metadataCache).to.deep.equal([]);
 			expect(bounds(result.claimed)).to.deep.equal([{ min: 0, max: undefined }]);
@@ -117,10 +126,16 @@ describe('DriveHistoryComposite', () => {
 
 		it('newest-snapshot-wins: entities of a fully-obscured older snapshot are dropped', () => {
 			const newer = snapshot(0, 100, 'snapNew', [
-				{ gqlNode: node({ id: 'new-file', entityType: 'file', entityId: 'f1', height: 40 }), jsonMetadata: '{"name":"new"}' }
+				{
+					gqlNode: node({ id: 'new-file', entityType: 'file', entityId: 'f1', height: 40 }),
+					jsonMetadata: '{"name":"new"}'
+				}
 			]);
 			const older = snapshot(0, 50, 'snapOld', [
-				{ gqlNode: node({ id: 'old-file', entityType: 'file', entityId: 'f1', height: 40 }), jsonMetadata: '{"name":"old"}' }
+				{
+					gqlNode: node({ id: 'old-file', entityType: 'file', entityId: 'f1', height: 40 }),
+					jsonMetadata: '{"name":"old"}'
+				}
 			]);
 			// Newest-first order.
 			const result = buildDriveHistoryComposite({
@@ -135,12 +150,21 @@ describe('DriveHistoryComposite', () => {
 		it('splits ownership at the segment boundary of an overlap', () => {
 			// newer owns [51,100], older owns [0,50].
 			const newer = snapshot(51, 100, 'snapNew', [
-				{ gqlNode: node({ id: 'new-in', entityType: 'file', entityId: 'f1', height: 60 }), jsonMetadata: '{"n":1}' },
+				{
+					gqlNode: node({ id: 'new-in', entityType: 'file', entityId: 'f1', height: 60 }),
+					jsonMetadata: '{"n":1}'
+				},
 				// A body row below the owned range must be ignored (obscured to older).
-				{ gqlNode: node({ id: 'new-below', entityType: 'file', entityId: 'f2', height: 20 }), jsonMetadata: '{"n":2}' }
+				{
+					gqlNode: node({ id: 'new-below', entityType: 'file', entityId: 'f2', height: 20 }),
+					jsonMetadata: '{"n":2}'
+				}
 			]);
 			const older = snapshot(0, 50, 'snapOld', [
-				{ gqlNode: node({ id: 'old-in', entityType: 'file', entityId: 'f3', height: 20 }), jsonMetadata: '{"n":3}' }
+				{
+					gqlNode: node({ id: 'old-in', entityType: 'file', entityId: 'f3', height: 20 }),
+					jsonMetadata: '{"n":3}'
+				}
 			]);
 			const result = buildDriveHistoryComposite({
 				snapshotsNewestFirst: [newer, older],
@@ -183,9 +207,18 @@ describe('DriveHistoryComposite', () => {
 			const result = buildDriveHistoryComposite({
 				snapshotsNewestFirst: [
 					snapshot(0, 100, 'snapA', [
-						{ gqlNode: node({ id: 'drive-tx', entityType: 'drive', entityId: 'd1', height: 10 }), jsonMetadata: '{}' },
-						{ gqlNode: node({ id: 'snap-tx', entityType: 'snapshot', entityId: 's1', height: 10 }), jsonMetadata: '{}' },
-						{ gqlNode: node({ id: 'folder-tx', entityType: 'folder', entityId: 'fo1', height: 10 }), jsonMetadata: '{"name":"root"}' }
+						{
+							gqlNode: node({ id: 'drive-tx', entityType: 'drive', entityId: 'd1', height: 10 }),
+							jsonMetadata: '{}'
+						},
+						{
+							gqlNode: node({ id: 'snap-tx', entityType: 'snapshot', entityId: 's1', height: 10 }),
+							jsonMetadata: '{}'
+						},
+						{
+							gqlNode: node({ id: 'folder-tx', entityType: 'folder', entityId: 'fo1', height: 10 }),
+							jsonMetadata: '{"name":"root"}'
+						}
 					])
 				],
 				owner: ADDR(OWNER),
@@ -198,7 +231,10 @@ describe('DriveHistoryComposite', () => {
 			const result = buildDriveHistoryComposite({
 				snapshotsNewestFirst: [
 					snapshot(0, 100, 'snapA', [
-						{ gqlNode: node({ id: 'no-meta', entityType: 'file', entityId: 'f1', height: 50 }), jsonMetadata: null }
+						{
+							gqlNode: node({ id: 'no-meta', entityType: 'file', entityId: 'f1', height: 50 }),
+							jsonMetadata: null
+						}
 					])
 				],
 				owner: ADDR(OWNER),
@@ -236,7 +272,10 @@ describe('DriveHistoryComposite', () => {
 			const result = buildDriveHistoryComposite({
 				snapshotsNewestFirst: [
 					snapshot(100, 50, 'badSnap', [
-						{ gqlNode: node({ id: 'x', entityType: 'file', entityId: 'f1', height: 60 }), jsonMetadata: '{}' }
+						{
+							gqlNode: node({ id: 'x', entityType: 'file', entityId: 'f1', height: 60 }),
+							jsonMetadata: '{}'
+						}
 					])
 				],
 				owner: ADDR(OWNER),

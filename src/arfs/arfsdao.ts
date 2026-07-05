@@ -2783,7 +2783,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					owner,
 					latestRevisionsOnly: true,
 					driveKey
-			  });
+				});
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);

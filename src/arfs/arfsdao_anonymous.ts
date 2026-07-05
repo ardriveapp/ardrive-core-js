@@ -636,7 +636,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 					driveId: driveIdOfFolder,
 					owner,
 					latestRevisionsOnly: true
-			  });
+				});
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
