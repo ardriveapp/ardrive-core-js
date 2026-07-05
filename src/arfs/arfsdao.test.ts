@@ -22,10 +22,11 @@ import {
 	stubPublicFolderMetaDataTx,
 	stubRootFolderMetaData,
 	stubTxID,
+	stubTxIDAlt,
 	stubSmallFileToUpload,
 	stubSignedTransaction
 } from '../../tests/stubs';
-import { DriveKey, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
+import { DriveKey, EID, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
 import { readJWKFile, BufferToString } from '../utils/common';
 import {
 	ArFSCache,
@@ -36,8 +37,10 @@ import {
 } from './arfsdao';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
+import { ArFSPrivateFileBuilder } from './arfs_builders/arfs_file_builders';
+import { InvalidFileStateException } from '../types/exceptions';
 import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache, defaultCacheParams } from './arfsdao_anonymous';
-import { stub } from 'sinon';
+import { stub, SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
@@ -546,6 +549,162 @@ describe('The ArFSDAO class', () => {
 			// 		cachedFile
 			// 	);
 			// });
+		});
+	});
+
+	describe('getPrivateFilesWithParentFolderIds', () => {
+		// CORE-6 regression coverage: a single broken/undecryptable private file must not
+		// abort the whole private-drive listing. This mirrors the graceful skip that the
+		// public file-listing path (getPublicFilesWithParentFolderIds) already has.
+		const fileId1 = '9f7038c7-26bd-4856-a843-8de24b828d4e';
+		const fileId2 = '1f7038c7-26bd-4856-a843-8de24b828d4e';
+		const parentFolderId = EID('6c312b3e-4778-4a18-8243-f2b346f5e7cb');
+		const listDriveId = EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
+
+		const buildFileEdge = (txId: string, fileId: string, cursor: string) => ({
+			cursor,
+			node: {
+				id: txId,
+				tags: [
+					{ name: 'App-Name', value: 'ArDrive-CLI' },
+					{ name: 'App-Version', value: '1.2.0' },
+					{ name: 'ArFS', value: '0.15' },
+					{ name: 'Content-Type', value: 'application/octet-stream' },
+					{ name: 'Cipher', value: 'AES256-GCM' },
+					{ name: 'Cipher-IV', value: 'stubIV' },
+					{ name: 'Drive-Id', value: `${listDriveId}` },
+					{ name: 'Entity-Type', value: 'file' },
+					{ name: 'Unix-Time', value: '1639073846' },
+					{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+					{ name: 'File-Id', value: fileId }
+				],
+				owner: { address: `${stubArweaveAddress()}` }
+			}
+		});
+
+		let gqlRequestStub: SinonStub | undefined;
+		let buildStub: SinonStub | undefined;
+
+		afterEach(() => {
+			gqlRequestStub?.restore();
+			buildStub?.restore();
+			gqlRequestStub = undefined;
+			buildStub = undefined;
+		});
+
+		it('skips a private file that fails to decrypt/parse (SyntaxError) and still returns the other files [CORE-6]', async () => {
+			// Assign the bare stub first (widening to SinonStub) so .resolves() accepts the
+			// partial GQL fixture, mirroring the public-path test in arfsdao_anonymous.test.ts.
+			gqlRequestStub = stub(fakeGatewayApi, 'gqlRequest');
+			gqlRequestStub.resolves({
+				edges: [
+					buildFileEdge(`${stubTxID}`, fileId1, 'cursor1'),
+					buildFileEdge(`${stubTxIDAlt}`, fileId2, 'cursor2')
+				],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const goodFile = await stubPrivateFile({ fileId: EID(fileId1), parentFolderId, driveId: listDriveId });
+
+			// build() is invoked in edge order. Simulate the live failure mode: the first
+			// (good) file builds normally; the second file's data fails to decrypt, so
+			// fileDecrypt() returns the "Error" sentinel buffer and JSON.parse() throws a
+			// SyntaxError inside the builder.
+			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build');
+			buildStub.onFirstCall().resolves(goodFile);
+			buildStub.onSecondCall().rejects(new SyntaxError(`Unexpected token 'E', "Error" is not valid JSON`));
+
+			const files = await arfsDao.getPrivateFilesWithParentFolderIds(
+				[parentFolderId],
+				stubDriveKey,
+				stubArweaveAddress(),
+				listDriveId,
+				true
+			);
+
+			// The listing completes (does NOT throw) and returns the healthy file, the broken one skipped.
+			expect(files).to.have.lengthOf(1);
+			expect(`${files[0].fileId}`).to.equal(fileId1);
+		});
+
+		it('does not mask genuine failures — a non-decryption/non-validation error still propagates [CORE-6]', async () => {
+			gqlRequestStub = stub(fakeGatewayApi, 'gqlRequest');
+			gqlRequestStub.resolves({
+				edges: [buildFileEdge(`${stubTxID}`, fileId1, 'cursor1')],
+				pageInfo: { hasNextPage: false }
+			});
+
+			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build').rejects(
+				new Error('unexpected gateway failure')
+			);
+
+			await expectAsyncErrorThrow({
+				promiseToError: arfsDao.getPrivateFilesWithParentFolderIds(
+					[parentFolderId],
+					stubDriveKey,
+					stubArweaveAddress(),
+					listDriveId,
+					true
+				),
+				errorMessage: 'unexpected gateway failure'
+			});
+		});
+
+		// Node identical to buildFileEdge() but with the `Cipher` tag omitted — reproduces the
+		// live CORE-6 root cause: legacy private file metadata entities that lack the Cipher tag.
+		const missingCipherNode = () => ({
+			id: `${stubTxID}`,
+			tags: [
+				{ name: 'App-Name', value: 'ArDrive-CLI' },
+				{ name: 'App-Version', value: '1.2.0' },
+				{ name: 'ArFS', value: '0.15' },
+				{ name: 'Content-Type', value: 'application/octet-stream' },
+				// NOTE: no 'Cipher' tag on purpose
+				{ name: 'Cipher-IV', value: 'stubIV' },
+				{ name: 'Drive-Id', value: `${listDriveId}` },
+				{ name: 'Entity-Type', value: 'file' },
+				{ name: 'Unix-Time', value: '1639073846' },
+				{ name: 'Parent-Folder-Id', value: `${parentFolderId}` },
+				{ name: 'File-Id', value: fileId1 }
+			],
+			owner: { address: `${stubArweaveAddress()}` }
+		});
+
+		it('builder throws a descriptive InvalidFileStateException (not a plain Error) for a private file missing the Cipher tag [CORE-6]', async () => {
+			// Exercises the REAL builder (no stubbing) — the fix converts the plain
+			// Error('Invalid file state') fall-through into InvalidFileStateException['cipher'].
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const node = missingCipherNode() as any;
+			const builder = ArFSPrivateFileBuilder.fromArweaveNode(node, fakeGatewayApi, stubDriveKey);
+
+			let caught: unknown;
+			try {
+				await builder.build(node);
+			} catch (e) {
+				caught = e;
+			}
+			expect(caught, 'expected build() to throw').to.be.instanceOf(InvalidFileStateException);
+			expect((caught as InvalidFileStateException).missingProperties).to.deep.equal(['cipher']);
+		});
+
+		it('skips a private file that is missing the Cipher tag and completes the listing [CORE-6]', async () => {
+			// End-to-end through the REAL builder: the incomplete entity is skipped by the
+			// listing path's InvalidFileStateException catch instead of aborting the drive.
+			gqlRequestStub = stub(fakeGatewayApi, 'gqlRequest');
+			gqlRequestStub.resolves({
+				edges: [{ cursor: 'cursor1', node: missingCipherNode() }],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const files = await arfsDao.getPrivateFilesWithParentFolderIds(
+				[parentFolderId],
+				stubDriveKey,
+				stubArweaveAddress(),
+				listDriveId,
+				true
+			);
+
+			expect(files).to.have.lengthOf(0);
 		});
 	});
 

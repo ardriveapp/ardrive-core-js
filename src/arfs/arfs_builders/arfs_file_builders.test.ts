@@ -97,9 +97,13 @@ describe('ArFSPublicFileBuilder', () => {
 			gatewayApi
 		);
 
+		// CORE-6: a file missing a required top-level property now throws a descriptive
+		// InvalidFileStateException (naming the missing property) instead of a plain Error,
+		// so the file-listing paths can skip it rather than aborting the whole drive listing.
 		await expectAsyncErrorThrow({
 			promiseToError: builder.build(stubNodeWithoutEntityType as GQLNodeInterface),
-			errorMessage: 'Invalid file state'
+			errorType: 'InvalidFileStateException',
+			errorMessage: 'Invalid file state. Missing required properties: entityType'
 		});
 	});
 });
@@ -196,9 +200,12 @@ describe('ArFSPrivateFileBuilder', () => {
 			driveKeyForStubPrivateFile
 		);
 
+		// CORE-6: descriptive InvalidFileStateException instead of a plain Error so the
+		// private file-listing path can skip an incomplete entity (see arfsdao CORE-6 tests).
 		await expectAsyncErrorThrow({
 			promiseToError: builder.build(stubNodeWithoutEntityType as GQLNodeInterface),
-			errorMessage: 'Invalid file state'
+			errorType: 'InvalidFileStateException',
+			errorMessage: 'Invalid file state. Missing required properties: entityType'
 		});
 	});
 });
