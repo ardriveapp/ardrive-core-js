@@ -89,7 +89,8 @@ export abstract class ArFSEntityMetaDataPrototype extends ArFSObjectMetadataProt
 		super(customMetaDataTags);
 
 		// Get the current time so the app can display the "created" data later on
-		this.unixTime = new UnixTime(Date.now());
+		// Unix-Time tag expects "seconds since unix epoch" per ArFS spec
+		this.unixTime = new UnixTime(Math.floor(Date.now() / 1000));
 	}
 
 	protected get protectedTags(): GQLTagInterface[] {

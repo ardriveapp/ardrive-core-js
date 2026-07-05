@@ -64,14 +64,24 @@ import {
 import { FolderHierarchy } from './folder_hierarchy';
 
 import {
-	ArFSAnonymousCache,
 	ArFSDAOAnonymous,
+	ArFSAnonymousCache,
 	ArFSPublicDriveCacheKey,
 	ArFSPublicFolderCacheKey,
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
 import { ArFSDAOAnonymousIncrementalSync } from './arfsdao_anonymous_incremental_sync';
+import { IArFSDAO } from './iarfsdao';
+import { PromiseCache } from '@ardrive/ardrive-promise-cache';
+import {
+	NameConflictInfo,
+	entityToNameMap,
+	fileConflictInfoMap,
+	folderToNameAndIdMap
+} from '../utils/mapper_functions';
+import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
+import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
@@ -102,18 +112,13 @@ import {
 	UploadStats
 } from '../types';
 import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
-import {
-	entityToNameMap,
-	NameConflictInfo,
-	fileConflictInfoMap,
-	folderToNameAndIdMap
-} from '../utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
 import { Wallet } from '../wallet';
+import { ArFSTagSettings } from './arfs_tag_settings';
+import { ArFSTagAssembler } from './tags/tag_assembler';
+import { TxPreparer } from './tx/tx_preparer';
 import { JWKWallet } from '../jwk_wallet';
-import { PromiseCache } from '@ardrive/ardrive-promise-cache';
-
-import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
+import { ArweaveSigner } from '@dha-team/arbundles';
+import { Turbo } from './turbo';
 import {
 	ArFSPrepareFolderParams,
 	ArFSPrepareFolderResult,
@@ -137,6 +142,10 @@ import {
 	ArFSRenamePublicDriveParams,
 	ArFSRenamePublicFolderParams,
 	ArFSRenamePrivateFileParams,
+	ArFSHidePublicFileParams,
+	ArFSHidePrivateFileParams,
+	ArFSHidePublicFolderParams,
+	ArFSHidePrivateFolderParams,
 	ArFSPrepareFileParams,
 	ArFSPrepareFileResult,
 	CommunityTipSettings,
@@ -163,12 +172,11 @@ import { join as joinPath } from 'path';
 import { StreamDecrypt } from '../utils/stream_decrypt';
 import { CipherIVQueryResult } from '../types/cipher_iv_query_result';
 import { alphabeticalOrder } from '../utils/sort_functions';
-import { gatewayUrlForArweave } from '../utils/common';
+import { gatewayUrlForArweave } from '../utils/common_browser';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
-import { ArFSTagSettings } from './arfs_tag_settings';
+// Re-export ArFSTagSettings so incremental-sync DAOs can import it from './arfsdao'
 export { ArFSTagSettings } from './arfs_tag_settings';
-import { TxPreparer } from './tx/tx_preparer';
 import {
 	ArFSPublicFolderTransactionData,
 	ArFSPublicDriveTransactionData,
@@ -177,21 +185,14 @@ import {
 	ArFSPublicFileMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData
 } from './tx/arfs_tx_data_types';
-import { ArFSTagAssembler } from './tags/tag_assembler';
 import { assertDataRootsMatch, rePrepareV2Tx } from '../utils/arfsdao_utils';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
-import {
-	ArFSDataToUpload,
-	ArFSFolderToUpload,
-	DriveKey,
-	DrivePrivacy,
-	DriveSignatureInfo,
-	DriveSignatureType,
-	errorMessage,
-	parseDriveSignatureType
-} from '../exports';
-import { Turbo } from './turbo';
-import { ArweaveSigner } from '@dha-team/arbundles';
+import { ArFSDataToUpload, ArFSFolderToUpload } from './arfs_file_wrapper';
+import { DriveKey } from '../types/entity_key';
+import { DrivePrivacy } from '../types/type_guards';
+import { DriveSignatureInfo, DriveSignatureType } from '../types/types';
+import { errorMessage } from '../utils/error_message';
+import { parseDriveSignatureType } from '../utils/common_browser';
 import { InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
@@ -237,12 +238,26 @@ export interface ArFSCache extends ArFSAnonymousCache {
 	privateConflictCache: PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>;
 }
 
-export class ArFSDAO extends ArFSDAOAnonymous {
+/**
+ * Throws a clear "drive not found" error when a drive GQL query returns zero edges,
+ * so callers get an actionable message instead of a `TypeError` from `edges[0]`.
+ */
+function assertDriveEdgesFound(driveId: DriveID, edges: GQLEdgeInterface[]): void {
+	if (!edges.length) {
+		throw new Error(
+			`Drive with Drive-Id "${driveId}" not found (check the drive id and that the owner address is correct)`
+		);
+	}
+}
+
+export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
+	private readonly signer?: ArweaveSigner;
+
 	// TODO: Can we abstract Arweave type(s)?
 	public readonly anonymousIncSync?: ArFSDAOAnonymousIncrementalSync;
 
 	constructor(
-		private readonly wallet: Wallet,
+		private readonly wallet: Wallet | undefined,
 		arweave: Arweave,
 		private readonly dryRun = false,
 		/** @deprecated App Name should be provided with ArFSTagSettings  */
@@ -259,9 +274,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			privateConflictCache: new PromiseCache<ArFSPrivateFolderCacheKey, NameConflictInfo>(defaultCacheParams)
 		},
 		protected gatewayApi = new GatewayAPI({ gatewayUrl: gatewayUrlForArweave(arweave) }),
+		signer?: ArweaveSigner, // Optional: for browser, use directly
 		protected txPreparer = new TxPreparer({
 			arweave: arweave,
-			wallet: wallet as JWKWallet,
+			wallet: wallet as JWKWallet | undefined,
+			signer: signer,
 			arFSTagAssembler: new ArFSTagAssembler(arFSTagSettings)
 		}),
 		protected turbo = new Turbo({
@@ -271,9 +288,10 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		})
 	) {
 		super(arweave, undefined, undefined, caches);
+		this.signer = signer;
 
-		// Initialize anonymous incremental sync instance only if caches support it
-		// This will be set by ArFSDAOIncrementalSync subclass
+		// The anonymousIncSync instance (declared above) is populated by the
+		// ArFSDAOIncrementalSync subclass when incremental sync is configured.
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
@@ -300,12 +318,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		folderPrototypeFactory: ArFSFolderPrototypeFactory,
 		rewardSettings: RewardSettings
 	): Promise<ArFSCreateFolderResult> {
-		const { arFSObjects, folderId } = await this.prepareFolder({
+		const { arFSObjects, folderId } = await this.prepareFolder<Transaction>({
 			folderPrototypeFactory,
-			prepareArFSObject: (folderMetaData) =>
+			prepareArFSObject: (folderMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataTx({ objectMetaData: folderMetaData, rewardSettings })
 		});
-		const folderTx = arFSObjects[0];
+		const folderTx = arFSObjects[0] as Transaction;
 
 		await this.sendTransactionsAsChunks([folderTx]);
 
@@ -367,11 +385,11 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		const driveId = generateDriveIdFn();
 
 		// Create ArFS root folder object
-		const { arFSObjects, folderId: rootFolderId } = await this.prepareFolder({
-			folderPrototypeFactory: (folderId) => rootFolderPrototypeFactory(folderId, driveId),
+		const { arFSObjects, folderId: rootFolderId } = await this.prepareFolder<T>({
+			folderPrototypeFactory: (folderId: FolderID) => rootFolderPrototypeFactory(folderId, driveId),
 			prepareArFSObject
 		});
-		const rootFolderArFSObject = arFSObjects[0];
+		const rootFolderArFSObject = arFSObjects[0] as T;
 
 		// Create ArFS drive object
 		const driveMetaData = await drivePrototypeFactory(driveId, rootFolderId);
@@ -443,7 +461,13 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	private async makeBdi(dataItems: DataItem[]): Promise<DataItem> {
-		const signer = new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey());
+		// Use provided signer, or create from wallet
+		const signer =
+			this.signer || (this.wallet ? new ArweaveSigner((this.wallet as JWKWallet).getPrivateKey()) : undefined);
+		if (!signer) {
+			throw new Error('Either wallet or signer must be provided to create bundles');
+		}
+
 		const bundle = await bundleAndSignData(dataItems, signer);
 		const bdi = createData(bundle.getRaw(), signer, {
 			// baseBundleTags includes:  Bundle Format/Version, App Name/Version
@@ -457,19 +481,19 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	private async createDriveToTurbo(
 		sharedPrepDriveParams: PartialPrepareDriveParams
 	): Promise<ArFSCreateDriveToTurboResult> {
-		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive({
+		const { arFSObjects, driveId, rootFolderId } = await this.prepareDrive<DataItem>({
 			...sharedPrepDriveParams,
-			prepareArFSObject: (objectMetaData) =>
+			prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData
 				})
 		});
 
-		const bdi = await this.makeBdi(arFSObjects);
+		const bdi = await this.makeBdi(arFSObjects as DataItem[]);
 
 		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(bdi);
 
-		const [rootFolderDataItem, driveDataItem] = arFSObjects;
+		const [rootFolderDataItem, driveDataItem] = arFSObjects as DataItem[];
 
 		return {
 			driveId,
@@ -1082,12 +1106,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 				...uploadStats,
 				wrappedEntity: uploadStats.wrappedEntity
 			}),
-			prepareArFSObject: (objectMetaData) =>
+			prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 				this.txPreparer.prepareMetaDataDataItem({
 					objectMetaData
 				})
 		});
-		const folderDataItem = arFSObjects[0];
+		const folderDataItem = arFSObjects[0] as DataItem;
 		const { dataCaches, fastFinalityIndexes } = await this.turbo.sendDataItem(folderDataItem);
 		return {
 			entityId: folderId,
@@ -1253,17 +1277,17 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					}
 
 					// Prepare folder data item and results
-					const { arFSObjects, folderId } = await this.prepareFolder({
+					const { arFSObjects, folderId } = await this.prepareFolder<DataItem>({
 						folderPrototypeFactory: await getPrepFolderFactoryParams({
 							...uploadStat,
 							wrappedEntity
 						}),
-						prepareArFSObject: (objectMetaData) =>
+						prepareArFSObject: (objectMetaData: ArFSEntityMetaDataPrototype) =>
 							this.txPreparer.prepareMetaDataDataItem({
 								objectMetaData
 							})
 					});
-					const folderDataItem = arFSObjects[0];
+					const folderDataItem = arFSObjects[0] as DataItem;
 
 					dataItems.push(folderDataItem);
 					currentBundleResults.folderResults.push({
@@ -1508,6 +1532,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		});
 
 		const driveTransactions = await this.gatewayApi.gqlRequest(gqlDriveQuery);
+
+		assertDriveEdgesFound(driveId, driveTransactions.edges);
 
 		const drivePrivacyFromTag = driveTransactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
@@ -1922,6 +1948,8 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 
 		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
+		assertDriveEdgesFound(driveId, transactions.edges);
+
 		const drivePrivacyFromTag = transactions.edges[0].node.tags.find(
 			(t) => t.name === gqlTagNameRecord.drivePrivacy
 		);
@@ -2049,6 +2077,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async assertValidPassword(password: string): Promise<void> {
+		if (!this.wallet) {
+			throw new Error('Wallet is required for password validation');
+		}
 		const wallet = this.wallet;
 		const walletAddress = await wallet.getAddress();
 		const query = buildQuery({
@@ -2090,6 +2121,9 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 	}
 
 	async getCipherIVOfPrivateTransactionIDs(txIDs: TransactionID[]): Promise<CipherIVQueryResult[]> {
+		if (!this.wallet) {
+			throw new Error('Wallet is required for fetching private transaction CipherIVs');
+		}
 		const result: CipherIVQueryResult[] = [];
 		const wallet = this.wallet;
 		const walletAddress = await wallet.getAddress();
@@ -2311,6 +2345,157 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 		};
 	}
 
+	// Hide/unhide: writes a new metadata revision that only flips `isHidden`. Structurally a no-op
+	// rename — the entity's name, size, dataTxId and (critically) lastModifiedDate are re-written
+	// unchanged, so downstream edit-detection that keys on lastModifiedDate sees no change.
+	public async hidePublicFile({
+		file,
+		isHidden,
+		metadataRewardSettings
+	}: ArFSHidePublicFileParams): Promise<ArFSRenamePublicFileResult> {
+		const entityId = file.fileId;
+		const objectMetaData = new ArFSPublicFileMetaDataPrototype(
+			new ArFSPublicFileMetadataTransactionData(
+				file.name,
+				file.size,
+				file.lastModifiedDate,
+				file.dataTxId,
+				file.dataContentType,
+				file.customMetaDataJson,
+				isHidden
+			),
+			file.driveId,
+			entityId,
+			file.parentFolderId,
+			file.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFileId(entityId);
+		this.caches.publicFileCache.remove({ fileId: entityId, owner });
+
+		return {
+			entityId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePrivateFile({
+		file,
+		isHidden,
+		metadataRewardSettings,
+		driveKey
+	}: ArFSHidePrivateFileParams): Promise<ArFSRenamePrivateFileResult> {
+		const entityId = file.fileId;
+		const objectMetaData = new ArFSPrivateFileMetaDataPrototype(
+			await ArFSPrivateFileMetadataTransactionData.from(
+				file.name,
+				file.size,
+				file.lastModifiedDate,
+				file.dataTxId,
+				file.dataContentType,
+				entityId,
+				driveKey,
+				file.customMetaDataJson,
+				isHidden
+			),
+			file.driveId,
+			entityId,
+			file.parentFolderId,
+			file.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFileId(entityId);
+		this.caches.privateFileCache.remove({ fileId: entityId, fileKey: file.fileKey, owner });
+
+		return {
+			entityId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			fileKey: file.fileKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePublicFolder({
+		folder,
+		isHidden,
+		metadataRewardSettings
+	}: ArFSHidePublicFolderParams): Promise<ArFSRenamePublicFolderResult> {
+		const objectMetaData = new ArFSPublicFolderMetaDataPrototype(
+			new ArFSPublicFolderTransactionData(folder.name, folder.customMetaDataJson, isHidden),
+			folder.driveId,
+			folder.entityId,
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
+		this.caches.publicFolderCache.remove({ folderId: folder.entityId, owner });
+
+		return {
+			entityId: folder.folderId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	public async hidePrivateFolder({
+		folder,
+		isHidden,
+		metadataRewardSettings,
+		driveKey
+	}: ArFSHidePrivateFolderParams): Promise<ArFSRenamePrivateFolderResult> {
+		const objectMetaData = new ArFSPrivateFolderMetaDataPrototype(
+			folder.driveId,
+			folder.entityId,
+			await ArFSPrivateFolderTransactionData.from(folder.name, driveKey, folder.customMetaDataJson, isHidden),
+			folder.parentFolderId,
+			folder.customMetaDataGqlTags
+		);
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			objectMetaData,
+			metadataRewardSettings
+		);
+
+		// Invalidate any cached entry
+		const owner = await this.getDriveOwnerForFolderId(folder.entityId);
+		this.caches.privateFolderCache.remove({ folderId: folder.entityId, owner, driveKey });
+
+		return {
+			entityId: folder.folderId,
+			metaDataTxId: id,
+			metaDataTxReward: metadataRewardSettings?.reward,
+			driveKey,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
 	public async renamePublicDrive({
 		drive,
 		newName,
@@ -2474,12 +2659,16 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 			);
 		}
 
+		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
+		// Keep only the latest revision (highest unixTime) for each unique fileId
+		const uniqueFiles = childFiles.filter(latestRevisionFilter);
+
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);
 		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>
 			subFolderIDs.some((folderId) => `${folderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */)
 		);
 
-		return { hierarchy, childFiles, childFolders };
+		return { hierarchy, childFiles: uniqueFiles, childFolders };
 	}
 
 	getManifestLinks(dataTxId: TransactionID, manifest: ArFSManifestToUpload): string[] {

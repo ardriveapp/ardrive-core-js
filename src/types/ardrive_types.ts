@@ -277,6 +277,21 @@ export interface RenamePublicDriveParams {
 
 export type RenamePrivateDriveParams = RenamePublicDriveParams & WithDriveKey;
 
+// Hide/unhide: writes a new metadata revision that flips the entity's `isHidden` flag.
+// Structurally a no-op rename (name and lastModifiedDate are preserved). Mirrors ardrive-web.
+// NOTE: drive-level hide is intentionally deferred (see CORE-4); file/folder scope only.
+export interface HidePublicFileParams {
+	fileId: FileID;
+}
+
+export type HidePrivateFileParams = HidePublicFileParams & WithDriveKey;
+
+export interface HidePublicFolderParams {
+	folderId: FolderID;
+}
+
+export type HidePrivateFolderParams = HidePublicFolderParams & WithDriveKey;
+
 export interface BasePublicFileRetryParams {
 	wrappedFile: ArFSFileToUpload;
 	dataTxId: TransactionID;

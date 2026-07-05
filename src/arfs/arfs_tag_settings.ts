@@ -13,30 +13,41 @@ interface ArFSTagSettingsParams {
 	appName?: string;
 	appVersion?: string;
 	arFSVersion?: string;
+	appPlatform?: string;
 }
 
 export class ArFSTagSettings {
 	private readonly appName: string;
 	private readonly appVersion: string;
 	private readonly arFSVersion: string;
+	private readonly appPlatform?: string;
 
 	public static protectedArFSGqlTagNames = gqlTagNameArray;
 
 	constructor({
 		appName = DEFAULT_APP_NAME,
 		appVersion = DEFAULT_APP_VERSION,
-		arFSVersion = CURRENT_ARFS_VERSION
+		arFSVersion = CURRENT_ARFS_VERSION,
+		appPlatform
 	}: ArFSTagSettingsParams) {
 		this.appName = appName;
 		this.appVersion = appVersion;
 		this.arFSVersion = arFSVersion;
+		this.appPlatform = appPlatform;
 	}
 
 	public get baseAppTags(): GQLTagInterface[] {
-		return [
+		const tags: GQLTagInterface[] = [
 			{ name: 'App-Name', value: this.appName },
 			{ name: 'App-Version', value: this.appVersion }
 		];
+
+		// Add App-Platform tag if specified
+		if (this.appPlatform) {
+			tags.push({ name: 'App-Platform', value: this.appPlatform });
+		}
+
+		return tags;
 	}
 
 	public getBoostTags(feeMultiple: FeeMultiple): GQLTagInterface[] {

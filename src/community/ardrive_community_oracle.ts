@@ -9,7 +9,7 @@ import { SmartweaveContractReader } from './smartweave_contract_oracle';
 
 /**
  * Minimum ArDrive community tip from the Community Improvement Proposal Doc:
- * https://arweave.net/Yop13NrLwqlm36P_FDCdMaTBwSlj0sdNGAC4FqfRUgo
+ * https://ardrive.net/Yop13NrLwqlm36P_FDCdMaTBwSlj0sdNGAC4FqfRUgo
  */
 export const minArDriveCommunityWinstonTip = W(10_000_000);
 

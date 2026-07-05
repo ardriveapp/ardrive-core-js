@@ -1,7 +1,7 @@
-import { bundleAndSignData, createData, DataItem, ArweaveSigner } from '@dha-team/arbundles';
+import { bundleAndSignData, createData, DataItem, ArweaveSigner, type Signer } from '@dha-team/arbundles';
 import Arweave from 'arweave';
 import Transaction from 'arweave/node/lib/transaction';
-import { GQLTagInterface } from '../../exports';
+import { GQLTagInterface } from '../../types';
 import { JWKWallet } from '../../jwk_wallet';
 import { ArFSTagAssembler } from '../tags/tag_assembler';
 import { ArFSObjectTransactionData } from './arfs_tx_data_types';
@@ -19,15 +19,23 @@ import {
 
 export class TxPreparer {
 	private readonly arweave: Arweave;
-	private readonly wallet: JWKWallet;
-	private readonly signer: ArweaveSigner;
+	private readonly wallet?: JWKWallet;
+	private readonly signer: Signer;
 	private readonly tagAssembler: ArFSTagAssembler;
 
-	public constructor({ arweave, wallet, arFSTagAssembler }: TxPreparerParams) {
+	public constructor({ arweave, wallet, signer, arFSTagAssembler }: TxPreparerParams) {
 		this.arweave = arweave;
 		this.wallet = wallet;
 		this.tagAssembler = arFSTagAssembler;
-		this.signer = new ArweaveSigner(this.wallet.getPrivateKey());
+
+		// Use provided signer, or create from wallet
+		if (signer) {
+			this.signer = signer;
+		} else if (wallet) {
+			this.signer = new ArweaveSigner(wallet.getPrivateKey());
+		} else {
+			throw new Error('Either wallet or signer must be provided to TxPreparer');
+		}
 	}
 
 	public async prepareFileDataDataItem({ objectMetaData }: ArFSPrepareFileDataItemParams): Promise<DataItem> {
@@ -125,6 +133,12 @@ export class TxPreparer {
 	}
 
 	private async createAndSignTx(txAttributes: TxAttributesToAssemble, tags: GQLTagInterface[]): Promise<Transaction> {
+		if (!this.wallet) {
+			throw new Error(
+				'Wallet is required for creating Arweave transactions. Use DataItems with signer for browser compatibility.'
+			);
+		}
+
 		const transaction = await this.arweave.createTransaction(txAttributes.assemble(), this.wallet.getPrivateKey());
 
 		for (const tag of tags) {

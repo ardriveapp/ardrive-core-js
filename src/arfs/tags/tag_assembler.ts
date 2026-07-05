@@ -1,4 +1,4 @@
-import { FeeMultiple, GQLTagInterface } from '../../exports';
+import { FeeMultiple, GQLTagInterface } from '../../types';
 import { ArFSEntityMetaDataPrototype, ArFSFileDataPrototype, ArFSObjectMetadataPrototype } from '../tx/arfs_prototypes';
 import assertTagLimits from './tag_assertions';
 import { ArFSTagSettings } from '../arfs_tag_settings';
