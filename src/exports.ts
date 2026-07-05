@@ -57,3 +57,6 @@ export * from './utils/query';
 export * from './utils/sort_functions';
 export * from './utils/upload_conflict_resolution';
 export * from './utils/wallet_utils';
+
+// Snapshots (consumption foundation — CORE-3)
+export * from './snapshots';
