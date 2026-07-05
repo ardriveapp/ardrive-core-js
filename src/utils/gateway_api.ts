@@ -70,6 +70,26 @@ export class GatewayAPI {
 	private lastError = 'unknown error';
 	private lastRespStatus = 0;
 
+	/**
+	 * In-memory, per-instance metadata cache populated by the snapshot-accelerated
+	 * listing path. A snapshot body embeds each captured entity's metadata bytes,
+	 * so seeding this cache lets the entity builders resolve metadata WITHOUT any
+	 * network data-tx GET (mirrors ardrive-web's snapshot "cache-before-fetch"
+	 * handoff in `arweave_service.dart`). For public drives the bytes are plaintext
+	 * JSON; for private drives they are the raw on-chain ciphertext (the builder
+	 * still decrypts them with the drive key, exactly like a network-fetched tx).
+	 *
+	 * It is scoped to this GatewayAPI instance (i.e. per drive-listing operation),
+	 * checked BEFORE the persistent on-disk {@link ArFSMetadataCache}, and is a
+	 * no-op when empty — so it never changes behavior for the non-snapshot path.
+	 */
+	private snapshotMetadataCache = new Map<string, Buffer>();
+
+	/** Seed the in-memory metadata cache with an entity's metadata bytes (from a snapshot body). */
+	public cacheMetadataForTxId(txId: TransactionID, data: Buffer): void {
+		this.snapshotMetadataCache.set(`${txId}`, data);
+	}
+
 	public async postChunk(chunk: Chunk): Promise<void> {
 		await this.postToEndpoint('chunk', chunk);
 	}
@@ -132,6 +152,12 @@ export class GatewayAPI {
 	 * @remarks Will use data from `ArFSMetadataCache` if it exists and will cache any fetched data
 	 * */
 	public async getTxData(txId: TransactionID): Promise<Buffer> {
+		// Snapshot-seeded in-memory cache first: a hit here means the metadata came
+		// from a snapshot body and no network fetch (nor even a disk read) is needed.
+		const snapshotCached = this.snapshotMetadataCache.get(`${txId}`);
+		if (snapshotCached) {
+			return snapshotCached;
+		}
 		const cachedData = await ArFSMetadataCache.get(txId);
 		if (cachedData) {
 			return cachedData;

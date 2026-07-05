@@ -10,3 +10,4 @@ export * from './snapshot_tags';
 export * from './snapshot_types';
 export * from './snapshot_query';
 export * from './snapshot_data';
+export * from './drive_history_composite';
