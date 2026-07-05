@@ -64,6 +64,35 @@ describe('ArFSPublicFolderBuilder', () => {
 		expect(`${folderMetaData.parentFolderId}`).to.equal('b465883f-b400-4496-9dc5-7cd2a6ff234c');
 	});
 
+	// CORE-5: a real owner's public drive failed to list entirely, throwing
+	// "Unix time must be a positive integer!" because one folder entity carried a
+	// malformed Unix-Time tag. Building must degrade gracefully (clamp to epoch)
+	// so the entity still lists instead of aborting the whole drive reconstruction.
+	['-1638240951', '1.5', 'not-a-number', 'Infinity'].forEach((badUnixTime) => {
+		it(`builds a folder with clamped epoch time when Unix-Time tag is invalid ("${badUnixTime}")`, async () => {
+			const stubNodeWithBadUnixTime = {
+				...stubPublicFolderGQLNode,
+				tags: stubPublicFolderGQLNode.tags?.map((t) =>
+					t.name === 'Unix-Time' ? { name: 'Unix-Time', value: badUnixTime } : t
+				)
+			};
+			const builder = ArFSPublicFolderBuilder.fromArweaveNode(
+				stubNodeWithBadUnixTime as GQLNodeInterface,
+				gatewayApi
+			);
+			stub(builder, 'getDataForTxID').resolves(stubPublicFolderGetDataResult);
+
+			// Must NOT throw — the listing should complete for this entity
+			const folderMetaData = await builder.build(stubNodeWithBadUnixTime as GQLNodeInterface);
+
+			// Entity is preserved with a clamped epoch timestamp
+			expect(+folderMetaData.unixTime).to.equal(0);
+			// Other fields still parse correctly, proving the entity is not dropped
+			expect(`${folderMetaData.entityId}`).to.equal('6c312b3e-4778-4a18-8243-f2b346f5e7cb');
+			expect(folderMetaData.name).to.equal('build-react-app');
+		});
+	});
+
 	it('returns the expected gql tags', () => {
 		const builder = ArFSPublicFolderBuilder.fromArweaveNode(
 			stubPublicFolderGQLNode as GQLNodeInterface,
@@ -161,6 +190,30 @@ describe('ArFSPrivateFolderBuilder', () => {
 		// Verify that the data JSON field was successfully parsed
 		expect(folderMetaData.name).to.equal('drive-1');
 		expect(`${folderMetaData.parentFolderId}`).to.equal('root folder');
+	});
+
+	// CORE-5: same tolerance for private drives — one entity with a malformed
+	// Unix-Time tag must not abort the whole private drive listing.
+	it('builds a private folder with clamped epoch time when Unix-Time tag is invalid', async () => {
+		const stubNodeWithBadUnixTime = {
+			...stubPrivateFolderGQLNode,
+			tags: stubPrivateFolderGQLNode.tags?.map((t) =>
+				t.name === 'Unix-Time' ? { name: 'Unix-Time', value: '-1637266839' } : t
+			)
+		};
+		const builder = ArFSPrivateFolderBuilder.fromArweaveNode(
+			stubNodeWithBadUnixTime as GQLNodeInterface,
+			gatewayApi,
+			driveKeyForStubPrivateFolder
+		);
+		stub(builder, 'getDataForTxID').resolves(stubPrivateFolderGetDataResult);
+
+		// Must NOT throw — the entity is preserved with a clamped epoch timestamp
+		const folderMetaData = await builder.build(stubNodeWithBadUnixTime as GQLNodeInterface);
+
+		expect(+folderMetaData.unixTime).to.equal(0);
+		expect(`${folderMetaData.entityId}`).to.equal('dde0a0ef-6cd2-45d1-a9b0-97350d9fec21');
+		expect(folderMetaData.name).to.equal('drive-1');
 	});
 
 	it('fromArweaveNode method throws an error Folder-Id tag is missing', () => {
