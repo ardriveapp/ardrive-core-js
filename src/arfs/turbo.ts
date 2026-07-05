@@ -43,7 +43,7 @@ export class Turbo {
 	}
 
 	async sendDataItem(dataItem: DataItem): Promise<TurboUploadDataItemResponse> {
-		const defaultResponse = {
+		const defaultResponse: TurboUploadDataItemResponse = {
 			id: dataItem.id,
 			owner: dataItem.owner,
 			dataCaches: [],

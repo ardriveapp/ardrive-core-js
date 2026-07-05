@@ -71,6 +71,7 @@ import {
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
+import { ArFSDAOAnonymousIncrementalSync } from './arfsdao_anonymous_incremental_sync';
 import { IArFSDAO } from './iarfsdao';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import {
@@ -175,6 +176,8 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common_browser';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
+// Re-export ArFSTagSettings so incremental-sync DAOs can import it from './arfsdao'
+export { ArFSTagSettings } from './arfs_tag_settings';
 import {
 	ArFSPublicFolderTransactionData,
 	ArFSPublicDriveTransactionData,
@@ -252,6 +255,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	private readonly signer?: ArweaveSigner;
 
 	// TODO: Can we abstract Arweave type(s)?
+	public readonly anonymousIncSync?: ArFSDAOAnonymousIncrementalSync;
+
 	constructor(
 		private readonly wallet: Wallet | undefined,
 		arweave: Arweave,
@@ -285,6 +290,9 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	) {
 		super(arweave, undefined, undefined, caches);
 		this.signer = signer;
+
+		// The anonymousIncSync instance (declared above) is populated by the
+		// ArFSDAOIncrementalSync subclass when incremental sync is configured.
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';

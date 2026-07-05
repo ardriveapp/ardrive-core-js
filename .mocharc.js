@@ -10,5 +10,6 @@ module.exports = {
 	require: ['ts-node/register/transpile-only', 'source-map-support/register', 'tests/testSetup.ts'],
 	timeout: '5000',
 	parallel: true,
-	recursive: true
+	recursive: true,
+	exit: true // Force Mocha to exit after tests complete
 };

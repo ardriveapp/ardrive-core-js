@@ -13,10 +13,11 @@ const nodeFragment = `
 			name
 			value
 		}
-		${ownerFragment}
 		block {
 			height
+			timestamp
 		}
+		${ownerFragment}
 	}
 `;
 
@@ -51,11 +52,17 @@ export interface BuildGQLQueryParams {
 	/**
 	 * Optional inclusive lower block-height bound. Emitted as `block: { min }`.
 	 * Used by the snapshot-accelerated listing path to fetch only the "live
-	 * tail" of a drive's history (heights not covered by any snapshot).
+	 * tail" of a drive's history (heights not covered by any snapshot) [CORE-3].
 	 */
 	minBlockHeight?: number;
-	/** Optional inclusive upper block-height bound. Emitted as `block: { max }`. */
+	/** Optional inclusive upper block-height bound. Emitted as `block: { max }` [CORE-3]. */
 	maxBlockHeight?: number;
+	/** Incremental-sync lower block-height bound (alias of minBlockHeight) [CORE-2]. */
+	minBlock?: number;
+	/** Incremental-sync upper block-height bound (alias of maxBlockHeight) [CORE-2]. */
+	maxBlock?: number;
+	/** Incremental-sync page size override; defaults to pageLimit when unset [CORE-2]. */
+	first?: number;
 }
 
 /**
@@ -73,7 +80,10 @@ export function buildQuery({
 	sort = DESCENDING_ORDER,
 	ids,
 	minBlockHeight,
-	maxBlockHeight
+	maxBlockHeight,
+	minBlock,
+	maxBlock,
+	first
 }: BuildGQLQueryParams): GQLQuery {
 	let queryTags = ``;
 
@@ -84,12 +94,20 @@ export function buildQuery({
 
 	const singleResult = cursor === undefined;
 
+	// Block-height filter. The snapshot listing path (CORE-3) passes
+	// minBlockHeight/maxBlockHeight; the incremental-sync path (CORE-2) passes
+	// minBlock/maxBlock. They are aliases for the same GQL `block: { min, max }`
+	// filter and are never both set on one call, so coalesce them. The single
+	// join-based emitter reproduces the exact string both original paths emitted
+	// (`block: { min: X, max: Y }` / `block: { min: X }` / `block: { max: Y }`).
+	const effectiveMinBlock = minBlock ?? minBlockHeight;
+	const effectiveMaxBlock = maxBlock ?? maxBlockHeight;
 	const blockFilterParts: string[] = [];
-	if (minBlockHeight !== undefined) {
-		blockFilterParts.push(`min: ${minBlockHeight}`);
+	if (effectiveMinBlock !== undefined) {
+		blockFilterParts.push(`min: ${effectiveMinBlock}`);
 	}
-	if (maxBlockHeight !== undefined) {
-		blockFilterParts.push(`max: ${maxBlockHeight}`);
+	if (effectiveMaxBlock !== undefined) {
+		blockFilterParts.push(`max: ${effectiveMaxBlock}`);
 	}
 	const blockFilter = blockFilterParts.length ? `block: { ${blockFilterParts.join(', ')} }` : '';
 
@@ -97,7 +115,7 @@ export function buildQuery({
 		query: `query {
 			transactions(
 				${ids?.length ? `ids: [${ids.map((id) => `"${id}"`)}]` : ''}
-				first: ${singleResult ? latestResult : pageLimit}
+				first: ${singleResult ? latestResult : first !== undefined ? first : pageLimit}
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
 				${owner === undefined ? '' : `owners: ["${owner}"]`}
