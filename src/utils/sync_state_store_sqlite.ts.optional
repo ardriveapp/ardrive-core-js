@@ -1,0 +1,149 @@
+import { BaseSyncStateStore } from './sync_state_store';
+import type { Database } from 'better-sqlite3';
+
+/**
+ * SQLite based storage for robust local persistence
+ * Requires better-sqlite3 as a peer dependency
+ */
+export class SQLiteSyncStateStore extends BaseSyncStateStore {
+	private db: Database;
+
+	constructor(dbPath: string = '.ardrive-cache.db') {
+		super();
+		// Dynamic import to make it optional
+		const Database = require('better-sqlite3');
+		this.db = new Database(dbPath);
+		this.initializeSchema();
+	}
+
+	private initializeSchema(): void {
+		this.db.exec(`
+			CREATE TABLE IF NOT EXISTS sync_states (
+				key TEXT PRIMARY KEY,
+				data TEXT NOT NULL,
+				updated_at INTEGER NOT NULL,
+				drive_id TEXT NOT NULL,
+				last_synced_block INTEGER,
+				entity_count INTEGER
+			);
+			
+			CREATE INDEX IF NOT EXISTS idx_drive_id ON sync_states(drive_id);
+			CREATE INDEX IF NOT EXISTS idx_updated_at ON sync_states(updated_at);
+		`);
+	}
+
+	protected async saveRaw(key: string, data: string): Promise<void> {
+		// Extract some metadata for querying
+		let driveId = '';
+		let lastSyncedBlock = 0;
+		let entityCount = 0;
+		
+		try {
+			const parsed = JSON.parse(data);
+			driveId = parsed.driveId || '';
+			lastSyncedBlock = parsed.lastSyncedBlockHeight || 0;
+			entityCount = parsed.entityStates ? Object.keys(parsed.entityStates).length : 0;
+		} catch {
+			// If parsing fails, just use defaults
+		}
+
+		const stmt = this.db.prepare(`
+			INSERT OR REPLACE INTO sync_states (key, data, updated_at, drive_id, last_synced_block, entity_count)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`);
+		
+		stmt.run(key, data, Date.now(), driveId, lastSyncedBlock, entityCount);
+	}
+
+	protected async loadRaw(key: string): Promise<string | undefined> {
+		const stmt = this.db.prepare('SELECT data FROM sync_states WHERE key = ?');
+		const row = stmt.get(key) as { data: string } | undefined;
+		return row?.data;
+	}
+
+	protected async clearRaw(key: string): Promise<void> {
+		const stmt = this.db.prepare('DELETE FROM sync_states WHERE key = ?');
+		stmt.run(key);
+	}
+
+	protected async listKeys(): Promise<string[]> {
+		const stmt = this.db.prepare('SELECT key FROM sync_states');
+		const rows = stmt.all() as { key: string }[];
+		return rows.map(row => row.key);
+	}
+
+	protected async clearAllRaw(): Promise<void> {
+		this.db.exec('DELETE FROM sync_states');
+	}
+
+	/**
+	 * Get statistics about stored sync states
+	 */
+	async getStats(): Promise<{
+		totalStates: number;
+		totalEntities: number;
+		oldestSync: Date | null;
+		newestSync: Date | null;
+	}> {
+		const stats = this.db.prepare(`
+			SELECT 
+				COUNT(*) as totalStates,
+				SUM(entity_count) as totalEntities,
+				MIN(updated_at) as oldestSync,
+				MAX(updated_at) as newestSync
+			FROM sync_states
+		`).get() as any;
+
+		return {
+			totalStates: stats.totalStates || 0,
+			totalEntities: stats.totalEntities || 0,
+			oldestSync: stats.oldestSync ? new Date(stats.oldestSync) : null,
+			newestSync: stats.newestSync ? new Date(stats.newestSync) : null
+		};
+	}
+
+	/**
+	 * Find sync states that haven't been updated in a given time period
+	 * @param daysOld - Number of days since last update
+	 */
+	async findStaleStates(daysOld: number): Promise<string[]> {
+		const cutoff = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+		const stmt = this.db.prepare('SELECT key FROM sync_states WHERE updated_at < ?');
+		const rows = stmt.all(cutoff) as { key: string }[];
+		return rows.map(row => row.key);
+	}
+
+	/**
+	 * Clean up old sync states
+	 * @param daysOld - Delete states older than this many days
+	 */
+	async cleanupOldStates(daysOld: number): Promise<number> {
+		const cutoff = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+		const stmt = this.db.prepare('DELETE FROM sync_states WHERE updated_at < ?');
+		const result = stmt.run(cutoff);
+		return result.changes;
+	}
+
+	/**
+	 * Optimize the database (VACUUM and ANALYZE)
+	 */
+	async optimize(): Promise<void> {
+		this.db.exec('VACUUM');
+		this.db.exec('ANALYZE');
+	}
+
+	/**
+	 * Close the database connection
+	 */
+	async close(): Promise<void> {
+		this.db.close();
+	}
+
+	/**
+	 * Create a backup of the database
+	 * @param backupPath - Path to save the backup
+	 */
+	async backup(backupPath: string): Promise<void> {
+		await this.db.backup(backupPath);
+	}
+}

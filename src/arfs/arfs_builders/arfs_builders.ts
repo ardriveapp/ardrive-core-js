@@ -24,6 +24,35 @@ import {
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
 
+/**
+ * Tolerantly parses an entity's on-chain `Unix-Time` tag.
+ *
+ * CORE-5: A real owner's public drive failed to list entirely, throwing
+ * "Unix time must be a positive integer!" during `listPublicFolder` because a
+ * single entity carried a malformed `Unix-Time` tag (e.g. negative, non-integer
+ * or non-numeric). The `UnixTime` constructor rejects such values, and the
+ * listing path (getAllFoldersOfPublicDrive / getPublicFilesWithParentFolderIds)
+ * only skips `SyntaxError`, so the plain Error was re-thrown and aborted the
+ * ENTIRE drive reconstruction — one bad entity killed the whole listing.
+ *
+ * ardrive-web tolerates this; core-js must too. Rather than dropping the entity
+ * (which for a folder would orphan its children in the hierarchy), we clamp an
+ * invalid timestamp to the Unix epoch (0) so the entity still lists. The
+ * tolerance is scoped to entity parsing only — the `UnixTime` invariant stays
+ * strict everywhere else (tx/cost timestamps), so we simply fall back when the
+ * strict constructor rejects the value instead of duplicating its rules.
+ */
+function parseEntityUnixTime(value: string): UnixTime {
+	try {
+		return new UnixTime(+value);
+	} catch {
+		console.error(
+			`Invalid Unix-Time tag "${value}" on entity metadata; defaulting to epoch (0) so the drive still lists. [CORE-5]`
+		);
+		return new UnixTime(0);
+	}
+}
+
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
 	gatewayApi: GatewayAPI;
@@ -51,6 +80,7 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	name?: string;
 	txId?: TransactionID;
 	unixTime?: UnixTime;
+	blockHeight?: number;
 	boost?: FeeMultiple;
 	protected readonly entityId: AnyEntityID;
 	protected readonly gatewayApi: GatewayAPI;
@@ -96,6 +126,10 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 			node = edges[0].node;
 		}
 		this.txId = TxID(node.id);
+		// Extract block height if available
+		if (node.block) {
+			this.blockHeight = node.block.height;
+		}
 		const { tags } = node;
 		tags.forEach((tag: GQLTagInterface) => {
 			const key = tag.name;
@@ -120,7 +154,9 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 					this.entityType = value as EntityType;
 					break;
 				case 'Unix-Time':
-					this.unixTime = new UnixTime(+value);
+					// CORE-5: tolerate a malformed Unix-Time tag on one entity instead of
+					// aborting the whole drive listing (clamps invalid values to epoch).
+					this.unixTime = parseEntityUnixTime(value);
 					break;
 				case 'Boost':
 					this.boost = new FeeMultiple(+value);

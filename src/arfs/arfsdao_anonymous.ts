@@ -6,10 +6,22 @@ import {
 	ArFSDownloadPublicFolderParams,
 	EntityID,
 	GQLEdgeInterface,
-	TransactionID
+	GQLNodeInterface,
+	TransactionID,
+	TxID
 } from '../types';
 import { ASCENDING_ORDER, buildQuery } from '../utils/query';
 import { DriveID, FolderID, FileID, AnyEntityID, ArweaveAddress, EID, ADDR } from '../types';
+import {
+	buildDriveHistoryComposite,
+	buildSnapshotQuery,
+	computeSnapshotSubRanges,
+	parseSnapshotData,
+	snapshotEntityFromGQLNode,
+	sortNodesNewestFirst,
+	SnapshotWithBody,
+	TailQueryBound
+} from '../snapshots';
 import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
 import { FolderHierarchy } from './folder_hierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
@@ -358,6 +370,231 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	/**
+	 * Whether the snapshot-accelerated listing path is enabled. Default ON; a caller
+	 * can opt out per-listing (`useSnapshots: false`) or globally via the
+	 * `ARDRIVE_DISABLE_SNAPSHOTS=1` environment flag. The full-replay FALLBACK is the
+	 * real safety net — this flag only lets callers force the legacy path.
+	 */
+	protected snapshotsEnabled(useSnapshots?: boolean): boolean {
+		if (process.env['ARDRIVE_DISABLE_SNAPSHOTS'] === '1') {
+			return false;
+		}
+		return useSnapshots !== false;
+	}
+
+	/**
+	 * Enumerates a drive's snapshots (owner-scoped, newest first) and parses the
+	 * bodies of the snapshots that own a live sub-range under the newest-wins model.
+	 *
+	 * Returns `null` when the drive has NO snapshots — the caller must full-replay.
+	 * THROWS when a snapshot that owns a range cannot be fetched or parsed; the caller
+	 * MUST catch and fall back to full replay, since a partial snapshot set would list
+	 * an incomplete tree. Snapshots are an optimization, never a correctness dependency.
+	 */
+	protected async fetchDriveSnapshotsWithBodies(
+		driveId: DriveID,
+		owner: ArweaveAddress
+	): Promise<SnapshotWithBody[] | null> {
+		// 1. Enumerate the drive's snapshot transactions (owner-scoped, HEIGHT_DESC).
+		const snapshotNodes: GQLNodeInterface[] = [];
+		let cursor: string | undefined = undefined;
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const gqlQuery = buildSnapshotQuery({ driveId, owner, cursor });
+			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+			hasNextPage = transactions.pageInfo.hasNextPage;
+			for (const edge of transactions.edges) {
+				cursor = edge.cursor;
+				snapshotNodes.push(edge.node);
+			}
+		}
+
+		if (snapshotNodes.length === 0) {
+			return null;
+		}
+
+		// 2. Parse snapshot metadata; skip malformed ones. No valid snapshot → full replay.
+		const entities = snapshotNodes
+			.map((node) => snapshotEntityFromGQLNode(node))
+			.filter((entity): entity is NonNullable<typeof entity> => entity !== null);
+		if (entities.length === 0) {
+			return null;
+		}
+
+		// Order newest-first (mining height desc) — the order the obscuring model expects.
+		entities.sort((a, b) => (b.blockHeight ?? b.blockEnd) - (a.blockHeight ?? a.blockEnd));
+
+		// 3. Only the snapshots that own live sub-ranges need their (large) bodies fetched.
+		const { obscured } = computeSnapshotSubRanges(entities);
+		const snapshots: SnapshotWithBody[] = [];
+		for (const { snapshot, subRanges } of obscured) {
+			if (subRanges.rangeSegments.length === 0) {
+				// Fully obscured by a newer snapshot — no body needed.
+				snapshots.push({
+					blockStart: snapshot.blockStart,
+					blockEnd: snapshot.blockEnd,
+					txId: snapshot.txId,
+					data: { txSnapshots: [] }
+				});
+				continue;
+			}
+
+			// Throwing here signals the caller to fall back to full replay (zero regression).
+			const bodyBuffer = await this.gatewayApi.getTxData(snapshot.txId);
+			const data = parseSnapshotData(bodyBuffer);
+			if (data.txSnapshots.length === 0) {
+				throw new Error(`Snapshot ${snapshot.txId} body was empty or unparseable`);
+			}
+			snapshots.push({
+				blockStart: snapshot.blockStart,
+				blockEnd: snapshot.blockEnd,
+				txId: snapshot.txId,
+				data
+			});
+		}
+
+		return snapshots;
+	}
+
+	/**
+	 * Fetches the live-tail entity nodes over the given block bounds, drive-wide.
+	 * Files and folders are fetched together (`Entity-Type in [file, folder]`) so the
+	 * tail costs ONE paged query per bound rather than two — this is where the snapshot
+	 * path claws back GraphQL requests versus the full-replay path's per-folder walk.
+	 */
+	protected async getSnapshotTailNodes(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		entityTypes: ('file' | 'folder')[],
+		tailBounds: TailQueryBound[]
+	): Promise<GQLNodeInterface[]> {
+		const nodes: GQLNodeInterface[] = [];
+		for (const bound of tailBounds) {
+			let cursor = '';
+			let hasNextPage = true;
+			while (hasNextPage) {
+				const gqlQuery = buildQuery({
+					tags: [
+						{ name: 'Drive-Id', value: `${driveId}` },
+						{ name: 'Entity-Type', value: entityTypes }
+					],
+					cursor,
+					owner,
+					minBlockHeight: bound.minBlockHeight,
+					maxBlockHeight: bound.maxBlockHeight
+				});
+				const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+				hasNextPage = transactions.pageInfo.hasNextPage;
+				for (const edge of transactions.edges) {
+					cursor = edge.cursor;
+					nodes.push(edge.node);
+				}
+			}
+		}
+		return nodes;
+	}
+
+	private async buildPublicFoldersFromNodes(
+		nodes: GQLNodeInterface[],
+		owner: ArweaveAddress
+	): Promise<ArFSPublicFolder[]> {
+		const folderPromises = nodes.map(async (node) => {
+			try {
+				const folderBuilder = ArFSPublicFolderBuilder.fromArweaveNode(node, this.gatewayApi);
+				const folder = await folderBuilder.build(node);
+				const cacheKey = { folderId: folder.entityId, owner };
+				await this.caches.publicFolderCache.put(cacheKey, Promise.resolve(folder));
+				return folder;
+			} catch (e) {
+				// Match the full-replay path's skip semantics so the entity SET is identical.
+				if (e instanceof SyntaxError) {
+					console.error(`Error building folder. Skipping... Error: ${e}`);
+					return null;
+				}
+				throw e;
+			}
+		});
+		const folders = await Promise.all(folderPromises);
+		return folders.filter((folder) => folder !== null) as ArFSPublicFolder[];
+	}
+
+	private async buildPublicFilesFromNodes(
+		nodes: GQLNodeInterface[],
+		owner: ArweaveAddress
+	): Promise<ArFSPublicFile[]> {
+		const filePromises = nodes.map(async (node) => {
+			try {
+				const fileBuilder = ArFSPublicFileBuilder.fromArweaveNode(node, this.gatewayApi);
+				const file = await fileBuilder.build(node);
+				const cacheKey = { fileId: file.fileId, owner };
+				return this.caches.publicFileCache.put(cacheKey, Promise.resolve(file));
+			} catch (e) {
+				// Match the full-replay path's skip semantics so the entity SET is identical.
+				if (e instanceof SyntaxError || e instanceof InvalidFileStateException) {
+					console.error(`Error building file. Skipping... Error: ${e}`);
+					return null;
+				}
+				throw e;
+			}
+		});
+		const files = await Promise.all(filePromises);
+		return files.filter((file) => file !== null) as ArFSPublicFile[];
+	}
+
+	/**
+	 * Snapshot-accelerated whole-drive entity fetch. Returns every file and folder
+	 * revision of the drive (the caller applies `latestRevisionFilter`), sourced from
+	 * snapshot bodies for the snapshot-covered heights and from the live GraphQL tail
+	 * for the rest. Returns `null` when the drive has no snapshots (→ full replay).
+	 * THROWS on any snapshot fetch/parse failure (→ caller falls back to full replay).
+	 */
+	protected async getPublicDriveEntitiesViaSnapshots(
+		driveId: DriveID,
+		owner: ArweaveAddress
+	): Promise<{ folders: ArFSPublicFolder[]; files: ArFSPublicFile[] } | null> {
+		const snapshots = await this.fetchDriveSnapshotsWithBodies(driveId, owner);
+		if (snapshots === null) {
+			return null;
+		}
+
+		const composite = buildDriveHistoryComposite({
+			snapshotsNewestFirst: snapshots,
+			owner,
+			isPrivate: false
+		});
+
+		// Seed the metadata cache so snapshot entities build without a data-tx GET.
+		for (const entry of composite.metadataCache) {
+			this.gatewayApi.cacheMetadataForTxId(TxID(entry.txId), entry.data);
+		}
+
+		// Fetch the live tail (heights no snapshot covers), drive-wide, over GraphQL.
+		const tailNodes = await this.getSnapshotTailNodes(driveId, owner, ['folder', 'file'], composite.tailBounds);
+
+		const isFolder = (node: GQLNodeInterface): boolean =>
+			node.tags?.find((tag) => tag.name === 'Entity-Type')?.value === 'folder';
+		const isFile = (node: GQLNodeInterface): boolean =>
+			node.tags?.find((tag) => tag.name === 'Entity-Type')?.value === 'file';
+
+		// Merge snapshot + tail nodes and order newest-first for correct latest-revision selection.
+		const folderNodes = sortNodesNewestFirst([
+			...tailNodes.filter(isFolder),
+			...composite.snapshotNodes.filter(isFolder)
+		]);
+		const fileNodes = sortNodesNewestFirst([
+			...tailNodes.filter(isFile),
+			...composite.snapshotNodes.filter(isFile)
+		]);
+
+		const [folders, files] = await Promise.all([
+			this.buildPublicFoldersFromNodes(folderNodes, owner),
+			this.buildPublicFilesFromNodes(fileNodes, owner)
+		]);
+
+		return { folders, files };
+	}
+
+	/**
 	 * Lists the children of certain public folder
 	 * @param {FolderID} folderId the folder ID to list children of
 	 * @param {number} maxDepth a non-negative integer value indicating the depth of the folder tree to list where 0 = this folder's contents only
@@ -368,7 +605,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		folderId,
 		maxDepth,
 		includeRoot,
-		owner
+		owner,
+		useSnapshots
 	}: ArFSListPublicFolderParams): Promise<(ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
@@ -379,11 +617,26 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		// Fetch all of the folder entities within the drive
 		const driveIdOfFolder = folder.driveId;
 
-		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPublicDrive({
-			driveId: driveIdOfFolder,
-			owner,
-			latestRevisionsOnly: true
-		});
+		// SNAPSHOT-ACCELERATED PATH (isolated). Any failure or the absence of snapshots
+		// transparently falls back to the full-history replay below — a drive without
+		// snapshots, and any snapshot failure, lists EXACTLY as it does today.
+		let snapshotEntities: { folders: ArFSPublicFolder[]; files: ArFSPublicFile[] } | null = null;
+		if (this.snapshotsEnabled(useSnapshots)) {
+			try {
+				snapshotEntities = await this.getPublicDriveEntitiesViaSnapshots(driveIdOfFolder, owner);
+			} catch (e) {
+				console.error(`[snapshot] falling back to full-history replay for drive ${driveIdOfFolder}: ${e}`);
+				snapshotEntities = null;
+			}
+		}
+
+		const allFolderEntitiesOfDrive = snapshotEntities
+			? snapshotEntities.folders.filter(latestRevisionFilter)
+			: await this.getAllFoldersOfPublicDrive({
+					driveId: driveIdOfFolder,
+					owner,
+					latestRevisionsOnly: true
+				});
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
@@ -401,10 +654,19 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		// Fetch all file entities within all Folders of the drive
 		const childrenFileEntities: ArFSPublicFile[] = [];
 
-		for (const id of searchFolderIDs) {
-			(await this.getPublicFilesWithParentFolderIds([id], owner, driveIdOfFolder, true)).forEach((e) => {
-				childrenFileEntities.push(e);
-			});
+		if (snapshotEntities) {
+			// Files were already fetched drive-wide; keep those parented within the search subtree.
+			for (const file of snapshotEntities.files) {
+				if (searchFolderIDs.some((fid) => fid.equals(file.parentFolderId))) {
+					childrenFileEntities.push(file);
+				}
+			}
+		} else {
+			for (const id of searchFolderIDs) {
+				(await this.getPublicFilesWithParentFolderIds([id], owner, driveIdOfFolder, true)).forEach((e) => {
+					childrenFileEntities.push(e);
+				});
+			}
 		}
 
 		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders

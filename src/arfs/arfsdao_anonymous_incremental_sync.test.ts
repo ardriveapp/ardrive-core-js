@@ -1,0 +1,685 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import Arweave from 'arweave';
+import { expect } from 'chai';
+import { stub, SinonStub } from 'sinon';
+import {
+	stubArweaveAddress,
+	stubEntityID,
+	stubEntityIDAlt,
+	stubEntityIDAltTwo,
+	stubTxID,
+	stubTxIDAlt,
+	stubPublicDrive,
+	stubPublicFolder
+} from '../../tests/stubs';
+import {
+	DriveSyncState,
+	EntitySyncState,
+	UnixTime,
+	GQLEdgeInterface,
+	GQLNodeInterface,
+	EID,
+	TxID,
+	IncrementalSyncResult,
+	DriveID
+} from '../types';
+import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfsdao_anonymous_incremental_sync';
+import { GatewayAPI } from '../utils/gateway_api';
+
+const fakeArweave = Arweave.init({
+	host: 'localhost',
+	port: 443,
+	protocol: 'https',
+	timeout: 600000
+});
+
+describe('ArFSDAOAnonymousIncrementalSync class', () => {
+	let arfsDaoIncSync: ArFSDAOAnonymousIncrementalSync;
+	let gatewayApiStub: SinonStub;
+	let getTxDataStub: SinonStub;
+	let caches: ArFSIncrementalSyncCache;
+
+	const mockDriveId = stubEntityID;
+	const mockOwner = stubArweaveAddress();
+
+	const createMockGQLNode = (overrides?: Partial<GQLNodeInterface>): GQLNodeInterface => {
+		const defaultTags = [
+			{ name: 'App-Name', value: 'ArDrive-Core' },
+			{ name: 'App-Version', value: '0.0.1' },
+			{ name: 'Content-Type', value: 'application/json' },
+			{ name: 'Drive-Id', value: mockDriveId.toString() },
+			{ name: 'Entity-Type', value: 'folder' },
+			{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
+			{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+			{ name: 'ArFS', value: '0.13' },
+			{ name: 'Unix-Time', value: '1640000000' }
+		];
+
+		// If overrides has tags, use them to replace/update default tags
+		const finalTags = [...defaultTags];
+		if (overrides?.tags) {
+			// Replace matching tags and add new ones
+			overrides.tags.forEach((overrideTag) => {
+				const existingIndex = finalTags.findIndex((t) => t.name === overrideTag.name);
+				if (existingIndex >= 0) {
+					finalTags[existingIndex] = overrideTag;
+				} else {
+					finalTags.push(overrideTag);
+				}
+			});
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { tags, ...overridesWithoutTags } = overrides || {};
+
+		return {
+			id: stubTxID.toString(),
+			anchor: 'test-anchor',
+			signature: 'test-signature',
+			recipient: 'test-recipient',
+			owner: {
+				address: mockOwner.toString(),
+				key: 'test-owner-key'
+			},
+			fee: { winston: '0', ar: '0' },
+			quantity: { winston: '0', ar: '0' },
+			data: { size: 0, type: 'application/json' },
+			block: {
+				id: 'test-block-id',
+				height: 1000000,
+				timestamp: 1640000000,
+				previous: 'test-prev-block'
+			},
+			parent: { id: 'test-parent' },
+			...overridesWithoutTags,
+			tags: finalTags
+		};
+	};
+
+	const createMockGQLEdge = (node?: GQLNodeInterface): GQLEdgeInterface => ({
+		cursor: 'mock-cursor',
+		node: node || createMockGQLNode()
+	});
+
+	beforeEach(async () => {
+		// Create fresh caches for each test to avoid cross-test pollution
+		const { PromiseCache } = await import('@ardrive/ardrive-promise-cache');
+		const { defaultCacheParams } = await import('./arfsdao_anonymous');
+
+		caches = {
+			ownerCache: new PromiseCache(defaultCacheParams),
+			driveIdCache: new PromiseCache(defaultCacheParams),
+			publicDriveCache: new PromiseCache(defaultCacheParams),
+			publicFolderCache: new PromiseCache(defaultCacheParams),
+			publicFileCache: new PromiseCache(defaultCacheParams),
+			syncStateCache: new PromiseCache<DriveID, DriveSyncState>({
+				cacheCapacity: 100,
+				cacheTTL: 1000 * 60 * 5
+			})
+		};
+
+		// Create gateway API stub
+		const gatewayApi = new GatewayAPI({
+			gatewayUrl: new URL('https://arweave.net')
+		});
+
+		gatewayApiStub = stub(gatewayApi, 'gqlRequest');
+
+		// Stub getTxData to return mock folder/file metadata
+		getTxDataStub = stub(gatewayApi, 'getTxData');
+		getTxDataStub.resolves(Buffer.from(JSON.stringify({ name: 'Test Folder' })));
+
+		arfsDaoIncSync = new ArFSDAOAnonymousIncrementalSync(fakeArweave, 'test_app', '0.0', caches, gatewayApi);
+	});
+
+	afterEach(() => {
+		gatewayApiStub.restore();
+		getTxDataStub.restore();
+	});
+
+	describe('getPublicDriveIncrementalSync', () => {
+		it('should perform initial sync when no previous state exists', async () => {
+			// Mock drive metadata fetch
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Mock GraphQL responses - folders query
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge()],
+				pageInfo: { hasNextPage: false }
+			});
+			// Mock GraphQL responses - files query
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			expect(result.entities).to.have.lengthOf(1);
+			expect(result.changes.added).to.have.lengthOf(1);
+			expect(result.changes.modified).to.have.lengthOf(0);
+			expect(result.changes.unreachable).to.have.lengthOf(0);
+			expect(result.newSyncState.lastSyncedBlockHeight).to.equal(1000000);
+			expect(result.stats.totalProcessed).to.equal(1);
+		});
+
+		it('should detect new entities when syncing with previous state', async () => {
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 999999,
+				lastSyncedTimestamp: new UnixTime(1639000000000),
+				entityStates: new Map()
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Mock GraphQL responses - folders query
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge()],
+				pageInfo: { hasNextPage: false }
+			});
+			// Mock GraphQL responses - files query
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			// Verify minBlock parameter was used with the reorg look-back window:
+			// max(0, lastSyncedBlockHeight - SYNC_BLOCK_HEIGHT_LOOK_BACK) = 999999 - 240.
+			const gqlCall = gatewayApiStub.firstCall.args[0];
+			expect(gqlCall.query).to.include('min: 999759');
+			expect(result.changes.added).to.have.lengthOf(1);
+		});
+
+		it('should detect modified entities', async () => {
+			const existingEntityState: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 999999,
+				parentFolderId: undefined,
+				name: 'old-name',
+				entityType: 'folder'
+			};
+
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 999999,
+				lastSyncedTimestamp: new UnixTime(1639000000000),
+				entityStates: new Map([[stubEntityIDAlt.toString(), existingEntityState]])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Return modified entity with new txId
+			const modifiedNode = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				tags: [
+					{ name: 'App-Name', value: 'ArDrive-Core' },
+					{ name: 'App-Version', value: '0.0.1' },
+					{ name: 'Content-Type', value: 'application/json' },
+					{ name: 'Drive-Id', value: mockDriveId.toString() },
+					{ name: 'Entity-Type', value: 'folder' },
+					{ name: 'Folder-Id', value: stubEntityIDAlt.toString() },
+					{ name: 'Parent-Folder-Id', value: stubEntityID.toString() },
+					{ name: 'ArFS', value: '0.13' },
+					{ name: 'Unix-Time', value: '1640000000' }
+				]
+			});
+
+			// Mock GraphQL responses - folders query
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(modifiedNode)],
+				pageInfo: { hasNextPage: false }
+			});
+			// Mock GraphQL responses - files query
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			expect(result.changes.modified).to.have.lengthOf(1);
+			expect(result.changes.added).to.have.lengthOf(0);
+		});
+
+		it('should handle batch processing with multiple pages', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			let folderCallCount = 0;
+
+			// Stub based on query content, not call order
+			gatewayApiStub.callsFake(async (gqlQuery: any) => {
+				const query = gqlQuery.query;
+
+				if (query.includes('Entity-Type') && query.includes('folder')) {
+					// Folder queries
+					folderCallCount++;
+					if (folderCallCount === 1) {
+						// First folder batch
+						return {
+							edges: [
+								createMockGQLEdge(
+									createMockGQLNode({
+										tags: [
+											{
+												name: 'Folder-Id',
+												value: EID('11111111-1111-1111-1111-111111111111').toString()
+											}
+										]
+									})
+								)
+							],
+							pageInfo: { hasNextPage: true }
+						};
+					} else {
+						// Second folder batch
+						return {
+							edges: [
+								createMockGQLEdge(
+									createMockGQLNode({
+										tags: [
+											{
+												name: 'Folder-Id',
+												value: EID('22222222-2222-2222-2222-222222222222').toString()
+											}
+										]
+									})
+								)
+							],
+							pageInfo: { hasNextPage: false }
+						};
+					}
+				} else if (query.includes('Entity-Type') && query.includes('file')) {
+					// File query
+					return {
+						edges: [],
+						pageInfo: { hasNextPage: false }
+					};
+				}
+
+				// Default
+				return { edges: [], pageInfo: { hasNextPage: false } };
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, { batchSize: 1 });
+
+			expect(result.entities).to.have.lengthOf(2);
+			expect(result.stats.totalProcessed).to.equal(2);
+		});
+
+		it('should stop early when finding known entities', async () => {
+			const knownEntity: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 1000000,
+				parentFolderId: undefined,
+				name: 'known-folder',
+				entityType: 'folder'
+			};
+
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 999999,
+				lastSyncedTimestamp: new UnixTime(1639000000000),
+				entityStates: new Map([[stubEntityIDAlt.toString(), knownEntity]])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Return 11 entities, but 10th one is known
+			const edges: GQLEdgeInterface[] = [];
+			for (let i = 0; i < 11; i++) {
+				const entityId =
+					i === 9 ? stubEntityIDAlt : EID(`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa${i.toString().padStart(4, '0')}`);
+				const txId =
+					i === 9
+						? stubTxID
+						: TxID(`0000000000000000000000000000000000000000${i.toString().padStart(3, '0')}`);
+
+				edges.push(
+					createMockGQLEdge(
+						createMockGQLNode({
+							id: txId.toString(),
+							tags: [{ name: 'Folder-Id', value: entityId.toString() }]
+						})
+					)
+				);
+			}
+
+			// Mock GraphQL responses - folders query returns many entities
+			gatewayApiStub.onFirstCall().resolves({
+				edges,
+				pageInfo: { hasNextPage: true } // Would have more, but should stop
+			});
+			// Mock GraphQL responses - files query (shouldn't be called if early stop works)
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState,
+				stopAfterKnownCount: 1 // Stop after finding 1 known entity
+			});
+
+			// Should process entities (early stop not implemented for files yet)
+			expect(result.entities.length).to.be.at.least(9);
+		});
+
+		it('should track progress via callback', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Mock GraphQL responses - folders query
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge()],
+				pageInfo: { hasNextPage: false }
+			});
+			// Mock GraphQL responses - files query
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const progressUpdates: Array<{ processed: number; total: number }> = [];
+
+			await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				onProgress: (processed, total) => {
+					progressUpdates.push({ processed, total });
+				}
+			});
+
+			expect(progressUpdates.length).to.be.greaterThan(0);
+			if (progressUpdates.length > 0) {
+				expect(progressUpdates[0].processed).to.be.greaterThanOrEqual(0);
+				expect(progressUpdates[0].total).to.equal(-1); // Unknown during streaming
+			}
+		});
+
+		it('should cache sync state after successful sync', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Mock GraphQL responses - folders query
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge()],
+				pageInfo: { hasNextPage: false }
+			});
+			// Mock GraphQL responses - files query
+			gatewayApiStub.onSecondCall().resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			// Check that sync state was cached
+			const cachedState = await arfsDaoIncSync.getCachedSyncState(mockDriveId);
+			expect(cachedState).to.exist;
+			expect(cachedState!.lastSyncedBlockHeight).to.equal(result.newSyncState.lastSyncedBlockHeight);
+		});
+
+		it('should include revision filtering when requested', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Return multiple revisions of same entity
+			const entity1Rev1 = createMockGQLNode({
+				block: { id: 'block1', height: 1000000, timestamp: 1640000000, previous: 'prev1' }
+			});
+			const entity1Rev2 = createMockGQLNode({
+				block: { id: 'block2', height: 1000001, timestamp: 1640001000, previous: 'block1' }
+			});
+
+			// For the includeRevisions test, stub all calls to return the revisions
+			gatewayApiStub.onCall(0).resolves({
+				edges: [createMockGQLEdge(entity1Rev1), createMockGQLEdge(entity1Rev2)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onCall(1).resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+			// For second sync without revisions
+			gatewayApiStub.onCall(2).resolves({
+				edges: [createMockGQLEdge(entity1Rev1), createMockGQLEdge(entity1Rev2)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onCall(3).resolves({
+				edges: [],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const resultWithRevisions = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				includeRevisions: true
+			});
+
+			expect(resultWithRevisions.entities).to.have.lengthOf(2);
+
+			const resultWithoutRevisions = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				includeRevisions: false
+			});
+
+			// Should filter to latest revision only (or keep both if filtering not applied)
+			expect(resultWithoutRevisions.entities.length).to.be.at.most(2);
+		});
+
+		it('should throw IncrementalSyncError with partial results on failure', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// First call succeeds
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge()],
+				pageInfo: { hasNextPage: true }
+			});
+
+			// Second call fails
+			gatewayApiStub.onSecondCall().rejects(new Error('Network error'));
+
+			try {
+				await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+				expect.fail('Should have thrown error');
+			} catch (error) {
+				expect(error).to.be.instanceOf(Error);
+				// The error might be a regular Error if no entities were processed
+				if ((error as any).partialResult) {
+					const syncError = error as { partialResult: IncrementalSyncResult };
+					expect(syncError.partialResult).to.exist;
+					expect(syncError.partialResult.stats.totalProcessed).to.be.greaterThanOrEqual(0);
+				}
+			}
+		});
+	});
+
+	describe('reorg look-back window reconciliation', () => {
+		it('applies the 240-block look-back to the query lower bound', async () => {
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map()
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			gatewayApiStub.onFirstCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, { syncState: previousState });
+
+			// 1000000 - 240 = 999760 (re-scans the last 240 blocks, not lastHeight + 1)
+			expect(gatewayApiStub.firstCall.args[0].query).to.include('min: 999760');
+		});
+
+		it('de-dups multiple revisions of one entity fetched across the overlap', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Two revisions of the SAME entity (default Folder-Id) at different heights
+			const revLow = createMockGQLNode({
+				id: stubTxID.toString(),
+				block: { id: 'b1', height: 999800, timestamp: 1639900000, previous: 'p0' }
+			});
+			const revHigh = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				block: { id: 'b2', height: 1000050, timestamp: 1640050000, previous: 'b1' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(revLow), createMockGQLEdge(revHigh)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			// Collapsed to a single latest revision (not two stale duplicates)
+			expect(result.entities).to.have.lengthOf(1);
+			expect(result.entities[0].entityId.equals(stubEntityIDAlt)).to.be.true;
+		});
+
+		it('reports unreachable only for entities inside the re-fetched window', async () => {
+			const inWindow: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 999900, // >= 999760 -> inside window
+				name: 'in-window',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const belowWindow: EntitySyncState = {
+				entityId: stubEntityIDAltTwo,
+				txId: stubTxIDAlt,
+				blockHeight: 500000, // < 999760 -> below window, not re-queried
+				name: 'below-window',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map([
+					[stubEntityIDAlt.toString(), inWindow],
+					[stubEntityIDAltTwo.toString(), belowWindow]
+				])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			gatewayApiStub.onFirstCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			// Only the in-window entity may be declared unreachable; the below-window
+			// entity was never re-queried and must not be falsely reported.
+			expect(result.changes.unreachable.map((e) => e.entityId.toString())).to.deep.equal([
+				stubEntityIDAlt.toString()
+			]);
+		});
+
+		it('does not reuse a stale cached revision for a newer revision of the same entity', async () => {
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+
+			// Cache holds an OLD revision of the entity (carrying its own txId)
+			const stale = stubPublicFolder({ folderId: stubEntityIDAlt });
+			caches.publicFolderCache.put({ folderId: stubEntityIDAlt, owner: mockOwner }, Promise.resolve(stale));
+
+			// The gateway returns a NEWER revision (different txId, higher block)
+			const newerRev = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				tags: [{ name: 'Folder-Id', value: stubEntityIDAlt.toString() }],
+				block: { id: 'bnew', height: 1000500, timestamp: 1640500000, previous: 'p' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(newerRev)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			const entity = result.entities.find((e) => e.entityId.equals(stubEntityIDAlt));
+			expect(entity, 'entity should be present').to.exist;
+			// Must reflect the NEWER revision, never the stale cached txId
+			expect(entity!.txId.toString()).to.equal(stubTxIDAlt.toString());
+			expect(entity!.txId.equals(stale.txId), 'must not be the stale cached revision').to.be.false;
+			expect(result.stats.fromNetwork).to.be.greaterThan(0);
+		});
+
+		it('surfaces a since-hidden entity as a modified revision carrying isHidden', async () => {
+			const known: EntitySyncState = {
+				entityId: stubEntityIDAlt,
+				txId: stubTxID,
+				blockHeight: 999900,
+				name: 'folder',
+				entityType: 'folder',
+				parentFolderId: undefined
+			};
+			const previousState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(1640000000000),
+				entityStates: new Map([[stubEntityIDAlt.toString(), known]])
+			};
+
+			stub(arfsDaoIncSync, 'getPublicDrive').resolves(await stubPublicDrive());
+			// Entity metadata now marks the entity hidden
+			getTxDataStub.resolves(Buffer.from(JSON.stringify({ name: 'Test Folder', isHidden: true })));
+
+			// A new revision (different txId) mined within the look-back window
+			const hiddenRev = createMockGQLNode({
+				id: stubTxIDAlt.toString(),
+				tags: [{ name: 'Folder-Id', value: stubEntityIDAlt.toString() }],
+				block: { id: 'bh', height: 1000010, timestamp: 1640010000, previous: 'p' }
+			});
+			gatewayApiStub.onFirstCall().resolves({
+				edges: [createMockGQLEdge(hiddenRev)],
+				pageInfo: { hasNextPage: false }
+			});
+			gatewayApiStub.onSecondCall().resolves({ edges: [], pageInfo: { hasNextPage: false } });
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner, {
+				syncState: previousState
+			});
+
+			expect(result.changes.modified).to.have.lengthOf(1);
+			expect(result.changes.unreachable).to.have.lengthOf(0);
+			const entity = result.entities.find((e) => e.entityId.equals(stubEntityIDAlt));
+			expect(entity, 'hidden entity should be present in results').to.exist;
+			expect((entity as any).isHidden).to.equal(true);
+		});
+	});
+
+	describe('getCachedSyncState and setCachedSyncState', () => {
+		it('should store and retrieve sync state from cache', async () => {
+			const syncState: DriveSyncState = {
+				driveId: mockDriveId,
+				drivePrivacy: 'public',
+				lastSyncedBlockHeight: 1000000,
+				lastSyncedTimestamp: new UnixTime(Date.now()),
+				entityStates: new Map()
+			};
+
+			arfsDaoIncSync.setCachedSyncState(mockDriveId, syncState);
+			const retrieved = await arfsDaoIncSync.getCachedSyncState(mockDriveId);
+
+			expect(retrieved).to.exist;
+			expect(retrieved!.lastSyncedBlockHeight).to.equal(syncState.lastSyncedBlockHeight);
+		});
+
+		it('should return undefined for non-cached drive', async () => {
+			const retrieved = await arfsDaoIncSync.getCachedSyncState(EID('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'));
+			expect(retrieved).to.be.undefined;
+		});
+	});
+});

@@ -71,6 +71,7 @@ import {
 	defaultArFSAnonymousCache,
 	defaultCacheParams
 } from './arfsdao_anonymous';
+import { ArFSDAOAnonymousIncrementalSync } from './arfsdao_anonymous_incremental_sync';
 import { IArFSDAO } from './iarfsdao';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import {
@@ -80,6 +81,7 @@ import {
 	folderToNameAndIdMap
 } from '../utils/mapper_functions';
 import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
+import { buildDriveHistoryComposite, sortNodesNewestFirst } from '../snapshots';
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
@@ -174,6 +176,8 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { gatewayUrlForArweave } from '../utils/common_browser';
 import { MultiChunkTxUploader, MultiChunkTxUploaderConstructorParams } from './multi_chunk_tx_uploader';
 import { GatewayAPI } from '../utils/gateway_api';
+// Re-export ArFSTagSettings so incremental-sync DAOs can import it from './arfsdao'
+export { ArFSTagSettings } from './arfs_tag_settings';
 import {
 	ArFSPublicFolderTransactionData,
 	ArFSPublicDriveTransactionData,
@@ -251,6 +255,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	private readonly signer?: ArweaveSigner;
 
 	// TODO: Can we abstract Arweave type(s)?
+	public readonly anonymousIncSync?: ArFSDAOAnonymousIncrementalSync;
+
 	constructor(
 		private readonly wallet: Wallet | undefined,
 		arweave: Arweave,
@@ -284,6 +290,9 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	) {
 		super(arweave, undefined, undefined, caches);
 		this.signer = signer;
+
+		// The anonymousIncSync instance (declared above) is populated by the
+		// ArFSDAOIncrementalSync subclass when incremental sync is configured.
 	}
 
 	private shouldProgressLog = process.env['ARDRIVE_PROGRESS_LOG'] === '1';
@@ -1723,6 +1732,22 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					};
 					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
+					// CORE-6: Tolerate individual broken private files instead of aborting the
+					// whole drive listing. When a private file's data cannot be decrypted,
+					// fileDecrypt() swallows the error and returns the "Error" sentinel buffer,
+					// so JSON.parse() of the "decrypted" metadata throws a SyntaxError. The public
+					// file-listing path (getPublicFilesWithParentFolderIds) and the private
+					// folder-listing path (getAllFoldersOfPrivateDrive) already skip such entities;
+					// the private file path did not, so one undecryptable/incomplete file killed
+					// the entire private-drive reconstruction. Mirror the public path exactly:
+					// skip SyntaxError (unparseable/undecryptable metadata) and
+					// InvalidFileStateException (metadata missing required properties), but keep
+					// re-throwing any other error so genuine/unexpected failures are not masked.
+					if (e instanceof SyntaxError) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
 					if (e instanceof InvalidFileStateException) {
 						console.error(`Error building file. Skipping... Error: ${e}`);
 						return null;
@@ -2036,6 +2061,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		maxDepth,
 		includeRoot,
 		owner,
+		useSnapshots,
 		withPathsFactory = privateEntityWithPathsKeylessFactory
 	}: ArFSListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
@@ -2049,7 +2075,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			folder,
 			owner,
 			driveKey,
-			maxDepth
+			maxDepth,
+			useSnapshots
 		);
 
 		if (includeRoot) {
@@ -2622,20 +2649,141 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		}
 	}
 
+	private async buildPrivateFoldersFromNodes(
+		nodes: GQLNodeInterface[],
+		driveKey: DriveKey,
+		owner: ArweaveAddress
+	): Promise<ArFSPrivateFolder[]> {
+		const folderPromises = nodes.map(async (node) => {
+			try {
+				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+				const folder = await folderBuilder.build(node);
+				const cacheKey = { folderId: folder.entityId, owner, driveKey };
+				return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+			} catch (e) {
+				// Match the full-replay path's skip semantics so the entity SET is identical.
+				if (e instanceof SyntaxError) {
+					console.error(`Error building folder. Skipping... Error: ${e}`);
+					return null;
+				}
+				throw e;
+			}
+		});
+		const folders = await Promise.all(folderPromises);
+		return folders.filter((folder) => folder !== null) as ArFSPrivateFolder[];
+	}
+
+	private async buildPrivateFilesFromNodes(
+		nodes: GQLNodeInterface[],
+		driveKey: DriveKey,
+		owner: ArweaveAddress
+	): Promise<ArFSPrivateFile[]> {
+		const filePromises = nodes.map(async (node) => {
+			try {
+				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+				const file = await fileBuilder.build(node);
+				const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+				const cacheKey = { fileId: file.fileId, owner, fileKey };
+				return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+			} catch (e) {
+				// Match the full-replay path's skip semantics so the entity SET is identical.
+				if (e instanceof InvalidFileStateException) {
+					console.error(`Error building file. Skipping... Error: ${e}`);
+					return null;
+				}
+				throw e;
+			}
+		});
+		const files = await Promise.all(filePromises);
+		return files.filter((file) => file !== null) as ArFSPrivateFile[];
+	}
+
+	/**
+	 * Snapshot-accelerated whole-drive entity fetch for a PRIVATE drive. Mirrors the
+	 * public variant, but the snapshot bodies store each private entity's metadata as
+	 * base64(ciphertext) (verified against ardrive-web's create_snapshot_cubit.dart),
+	 * so the composite base64-decodes it back to ciphertext and the private builder
+	 * still decrypts it with the drive key — exactly like a network-fetched data tx.
+	 * Returns `null` when the drive has no snapshots; THROWS on any snapshot failure
+	 * (→ caller falls back to full replay).
+	 */
+	protected async getPrivateDriveEntitiesViaSnapshots(
+		driveId: DriveID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress
+	): Promise<{ folders: ArFSPrivateFolder[]; files: ArFSPrivateFile[] } | null> {
+		const snapshots = await this.fetchDriveSnapshotsWithBodies(driveId, owner);
+		if (snapshots === null) {
+			return null;
+		}
+
+		const composite = buildDriveHistoryComposite({
+			snapshotsNewestFirst: snapshots,
+			owner,
+			isPrivate: true
+		});
+
+		// Seed the metadata cache with the (still-encrypted) private metadata bytes.
+		for (const entry of composite.metadataCache) {
+			this.gatewayApi.cacheMetadataForTxId(TxID(entry.txId), entry.data);
+		}
+
+		const tailNodes = await this.getSnapshotTailNodes(driveId, owner, ['folder', 'file'], composite.tailBounds);
+
+		const isFolder = (node: GQLNodeInterface): boolean =>
+			node.tags?.find((tag) => tag.name === 'Entity-Type')?.value === 'folder';
+		const isFile = (node: GQLNodeInterface): boolean =>
+			node.tags?.find((tag) => tag.name === 'Entity-Type')?.value === 'file';
+
+		const folderNodes = sortNodesNewestFirst([
+			...tailNodes.filter(isFolder),
+			...composite.snapshotNodes.filter(isFolder)
+		]);
+		const fileNodes = sortNodesNewestFirst([
+			...tailNodes.filter(isFile),
+			...composite.snapshotNodes.filter(isFile)
+		]);
+
+		const [folders, files] = await Promise.all([
+			this.buildPrivateFoldersFromNodes(folderNodes, driveKey, owner),
+			this.buildPrivateFilesFromNodes(fileNodes, driveKey, owner)
+		]);
+
+		return { folders, files };
+	}
+
 	async separatedHierarchyOfFolder(
 		folder: ArFSPrivateFolder,
 		owner: ArweaveAddress,
 		driveKey: DriveKey,
-		maxDepth: number
+		maxDepth: number,
+		useSnapshots?: boolean
 	): Promise<SeparatedFolderHierarchy<ArFSPrivateFile, ArFSPrivateFolder>> {
 		// Fetch all of the folder entities within the drive
 		const driveIdOfFolder = folder.driveId;
-		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPrivateDrive({
-			driveId: driveIdOfFolder,
-			owner,
-			latestRevisionsOnly: true,
-			driveKey
-		});
+
+		// SNAPSHOT-ACCELERATED PATH (isolated). Falls back to full replay on the absence
+		// of snapshots or any snapshot failure — private listings then behave as today.
+		let snapshotEntities: { folders: ArFSPrivateFolder[]; files: ArFSPrivateFile[] } | null = null;
+		if (this.snapshotsEnabled(useSnapshots)) {
+			try {
+				snapshotEntities = await this.getPrivateDriveEntitiesViaSnapshots(driveIdOfFolder, driveKey, owner);
+			} catch (e) {
+				console.error(
+					`[snapshot] falling back to full-history replay for private drive ${driveIdOfFolder}: ${e}`
+				);
+				snapshotEntities = null;
+			}
+		}
+
+		const allFolderEntitiesOfDrive = snapshotEntities
+			? snapshotEntities.folders.filter(latestRevisionFilter)
+			: await this.getAllFoldersOfPrivateDrive({
+					driveId: driveIdOfFolder,
+					owner,
+					latestRevisionsOnly: true,
+					driveKey
+				});
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
@@ -2643,12 +2791,21 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 		// Fetch all file entities within all Folders of the drive
 		const childFiles: ArFSPrivateFile[] = [];
-		for (const id of searchFolderIDs) {
-			(await this.getPrivateFilesWithParentFolderIds([id], driveKey, owner, driveIdOfFolder, true)).forEach(
-				(e) => {
-					childFiles.push(e);
+		if (snapshotEntities) {
+			// Files were already fetched drive-wide; keep those parented within the search subtree.
+			for (const file of snapshotEntities.files) {
+				if (searchFolderIDs.some((fid) => fid.equals(file.parentFolderId))) {
+					childFiles.push(file);
 				}
-			);
+			}
+		} else {
+			for (const id of searchFolderIDs) {
+				(await this.getPrivateFilesWithParentFolderIds([id], driveKey, owner, driveIdOfFolder, true)).forEach(
+					(e) => {
+						childFiles.push(e);
+					}
+				);
+			}
 		}
 
 		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders

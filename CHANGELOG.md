@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-07-05
+
+Additive minor over 4.0.1 (hide/unhide). Converges four independently-verified
+listing-path improvements into one release; all re-verified together on the
+combined build.
+
+### Added
+
+- **Snapshot-accelerated drive listing (CORE-3)**: `listPublicFolder` /
+  `listPrivateFolder` consume on-chain ArFS snapshot transactions to reconstruct
+  a drive's history, fetching only the live "tail" of blocks not covered by a
+  snapshot instead of replaying the entire transaction history. Falls back
+  transparently to full-history replay when a drive has no snapshots or any
+  snapshot read fails. New `src/snapshots/` module (height-range algebra,
+  snapshot query/model/parser, drive-history composite). Turns drives that
+  previously timed out (e.g. 753-entity drive, 146 s+ / never completes) into
+  ~2 s listings with far fewer GraphQL requests, and restores real on-chain
+  entities that a mutable gateway index had dropped (a data-integrity fix, not
+  just performance — see D-027 superset-with-verified-drops).
+- **Incremental drive listing + reorg look-back (CORE-2)**: opt-in incremental
+  sync DAOs (`arfsdao_incremental_sync`, `arfsdao_anonymous_incremental_sync`)
+  and persistent sync-state adapters (`sync_state`, `sync_state_store*`) that
+  resume a drive listing from the last synced block, re-scanning a 240-block
+  look-back window to absorb chain reorgs and rebuilding the latest revision of
+  each entity rather than reusing a stale cached one. An unchanged re-sync issues
+  a small fraction of the metadata reads of a full listing.
+
+### Fixed
+
+- **Tolerate invalid entity unixTime (CORE-5)**: a single entity carrying a
+  malformed `Unix-Time` tag (negative / non-integer / non-numeric) no longer
+  aborts the entire drive listing with "Unix time must be a positive integer!".
+  The value is clamped to the Unix epoch (skip-not-abort) so the drive still
+  lists; the `UnixTime` invariant stays strict everywhere else.
+- **Private-listing robustness (CORE-6)**: file builders throw a descriptive
+  `InvalidFileStateException` (naming the missing required properties) instead of
+  a plain `Error('Invalid file state')`, and the private file-listing path now
+  skips `SyntaxError` (undecryptable/unparseable metadata) — mirroring the public
+  path — so one incomplete or undecryptable private entity no longer aborts the
+  whole private-drive reconstruction.
 ## [4.0.1] - 2026-07-05
 
 Additive, backward-compatible release off `master` (all changes land after the

@@ -1,6 +1,6 @@
 {
 	"name": "ardrive-core-js",
-	"version": "4.0.1",
+	"version": "4.1.0",
 	"description": "ArDrive Core contains the essential back end application features to support the ArDrive CLI and Desktop apps, such as file management, Permaweb upload/download, wallet management and other common functions.",
 	"main": "./lib/exports.js",
 	"types": "./lib/exports.d.ts",
@@ -85,6 +85,9 @@
 		"ci": "yarn arlocal-docker-test && yarn build",
 		"dev": "yarn clean && tsc --project ./tsconfig.prod.json -w",
 		"arlocal-docker-test": "bash \"tests/arlocal-docker-test.sh\"",
+		"test:sync": "npx mocha --config .mocharc.js --parallel false --grep incremental",
+		"test:sync:unit": "npx mocha --config .mocharc.js --parallel false src/**/*incremental*.test.ts src/**/sync_state.test.ts",
+		"test:sync:integration": "npx mocha --config .mocharc.js --parallel false tests/integration/incremental_sync.int.test.ts",
 		"build:web": "node build-web.mjs",
 		"build:all": "yarn build && yarn build:web",
 		"test:playwright": "yarn build:all && playwright test",
