@@ -47,6 +47,29 @@ combined build.
   skips `SyntaxError` (undecryptable/unparseable metadata) — mirroring the public
   path — so one incomplete or undecryptable private entity no longer aborts the
   whole private-drive reconstruction.
+## [4.0.1] - 2026-07-05
+
+Additive, backward-compatible release off `master` (all changes land after the
+`v4.0.0` tag). No breaking changes; peer ranges (node/arweave/turbo) unchanged.
+
+### Added
+
+- **File & folder hide / unhide support** (#270, [CORE-4]): new `ArDrive` methods
+  `hidePublicFile` / `unhidePublicFile`, `hidePublicFolder` / `unhidePublicFolder`,
+  `hidePrivateFile` / `unhidePrivateFile`, `hidePrivateFolder` / `unhidePrivateFolder`,
+  and `hidePublicDrive`. Entities are hidden via an ArFS metadata revision (`Hidden`
+  state) rather than deletion, so the operation is reversible and preserves history.
+  Adds the corresponding `Hide*Params` types to the public API.
+- **`prepare` build hook** (#270): building `lib/` now runs automatically on install,
+  so consumers can depend on a git commit ref (e.g. GitHub install) and still receive
+  compiled output without a manual build step.
+
+### Fixed
+
+- **Clear error on empty drive GQL result** (#271): drive-metadata GraphQL queries that
+  return zero edges now throw a descriptive error (via the extracted
+  `assertDriveEdgesFound` helper) instead of failing later with an opaque
+  undefined-access error. Improves diagnosability of transient gateway/404 responses.
 
 ## [3.1.0] - 2025-10-21
 
