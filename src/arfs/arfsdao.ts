@@ -190,7 +190,7 @@ import {
 } from '../exports';
 import { Turbo } from './turbo';
 import { ArweaveSigner } from '@dha-team/arbundles';
-import { InvalidFileStateException } from '../types/exceptions';
+import { InvalidFileStateException, InvalidUnixTimeException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1644,6 +1644,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 						return null;
 					}
 
+					// A single malformed Unix-Time must not abort the whole drive listing
+					if (e instanceof InvalidUnixTimeException) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
 					throw e;
 				}
 			});
@@ -1699,6 +1705,12 @@ export class ArFSDAO extends ArFSDAOAnonymous {
 					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 				} catch (e) {
 					if (e instanceof InvalidFileStateException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					// A single malformed Unix-Time must not abort the whole drive listing
+					if (e instanceof InvalidUnixTimeException) {
 						console.error(`Error building file. Skipping... Error: ${e}`);
 						return null;
 					}

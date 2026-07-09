@@ -23,6 +23,7 @@ import {
 	DriveKey
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
+import { InvalidUnixTimeException } from '../../types/exceptions';
 
 export interface ArFSMetadataEntityBuilderParams {
 	entityId: AnyEntityID;
@@ -120,7 +121,17 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 					this.entityType = value as EntityType;
 					break;
 				case 'Unix-Time':
-					this.unixTime = new UnixTime(+value);
+					// A single on-chain entity carrying a malformed Unix-Time (negative /
+					// non-integer / non-finite) must not abort a whole drive listing. The
+					// UnixTime constructor throws a plain Error here; rethrow it as a
+					// catchable InvalidUnixTimeException so LIST/enumeration loops can skip
+					// just this entity. WRITE paths don't go through this parser, so their
+					// strict UnixTime validation is unaffected.
+					try {
+						this.unixTime = new UnixTime(+value);
+					} catch {
+						throw new InvalidUnixTimeException(value);
+					}
 					break;
 				case 'Boost':
 					this.boost = new FeeMultiple(+value);

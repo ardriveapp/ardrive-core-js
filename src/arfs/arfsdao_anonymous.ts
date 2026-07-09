@@ -27,7 +27,7 @@ import { alphabeticalOrder } from '../utils/sort_functions';
 import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPathsFactory } from '../exports';
 import { gatewayUrlForArweave } from '../utils/common';
 import { GatewayAPI } from '../utils/gateway_api';
-import { InvalidFileStateException } from '../types/exceptions';
+import { InvalidFileStateException, InvalidUnixTimeException } from '../types/exceptions';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -293,6 +293,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 						return null;
 					}
 
+					// A single malformed Unix-Time must not abort the whole drive listing
+					if (e instanceof InvalidUnixTimeException) {
+						console.error(`Error building file. Skipping... Error: ${e}`);
+						return null;
+					}
+
 					throw e;
 				}
 			});
@@ -339,6 +345,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 				} catch (e) {
 					// If the folder is broken, skip it
 					if (e instanceof SyntaxError) {
+						console.error(`Error building folder. Skipping... Error: ${e}`);
+						return null;
+					}
+
+					// A single malformed Unix-Time must not abort the whole drive listing
+					if (e instanceof InvalidUnixTimeException) {
 						console.error(`Error building folder. Skipping... Error: ${e}`);
 						return null;
 					}

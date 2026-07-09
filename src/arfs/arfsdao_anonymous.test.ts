@@ -507,5 +507,100 @@ describe('ArFSDAOAnonymous class', () => {
 			expect(`${files[0].fileId}`).to.equal(fileId1);
 			expect(`${files[1].fileId}`).to.equal(fileId3);
 		});
+
+		// CORE-5: one on-chain entity carrying a malformed Unix-Time must not abort the whole
+		// listing. Previously `new UnixTime(+value)` threw a raw Error that no skip-clause caught,
+		// so a single bad entity killed the entire drive reconstruction (found live on drive a173761d).
+		it('skips entities with a malformed Unix-Time and returns the valid ones', async () => {
+			const fileId1 = '9f7038c7-26bd-4856-a843-8de24b828d4e';
+			const badFileId = '1f7038c7-26bd-4856-a843-8de24b828d4e';
+			const fileId3 = '2f7038c7-26bd-4856-a843-8de24b828d4e';
+
+			const validMetaData = Buffer.from(
+				JSON.stringify({
+					name: '2',
+					size: 2048,
+					lastModifiedDate: 1639073634269,
+					dataTxId: 'yAogaGWWYgWO5xWZevb45Y7YRp7E9iDsvkJvfR7To9c',
+					dataContentType: 'text/plain'
+				})
+			);
+			ArFSPublicFileBuilderStub.resolves(validMetaData);
+
+			const mockGQLResponse = {
+				edges: [
+					{
+						cursor: 'cursor1',
+						node: {
+							id: `${stubTxID}`,
+							tags: [
+								{ name: 'App-Name', value: 'ArDrive-CLI' },
+								{ name: 'App-Version', value: '1.2.0' },
+								{ name: 'ArFS', value: '0.15' },
+								{ name: 'Content-Type', value: 'application/json' },
+								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
+								{ name: 'Entity-Type', value: 'file' },
+								{ name: 'Unix-Time', value: '1639073846' },
+								{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
+								{ name: 'File-Id', value: fileId1 }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+						}
+					},
+					{
+						// Malformed entity: negative Unix-Time — the UnixTime constructor rejects it.
+						cursor: 'cursor2',
+						node: {
+							id: `${stubTxIDAlt}`,
+							tags: [
+								{ name: 'App-Name', value: 'ArDrive-CLI' },
+								{ name: 'App-Version', value: '1.2.0' },
+								{ name: 'ArFS', value: '0.15' },
+								{ name: 'Content-Type', value: 'application/json' },
+								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
+								{ name: 'Entity-Type', value: 'file' },
+								{ name: 'Unix-Time', value: '-1' },
+								{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
+								{ name: 'File-Id', value: badFileId }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+						}
+					},
+					{
+						cursor: 'cursor3',
+						node: {
+							id: `${stubTxIDAltTwo}`,
+							tags: [
+								{ name: 'App-Name', value: 'ArDrive-CLI' },
+								{ name: 'App-Version', value: '1.2.0' },
+								{ name: 'ArFS', value: '0.15' },
+								{ name: 'Content-Type', value: 'application/json' },
+								{ name: 'Drive-Id', value: 'e93cf9c4-5f20-4d7a-87c4-034777cbb51e' },
+								{ name: 'Entity-Type', value: 'file' },
+								{ name: 'Unix-Time', value: '1639073846' },
+								{ name: 'Parent-Folder-Id', value: '6c312b3e-4778-4a18-8243-f2b346f5e7cb' },
+								{ name: 'File-Id', value: fileId3 }
+							],
+							owner: { address: 'vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI' }
+						}
+					}
+				],
+				pageInfo: {
+					hasNextPage: false
+				}
+			};
+			gqlRequestStub.resolves(mockGQLResponse);
+
+			const folderIds = [EID('6c312b3e-4778-4a18-8243-f2b346f5e7cb')];
+			const owner = ADDR('vh-NTHVvlKZqRxc8LyyTNok65yQ55a_PJ1zWLb9G2JI');
+			const driveId = EID('e93cf9c4-5f20-4d7a-87c4-034777cbb51e');
+
+			// Must NOT throw "Unix time must be a positive integer!" — the bad entity is skipped.
+			const files = await dao.getPublicFilesWithParentFolderIds(folderIds, owner, driveId, true);
+
+			expect(files).to.have.lengthOf(2);
+			expect(`${files[0].fileId}`).to.equal(fileId1);
+			expect(`${files[1].fileId}`).to.equal(fileId3);
+		});
 	});
 });
