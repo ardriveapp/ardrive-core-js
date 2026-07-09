@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **GraphQL page size 100 → 1000 (CORE-7)**: every paged `transactions(first: …)`
+  GraphQL walk now requests the gateway maximum of 1000 entities per page instead
+  of 100, via a single shared `GQL_PAGE_SIZE` constant (`src/utils/constants.ts`).
+  This covers `buildQuery`'s default `pageLimit` (used by all listing/drive/folder
+  walks), the `batchSize` default in both incremental-sync DAOs
+  (`arfsdao_incremental_sync`, `arfsdao_anonymous_incremental_sync`), and the
+  snapshot-listing query (`buildSnapshotQuery`). Fetching a drive of N entities now
+  costs `ceil(N/1000)` page requests rather than `ceil(N/100)` — roughly a 10x
+  reduction in GraphQL round-trips — with no change to the set of entities returned.
+  Pagination remains strictly cursor + `pageInfo.hasNextPage` driven, so it stays
+  correct even against a gateway that silently returns fewer than `first` entities
+  for a page (gateways cap `first` at 1000): it keeps following the cursor until
+  `hasNextPage` is false and never drops an entity. `batchSize` remains an additive
+  per-call override (public API unchanged; a smaller value only changes round-trip
+  count). The separate file/folder incremental queries were intentionally left
+  un-consolidated to preserve their per-type early-stop correctness (see CORE-8
+  note in the DAOs).
+
 ## [4.1.0] - 2026-07-05
 
 Additive minor over 4.0.1 (hide/unhide). Converges four independently-verified

@@ -20,7 +20,7 @@ describe('buildSnapshotQuery', () => {
 
 	it('requests a full page and selects block height + timestamp', () => {
 		const { query } = buildSnapshotQuery({ driveId, owner });
-		expect(query).to.contain('first: 100');
+		expect(query).to.contain('first: 1000');
 		expect(query).to.contain('height');
 		expect(query).to.contain('timestamp');
 		expect(query).to.contain('hasNextPage');

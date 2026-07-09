@@ -59,7 +59,12 @@ export interface IncrementalSyncOptions {
 	includeRevisions?: boolean;
 	/** Progress callback for long-running syncs */
 	onProgress?: (processed: number, total: number) => void;
-	/** Number of entities to fetch per GraphQL query (default: 100, max: 100) */
+	/**
+	 * Number of entities to fetch per GraphQL query (default: 1000, the gateway max).
+	 * Arweave gateways silently cap this at 1000; pagination is cursor + hasNextPage
+	 * driven, so a smaller value only changes the number of round-trips, never the set
+	 * of entities returned.
+	 */
 	batchSize?: number;
 	/** Stop sync after finding this many known entities (optimization for catching up) */
 	stopAfterKnownCount?: number;

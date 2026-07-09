@@ -1,4 +1,5 @@
 import { ArweaveAddress, TransactionID, GQLQueryTagInterface } from '../types';
+import { GQL_PAGE_SIZE } from './constants';
 
 const ownerFragment = `
 	owner {
@@ -39,7 +40,7 @@ export type GQLQuery = { query: string };
 export const ASCENDING_ORDER = 'HEIGHT_ASC';
 export const DESCENDING_ORDER = 'HEIGHT_DESC';
 const latestResult = 1;
-const pageLimit = 100;
+const pageLimit = GQL_PAGE_SIZE;
 
 type Sort = typeof ASCENDING_ORDER | typeof DESCENDING_ORDER;
 
@@ -61,7 +62,10 @@ export interface BuildGQLQueryParams {
 	minBlock?: number;
 	/** Incremental-sync upper block-height bound (alias of maxBlockHeight) [CORE-2]. */
 	maxBlock?: number;
-	/** Incremental-sync page size override; defaults to pageLimit when unset [CORE-2]. */
+	/**
+	 * Page size override for `transactions(first: …)`; defaults to {@link GQL_PAGE_SIZE}
+	 * (1000) when unset [CORE-2]. Gateways silently cap this at 1000.
+	 */
 	first?: number;
 }
 

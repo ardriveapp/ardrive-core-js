@@ -35,6 +35,7 @@ import { ArFSPublicFolderCacheKey } from './arfsdao_anonymous';
 import { ArFSPrivateFolderCacheKey } from './arfsdao';
 import { buildQuery } from '../utils/query';
 import { DESCENDING_ORDER } from '../utils/query';
+import { GQL_PAGE_SIZE } from '../utils/constants';
 import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfsdao_anonymous_incremental_sync';
@@ -121,7 +122,13 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		options: IncrementalSyncOptions = {}
 	): Promise<IncrementalSyncResult> {
-		const { syncState, includeRevisions = false, onProgress, batchSize = 100, stopAfterKnownCount = 10 } = options;
+		const {
+			syncState,
+			includeRevisions = false,
+			onProgress,
+			batchSize = GQL_PAGE_SIZE,
+			stopAfterKnownCount = 10
+		} = options;
 
 		const stats: SyncStats = {
 			totalProcessed: 0,
@@ -150,7 +157,21 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			// reconciled rather than silently missed.
 			const minBlock = incrementalMinBlock(syncState?.lastSyncedBlockHeight);
 
-			// Fetch all entities with optional block height filter
+			// Fetch folders and files as two SEPARATE paged queries, run concurrently.
+			//
+			// These are deliberately NOT merged into one `Entity-Type: [file, folder]`
+			// query [CORE-8]: each stream carries an independent `stopAfterKnownCount`
+			// early-stop that counts CONSECUTIVE already-known entities OF ITS OWN TYPE in
+			// descending block order. A single combined query would force one shared cursor,
+			// one pagination loop and therefore one shared early-stop counting known
+			// entities of EITHER type — which trips sooner and could stop paginating before
+			// a changed entity of one type that sits (in block order) just below a run of
+			// >= stopAfterKnownCount known entities of the other type, silently dropping it.
+			// The per-type early-stop is what preserves the no-dropped-entities invariant,
+			// so the query stays split. (Downstream selectLatestRevisions/detectChanges are
+			// order-independent, so combining would not help correctness — only request
+			// count, which the 1000-entity page size already reduces ~10x.) Running both in
+			// parallel means wall-clock latency is already ~max(folders, files), not the sum.
 			const [folders, files] = await Promise.all([
 				this.getIncrementalPrivateFolders(
 					driveId,

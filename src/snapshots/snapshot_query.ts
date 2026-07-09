@@ -1,9 +1,14 @@
 import { ArweaveAddress, EntityID } from '../types';
 import { GQLQuery, DESCENDING_ORDER } from '../utils/query';
+import { GQL_PAGE_SIZE } from '../utils/constants';
 import { SNAPSHOT_ENTITY_TYPE, SnapshotTagName } from './snapshot_tags';
 
-/** How many snapshot transactions to request per page. */
-const SNAPSHOT_PAGE_LIMIT = 100;
+/**
+ * How many snapshot transactions to request per page. Uses the shared
+ * {@link GQL_PAGE_SIZE} (the 1000 gateway max); pagination is cursor + hasNextPage
+ * driven, so this only affects request count, never the snapshot set returned.
+ */
+const SNAPSHOT_PAGE_LIMIT = GQL_PAGE_SIZE;
 
 export interface BuildSnapshotQueryParams {
 	/** The drive whose snapshots we're listing. */

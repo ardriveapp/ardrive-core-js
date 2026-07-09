@@ -26,6 +26,19 @@ export const defaultGatewayPort = 443;
 export const defaultArweaveGatewayPath = `${defaultGatewayProtocol}://${defaultGatewayHost}/`;
 export const gatewayGqlEndpoint = 'graphql';
 
+/**
+ * Default number of transactions requested per GraphQL `transactions(first: …)` page.
+ *
+ * Arweave gateways cap `first` at 1000 and silently clamp anything larger (a request
+ * for 1001 returns 1000, with no error), so 1000 is the largest useful page size. All
+ * paged GraphQL walks in this library are cursor + `pageInfo.hasNextPage` driven, so
+ * this is purely a request-count optimization: a larger page fetches the same entities
+ * in ~10x fewer round-trips versus the previous default of 100, and pagination stays
+ * correct even if a gateway returns fewer than `first` entities for a page (it keeps
+ * following the cursor until `hasNextPage` is false — no entity is ever dropped).
+ */
+export const GQL_PAGE_SIZE = 1000;
+
 export const defaultCipher: CipherType = 'AES256-GCM';
 
 export const fakeEntityId = EID('00000000-0000-0000-0000-000000000000');
