@@ -13,7 +13,14 @@ import { GatewayAPI } from '../utils/gateway_api';
 import { TxPreparer } from '../arfs/tx/tx_preparer';
 import { ArFSTagSettings } from '../arfs/arfs_tag_settings';
 import { ArFSTagAssembler } from '../arfs/tags/tag_assembler';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, defaultArweaveGatewayPath, gqlTagNameRecord } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	defaultArweaveGatewayPath,
+	gqlTagNameRecord,
+	MAX_CONCURRENT_ENTITY_FETCHES
+} from '../utils/constants';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { TurboWeb, TurboSettings } from './turbo_web';
 import { TurboUploadDataItemResponse } from '@ardrive/turbo-sdk';
 import {
@@ -263,24 +270,30 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folderPromises: Promise<ArFSPrivateFolder | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				try {
-					cursor = edge.cursor;
-					const { node } = edge;
-					const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-					const folder = await folderBuilder.build(node);
-					return folder;
-				} catch (e) {
-					// If the folder is broken, skip it
-					if (e instanceof SyntaxError) {
-						console.error(`Error building folder. Skipping... Error: ${e}`);
-						return null;
+			// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES folders at a time so a
+			// full (1000-edge) page does not put ~1000 metadata GETs on the gateway at once
+			// [CORE-9]. Order-preserving and skip-on-broken semantics unchanged.
+			const folders = await mapWithConcurrency(
+				edges,
+				MAX_CONCURRENT_ENTITY_FETCHES,
+				async (edge: GQLEdgeInterface) => {
+					try {
+						cursor = edge.cursor;
+						const { node } = edge;
+						const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+						const folder = await folderBuilder.build(node);
+						return folder;
+					} catch (e) {
+						// If the folder is broken, skip it
+						if (e instanceof SyntaxError) {
+							console.error(`Error building folder. Skipping... Error: ${e}`);
+							return null;
+						}
+						throw e;
 					}
-					throw e;
 				}
-			});
+			);
 
-			const folders = await Promise.all(folderPromises);
 			const validFolders = folders.filter((f) => f !== null) as ArFSPrivateFolder[];
 			allFolders.push(...validFolders);
 		}
@@ -317,23 +330,30 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const files: Promise<ArFSPrivateFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				try {
-					cursor = edge.cursor;
-					const { node } = edge;
-					const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-					const file = await fileBuilder.build(node);
-					return file;
-				} catch (e) {
-					if (e instanceof InvalidFileStateException) {
-						console.error(`Error building file. Skipping... Error: ${e}`);
-						return null;
+			// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES files at a time so a
+			// full (1000-edge) page does not put ~1000 metadata GETs on the gateway at once
+			// [CORE-9]. Order-preserving and skip-on-broken semantics unchanged.
+			const files = await mapWithConcurrency(
+				edges,
+				MAX_CONCURRENT_ENTITY_FETCHES,
+				async (edge: GQLEdgeInterface) => {
+					try {
+						cursor = edge.cursor;
+						const { node } = edge;
+						const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+						const file = await fileBuilder.build(node);
+						return file;
+					} catch (e) {
+						if (e instanceof InvalidFileStateException) {
+							console.error(`Error building file. Skipping... Error: ${e}`);
+							return null;
+						}
+						throw e;
 					}
-					throw e;
 				}
-			});
+			);
 
-			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPrivateFile[];
+			const validFiles = files.filter((f) => f !== null) as ArFSPrivateFile[];
 			allFiles.push(...validFiles);
 		}
 

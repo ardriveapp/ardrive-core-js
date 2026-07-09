@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bounded per-batch entity-fetch concurrency (CORE-9)**: turning a page of GraphQL
+  edges into built entities does a per-entity metadata GET, and every fan-out site did
+  so for the whole page at once (`Promise.all`/`Promise.allSettled(edges.map(...))`).
+  After CORE-7 raised the page size 100 → 1000 that meant up to ~1000 concurrent
+  metadata fetches per host per batch — a ~10x jump in peak parallelism that spikes
+  memory and open connections and risks gateway rate-limits. Concurrency is now
+  DECOUPLED from page size: a new bounded-concurrency helper (`src/utils/concurrency.ts`,
+  `mapWithConcurrency` / `mapSettledWithConcurrency`) processes each batch in
+  concurrency-limited waves capped at `MAX_CONCURRENT_ENTITY_FETCHES = 30`
+  (`src/utils/constants.ts`). So a 1000-entity page still costs ~10x fewer GraphQL
+  round-trips (CORE-7) while at most 30 entity fetches are ever in flight at once
+  (~3x below the pre-CORE-7 worst case of 100). Applied at every per-entity-fetch
+  fan-out: both incremental-sync DAOs' `processFolder/FileBatch`, the full-listing
+  walks (`getAllDrivesForAddress`, `getPublic/PrivateFilesWithParentFolderIds`,
+  `getAllFoldersOfPublic/PrivateDrive`, `getEntitiesInFolder`), the snapshot-tail
+  builders (`buildPublic/PrivateFolders/FilesFromNodes` — snapshot nodes build from
+  the seeded metadata cache with no fetch, only the live tail fetches), and the web
+  authenticated DAO's private folder/file listings. The change is internal and
+  additive: the helpers preserve input order, run each item exactly once, and keep the
+  exact `Promise.all` (reject-on-any) vs `Promise.allSettled` + `failedEntities`
+  semantics of the site they replace, so the entity SET returned is identical — only
+  parallelism is bounded. Pagination, the CORE-7 `hasNextPage` safety and the #43
+  per-type early-stop are unchanged. The inline CORE-8 "keep the file/folder incremental
+  queries separate" note was also softened to clarify that only a NAIVE shared-counter
+  merge would drop entities (a per-type-counter merge could be safe); the queries stay
+  split because merging is a ~zero-latency win now that the two walks already run in
+  parallel via `Promise.all`.
+  - _Follow-up (CORE-10, not in this change):_ a failed per-entity metadata fetch in the
+    incremental DAOs is still counted (`failedEntities`) and logged but not retried — a
+    transient fetch failure can silently drop that entity from the batch. That is a
+    pre-existing data-integrity concern, tracked separately as CORE-10; this change only
+    bounds concurrency and does not add retry logic.
+
 - **GraphQL page size 100 → 1000 (CORE-7)**: every paged `transactions(first: …)`
   GraphQL walk now requests the gateway maximum of 1000 entities per page instead
   of 100, via a single shared `GQL_PAGE_SIZE` constant (`src/utils/constants.ts`).

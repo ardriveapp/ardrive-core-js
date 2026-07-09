@@ -39,6 +39,25 @@ export const gatewayGqlEndpoint = 'graphql';
  */
 export const GQL_PAGE_SIZE = 1000;
 
+/**
+ * Maximum number of per-entity metadata/data fetches allowed in flight at once when
+ * turning a page of GraphQL edges into built entities (folders/files/drives).
+ *
+ * This is deliberately DECOUPLED from {@link GQL_PAGE_SIZE}: a page can now carry up to
+ * 1000 edges (CORE-7), but building an entity from an edge does a per-entity network GET
+ * of its metadata tx. Firing all 1000 at once would put ~1000 concurrent requests on a
+ * single gateway host — spiking memory and open connections and inviting rate-limits.
+ * Instead every batch is processed in concurrency-limited waves so the request COUNT
+ * still drops ~10x (fewer pages) while the peak PARALLELISM stays bounded here.
+ *
+ * 30 sits in the middle of the recommended 20–50 band: high enough that latency stays
+ * dominated by network round-trip time rather than serialization, yet ~3x BELOW the old
+ * page size of 100 (the pre-CORE-7 worst-case per-batch parallelism), so the larger page
+ * size cannot increase peak concurrent fetches. It is an internal tuning constant; the
+ * entity SET returned is identical regardless of its value — only parallelism changes.
+ */
+export const MAX_CONCURRENT_ENTITY_FETCHES = 30;
+
 export const defaultCipher: CipherType = 'AES256-GCM';
 
 export const fakeEntityId = EID('00000000-0000-0000-0000-000000000000');
