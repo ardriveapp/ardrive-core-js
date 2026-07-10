@@ -35,7 +35,7 @@ import { ArFSPublicFolderCacheKey } from './arfsdao_anonymous';
 import { ArFSPrivateFolderCacheKey } from './arfsdao';
 import { buildQuery } from '../utils/query';
 import { DESCENDING_ORDER } from '../utils/query';
-import { GQL_PAGE_SIZE, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
+import { getGqlPageSize, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
 import { mapWithConcurrency } from '../utils/concurrency';
 import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
@@ -127,7 +127,7 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			syncState,
 			includeRevisions = false,
 			onProgress,
-			batchSize = GQL_PAGE_SIZE,
+			batchSize = getGqlPageSize(),
 			stopAfterKnownCount = 10
 		} = options;
 

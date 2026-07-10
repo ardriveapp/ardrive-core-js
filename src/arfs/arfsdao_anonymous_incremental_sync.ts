@@ -23,7 +23,7 @@ import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import { buildQuery } from '../utils/query';
 import { DESCENDING_ORDER } from '../utils/query';
-import { GQL_PAGE_SIZE, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
+import { getGqlPageSize, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
 import { mapSettledWithConcurrency } from '../utils/concurrency';
 import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
@@ -83,7 +83,7 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			syncState,
 			includeRevisions = false,
 			onProgress,
-			batchSize = GQL_PAGE_SIZE,
+			batchSize = getGqlPageSize(),
 			stopAfterKnownCount = 10
 		} = options;
 

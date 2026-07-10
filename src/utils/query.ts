@@ -1,5 +1,5 @@
 import { ArweaveAddress, TransactionID, GQLQueryTagInterface } from '../types';
-import { GQL_PAGE_SIZE } from './constants';
+import { getGqlPageSize } from './constants';
 
 const ownerFragment = `
 	owner {
@@ -40,7 +40,6 @@ export type GQLQuery = { query: string };
 export const ASCENDING_ORDER = 'HEIGHT_ASC';
 export const DESCENDING_ORDER = 'HEIGHT_DESC';
 const latestResult = 1;
-const pageLimit = GQL_PAGE_SIZE;
 
 type Sort = typeof ASCENDING_ORDER | typeof DESCENDING_ORDER;
 
@@ -63,8 +62,10 @@ export interface BuildGQLQueryParams {
 	/** Incremental-sync upper block-height bound (alias of maxBlockHeight) [CORE-2]. */
 	maxBlock?: number;
 	/**
-	 * Page size override for `transactions(first: …)`; defaults to {@link GQL_PAGE_SIZE}
-	 * (1000) when unset [CORE-2]. Gateways silently cap this at 1000.
+	 * Page size override for `transactions(first: …)`; defaults to the configured
+	 * page size (`getGqlPageSize()`, initially the 1000 ar.io max) when unset
+	 * [CORE-2]. An explicit value here always wins over the configured default.
+	 * Gateways silently cap this at 1000.
 	 */
 	first?: number;
 }
@@ -119,7 +120,7 @@ export function buildQuery({
 		query: `query {
 			transactions(
 				${ids?.length ? `ids: [${ids.map((id) => `"${id}"`)}]` : ''}
-				first: ${singleResult ? latestResult : first !== undefined ? first : pageLimit}
+				first: ${singleResult ? latestResult : first !== undefined ? first : getGqlPageSize()}
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
 				${owner === undefined ? '' : `owners: ["${owner}"]`}

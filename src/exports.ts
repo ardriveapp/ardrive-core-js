@@ -49,6 +49,10 @@ export * from './pricing/data_price_regression';
 export * from './pricing/gateway_oracle';
 
 // Utils
+// GraphQL page-size tuning (CORE-7): GQL_PAGE_SIZE is the 1000 ar.io default/max;
+// setGqlPageSize lets a consumer lower the process-global default for a gateway
+// that caps below 1000 (e.g. Goldsky), getGqlPageSize reads the current value.
+export { GQL_PAGE_SIZE, getGqlPageSize, setGqlPageSize } from './utils/constants';
 export * from './utils/common';
 export * from './utils/crypto';
 export * from './utils/error_message';

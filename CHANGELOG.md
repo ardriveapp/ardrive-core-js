@@ -42,23 +42,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     pre-existing data-integrity concern, tracked separately as CORE-10; this change only
     bounds concurrency and does not add retry logic.
 
-- **GraphQL page size 100 → 1000 (CORE-7)**: every paged `transactions(first: …)`
-  GraphQL walk now requests the gateway maximum of 1000 entities per page instead
-  of 100, via a single shared `GQL_PAGE_SIZE` constant (`src/utils/constants.ts`).
-  This covers `buildQuery`'s default `pageLimit` (used by all listing/drive/folder
+- **GraphQL page size 100 → 1000, now tunable (CORE-7)**: every paged
+  `transactions(first: …)` GraphQL walk now requests the gateway maximum of 1000
+  entities per page instead of 100. `GQL_PAGE_SIZE = 1000` (the documented ar.io
+  default/max) stays in `src/utils/constants.ts`, but the per-page default is now a
+  **process-global, tunable value** read through a new `getGqlPageSize()` /
+  `setGqlPageSize(pageSize)` accessor pair (both exported from the package). This lets a
+  consumer (e.g. the ArDrive desktop app) lower the default for a GraphQL gateway that
+  caps `first:` **below** the 1000 ar.io max — Goldsky, for instance — with a single
+  `setGqlPageSize(100)` call; `setGqlPageSize` validates its argument is an integer in
+  `[1, 1000]` and throws `RangeError` otherwise. The default is read at CALL time by the
+  query builders, so a `setGqlPageSize()` made after import takes effect on subsequent
+  queries. It drives `buildQuery`'s default `first:` (used by all listing/drive/folder
   walks), the `batchSize` default in both incremental-sync DAOs
   (`arfsdao_incremental_sync`, `arfsdao_anonymous_incremental_sync`), and the
   snapshot-listing query (`buildSnapshotQuery`). Fetching a drive of N entities now
-  costs `ceil(N/1000)` page requests rather than `ceil(N/100)` — roughly a 10x
-  reduction in GraphQL round-trips — with no change to the set of entities returned.
-  Pagination remains strictly cursor + `pageInfo.hasNextPage` driven, so it stays
-  correct even against a gateway that silently returns fewer than `first` entities
-  for a page (gateways cap `first` at 1000): it keeps following the cursor until
-  `hasNextPage` is false and never drops an entity. `batchSize` remains an additive
-  per-call override (public API unchanged; a smaller value only changes round-trip
-  count). The separate file/folder incremental queries were intentionally left
-  un-consolidated to preserve their per-type early-stop correctness (see CORE-8
-  note in the DAOs).
+  costs `ceil(N/pageSize)` page requests (`ceil(N/1000)` at the default) rather than
+  `ceil(N/100)` — roughly a 10x reduction in GraphQL round-trips at the default — with
+  no change to the set of entities returned. Pagination remains strictly cursor +
+  `pageInfo.hasNextPage` driven, so it stays correct even against a gateway that silently
+  returns fewer than `first` entities for a page (or one capped below 1000): it keeps
+  following the cursor until `hasNextPage` is false and never drops an entity. Explicit
+  per-call overrides (`first`, `batchSize`) still win over the configured default (public
+  API unchanged; a smaller value only changes round-trip count). The separate file/folder
+  incremental queries were intentionally left un-consolidated to preserve their per-type
+  early-stop correctness (see CORE-8 note in the DAOs).
 
 ## [4.1.0] - 2026-07-05
 

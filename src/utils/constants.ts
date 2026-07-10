@@ -40,6 +40,49 @@ export const gatewayGqlEndpoint = 'graphql';
 export const GQL_PAGE_SIZE = 1000;
 
 /**
+ * Process-global override for the default GraphQL page size, initialised to
+ * {@link GQL_PAGE_SIZE}. Kept module-private; read via {@link getGqlPageSize} and
+ * only mutated through {@link setGqlPageSize} so the [1, 1000] validation is always
+ * enforced.
+ */
+let configuredGqlPageSize: number = GQL_PAGE_SIZE;
+
+/**
+ * The currently-configured default GraphQL page size used by every paged GraphQL
+ * walk in this library (`transactions(first: …)`, incremental-sync `batchSize`,
+ * snapshot listing). Returns {@link GQL_PAGE_SIZE} (1000, the ar.io gateway max)
+ * unless a consumer has lowered it via {@link setGqlPageSize}.
+ *
+ * Read at CALL time by the query builders, so a later {@link setGqlPageSize} takes
+ * effect for subsequent queries.
+ */
+export function getGqlPageSize(): number {
+	return configuredGqlPageSize;
+}
+
+/**
+ * Override the process-global default GraphQL page size.
+ *
+ * Intended for consumers (e.g. the ArDrive desktop app) whose configured GraphQL
+ * gateway caps `first:` BELOW the 1000 ar.io maximum — Goldsky, for instance,
+ * accepts fewer entities per page. Lowering the default keeps a single request
+ * within such a gateway's per-page limit; pagination stays cursor + `hasNextPage`
+ * driven, so no entity is ever dropped regardless of the value. Explicit per-call
+ * overrides (`first`, `batchSize`) still win over this default.
+ *
+ * @param pageSize integer in `[1, {@link GQL_PAGE_SIZE}]` (1..1000). A gateway
+ *   cannot page more than the 1000 ar.io max meaningfully, so larger values —
+ *   and non-positive or non-integer values — are rejected.
+ * @throws {RangeError} if `pageSize` is not an integer within `[1, 1000]`.
+ */
+export function setGqlPageSize(pageSize: number): void {
+	if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > GQL_PAGE_SIZE) {
+		throw new RangeError(`GraphQL page size must be an integer in [1, ${GQL_PAGE_SIZE}], got: ${pageSize}`);
+	}
+	configuredGqlPageSize = pageSize;
+}
+
+/**
  * Maximum number of per-entity metadata/data fetches allowed in flight at once when
  * turning a page of GraphQL edges into built entities (folders/files/drives).
  *

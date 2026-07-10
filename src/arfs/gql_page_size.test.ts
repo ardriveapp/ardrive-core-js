@@ -7,7 +7,8 @@ import { DriveID, DriveSyncState, GQLEdgeInterface, GQLNodeInterface } from '../
 import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfsdao_anonymous_incremental_sync';
 import { GatewayAPI } from '../utils/gateway_api';
 import { buildQuery } from '../utils/query';
-import { GQL_PAGE_SIZE } from '../utils/constants';
+import { buildSnapshotQuery } from '../snapshots/snapshot_query';
+import { GQL_PAGE_SIZE, getGqlPageSize, setGqlPageSize } from '../utils/constants';
 
 const fakeArweave = Arweave.init({
 	host: 'localhost',
@@ -26,9 +27,20 @@ const fakeArweave = Arweave.init({
  * change.
  */
 describe('GraphQL page size (CORE-7)', () => {
+	// The configured page size is process-global module state, so reset it after every
+	// test (including the tunable + Goldsky cases below) so nothing leaks between tests.
+	afterEach(() => {
+		setGqlPageSize(GQL_PAGE_SIZE);
+	});
+
 	describe('buildQuery default page size', () => {
 		it('GQL_PAGE_SIZE is the 1000 gateway maximum', () => {
 			expect(GQL_PAGE_SIZE).to.equal(1000);
+		});
+
+		it('getGqlPageSize() defaults to the 1000 gateway maximum', () => {
+			expect(getGqlPageSize()).to.equal(GQL_PAGE_SIZE);
+			expect(getGqlPageSize()).to.equal(1000);
 		});
 
 		it('defaults transactions(first: …) to GQL_PAGE_SIZE for paged (cursor) queries', () => {
@@ -40,6 +52,56 @@ describe('GraphQL page size (CORE-7)', () => {
 			const { query } = buildQuery({ tags: [{ name: 'Drive-Id', value: 'x' }], cursor: 'CURSOR', first: 250 });
 			expect(query).to.contain('first: 250');
 			expect(query).to.not.contain('first: 1000');
+		});
+	});
+
+	// A consumer whose gateway caps `first:` below the 1000 ar.io max (e.g. Goldsky) can
+	// lower the process-global default via setGqlPageSize; getters/query builders read it
+	// at CALL time so the change takes effect for later queries. Explicit overrides win.
+	describe('tunable default page size (setGqlPageSize / getGqlPageSize)', () => {
+		it('lowers the buildQuery default when set (sub-1000 gateway)', () => {
+			setGqlPageSize(100);
+			expect(getGqlPageSize()).to.equal(100);
+
+			const { query } = buildQuery({ tags: [{ name: 'Drive-Id', value: 'x' }], cursor: 'CURSOR' });
+			expect(query).to.contain('first: 100');
+			expect(query).to.not.contain('first: 1000');
+		});
+
+		it('lets an explicit first override win over a lowered default', () => {
+			setGqlPageSize(100);
+			const { query } = buildQuery({ tags: [{ name: 'Drive-Id', value: 'x' }], cursor: 'CURSOR', first: 250 });
+			expect(query).to.contain('first: 250');
+			expect(query).to.not.contain('first: 100');
+		});
+
+		it('is read at call time — a change after import takes effect on the next query', () => {
+			expect(buildQuery({ tags: [], cursor: 'CURSOR' }).query).to.contain('first: 1000');
+			setGqlPageSize(50);
+			expect(buildQuery({ tags: [], cursor: 'CURSOR' }).query).to.contain('first: 50');
+		});
+
+		it('drives the snapshot query page size', () => {
+			const asDefault = buildSnapshotQuery({ driveId: stubEntityID, owner: stubArweaveAddress() });
+			expect(asDefault.query).to.contain('first: 1000');
+
+			setGqlPageSize(100);
+			const lowered = buildSnapshotQuery({ driveId: stubEntityID, owner: stubArweaveAddress() });
+			expect(lowered.query).to.contain('first: 100');
+			expect(lowered.query).to.not.contain('first: 1000');
+		});
+
+		it('rejects non-integer, non-positive, and above-max page sizes; reset restores 1000', () => {
+			for (const bad of [0, -1, 1.5, 1001]) {
+				expect(() => setGqlPageSize(bad)).to.throw(RangeError);
+			}
+			// A rejected value never mutates the configured default.
+			expect(getGqlPageSize()).to.equal(1000);
+
+			// Boundaries are accepted.
+			expect(() => setGqlPageSize(1)).to.not.throw();
+			expect(() => setGqlPageSize(GQL_PAGE_SIZE)).to.not.throw();
+			expect(getGqlPageSize()).to.equal(1000);
 		});
 	});
 
@@ -153,6 +215,36 @@ describe('GraphQL page size (CORE-7)', () => {
 			// ...and every folder request still asked for the full 1000-entity page.
 			const folderCalls = gatewayApiStub.getCalls().filter((c) => c.args[0].query.includes('values: "folder"'));
 			folderCalls.forEach((c) => expect(c.args[0].query).to.contain('first: 1000'));
+		});
+
+		// (b) Goldsky scenario: consumer lowered the default to 100 for a gateway that caps
+		// there. batchSize picks up the configured value, so requests ask for first: 100
+		// (within the cap) AND hasNextPage pagination still lists EVERY entity — none dropped.
+		it('sends first: <configured> and lists ALL entities when the default is lowered to 100 (Goldsky)', async () => {
+			setGqlPageSize(100);
+
+			const total = 250;
+			const gatewayCap = 100;
+			const counter = serveFolderPagesCappedAt(total, gatewayCap);
+
+			const result = await arfsDaoIncSync.getPublicDriveIncrementalSync(mockDriveId, mockOwner);
+
+			// Every one of the 250 distinct folders survives — lowering the page size drops nothing.
+			expect(result.stats.totalProcessed).to.equal(total);
+			expect(result.entities).to.have.lengthOf(total);
+			const distinctIds = new Set(result.entities.map((e) => `${e.entityId}`));
+			expect(distinctIds.size).to.equal(total);
+
+			// Pagination followed hasNextPage (ceil(250/100) = 3 pages).
+			expect(counter.folderRequests()).to.equal(3);
+
+			// Every folder request asked for first: 100 (the configured default via batchSize) — NOT 1000.
+			const folderCalls = gatewayApiStub.getCalls().filter((c) => c.args[0].query.includes('values: "folder"'));
+			expect(folderCalls.length).to.be.greaterThan(0);
+			folderCalls.forEach((c) => {
+				expect(c.args[0].query).to.contain('first: 100');
+				expect(c.args[0].query).to.not.contain('first: 1000');
+			});
 		});
 
 		// (c) Request-count: N entities need ceil(N/1000) page requests, not ceil(N/100).
