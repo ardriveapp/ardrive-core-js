@@ -63,6 +63,16 @@ export const defaultMaxConcurrentChunks = 32;
 export const INITIAL_ERROR_DELAY = 500; // 500ms
 
 /**
+ * Default per-request timeout (in ms) applied to the GatewayAPI's default axios
+ * instance. A hung or unresponsive gateway connection fails cleanly after this
+ * window (the resulting network error flows into the normal retry/backoff path)
+ * instead of waiting forever, which previously presented to users as an
+ * indefinite upload "hang". Callers can override via the `requestTimeoutMs`
+ * GatewayAPI constructor option, or by supplying their own `axiosInstance`.
+ */
+export const DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS = 60_000; // 60 seconds
+
+/**
  *  These are errors from the `/chunk` endpoint on an Arweave
  *  node that we should never try to continue on
  */

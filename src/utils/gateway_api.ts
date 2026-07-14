@@ -4,7 +4,7 @@ import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
 import { TransactionID } from '../types';
 import GQLResultInterface, { GQLTransactionsResultInterface } from '../types/gql_Types';
-import { FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
+import { DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS, FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
 import { GQLQuery } from './query';
 
 interface GatewayAPIConstParams {
@@ -13,6 +13,12 @@ interface GatewayAPIConstParams {
 	initialErrorDelayMS?: number;
 	fatalErrors?: string[];
 	validStatusCodes?: number[];
+	/**
+	 * Per-request timeout (ms) applied ONLY when this class creates its own default
+	 * axios instance. When a caller supplies their own `axiosInstance`, that instance
+	 * is used as-is and this value is ignored (the caller owns its timeout config).
+	 */
+	requestTimeoutMs?: number;
 	axiosInstance?: AxiosInstance;
 }
 
@@ -57,7 +63,12 @@ export class GatewayAPI {
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
 		validStatusCodes = [200, 202],
-		axiosInstance = axios.create({ validateStatus: undefined })
+		// NOTE: `requestTimeoutMs` is destructured BEFORE `axiosInstance` so its
+		// resolved default is available to the `axiosInstance` default initializer
+		// below. The timeout is therefore applied only to the default instance we
+		// create — a caller-supplied `axiosInstance` is used unmodified.
+		requestTimeoutMs = DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS,
+		axiosInstance = axios.create({ validateStatus: undefined, timeout: requestTimeoutMs })
 	}: GatewayAPIConstParams) {
 		this.gatewayUrl = gatewayUrl;
 		this.maxRetriesPerRequest = maxRetriesPerRequest;
@@ -115,6 +126,27 @@ export class GatewayAPI {
 
 				if (isTimeoutError) {
 					throw new Error('GQL Query has been timed out.');
+				}
+
+				// The ar.io gateways enforce a ClickHouse read limit (~10M rows/bytes).
+				// A heavy/under-scoped query trips this and returns a permanent error
+				// (message "Limit for rows or bytes to read exceeded ... TOO_MANY_ROWS",
+				// extensions code 158 / INTERNAL_SERVER_ERROR). This is NOT transient, so
+				// we fail fast with an actionable message instead of pointlessly retrying.
+				const isRowLimitError = data.errors?.some(
+					(error) =>
+						error.message.includes('Limit for rows or bytes to read exceeded') ||
+						error.message.includes('TOO_MANY_ROWS') ||
+						error.extensions?.code === '158'
+				);
+
+				if (isRowLimitError) {
+					throw new Error(
+						'The GraphQL query scanned too many rows and was rejected by the gateway ' +
+							'(row/byte read limit exceeded). This usually means the query was under-scoped ' +
+							'against a very large drive or folder. Scope the query by owner and/or drive ID ' +
+							'(or narrow the block/time range) and try again.'
+					);
 				}
 
 				throw new Error('No data was returned from the GQL request.');

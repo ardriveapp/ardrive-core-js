@@ -7,7 +7,7 @@ import { describe } from 'mocha';
 import { spy, stub } from 'sinon';
 import { expectAsyncErrorThrow } from '../../tests/test_helpers';
 import { stubTransactionID } from '../types';
-import { FATAL_CHUNK_UPLOAD_ERRORS } from './constants';
+import { DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS, FATAL_CHUNK_UPLOAD_ERRORS } from './constants';
 import { GatewayAPI } from './gateway_api';
 
 describe('GatewayAPI class', () => {
@@ -186,6 +186,128 @@ describe('GatewayAPI class', () => {
 				promiseToError: gatewayApi.getTransaction(stubTransactionID),
 				errorMessage: 'Transaction could not be found from the gateway: (Status: 400) Bad Error'
 			});
+		});
+	});
+
+	describe('gqlRequest method', () => {
+		// (a) The ar.io ClickHouse row/byte read-limit error (TOO_MANY_ROWS, code 158)
+		// is permanent, so it must fail fast without exhausting the 8 default retries.
+		it('fails fast on a row-limit / TOO_MANY_ROWS error without exhausting retries and surfaces an actionable message', async () => {
+			const rowLimitBody = {
+				data: null,
+				errors: [
+					{
+						message:
+							'Code: 158. DB::Exception: Limit for rows or bytes to read exceeded, ' +
+							'max rows: 10.00 million: While executing MergeTreeThread. (TOO_MANY_ROWS)',
+						path: ['transactions'],
+						locations: [{ line: 1, column: 1 }],
+						extensions: { code: '158' }
+					}
+				]
+			};
+			const axiosSpy = stub(axiosInstance, 'post').resolves({ status: 200, data: rowLimitBody });
+
+			// Default maxRetriesPerRequest (8) — a retry-happy config would call post 9 times.
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance, initialErrorDelayMS: 1 });
+
+			let caught: Error | null = null;
+			try {
+				await gatewayApi.gqlRequest({} as any);
+			} catch (err) {
+				caught = err as Error;
+			}
+
+			expect(caught, 'expected gqlRequest to throw').to.be.instanceOf(Error);
+			expect(caught?.message).to.contain('scanned too many rows');
+			expect(caught?.message).to.contain('owner');
+			// Exactly one request — proves the error was treated as fatal, not retried 8x.
+			expect(axiosSpy.callCount).to.equal(1);
+		});
+
+		it('detects the row-limit error via extensions code 158 alone', async () => {
+			const rowLimitBody = {
+				data: null,
+				errors: [{ message: 'internal error', path: [], locations: [], extensions: { code: '158' } }]
+			};
+			const axiosSpy = stub(axiosInstance, 'post').resolves({ status: 200, data: rowLimitBody });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			let caught: Error | null = null;
+			try {
+				await gatewayApi.gqlRequest({} as any);
+			} catch (err) {
+				caught = err as Error;
+			}
+
+			expect(caught?.message).to.contain('scanned too many rows');
+			expect(axiosSpy.callCount).to.equal(1);
+		});
+
+		// (e) The pre-existing statement-timeout handling must be preserved unchanged.
+		it('preserves the statement-timeout behavior (fails fast with the timed-out message)', async () => {
+			const timeoutBody = {
+				data: null,
+				errors: [
+					{
+						message: 'canceling statement due to statement timeout',
+						path: ['transactions'],
+						locations: [{ line: 1, column: 1 }],
+						extensions: { code: '0' }
+					}
+				]
+			};
+			const axiosSpy = stub(axiosInstance, 'post').resolves({ status: 200, data: timeoutBody });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			await expectAsyncErrorThrow({
+				promiseToError: gatewayApi.gqlRequest({} as any),
+				errorMessage: 'GQL Error: GQL Query has been timed out.'
+			});
+
+			expect(axiosSpy.callCount).to.equal(1);
+		});
+	});
+
+	describe('request timeout configuration', () => {
+		// (b) The default axios instance is created with a bounded request timeout.
+		it('creates its default axios instance with the default request timeout', () => {
+			const gatewayApi = new GatewayAPI({ gatewayUrl });
+			expect((gatewayApi as any).axiosInstance.defaults.timeout).to.equal(DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS);
+		});
+
+		it('creates its default axios instance with a caller-provided request timeout', () => {
+			const gatewayApi = new GatewayAPI({ gatewayUrl, requestTimeoutMs: 12_345 });
+			expect((gatewayApi as any).axiosInstance.defaults.timeout).to.equal(12_345);
+		});
+
+		// (c) A caller-supplied axios instance is used as-is and never modified.
+		it('uses an externally-supplied axios instance unmodified', () => {
+			const external = axios.create();
+			const originalTimeout = external.defaults.timeout;
+
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance: external, requestTimeoutMs: 999 });
+
+			// Same instance reference — not replaced.
+			expect((gatewayApi as any).axiosInstance).to.equal(external);
+			// requestTimeoutMs did NOT clobber the caller's timeout config.
+			expect(external.defaults.timeout).to.equal(originalTimeout);
+		});
+
+		// (d) A transient network/timeout error (rejected promise) still retries then succeeds.
+		it('retries a transient network/timeout error and then succeeds', async () => {
+			const timeoutError = Object.assign(new Error('timeout of 60000ms exceeded'), { code: 'ECONNABORTED' });
+			const axiosSpy = stub(axiosInstance, 'post')
+				.onCall(0)
+				.rejects(timeoutError)
+				.onCall(1)
+				.resolves({ status: 200 });
+
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance, initialErrorDelayMS: 1 });
+
+			await gatewayApi.postToEndpoint('');
+
+			expect(axiosSpy.callCount).to.equal(2);
 		});
 	});
 });
