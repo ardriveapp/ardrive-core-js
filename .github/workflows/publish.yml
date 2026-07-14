@@ -1,0 +1,83 @@
+name: Publish to npm
+
+# Publishes ardrive-core-js to npm. Two ways to trigger:
+#   1. Push a version tag `vX.Y.Z` (recommended: cut from master after merge).
+#   2. Manually via the Actions tab (workflow_dispatch) with a dry_run toggle.
+#
+# Prerequisite (one-time, owner): add an `NPM_TOKEN` repo secret — an npm
+# automation token with publish rights for `ardrive-core-js`.
+#
+# Why this exists: `npm publish` runs the `prepare` hook (tsc -> lib/) but does
+# NOT build the browser bundle `dist/web/`, which the package's `files` array
+# ships. Publishing without `yarn build:web` produces a package with a stale or
+# missing web bundle. This workflow always builds BOTH and verifies the tarball
+# contains them before publishing, so a broken package can't go out.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + pack + verify, but do NOT publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # enables npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build Node bundle (lib/)
+        run: yarn build
+
+      - name: Build web bundle (dist/web/)
+        run: yarn build:web
+
+      # Tag pushes must match package.json's version, or we'd publish the wrong number.
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'push'
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json ($PKG_VERSION). Bump package.json or fix the tag."
+            exit 1
+          fi
+          echo "Version OK: ${GITHUB_REF_NAME}"
+
+      # Guard the dist/web gotcha: the tarball MUST carry both bundles.
+      - name: Verify packaged contents (lib/ AND dist/web/)
+        run: |
+          npm pack --dry-run --json > pack.json
+          node -e '
+            const files = require("./pack.json")[0].files.map(f => f.path);
+            const hasLib = files.some(f => f.startsWith("lib/") && f.endsWith("exports.js"));
+            const hasWeb = files.some(f => f.startsWith("dist/web/"));
+            if (!hasLib) { console.error("::error::lib/exports.js missing from package"); process.exit(1); }
+            if (!hasWeb) { console.error("::error::dist/web/ missing from package — build:web did not run"); process.exit(1); }
+            console.log(`Package OK: ${files.length} files, lib/ + dist/web/ present`);
+          '
+
+      - name: Publish to npm (with provenance)
+        if: github.event_name == 'push' || inputs.dry_run == false
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry-run summary
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        run: echo "Dry run complete — built, packed, and verified. Nothing published."
