@@ -248,6 +248,45 @@ describe('GatewayAPI class', () => {
 			expect(axiosSpy.callCount).to.equal(1);
 		});
 
+		// Regression (CodeRabbit finding 1): a PARTIAL response carrying BOTH `data` AND a
+		// row-limit error must FAIL FAST and NOT return the truncated data. Previously the
+		// check lived inside `if (!data.data)`, so a partial response skipped it.
+		it('fails fast on a row-limit error even when partial data is present (does not return truncated data)', async () => {
+			const partialBody = {
+				data: {
+					transactions: {
+						edges: [{ node: { id: 'partial-tx-should-not-be-returned' } }],
+						pageInfo: { hasNextPage: true }
+					}
+				},
+				errors: [
+					{
+						message:
+							'Code: 158. DB::Exception: Limit for rows or bytes to read exceeded, ' +
+							'max rows: 10.00 million. (TOO_MANY_ROWS)',
+						path: ['transactions'],
+						locations: [{ line: 1, column: 1 }],
+						extensions: { code: '158' }
+					}
+				]
+			};
+			const axiosSpy = stub(axiosInstance, 'post').resolves({ status: 200, data: partialBody });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			let caught: Error | null = null;
+			let returned: unknown = 'unset';
+			try {
+				returned = await gatewayApi.gqlRequest({} as any);
+			} catch (err) {
+				caught = err as Error;
+			}
+
+			expect(caught, 'expected a throw, not a return of partial data').to.be.instanceOf(Error);
+			expect(caught?.message).to.contain('scanned too many rows');
+			expect(returned, 'must NOT return the partial/truncated transactions').to.equal('unset');
+			expect(axiosSpy.callCount).to.equal(1);
+		});
+
 		// (e) The pre-existing statement-timeout handling must be preserved unchanged.
 		it('preserves the statement-timeout behavior (fails fast with the timed-out message)', async () => {
 			const timeoutBody = {
@@ -458,6 +497,39 @@ describe('GatewayAPI class', () => {
 			expect(error?.message).to.contain('2 retries');
 			expect(throttleSpy.callCount).to.equal(2); // bounded by the configured value
 			expect(axiosSpy.callCount).to.equal(3); // 2 throttled + 1 that throws
+		});
+
+		// Regression (CodeRabbit finding 2): a rejected request (network error / the axios
+		// timeout this PR added) that follows a 429 must NOT inherit the stale 429 status.
+		// It must take the error-retry/backoff path (no 60s throttle) and NOT consume the
+		// rate-limit budget. maxRateLimitRetries = 1 makes this sharp: if the rejection were
+		// misread as a 2nd 429 it would exceed the budget and throw instead of succeeding.
+		it('treats a post-429 rejection as a normal error, not a 429: 429 -> rejection -> 200 succeeds (finding 2)', async () => {
+			clock = useFakeTimers();
+			const timeoutError = Object.assign(new Error('timeout of 60000ms exceeded'), { code: 'ECONNABORTED' });
+			const axiosSpy = stub(axiosInstance, 'post')
+				.onCall(0)
+				.resolves({ status: 429, statusText: 'Too Many Requests' })
+				.onCall(1)
+				.rejects(timeoutError)
+				.onCall(2)
+				.resolves({ status: 200 });
+			const gatewayApi = new GatewayAPI({
+				gatewayUrl,
+				axiosInstance,
+				maxRateLimitRetries: 1,
+				initialErrorDelayMS: 1
+			});
+			const throttleSpy = spy(gatewayApi as any, 'rateLimitThrottle');
+
+			const { ok, error } = await runToCompletion(gatewayApi.postToEndpoint(''), clock);
+
+			expect(error, 'the rejection must not surface as a rate-limit failure').to.equal(null);
+			expect(ok, '429 -> rejection -> 200 must SUCCEED').to.equal(true);
+			// Only the single genuine 429 throttled; the rejection took the error/backoff
+			// path (NOT a 60s wait) and did NOT consume the rate-limit budget.
+			expect(throttleSpy.callCount).to.equal(1);
+			expect(axiosSpy.callCount).to.equal(3);
 		});
 	});
 });

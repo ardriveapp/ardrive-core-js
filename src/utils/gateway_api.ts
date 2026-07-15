@@ -143,6 +143,31 @@ export class GatewayAPI {
 				});
 			}
 
+			// The ar.io gateways enforce a ClickHouse read limit (~10M rows/bytes).
+			// A heavy/under-scoped query trips this and returns a permanent error
+			// (message "Limit for rows or bytes to read exceeded ... TOO_MANY_ROWS",
+			// extensions code 158 / INTERNAL_SERVER_ERROR). This is NOT transient, so
+			// we fail fast with an actionable message instead of pointlessly retrying.
+			//
+			// Checked BEFORE the `!data.data` branch: a PARTIAL response can carry BOTH
+			// `data` AND a row-limit error, and silently returning that truncated data
+			// would drop entities. A row-limit error must always fail fast.
+			const isRowLimitError = data.errors?.some(
+				(error) =>
+					error.message.includes('Limit for rows or bytes to read exceeded') ||
+					error.message.includes('TOO_MANY_ROWS') ||
+					error.extensions?.code === '158'
+			);
+
+			if (isRowLimitError) {
+				throw new Error(
+					'The GraphQL query scanned too many rows and was rejected by the gateway ' +
+						'(row/byte read limit exceeded). This usually means the query was under-scoped ' +
+						'against a very large drive or folder. Scope the query by owner and/or drive ID ' +
+						'(or narrow the block/time range) and try again.'
+				);
+			}
+
 			if (!data.data) {
 				const isTimeoutError = data.errors?.some((error) =>
 					error.message.includes('canceling statement due to statement timeout')
@@ -150,27 +175,6 @@ export class GatewayAPI {
 
 				if (isTimeoutError) {
 					throw new Error('GQL Query has been timed out.');
-				}
-
-				// The ar.io gateways enforce a ClickHouse read limit (~10M rows/bytes).
-				// A heavy/under-scoped query trips this and returns a permanent error
-				// (message "Limit for rows or bytes to read exceeded ... TOO_MANY_ROWS",
-				// extensions code 158 / INTERNAL_SERVER_ERROR). This is NOT transient, so
-				// we fail fast with an actionable message instead of pointlessly retrying.
-				const isRowLimitError = data.errors?.some(
-					(error) =>
-						error.message.includes('Limit for rows or bytes to read exceeded') ||
-						error.message.includes('TOO_MANY_ROWS') ||
-						error.extensions?.code === '158'
-				);
-
-				if (isRowLimitError) {
-					throw new Error(
-						'The GraphQL query scanned too many rows and was rejected by the gateway ' +
-							'(row/byte read limit exceeded). This usually means the query was under-scoped ' +
-							'against a very large drive or folder. Scope the query by owner and/or drive ID ' +
-							'(or narrow the block/time range) and try again.'
-					);
 				}
 
 				throw new Error('No data was returned from the GQL request.');
@@ -303,6 +307,12 @@ export class GatewayAPI {
 
 			this.lastError = resp.statusText ?? resp;
 		} catch (err) {
+			// A rejected request (network error, incl. the axios request timeout) has NO
+			// HTTP status. Reset lastRespStatus so a prior 429 doesn't leave it stale —
+			// otherwise the retry loop would misread this rejection as another rate-limit
+			// (429) response, wrongly 60s-throttle it, and consume the rate-limit budget
+			// instead of the normal error-retry/backoff budget.
+			this.lastRespStatus = 0;
 			this.lastError = err instanceof Error ? err.message : `${err}`; // stringify error if unknown type
 		}
 
