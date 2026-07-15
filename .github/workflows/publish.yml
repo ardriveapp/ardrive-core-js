@@ -16,7 +16,12 @@ name: Publish to npm
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      # vX.Y.Z (and prereleases like vX.Y.Z-rc.1). The "verify tag matches
+      # package.json" step below is the real guard on which version publishes;
+      # this just gates the workflow to version-shaped tags. Uses only `*`
+      # (unambiguous in GitHub's filter-pattern syntax) rather than a
+      # `[0-9]+`-style pattern that reads like regex.
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       dry_run:
