@@ -87,6 +87,7 @@ import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
+	DEFAULT_DOWNLOAD_CONCURRENCY,
 	authTagLength,
 	defaultMaxConcurrentChunks,
 	ENCRYPTED_DATA_PLACEHOLDER,
@@ -2635,21 +2636,17 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
-			// download child files into the folder
+			// download child files into the folder with bounded concurrency so at
+			// most DEFAULT_DOWNLOAD_CONCURRENCY downloads are ever in flight at once
 			const childrenFiles = childFiles.filter(
 				(file) => `${file.parentFolderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */
 			);
-			for (const file of childrenFiles) {
+			await mapWithConcurrency(childrenFiles, DEFAULT_DOWNLOAD_CONCURRENCY, async (file) => {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
 					privateEntityWithPathsKeylessFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
-				/*
-				 * FIXME: Downloading all files at once consumes a lot of resources.
-				 * TODO: Implement a download manager for downloading in parallel
-				 * Doing it sequentially for now
-				 */
 				const dataStream = await this.getPrivateDataStream(file);
 				const fileKey = await deriveFileKey(`${file.fileId}`, driveKey);
 				const fileCipherIVResult = cipherIVMap[`${file.dataTxId}`];
@@ -2665,7 +2662,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					decryptingStream
 				);
 				await fileWrapper.write();
-			}
+			});
 		}
 	}
 

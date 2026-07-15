@@ -132,6 +132,13 @@ export const authTagLength = 16;
 export const defaultMaxConcurrentChunks = 32;
 
 /**
+ * Maximum number of files downloaded in parallel when recursively downloading a
+ * folder (public or private). Bounds resource usage (open sockets, file handles,
+ * memory) while still being meaningfully faster than a fully sequential download.
+ */
+export const DEFAULT_DOWNLOAD_CONCURRENCY = 5;
+
+/**
  * Error delay for the first failed request for a transaction header post or chunk upload
  * Subsequent requests will delay longer with an exponential back off strategy
  */
