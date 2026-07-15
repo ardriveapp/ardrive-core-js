@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-07-15
+
+### Added
+
+- **Bounded-concurrency parallel folder downloads.** `downloadPublicFolder` and
+  `downloadPrivateFolder` now download a folder's files with a bounded worker pool
+  (`mapWithConcurrency`, `DEFAULT_DOWNLOAD_CONCURRENCY = 5`) instead of one-at-a-time,
+  so at most 5 downloads are ever in flight at once — faster folder downloads without
+  unbounded parallelism. A failing download still rejects the operation. (Carries forward
+  the idea from #262, implemented with a true concurrency cap.)
+
+### Fixed
+
+- **Gateway request no longer hangs indefinitely on a rate-limiting or slow gateway.**
+  `GatewayAPI` now applies a bounded request timeout (`DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS`)
+  and bounds the HTTP 429 rate-limit wait loop (`DEFAULT_MAX_RATE_LIMIT_RETRIES`, default 5)
+  so a gateway that returns 429 on every request fails fast with a clear, actionable error
+  instead of pausing 60s and retrying forever. A rejected/timed-out request also resets the
+  stale response status so it isn't misclassified as another 429. GraphQL responses that trip
+  the gateway's row-scan limit (`TOO_MANY_ROWS`) fail fast with an actionable message even when
+  a partial `data` field is present. Transient-throttle tolerance is preserved (a 429 that
+  clears within the budget still succeeds).
+
 ### Changed
 
 - **Bounded per-batch entity-fetch concurrency (CORE-9)**: turning a page of GraphQL
