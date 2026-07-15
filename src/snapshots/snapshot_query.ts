@@ -1,9 +1,7 @@
 import { ArweaveAddress, EntityID } from '../types';
 import { GQLQuery, DESCENDING_ORDER } from '../utils/query';
+import { getGqlPageSize } from '../utils/constants';
 import { SNAPSHOT_ENTITY_TYPE, SnapshotTagName } from './snapshot_tags';
-
-/** How many snapshot transactions to request per page. */
-const SNAPSHOT_PAGE_LIMIT = 100;
 
 export interface BuildSnapshotQueryParams {
 	/** The drive whose snapshots we're listing. */
@@ -52,7 +50,7 @@ export function buildSnapshotQuery({
 	return {
 		query: `query {
 			transactions(
-				first: ${SNAPSHOT_PAGE_LIMIT}
+				first: ${getGqlPageSize()}
 				sort: ${DESCENDING_ORDER}
 				owners: ["${owner}"]
 				${cursor === undefined ? '' : `after: "${cursor}"`}

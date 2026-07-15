@@ -23,6 +23,8 @@ import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import { buildQuery } from '../utils/query';
 import { DESCENDING_ORDER } from '../utils/query';
+import { getGqlPageSize, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
+import { mapSettledWithConcurrency } from '../utils/concurrency';
 import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { SyncStateStore } from '../utils/sync_state_store';
@@ -77,7 +79,13 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 		owner: ArweaveAddress,
 		options: IncrementalSyncOptions = {}
 	): Promise<IncrementalSyncResult> {
-		const { syncState, includeRevisions = false, onProgress, batchSize = 100, stopAfterKnownCount = 10 } = options;
+		const {
+			syncState,
+			includeRevisions = false,
+			onProgress,
+			batchSize = getGqlPageSize(),
+			stopAfterKnownCount = 10
+		} = options;
 
 		const stats: SyncStats = {
 			totalProcessed: 0,
@@ -106,7 +114,24 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			// reconciled rather than silently missed.
 			const minBlock = incrementalMinBlock(syncState?.lastSyncedBlockHeight);
 
-			// Fetch all entities with optional block height filter
+			// Fetch folders and files as two SEPARATE paged queries, run concurrently.
+			//
+			// These are deliberately NOT merged into one `Entity-Type: [file, folder]`
+			// query [CORE-8]: each stream carries an independent `stopAfterKnownCount`
+			// early-stop that counts CONSECUTIVE already-known entities OF ITS OWN TYPE in
+			// descending block order. Merging is not fundamentally unsafe — only a NAIVE
+			// merge is: a single combined query with ONE shared early-stop counter (counting
+			// known entities of EITHER type) trips sooner and could stop paginating before a
+			// changed entity of one type that sits (in block order) just below a run of
+			// >= stopAfterKnownCount known entities of the other type, silently dropping it.
+			// A combined query that kept a SEPARATE per-type counter (only stopping once both
+			// types have independently hit the threshold) would preserve the no-dropped-
+			// entities invariant just as well. The queries stay split simply because merging
+			// buys almost nothing: after CORE-7 the two walks already run in parallel via
+			// `Promise.all`, so wall-clock latency is ~max(folders, files) not the sum, and
+			// the ~10x round-trip reduction is already delivered by the 1000-entity page size.
+			// Downstream selectLatestRevisions/detectChanges are order-independent, so a merge
+			// would add per-type-counter/shared-cursor bookkeeping for a ~zero latency win.
 			const [folders, files] = await Promise.all([
 				this.getIncrementalFolders(
 					driveId,
@@ -329,7 +354,11 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<ArFSPublicFolder[]> {
-		const folders: Promise<ArFSPublicFolder & { blockHeight: number }>[] = edges.map(async (edge) => {
+		// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES entities at a time
+		// so a 1000-edge page (CORE-7) does not put ~1000 metadata GETs on the gateway at
+		// once [CORE-9]. Results stay index-aligned with `edges`, so order and the
+		// failedEntities accounting below are identical to the previous Promise.allSettled.
+		const results = await mapSettledWithConcurrency(edges, MAX_CONCURRENT_ENTITY_FETCHES, async (edge) => {
 			const { node } = edge;
 
 			// Update block height stats
@@ -367,7 +396,6 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			return Object.assign(folder, { blockHeight });
 		});
 
-		const results = await Promise.allSettled(folders);
 		const successfulFolders: (ArFSPublicFolder & { blockHeight: number })[] = [];
 
 		for (const result of results) {
@@ -391,7 +419,11 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<ArFSPublicFile[]> {
-		const files: Promise<ArFSPublicFile & { blockHeight: number }>[] = edges.map(async (edge) => {
+		// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES entities at a time
+		// so a 1000-edge page (CORE-7) does not put ~1000 metadata GETs on the gateway at
+		// once [CORE-9]. Results stay index-aligned with `edges`, so order and the
+		// failedEntities accounting below are identical to the previous Promise.allSettled.
+		const results = await mapSettledWithConcurrency(edges, MAX_CONCURRENT_ENTITY_FETCHES, async (edge) => {
 			const { node } = edge;
 
 			// Update block height stats
@@ -429,7 +461,6 @@ export class ArFSDAOAnonymousIncrementalSync extends ArFSDAOAnonymous {
 			return Object.assign(file, { blockHeight });
 		});
 
-		const results = await Promise.allSettled(files);
 		const successfulFiles: (ArFSPublicFile & { blockHeight: number })[] = [];
 
 		for (const result of results) {

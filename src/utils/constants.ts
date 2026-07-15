@@ -26,6 +26,81 @@ export const defaultGatewayPort = 443;
 export const defaultArweaveGatewayPath = `${defaultGatewayProtocol}://${defaultGatewayHost}/`;
 export const gatewayGqlEndpoint = 'graphql';
 
+/**
+ * Default number of transactions requested per GraphQL `transactions(first: …)` page.
+ *
+ * Arweave gateways cap `first` at 1000 and silently clamp anything larger (a request
+ * for 1001 returns 1000, with no error), so 1000 is the largest useful page size. All
+ * paged GraphQL walks in this library are cursor + `pageInfo.hasNextPage` driven, so
+ * this is purely a request-count optimization: a larger page fetches the same entities
+ * in ~10x fewer round-trips versus the previous default of 100, and pagination stays
+ * correct even if a gateway returns fewer than `first` entities for a page (it keeps
+ * following the cursor until `hasNextPage` is false — no entity is ever dropped).
+ */
+export const GQL_PAGE_SIZE = 1000;
+
+/**
+ * Process-global override for the default GraphQL page size, initialised to
+ * {@link GQL_PAGE_SIZE}. Kept module-private; read via {@link getGqlPageSize} and
+ * only mutated through {@link setGqlPageSize} so the [1, 1000] validation is always
+ * enforced.
+ */
+let configuredGqlPageSize: number = GQL_PAGE_SIZE;
+
+/**
+ * The currently-configured default GraphQL page size used by every paged GraphQL
+ * walk in this library (`transactions(first: …)`, incremental-sync `batchSize`,
+ * snapshot listing). Returns {@link GQL_PAGE_SIZE} (1000, the ar.io gateway max)
+ * unless a consumer has lowered it via {@link setGqlPageSize}.
+ *
+ * Read at CALL time by the query builders, so a later {@link setGqlPageSize} takes
+ * effect for subsequent queries.
+ */
+export function getGqlPageSize(): number {
+	return configuredGqlPageSize;
+}
+
+/**
+ * Override the process-global default GraphQL page size.
+ *
+ * Intended for consumers (e.g. the ArDrive desktop app) whose configured GraphQL
+ * gateway caps `first:` BELOW the 1000 ar.io maximum — Goldsky, for instance,
+ * accepts fewer entities per page. Lowering the default keeps a single request
+ * within such a gateway's per-page limit; pagination stays cursor + `hasNextPage`
+ * driven, so no entity is ever dropped regardless of the value. Explicit per-call
+ * overrides (`first`, `batchSize`) still win over this default.
+ *
+ * @param pageSize integer in `[1, {@link GQL_PAGE_SIZE}]` (1..1000). A gateway
+ *   cannot page more than the 1000 ar.io max meaningfully, so larger values —
+ *   and non-positive or non-integer values — are rejected.
+ * @throws {RangeError} if `pageSize` is not an integer within `[1, 1000]`.
+ */
+export function setGqlPageSize(pageSize: number): void {
+	if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > GQL_PAGE_SIZE) {
+		throw new RangeError(`GraphQL page size must be an integer in [1, ${GQL_PAGE_SIZE}], got: ${pageSize}`);
+	}
+	configuredGqlPageSize = pageSize;
+}
+
+/**
+ * Maximum number of per-entity metadata/data fetches allowed in flight at once when
+ * turning a page of GraphQL edges into built entities (folders/files/drives).
+ *
+ * This is deliberately DECOUPLED from {@link GQL_PAGE_SIZE}: a page can now carry up to
+ * 1000 edges (CORE-7), but building an entity from an edge does a per-entity network GET
+ * of its metadata tx. Firing all 1000 at once would put ~1000 concurrent requests on a
+ * single gateway host — spiking memory and open connections and inviting rate-limits.
+ * Instead every batch is processed in concurrency-limited waves so the request COUNT
+ * still drops ~10x (fewer pages) while the peak PARALLELISM stays bounded here.
+ *
+ * 30 sits in the middle of the recommended 20–50 band: high enough that latency stays
+ * dominated by network round-trip time rather than serialization, yet ~3x BELOW the old
+ * page size of 100 (the pre-CORE-7 worst-case per-batch parallelism), so the larger page
+ * size cannot increase peak concurrent fetches. It is an internal tuning constant; the
+ * entity SET returned is identical regardless of its value — only parallelism changes.
+ */
+export const MAX_CONCURRENT_ENTITY_FETCHES = 30;
+
 export const defaultCipher: CipherType = 'AES256-GCM';
 
 export const fakeEntityId = EID('00000000-0000-0000-0000-000000000000');

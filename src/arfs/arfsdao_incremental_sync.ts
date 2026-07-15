@@ -35,6 +35,8 @@ import { ArFSPublicFolderCacheKey } from './arfsdao_anonymous';
 import { ArFSPrivateFolderCacheKey } from './arfsdao';
 import { buildQuery } from '../utils/query';
 import { DESCENDING_ORDER } from '../utils/query';
+import { getGqlPageSize, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { incrementalMinBlock, selectLatestRevisions } from '../utils/sync_state';
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSDAOAnonymousIncrementalSync, ArFSIncrementalSyncCache } from './arfsdao_anonymous_incremental_sync';
@@ -121,7 +123,13 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		options: IncrementalSyncOptions = {}
 	): Promise<IncrementalSyncResult> {
-		const { syncState, includeRevisions = false, onProgress, batchSize = 100, stopAfterKnownCount = 10 } = options;
+		const {
+			syncState,
+			includeRevisions = false,
+			onProgress,
+			batchSize = getGqlPageSize(),
+			stopAfterKnownCount = 10
+		} = options;
 
 		const stats: SyncStats = {
 			totalProcessed: 0,
@@ -150,7 +158,24 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 			// reconciled rather than silently missed.
 			const minBlock = incrementalMinBlock(syncState?.lastSyncedBlockHeight);
 
-			// Fetch all entities with optional block height filter
+			// Fetch folders and files as two SEPARATE paged queries, run concurrently.
+			//
+			// These are deliberately NOT merged into one `Entity-Type: [file, folder]`
+			// query [CORE-8]: each stream carries an independent `stopAfterKnownCount`
+			// early-stop that counts CONSECUTIVE already-known entities OF ITS OWN TYPE in
+			// descending block order. Merging is not fundamentally unsafe — only a NAIVE
+			// merge is: a single combined query with ONE shared early-stop counter (counting
+			// known entities of EITHER type) trips sooner and could stop paginating before a
+			// changed entity of one type that sits (in block order) just below a run of
+			// >= stopAfterKnownCount known entities of the other type, silently dropping it.
+			// A combined query that kept a SEPARATE per-type counter (only stopping once both
+			// types have independently hit the threshold) would preserve the no-dropped-
+			// entities invariant just as well. The queries stay split simply because merging
+			// buys almost nothing: after CORE-7 the two walks already run in parallel via
+			// `Promise.all`, so wall-clock latency is ~max(folders, files) not the sum, and
+			// the ~10x round-trip reduction is already delivered by the 1000-entity page size.
+			// Downstream selectLatestRevisions/detectChanges are order-independent, so a merge
+			// would add per-type-counter/shared-cursor bookkeeping for a ~zero latency win.
 			const [folders, files] = await Promise.all([
 				this.getIncrementalPrivateFolders(
 					driveId,
@@ -378,45 +403,45 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<((ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number })[]> {
-		const folders: Promise<(ArFSPrivateFolder | ArFSPrivateFolderKeyless) & { blockHeight: number }>[] = edges.map(
-			async (edge) => {
-				const { node } = edge;
+		// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES entities at a time so
+		// a 1000-edge page (CORE-7) does not put ~1000 metadata GETs on the gateway at once
+		// [CORE-9]. mapWithConcurrency preserves input order and Promise.all's reject-on-any-
+		// failure semantics, so the returned batch is identical — only parallelism is capped.
+		return mapWithConcurrency(edges, MAX_CONCURRENT_ENTITY_FETCHES, async (edge) => {
+			const { node } = edge;
 
-				// Update block height stats
-				const blockHeight = node.block?.height || 0;
-				stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
-				stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
+			// Update block height stats
+			const blockHeight = node.block?.height || 0;
+			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
+			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-				// Check cache first. Only reuse the cached entity when it is the SAME
-				// revision as this node (matching txId); reusing it for a different
-				// revision would return stale metadata and mislabel latest-revision
-				// selection. Block height is deterministic per txId.
-				const folderId = this.extractEntityId(node, 'Folder-Id');
-				const folderCacheKey = { folderId, owner, driveKey };
-				const cached = this.caches.privateFolderCache.get(folderCacheKey);
+			// Check cache first. Only reuse the cached entity when it is the SAME
+			// revision as this node (matching txId); reusing it for a different
+			// revision would return stale metadata and mislabel latest-revision
+			// selection. Block height is deterministic per txId.
+			const folderId = this.extractEntityId(node, 'Folder-Id');
+			const folderCacheKey = { folderId, owner, driveKey };
+			const cached = this.caches.privateFolderCache.get(folderCacheKey);
 
-				if (cached) {
-					const cachedFolder = await cached;
-					if (`${cachedFolder.txId}` === node.id) {
-						stats.fromCache++;
-						return Object.assign(cachedFolder, { blockHeight });
-					}
+			if (cached) {
+				const cachedFolder = await cached;
+				if (`${cachedFolder.txId}` === node.id) {
+					stats.fromCache++;
+					return Object.assign(cachedFolder, { blockHeight });
 				}
-
-				// Build from network
-				stats.fromNetwork++;
-				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				const folder = await folderBuilder.build(node);
-
-				// Cache this revision (overwrites any older cached revision for the entity)
-				this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
-
-				// Add blockHeight to the entity
-				return Object.assign(folder, { blockHeight });
 			}
-		);
 
-		return Promise.all(folders);
+			// Build from network
+			stats.fromNetwork++;
+			const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+			const folder = await folderBuilder.build(node);
+
+			// Cache this revision (overwrites any older cached revision for the entity)
+			this.caches.privateFolderCache.put(folderCacheKey, Promise.resolve(folder));
+
+			// Add blockHeight to the entity
+			return Object.assign(folder, { blockHeight });
+		});
 	}
 
 	/**
@@ -428,45 +453,45 @@ export class ArFSDAOIncrementalSync extends ArFSDAO {
 		owner: ArweaveAddress,
 		stats: SyncStats
 	): Promise<((ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number })[]> {
-		const files: Promise<(ArFSPrivateFile | ArFSPrivateFileKeyless) & { blockHeight: number }>[] = edges.map(
-			async (edge) => {
-				const { node } = edge;
+		// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES entities at a time so
+		// a 1000-edge page (CORE-7) does not put ~1000 metadata GETs on the gateway at once
+		// [CORE-9]. mapWithConcurrency preserves input order and Promise.all's reject-on-any-
+		// failure semantics, so the returned batch is identical — only parallelism is capped.
+		return mapWithConcurrency(edges, MAX_CONCURRENT_ENTITY_FETCHES, async (edge) => {
+			const { node } = edge;
 
-				// Update block height stats
-				const blockHeight = node.block?.height || 0;
-				stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
-				stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
+			// Update block height stats
+			const blockHeight = node.block?.height || 0;
+			stats.lowestBlockHeight = Math.min(stats.lowestBlockHeight, blockHeight);
+			stats.highestBlockHeight = Math.max(stats.highestBlockHeight, blockHeight);
 
-				// Check cache first
-				const fileId = this.extractEntityId(node, 'File-Id');
-				// For private files, we need the file key which we don't have yet
-				// So we can't use the cache effectively here
-				const cached = undefined;
+			// Check cache first
+			const fileId = this.extractEntityId(node, 'File-Id');
+			// For private files, we need the file key which we don't have yet
+			// So we can't use the cache effectively here
+			const cached = undefined;
 
-				if (cached) {
-					stats.fromCache++;
-					return cached;
-				}
-
-				// Build from network
-				stats.fromNetwork++;
-				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-				const file = await fileBuilder.build(node);
-
-				// Cache the result if we have a file key
-				if ('fileKey' in file && file.fileKey) {
-					const cacheKey = { fileId, owner, fileKey: file.fileKey };
-					this.caches.privateFileCache.put(cacheKey, Promise.resolve(file as ArFSPrivateFile));
-				}
-
-				// Add blockHeight to the entity
-				const fileWithBlockHeight = Object.assign(file, { blockHeight });
-
-				return fileWithBlockHeight;
+			if (cached) {
+				stats.fromCache++;
+				return cached;
 			}
-		);
 
-		return Promise.all(files);
+			// Build from network
+			stats.fromNetwork++;
+			const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+			const file = await fileBuilder.build(node);
+
+			// Cache the result if we have a file key
+			if ('fileKey' in file && file.fileKey) {
+				const cacheKey = { fileId, owner, fileKey: file.fileKey };
+				this.caches.privateFileCache.put(cacheKey, Promise.resolve(file as ArFSPrivateFile));
+			}
+
+			// Add blockHeight to the entity
+			const fileWithBlockHeight = Object.assign(file, { blockHeight });
+
+			return fileWithBlockHeight;
+		});
 	}
 
 	/**

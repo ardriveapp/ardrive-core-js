@@ -92,8 +92,10 @@ import {
 	ENCRYPTED_DATA_PLACEHOLDER,
 	defaultTurboPaymentUrl,
 	defaultTurboUploadUrl,
-	gqlTagNameRecord
+	gqlTagNameRecord,
+	MAX_CONCURRENT_ENTITY_FETCHES
 } from '../utils/constants';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
@@ -1662,27 +1664,32 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			const folderPromises: Promise<ArFSPrivateFolder | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				try {
-					cursor = edge.cursor;
-					const { node } = edge;
-					const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-					// Build the folder so that we don't add something invalid to the cache
-					const folder = await folderBuilder.build(node);
-					const cacheKey = { folderId: folder.entityId, owner, driveKey };
-					return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
-				} catch (e) {
-					// If the folder is broken, skip it
-					if (e instanceof SyntaxError) {
-						console.error(`Error building folder. Skipping... Error: ${e}`);
-						return null;
+			// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES folders at a time so a
+			// full (1000-edge) page does not put ~1000 metadata GETs on the gateway at once
+			// [CORE-9]. Order-preserving and skip-on-broken semantics unchanged.
+			const folders = await mapWithConcurrency(
+				edges,
+				MAX_CONCURRENT_ENTITY_FETCHES,
+				async (edge: GQLEdgeInterface) => {
+					try {
+						cursor = edge.cursor;
+						const { node } = edge;
+						const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+						// Build the folder so that we don't add something invalid to the cache
+						const folder = await folderBuilder.build(node);
+						const cacheKey = { folderId: folder.entityId, owner, driveKey };
+						return this.caches.privateFolderCache.put(cacheKey, Promise.resolve(folder));
+					} catch (e) {
+						// If the folder is broken, skip it
+						if (e instanceof SyntaxError) {
+							console.error(`Error building folder. Skipping... Error: ${e}`);
+							return null;
+						}
+
+						throw e;
 					}
-
-					throw e;
 				}
-			});
-
-			const folders = await Promise.all(folderPromises);
+			);
 
 			// Filter out null values
 			const validFolders = folders.filter((f) => f !== null) as ArFSPrivateFolder[];
@@ -1717,46 +1724,53 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
-			const files: Promise<ArFSPrivateFile | null>[] = edges.map(async (edge: GQLEdgeInterface) => {
-				try {
-					const { node } = edge;
-					cursor = edge.cursor;
-					const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
-					// Build the file so that we don't add something invalid to the cache
-					const file = await fileBuilder.build(node);
-					const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
-					const cacheKey = {
-						fileId: file.fileId,
-						owner,
-						fileKey
-					};
-					return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
-				} catch (e) {
-					// CORE-6: Tolerate individual broken private files instead of aborting the
-					// whole drive listing. When a private file's data cannot be decrypted,
-					// fileDecrypt() swallows the error and returns the "Error" sentinel buffer,
-					// so JSON.parse() of the "decrypted" metadata throws a SyntaxError. The public
-					// file-listing path (getPublicFilesWithParentFolderIds) and the private
-					// folder-listing path (getAllFoldersOfPrivateDrive) already skip such entities;
-					// the private file path did not, so one undecryptable/incomplete file killed
-					// the entire private-drive reconstruction. Mirror the public path exactly:
-					// skip SyntaxError (unparseable/undecryptable metadata) and
-					// InvalidFileStateException (metadata missing required properties), but keep
-					// re-throwing any other error so genuine/unexpected failures are not masked.
-					if (e instanceof SyntaxError) {
-						console.error(`Error building file. Skipping... Error: ${e}`);
-						return null;
-					}
+			// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES files at a time so a
+			// full (1000-edge) page does not put ~1000 metadata GETs on the gateway at once
+			// [CORE-9]. Order-preserving and skip-on-broken semantics unchanged.
+			const files = await mapWithConcurrency(
+				edges,
+				MAX_CONCURRENT_ENTITY_FETCHES,
+				async (edge: GQLEdgeInterface) => {
+					try {
+						const { node } = edge;
+						cursor = edge.cursor;
+						const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
+						// Build the file so that we don't add something invalid to the cache
+						const file = await fileBuilder.build(node);
+						const fileKey: FileKey = await deriveFileKey(`${file.fileId}`, driveKey);
+						const cacheKey = {
+							fileId: file.fileId,
+							owner,
+							fileKey
+						};
+						return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
+					} catch (e) {
+						// CORE-6: Tolerate individual broken private files instead of aborting the
+						// whole drive listing. When a private file's data cannot be decrypted,
+						// fileDecrypt() swallows the error and returns the "Error" sentinel buffer,
+						// so JSON.parse() of the "decrypted" metadata throws a SyntaxError. The public
+						// file-listing path (getPublicFilesWithParentFolderIds) and the private
+						// folder-listing path (getAllFoldersOfPrivateDrive) already skip such entities;
+						// the private file path did not, so one undecryptable/incomplete file killed
+						// the entire private-drive reconstruction. Mirror the public path exactly:
+						// skip SyntaxError (unparseable/undecryptable metadata) and
+						// InvalidFileStateException (metadata missing required properties), but keep
+						// re-throwing any other error so genuine/unexpected failures are not masked.
+						if (e instanceof SyntaxError) {
+							console.error(`Error building file. Skipping... Error: ${e}`);
+							return null;
+						}
 
-					if (e instanceof InvalidFileStateException) {
-						console.error(`Error building file. Skipping... Error: ${e}`);
-						return null;
-					}
+						if (e instanceof InvalidFileStateException) {
+							console.error(`Error building file. Skipping... Error: ${e}`);
+							return null;
+						}
 
-					throw e;
+						throw e;
+					}
 				}
-			});
-			const validFiles = (await Promise.all(files)).filter((f) => f !== null) as ArFSPrivateFile[];
+			);
+			const validFiles = files.filter((f) => f !== null) as ArFSPrivateFile[];
 			allFiles.push(...validFiles);
 		}
 		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
@@ -1794,22 +1808,28 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			const { edges } = transactions;
 			hasNextPage = transactions.pageInfo.hasNextPage;
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const folders: Promise<T>[] = (edges as any).map(async (edge: GQLEdgeInterface) => {
-				const { node } = edge;
-				cursor = edge.cursor;
-				const { tags } = node;
+			// Bounded fan-out: build at most MAX_CONCURRENT_ENTITY_FETCHES entities at a time so a
+			// full (1000-edge) page does not put ~1000 metadata GETs on the gateway at once
+			// [CORE-9]. Order-preserving and reject-on-any-failure semantics unchanged.
+			const folders = (await mapWithConcurrency(
+				edges,
+				MAX_CONCURRENT_ENTITY_FETCHES,
+				async (edge: GQLEdgeInterface) => {
+					const { node } = edge;
+					cursor = edge.cursor;
+					const { tags } = node;
 
-				// Check entityType to determine which builder to use
-				const entityType = tags.find((t) => t.name === 'Entity-Type')?.value;
-				if (!entityType || (entityType !== 'file' && entityType !== 'folder')) {
-					throw new Error('Entity-Type tag is missing or invalid!');
+					// Check entityType to determine which builder to use
+					const entityType = tags.find((t) => t.name === 'Entity-Type')?.value;
+					if (!entityType || (entityType !== 'file' && entityType !== 'folder')) {
+						throw new Error('Entity-Type tag is missing or invalid!');
+					}
+
+					return builder(node, entityType).build(node);
 				}
+			)) as T[];
 
-				return builder(node, entityType).build(node);
-			});
-
-			allEntities.push(...(await Promise.all(folders)));
+			allEntities.push(...folders);
 		}
 		return latestRevisionsOnly ? allEntities.filter(latestRevisionFilter) : allEntities;
 	}
@@ -2654,7 +2674,11 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		driveKey: DriveKey,
 		owner: ArweaveAddress
 	): Promise<ArFSPrivateFolder[]> {
-		const folderPromises = nodes.map(async (node) => {
+		// Bounded fan-out: snapshot nodes build from the seeded metadata cache (no fetch) but
+		// the live-tail nodes each do a per-entity metadata GET; cap in-flight builds at
+		// MAX_CONCURRENT_ENTITY_FETCHES so a large tail does not swamp the gateway [CORE-9].
+		// Order-preserving and skip-on-broken semantics unchanged.
+		const folders = await mapWithConcurrency(nodes, MAX_CONCURRENT_ENTITY_FETCHES, async (node) => {
 			try {
 				const folderBuilder = ArFSPrivateFolderBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 				const folder = await folderBuilder.build(node);
@@ -2669,7 +2693,6 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 				throw e;
 			}
 		});
-		const folders = await Promise.all(folderPromises);
 		return folders.filter((folder) => folder !== null) as ArFSPrivateFolder[];
 	}
 
@@ -2678,7 +2701,11 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		driveKey: DriveKey,
 		owner: ArweaveAddress
 	): Promise<ArFSPrivateFile[]> {
-		const filePromises = nodes.map(async (node) => {
+		// Bounded fan-out: snapshot nodes build from the seeded metadata cache (no fetch) but
+		// the live-tail nodes each do a per-entity metadata GET; cap in-flight builds at
+		// MAX_CONCURRENT_ENTITY_FETCHES so a large tail does not swamp the gateway [CORE-9].
+		// Order-preserving and skip-on-broken semantics unchanged.
+		const files = await mapWithConcurrency(nodes, MAX_CONCURRENT_ENTITY_FETCHES, async (node) => {
 			try {
 				const fileBuilder = ArFSPrivateFileBuilder.fromArweaveNode(node, this.gatewayApi, driveKey);
 				const file = await fileBuilder.build(node);
@@ -2694,7 +2721,6 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 				throw e;
 			}
 		});
-		const files = await Promise.all(filePromises);
 		return files.filter((file) => file !== null) as ArFSPrivateFile[];
 	}
 

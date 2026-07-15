@@ -59,7 +59,14 @@ export interface IncrementalSyncOptions {
 	includeRevisions?: boolean;
 	/** Progress callback for long-running syncs */
 	onProgress?: (processed: number, total: number) => void;
-	/** Number of entities to fetch per GraphQL query (default: 100, max: 100) */
+	/**
+	 * Number of entities to fetch per GraphQL query. Defaults to the configured page
+	 * size (`getGqlPageSize()`, initially 1000 — the ar.io gateway max — unless lowered
+	 * via `setGqlPageSize()` for a gateway that caps below 1000, e.g. Goldsky). An
+	 * explicit value here always wins over that default. Arweave gateways silently cap
+	 * this at 1000; pagination is cursor + hasNextPage driven, so a smaller value only
+	 * changes the number of round-trips, never the set of entities returned.
+	 */
 	batchSize?: number;
 	/** Stop sync after finding this many known entities (optimization for catching up) */
 	stopAfterKnownCount?: number;
