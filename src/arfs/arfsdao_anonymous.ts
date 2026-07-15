@@ -29,7 +29,12 @@ import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
 import { ArFSDriveEntity, ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
-import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION, MAX_CONCURRENT_ENTITY_FETCHES } from '../utils/constants';
+import {
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_VERSION,
+	DEFAULT_DOWNLOAD_CONCURRENCY,
+	MAX_CONCURRENT_ENTITY_FETCHES
+} from '../utils/constants';
 import { mapWithConcurrency } from '../utils/concurrency';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Readable } from 'stream';
@@ -777,25 +782,21 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			const absoluteLocalFolderPath = joinPath(destFolderPath, relativeFolderPath);
 			folderWrapper.ensureFolderExistence(absoluteLocalFolderPath);
 
-			// download child files into the folder
+			// download child files into the folder with bounded concurrency so at
+			// most DEFAULT_DOWNLOAD_CONCURRENCY downloads are ever in flight at once
 			const childrenFiles = childrenFileEntities.filter(
 				(file) => `${file.parentFolderId}` === `${folder.entityId}` /* FIXME: use the `equals` method */
 			);
-			for (const file of childrenFiles) {
+			await mapWithConcurrency(childrenFiles, DEFAULT_DOWNLOAD_CONCURRENCY, async (file) => {
 				const relativeFilePath = folderWrapper.getRelativePathOf(
 					publicEntityWithPathsFactory(file, hierarchy).path
 				);
 				const absoluteLocalFilePath = joinPath(destFolderPath, relativeFilePath);
 
-				/*
-				 * FIXME: Downloading all files at once consumes a lot of resources.
-				 * TODO: Implement a download manager for downloading in parallel
-				 * Doing it sequentially for now
-				 */
 				const dataStream = await this.getPublicDataStream(file.dataTxId);
 				const fileWrapper = new ArFSPublicFileToDownload(file, dataStream, absoluteLocalFilePath);
 				await fileWrapper.write();
-			}
+			});
 		}
 	}
 }
