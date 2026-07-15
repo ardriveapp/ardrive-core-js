@@ -73,6 +73,30 @@ export const INITIAL_ERROR_DELAY = 500; // 500ms
 export const DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS = 60_000; // 60 seconds
 
 /**
+ * Default pause (in ms) applied after a gateway returns an HTTP 429 (rate limit)
+ * before the next request is attempted. Overridable via the GatewayAPI
+ * `rateLimitThrottleMS` constructor option (primarily to keep tests fast).
+ */
+export const DEFAULT_RATE_LIMIT_THROTTLE_MS = 60_000; // 60 seconds
+
+/**
+ * Default maximum number of times a persistent HTTP 429 (rate limit) response is
+ * waited out before the request gives up with a clear, actionable error.
+ *
+ * This bounds the rate-limit throttle loop: a gateway that returns 429 on EVERY
+ * request (e.g. arweave.net now rate-limits CLI traffic) would otherwise pause
+ * for {@link DEFAULT_RATE_LIMIT_THROTTLE_MS} and `continue` forever — the actual
+ * "CLI hangs / upload times out" bug. With this budget the throttle is finite
+ * (default 5 waits ≈ 5 minutes of tolerance) yet a transient throttle that
+ * clears within the budget still succeeds.
+ *
+ * NOTE: this budget is SEPARATE from `maxRetriesPerRequest` — a 429 does not
+ * consume an error retry, and a non-429 error does not consume a rate-limit
+ * retry. The two counters are intentionally independent.
+ */
+export const DEFAULT_MAX_RATE_LIMIT_RETRIES = 5;
+
+/**
  *  These are errors from the `/chunk` endpoint on an Arweave
  *  node that we should never try to continue on
  */

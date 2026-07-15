@@ -4,7 +4,13 @@ import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 import { Chunk } from '../arfs/multi_chunk_tx_uploader';
 import { TransactionID } from '../types';
 import GQLResultInterface, { GQLTransactionsResultInterface } from '../types/gql_Types';
-import { DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS, FATAL_CHUNK_UPLOAD_ERRORS, INITIAL_ERROR_DELAY } from './constants';
+import {
+	DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS,
+	DEFAULT_MAX_RATE_LIMIT_RETRIES,
+	DEFAULT_RATE_LIMIT_THROTTLE_MS,
+	FATAL_CHUNK_UPLOAD_ERRORS,
+	INITIAL_ERROR_DELAY
+} from './constants';
 import { GQLQuery } from './query';
 
 interface GatewayAPIConstParams {
@@ -19,11 +25,23 @@ interface GatewayAPIConstParams {
 	 * is used as-is and this value is ignored (the caller owns its timeout config).
 	 */
 	requestTimeoutMs?: number;
+	/**
+	 * Maximum number of times a persistent HTTP 429 (rate limit) response is waited
+	 * out before failing with a clear error. Bounds the rate-limit throttle loop so
+	 * a gateway that 429s every request fails cleanly instead of pausing forever.
+	 * Independent of `maxRetriesPerRequest`. Defaults to
+	 * {@link DEFAULT_MAX_RATE_LIMIT_RETRIES}.
+	 */
+	maxRateLimitRetries?: number;
+	/**
+	 * Pause (ms) after a 429 before retrying. Overridable primarily to keep tests
+	 * fast. Defaults to {@link DEFAULT_RATE_LIMIT_THROTTLE_MS} (60s).
+	 */
+	rateLimitThrottleMS?: number;
 	axiosInstance?: AxiosInstance;
 }
 
 const rateLimitStatus = 429;
-const rateLimitTimeout = 60_000; // 60 seconds
 
 // With the current default error delay and max retries, we expect the following wait times after each request sent:
 
@@ -55,6 +73,8 @@ export class GatewayAPI {
 	private initialErrorDelayMS: number;
 	private fatalErrors: string[];
 	private validStatusCodes: number[];
+	private maxRateLimitRetries: number;
+	private rateLimitThrottleMS: number;
 	private axiosInstance: AxiosInstance;
 
 	constructor({
@@ -63,6 +83,8 @@ export class GatewayAPI {
 		initialErrorDelayMS = INITIAL_ERROR_DELAY,
 		fatalErrors = FATAL_CHUNK_UPLOAD_ERRORS,
 		validStatusCodes = [200, 202],
+		maxRateLimitRetries = DEFAULT_MAX_RATE_LIMIT_RETRIES,
+		rateLimitThrottleMS = DEFAULT_RATE_LIMIT_THROTTLE_MS,
 		// NOTE: `requestTimeoutMs` is destructured BEFORE `axiosInstance` so its
 		// resolved default is available to the `axiosInstance` default initializer
 		// below. The timeout is therefore applied only to the default instance we
@@ -75,6 +97,8 @@ export class GatewayAPI {
 		this.initialErrorDelayMS = initialErrorDelayMS;
 		this.fatalErrors = fatalErrors;
 		this.validStatusCodes = validStatusCodes;
+		this.maxRateLimitRetries = maxRateLimitRetries;
+		this.rateLimitThrottleMS = rateLimitThrottleMS;
 		this.axiosInstance = axiosInstance;
 	}
 
@@ -217,6 +241,11 @@ export class GatewayAPI {
 		request: () => Promise<AxiosResponse<T>>
 	): Promise<AxiosResponse<T>> {
 		let retryNumber = 0;
+		// Tracked SEPARATELY from `retryNumber`: a 429 (rate limit) is waited out on
+		// its own bounded budget and does not consume the error-retry budget (and
+		// vice versa). This bound is what prevents a gateway that returns 429 on
+		// every request from pausing `rateLimitThrottleMS` and looping forever.
+		let rateLimitRetries = 0;
 
 		while (retryNumber <= this.maxRetriesPerRequest) {
 			const response = await this.tryRequest<T>(request);
@@ -230,7 +259,16 @@ export class GatewayAPI {
 			this.throwIfFatalError();
 
 			if (this.lastRespStatus === rateLimitStatus) {
-				// When rate limited by the gateway, we will wait without incrementing retry count
+				// When rate limited by the gateway, we wait WITHOUT incrementing the
+				// error-retry count — but bound the number of waits so a persistent
+				// 429 fails cleanly instead of hanging forever.
+				if (rateLimitRetries >= this.maxRateLimitRetries) {
+					throw new Error(
+						`Gateway is rate limiting (HTTP 429) and did not recover after ` +
+							`${this.maxRateLimitRetries} retries; try a different --gateway or wait and retry.`
+					);
+				}
+				rateLimitRetries++;
 				await this.rateLimitThrottle();
 				continue;
 			}
@@ -291,10 +329,10 @@ export class GatewayAPI {
 		console.error(
 			`Gateway has returned a ${
 				this.lastRespStatus
-			} status which means your IP is being rate limited. Pausing for ${(rateLimitTimeout / 1000).toFixed(
+			} status which means your IP is being rate limited. Pausing for ${(this.rateLimitThrottleMS / 1000).toFixed(
 				1
 			)} seconds before trying next request...`
 		);
-		await new Promise((res) => setTimeout(res, rateLimitTimeout));
+		await new Promise((res) => setTimeout(res, this.rateLimitThrottleMS));
 	}
 }
