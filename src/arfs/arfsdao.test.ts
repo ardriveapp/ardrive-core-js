@@ -779,6 +779,15 @@ describe('The ArFSDAO class', () => {
 			// so the production range math yields bytes=0-(size-1) after the -authTagLength cancels.
 			const file = await stubPrivateFile({ dataTxId: stubTxID });
 			file.size = new ByteCount(goldenCiphertext.length);
+			// Bind the CTR decrypt params onto the entity so the test reads cipher/cipherIV/fileKey
+			// off `file` rather than standalone constants (the props are readonly in production, hence
+			// the cast). NB: the real download path sources the cipher from the data-tx Cipher tag,
+			// not this entity field — this binding is for test intent/regression coverage only.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const ctrFile = file as any;
+			ctrFile.cipher = CIPHER_AES_256_CTR;
+			ctrFile.cipherIV = goldenCipherIV;
+			ctrFile.fileKey = goldenKey;
 
 			let capturedRange: string | undefined;
 			axios.defaults.adapter = async (config) => {
@@ -797,8 +806,9 @@ describe('The ArFSDAO class', () => {
 			// (1) Range is offset 0 and spans exactly `size` bytes == the full CTR ciphertext.
 			expect(capturedRange).to.equal(`bytes=0-${goldenCiphertext.length - 1}`);
 
-			// (2) The streamed bytes decrypt correctly through the production CTR stream path.
-			const decrypt = new StreamDecrypt(goldenCipherIV, goldenKey, null, CIPHER_AES_256_CTR);
+			// (2) The streamed bytes decrypt correctly through the production CTR stream path,
+			// with the decrypt params read off the file entity (see the binding above).
+			const decrypt = new StreamDecrypt(file.cipherIV, file.fileKey, null, file.cipher);
 			const chunks: Buffer[] = [];
 			decrypt.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
 			await promisify(pipeline)(stream, decrypt);
