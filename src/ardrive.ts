@@ -17,6 +17,7 @@ import { isJWKWallet } from './jwk_wallet';
 import { ArFSPrivateFileToDownload, ArFSManifestToUpload, ArFSFileToUpload } from './arfs/arfs_file_wrapper';
 import {
 	ArFSPublicFileMetadataTransactionData,
+	ArFSPublicFilePinMetadataTransactionData,
 	ArFSPrivateFileMetadataTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
@@ -34,6 +35,7 @@ import {
 	FeeMultiple,
 	ArweaveAddress,
 	ByteCount,
+	UnixTime,
 	AR,
 	FolderID,
 	Winston,
@@ -74,6 +76,7 @@ import {
 	BulkPrivateUploadParams,
 	CreatePublicFolderParams,
 	CreatePrivateFolderParams,
+	PinPublicFileParams,
 	CreatePublicDriveParams,
 	CreatePrivateDriveParams,
 	GetPrivateDriveParams,
@@ -1077,6 +1080,110 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// ArFSResult was empty, return expected empty manifest result
 		return emptyManifestResult;
+	}
+
+	/**
+	 * Pins an EXISTING public data transaction as a NEW public file entity in `parentFolderId`.
+	 *
+	 * A pin reuses the source data tx (`dataTxId`) verbatim — no data bytes are re-uploaded — and
+	 * mints a fresh fileId. Only the small metadata entity is posted (free under Turbo's <100KB
+	 * free tier). The produced entity carries the `ArFS-Pin`/`Pinned-Data-Tx` tags and a
+	 * `pinnedDataOwner` metadata field so it renders as a pin in ardrive-web (interop contract:
+	 * docs/product/PINNING-PLAN-2026-07-19.md §0). Public destinations only — a private drive throws
+	 * (its new fileId would mint a fileKey that cannot decrypt the source's bytes).
+	 */
+	public async pinPublicFile({
+		parentFolderId,
+		dataTxId,
+		pinnedFileName,
+		driveId,
+		conflictResolution
+	}: PinPublicFileParams): Promise<ArFSResult> {
+		assertValidArFSFileName(pinnedFileName);
+
+		// Always resolve the destination drive from the folder that will actually contain the pin —
+		// never trust a caller-supplied driveId. A supplied driveId is treated as an ASSERTION: if it
+		// does not own parentFolderId we throw here, BEFORE the public-drive guard / GQL lookup / post,
+		// so a public driveId can never smuggle a pin (plaintext metadata JSON + ArFS-Pin tags) into a
+		// folder that actually lives in a PRIVATE drive. Mirrors movePublicFile / createPublicFolder,
+		// which resolve the drive from the folder unconditionally.
+		const destDriveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
+		if (driveId && !destDriveId.equals(driveId)) {
+			throw new Error(
+				`Supplied driveId (${driveId}) does not own the destination folder (${parentFolderId}), which belongs to drive ${destDriveId}`
+			);
+		}
+		const owner = await this.getOwnerAddress();
+
+		// Pinning is public-only (R1): a private destination would encrypt the metadata JSON and omit
+		// the pin tags, and its freshly minted fileId yields a fileKey that cannot decrypt the source's
+		// data. Guard here, BEFORE any GQL lookup or post.
+		if (!(await this.arFsDao.isPublicDrive(destDriveId, owner))) {
+			throw new Error('Pinning is only supported for public drives');
+		}
+
+		// Assert that there are no duplicate names in the destination folder
+		const entityNamesInParentFolder = await this.arFsDao.getPublicEntityNamesInFolder(
+			parentFolderId,
+			owner,
+			destDriveId
+		);
+		if (entityNamesInParentFolder.includes(pinnedFileName)) {
+			if (conflictResolution === skipOnConflicts) {
+				return emptyArFSResult;
+			}
+			throw new Error(errorMessage.entityNameExists);
+		}
+
+		// Resolve the source tx's owner/size/content-type (the one genuinely-new capability).
+		const { pinnedDataOwner, size, dataContentType } = await this.arFsDao.getInfoOfTxToBePinned(dataTxId);
+
+		// lastModifiedDate is minted fresh at pin time, in MILLISECONDS (mirrors ardrive-web).
+		const pinTransactionData = new ArFSPublicFilePinMetadataTransactionData(
+			pinnedFileName,
+			size,
+			new UnixTime(Date.now()),
+			dataTxId,
+			dataContentType,
+			pinnedDataOwner
+		);
+
+		const metaDataBaseReward = this.uploadPlanner.isTurboUpload()
+			? undefined
+			: {
+					reward: (await this.estimateAndAssertCostOfMetaDataTx(pinTransactionData)).metaDataBaseReward,
+					feeMultiple: this.feeMultiple
+				};
+
+		const { fileId, metaDataTxId, metaDataTxReward, dataCaches, fastFinalityIndexes } =
+			await this.arFsDao.pinPublicFile({
+				transactionData: pinTransactionData,
+				dataTxId,
+				driveId: destDriveId,
+				parentFolderId,
+				metaDataBaseReward
+			});
+
+		const result: ArFSResult = {
+			created: [
+				{
+					type: 'file',
+					metadataTxId: metaDataTxId,
+					dataTxId,
+					entityId: fileId,
+					entityName: pinnedFileName,
+					dataCaches,
+					fastFinalityIndexes
+				}
+			],
+			tips: [],
+			fees: {}
+		};
+
+		if (metaDataTxReward) {
+			result.fees = { [`${metaDataTxId}`]: metaDataTxReward };
+		}
+		return result;
 	}
 
 	public async createPublicFolder({ folderName, parentFolderId }: CreatePublicFolderParams): Promise<ArFSResult> {

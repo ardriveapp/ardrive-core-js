@@ -268,6 +268,14 @@ export abstract class ArFSFileOrFolderEntity<T extends 'file' | 'folder'>
 	// builders after construction to avoid threading through every positional entity constructor.
 	public isHidden?: boolean;
 
+	// Pin recognition (mirrors ardrive-web). A pin is an entity whose metadata-JSON `dataTxId`
+	// points at an existing data tx; `pinnedDataOwner` (owner of that source tx, parsed from the
+	// data JSON) is THE recognition key — non-null iff this is a pin. `pinnedDataTxId` is promoted
+	// from the `Pinned-Data-Tx` tag when present. Both are undefined for a normal (non-pin) file.
+	// Populated by the builders after construction (same rationale as `isHidden`).
+	public pinnedDataOwner?: string;
+	public pinnedDataTxId?: TransactionID;
+
 	constructor(
 		appName: string,
 		appVersion: string,
@@ -397,6 +405,8 @@ export class ArFSPublicFileWithPaths extends ArFSPublicFile implements ArFSWithP
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -485,6 +495,8 @@ export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWit
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -535,6 +547,8 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 		// @ts-expect-error
 		delete this.driveKey;
 		// @ts-expect-error
@@ -603,6 +617,8 @@ export class ArFSPublicFolderWithPaths extends ArFSPublicFolder implements ArFSW
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -677,6 +693,8 @@ export class ArFSPrivateFolderWithPaths extends ArFSPrivateFolder implements ArF
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 
 		this.path = `${hierarchy.pathToFolderId(entity.parentFolderId)}${entity.name}`;
 		this.txIdPath = `${hierarchy.txPathToFolderId(entity.parentFolderId)}${entity.txId}`;
@@ -718,6 +736,8 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.pinnedDataOwner = entity.pinnedDataOwner;
+		this.pinnedDataTxId = entity.pinnedDataTxId;
 		// @ts-expect-error
 		delete this.driveKey;
 	}

@@ -39,6 +39,11 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	dataTxId?: TransactionID;
 	dataContentType?: DataContentType;
 	isHidden?: boolean;
+	// Pin recognition (mirrors ardrive-web). `pinnedDataOwner` is read from the data JSON in
+	// buildEntity (the recognition key); `pinnedDataTxId` is promoted from the `Pinned-Data-Tx`
+	// tag below. Both stay undefined for a normal (non-pin) file.
+	pinnedDataOwner?: string;
+	pinnedDataTxId?: TransactionID;
 
 	getGqlQueryParameters(): GQLTagInterface[] {
 		return [
@@ -48,8 +53,33 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 	}
 
 	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
+		const unparsedTags: GQLTagInterface[] = [];
 		const tags = await super.parseFromArweaveNode(node, owner);
-		return tags.filter((tag) => tag.name !== 'File-Id');
+		tags.forEach((tag) => {
+			const key = tag.name;
+			const { value } = tag;
+			switch (key) {
+				case 'File-Id':
+					// Already sourced from the GQL query parameters; drop it here.
+					break;
+				case 'Pinned-Data-Tx':
+					// Secondary pin signal — promote to a first-class field. Tolerate a malformed
+					// value (recognition still works via the JSON `pinnedDataOwner`).
+					try {
+						this.pinnedDataTxId = new TransactionID(value);
+					} catch {
+						// ignore an invalid Pinned-Data-Tx tag
+					}
+					break;
+				case 'ArFS-Pin':
+					// Consumed so it does not leak into customMetaData; recognition is via pinnedDataOwner.
+					break;
+				default:
+					unparsedTags.push(tag);
+					break;
+			}
+		});
+		return unparsedTags;
 	}
 
 	protected readonly protectedDataJsonKeys = [
@@ -58,7 +88,11 @@ export abstract class ArFSFileBuilder<T extends ArFSPublicFile | ArFSPrivateFile
 		'lastModifiedDate',
 		'dataTxId',
 		'dataContentType',
-		'isHidden'
+		'isHidden',
+		// Pin fields (first-class / intentionally-null) — keep them out of customMetaData.
+		'pinnedDataOwner',
+		'thumbnail',
+		'assignedNames'
 	];
 
 	// CORE-6: Enumerates which required top-level (pre-decryption) properties are absent, so
@@ -111,8 +145,18 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.size = new ByteCount(dataJSON.size);
 			this.lastModifiedDate = new UnixTime(dataJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(dataJSON.dataTxId);
+			// Pin tx-id consistency: the `Pinned-Data-Tx` tag (promoted to `pinnedDataTxId` in
+			// parseFromArweaveNode) must reference the same tx as the JSON `dataTxId`. A mismatch is
+			// malformed — clear it, matching how an invalid `Pinned-Data-Tx` tag is dropped above, so we
+			// never report one tx in `pinnedDataTxId` while the file downloads another via `dataTxId`.
+			if (this.pinnedDataTxId && !this.pinnedDataTxId.equals(this.dataTxId)) {
+				this.pinnedDataTxId = undefined;
+			}
 			this.dataContentType = dataJSON.dataContentType || extToMime(this.name);
 			this.isHidden = typeof dataJSON.isHidden === 'boolean' ? dataJSON.isHidden : undefined;
+			// Pin recognition key: present (and non-null) iff this file entity is a pin. Read
+			// defensively — a non-pin file simply leaves it undefined (PINNING-PLAN §0.3).
+			this.pinnedDataOwner = typeof dataJSON.pinnedDataOwner === 'string' ? dataJSON.pinnedDataOwner : undefined;
 
 			const fileBuilderValidation = new FileBuilderValidation();
 			fileBuilderValidation.validateFileProperties(this);
@@ -140,6 +184,8 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 				this.customMetaData.metaDataJson
 			);
 			publicFile.isHidden = this.isHidden;
+			publicFile.pinnedDataOwner = this.pinnedDataOwner;
+			publicFile.pinnedDataTxId = this.pinnedDataTxId;
 			return Promise.resolve(publicFile);
 		}
 		// CORE-6: A file entity that is missing a required top-level property (a genuinely

@@ -25,6 +25,7 @@ import {
 	ArFSMovePrivateFileResult,
 	ArFSMovePublicFolderResult,
 	ArFSMovePrivateFolderResult,
+	ArFSPinPublicFileResult,
 	ArFSCreateBundledDriveResult,
 	ArFSCreatePrivateBundledDriveResult,
 	ArFSCreatePublicDriveResult,
@@ -54,6 +55,7 @@ import {
 	ArFSPrivateFolderMetaDataPrototype,
 	ArFSPrivateDriveMetaDataPrototype,
 	ArFSPublicFileMetaDataPrototype,
+	ArFSPublicFilePinMetaDataPrototype,
 	ArFSPrivateFileMetaDataPrototype,
 	ArFSDriveMetaDataPrototype,
 	ArFSPublicDriveMetaDataPrototype,
@@ -80,7 +82,7 @@ import {
 	fileConflictInfoMap,
 	folderToNameAndIdMap
 } from '../utils/mapper_functions';
-import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER } from '../utils/query';
+import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER, GQLQuery } from '../utils/query';
 import { buildDriveHistoryComposite, sortNodesNewestFirst } from '../snapshots';
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
 import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
@@ -101,6 +103,8 @@ import { PrivateKeyData } from './private_key_data';
 import {
 	EID,
 	ArweaveAddress,
+	ByteCount,
+	DataContentType,
 	TxID,
 	W,
 	GQLEdgeInterface,
@@ -161,7 +165,9 @@ import {
 	ArFSPrepareObjectBundleParams,
 	ArFSPrepareObjectTransactionParams,
 	ArFSRetryPublicFileUploadParams,
-	ArFSFolderPrototypeFactory
+	ArFSFolderPrototypeFactory,
+	ArFSPinPublicFileParams,
+	PinnedTxInfo
 } from '../types/arfsdao_types';
 import {
 	CalculatedUploadPlan,
@@ -636,6 +642,110 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 		return {
 			dataTxId: originalMetaData.dataTxId,
+			metaDataTxId: id,
+			metaDataTxReward: metaDataBaseReward?.reward,
+			dataCaches,
+			fastFinalityIndexes
+		};
+	}
+
+	/**
+	 * Looks up the owner, byte size and content type of an EXISTING data transaction so it can
+	 * be pinned. Mirrors ardrive-web's `getInfoOfTxToBePinned` (arweave_service.dart). The
+	 * owner address becomes the pin's `pinnedDataOwner` (the recognition key, PINNING-PLAN §0.3).
+	 *
+	 * @remarks Content type is taken from GQL `data.type`; if the gateway does not report one it
+	 * falls back to the tx's own `Content-Type` tag (GQL already returns decoded tags), and finally
+	 * to `application/octet-stream`. No data bytes are fetched.
+	 */
+	public async getInfoOfTxToBePinned(dataTxId: TransactionID): Promise<PinnedTxInfo> {
+		const gqlQuery: GQLQuery = {
+			query: `query {
+				transactions(ids: ["${dataTxId}"], first: 1) {
+					edges {
+						node {
+							id
+							owner { address }
+							data { size type }
+							tags { name value }
+						}
+					}
+				}
+			}`
+		};
+
+		const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
+		const edges: GQLEdgeInterface[] = transactions.edges;
+
+		if (!edges.length) {
+			throw new Error(`The data transaction to be pinned ("${dataTxId}") could not be found on the gateway!`);
+		}
+
+		const node = edges[0].node;
+
+		// A valid pin REQUIRES a resolvable owner (it is the recognition key). Fail loudly if absent.
+		if (!node.owner?.address) {
+			throw new Error(`The data transaction to be pinned ("${dataTxId}") has no resolvable owner address!`);
+		}
+		const pinnedDataOwner = new ArweaveAddress(node.owner.address);
+
+		// The Arweave GraphQL gateway returns `data.size` as a JSON STRING (schema `String!`, e.g. "747"),
+		// even though our GQLMetaDataInterface types it as `number`. ByteCount rejects non-integers, so
+		// coerce first and fail with a CLEAR error (rather than a cryptic ByteCount throw) if the gateway
+		// did not report a usable size.
+		const rawSize: unknown = node.data?.size;
+		const coercedSize = Number(rawSize);
+		if (
+			rawSize === null ||
+			rawSize === undefined ||
+			rawSize === '' ||
+			!Number.isInteger(coercedSize) ||
+			coercedSize < 0
+		) {
+			throw new Error(
+				`Could not resolve the size of the source data tx to be pinned ("${dataTxId}") (gateway returned: ${JSON.stringify(
+					rawSize
+				)})`
+			);
+		}
+		const size = new ByteCount(coercedSize);
+
+		let dataContentType: DataContentType = node.data.type;
+		if (!dataContentType) {
+			dataContentType = node.tags.find((tag) => tag.name === 'Content-Type')?.value ?? 'application/octet-stream';
+		}
+
+		return { pinnedDataOwner, size, dataContentType };
+	}
+
+	/**
+	 * Posts a metadata-only "pin": a NEW public file entity whose `dataTxId` reuses an existing
+	 * data transaction (no data bytes are uploaded). Mirrors {@link movePublicFile} — it builds a
+	 * public file-metadata prototype and routes it through {@link uploadMetaData} (AR v2 when a
+	 * reward is supplied, otherwise Turbo) — but mints a FRESH fileId (never the source's) and
+	 * carries the pin tags/JSON via {@link ArFSPublicFilePinMetaDataPrototype}. The caller builds
+	 * `transactionData` from {@link getInfoOfTxToBePinned}. Public destinations only (the ArDrive
+	 * layer asserts this).
+	 */
+	async pinPublicFile({
+		transactionData,
+		dataTxId,
+		driveId,
+		parentFolderId,
+		metaDataBaseReward
+	}: ArFSPinPublicFileParams): Promise<ArFSPinPublicFileResult> {
+		// Mint a NEW file ID — a pin is a new ArFS entity, never a revision of the source (cf. createPublicFolder).
+		const fileId = EID(uuidv4());
+
+		const { id, dataCaches, fastFinalityIndexes } = await this.uploadMetaData(
+			new ArFSPublicFilePinMetaDataPrototype(transactionData, driveId, fileId, parentFolderId, dataTxId),
+			metaDataBaseReward
+		);
+
+		return {
+			fileId,
+			// The pinned data tx is reused verbatim — no bytes re-uploaded.
+			dataTxId,
 			metaDataTxId: id,
 			metaDataTxReward: metaDataBaseReward?.reward,
 			dataCaches,

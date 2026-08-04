@@ -17,7 +17,7 @@ import { readJWKFile } from './utils/common';
 import { expectAsyncErrorThrow, TEST_WALLET_ADDRESS } from '../tests/test_helpers';
 import { WalletDAO } from './wallet_dao';
 import { ArFSTagSettings } from './arfs/arfs_tag_settings';
-import { fakeArweave, stubEntityID } from '../tests/stubs';
+import { fakeArweave, stubArweaveAddress, stubEntityID, stubEntityIDAlt } from '../tests/stubs';
 import { ArFSUploadPlanner } from './arfs/arfs_upload_planner';
 import { ArweaveSigner } from '@dha-team/arbundles';
 import { JWKWallet } from './jwk_wallet';
@@ -297,6 +297,137 @@ describe('ArDrive class', () => {
 			);
 
 			expect((await arDriveWithWallet.getOwnerAddress()).toString()).to.equal(TEST_WALLET_ADDRESS);
+		});
+	});
+
+	describe('pinPublicFile function', () => {
+		const dataTxId = stubTransactionID;
+
+		it('throws (before any GQL lookup or post) when the destination drive is private', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const dao = (arDrive as any).arFsDao;
+			stub(dao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(dao, 'isPublicDrive').resolves(false);
+			const infoSpy = stub(dao, 'getInfoOfTxToBePinned').resolves();
+			const pinSpy = stub(dao, 'pinPublicFile').resolves();
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.pinPublicFile({
+					parentFolderId: stubEntityID,
+					dataTxId,
+					pinnedFileName: 'pinned.png'
+				}),
+				errorMessage: 'Pinning is only supported for public drives'
+			});
+
+			expect(infoSpy.called).to.equal(false);
+			expect(pinSpy.called).to.equal(false);
+		});
+
+		it('throws (before the public-drive guard or any write) when a supplied driveId does not own parentFolderId', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const dao = (arDrive as any).arFsDao;
+			// The folder actually lives in stubEntityID's drive...
+			stub(dao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			// ...but the caller asserts a DIFFERENT (e.g. public) drive. This must be rejected before
+			// the public-drive guard runs — otherwise a public driveId could smuggle a pin into a folder
+			// that really belongs to a private drive.
+			const publicDriveSpy = stub(dao, 'isPublicDrive').resolves(true);
+			const infoSpy = stub(dao, 'getInfoOfTxToBePinned').resolves();
+			const pinSpy = stub(dao, 'pinPublicFile').resolves();
+
+			await expectAsyncErrorThrow({
+				promiseToError: arDrive.pinPublicFile({
+					parentFolderId: stubEntityID,
+					dataTxId,
+					pinnedFileName: 'pinned.png',
+					driveId: stubEntityIDAlt
+				}),
+				errorMessage: `Supplied driveId (${stubEntityIDAlt}) does not own the destination folder (${stubEntityID}), which belongs to drive ${stubEntityID}`
+			});
+
+			// The mismatch is caught before the drive-privacy guard, the source lookup, or any post.
+			expect(publicDriveSpy.called).to.equal(false);
+			expect(infoSpy.called).to.equal(false);
+			expect(pinSpy.called).to.equal(false);
+		});
+
+		it('accepts a supplied driveId that matches the drive resolved from parentFolderId', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const dao = (arDrive as any).arFsDao;
+			const resolveSpy = stub(dao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(dao, 'isPublicDrive').resolves(true);
+			stub(dao, 'getPublicEntityNamesInFolder').resolves([]);
+			stub(dao, 'getInfoOfTxToBePinned').resolves({
+				pinnedDataOwner: stubArweaveAddress(),
+				size: new ByteCount(2048),
+				dataContentType: 'image/png'
+			});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			stub((arDrive as any).uploadPlanner, 'isTurboUpload').returns(true);
+			const pinStub = stub(dao, 'pinPublicFile').resolves({
+				fileId: stubEntityID,
+				dataTxId,
+				metaDataTxId: stubTransactionID,
+				dataCaches: [],
+				fastFinalityIndexes: []
+			});
+
+			const result = await arDrive.pinPublicFile({
+				parentFolderId: stubEntityID,
+				dataTxId,
+				pinnedFileName: 'pinned.png',
+				driveId: stubEntityID
+			});
+
+			expect(result.created.length).to.equal(1);
+			// The drive is always resolved from the folder, even when a (matching) driveId is supplied.
+			expect(resolveSpy.calledOnce).to.equal(true);
+			// The resolved drive is the one handed to the DAO write.
+			expect(`${pinStub.firstCall.args[0].driveId}`).to.equal(`${stubEntityID}`);
+		});
+
+		it('pins a public file: reuses the dataTxId, sets pinnedDataOwner, returns a new file entity', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const dao = (arDrive as any).arFsDao;
+			stub(dao, 'getDriveIdForFolderId').resolves(stubEntityID);
+			stub(dao, 'isPublicDrive').resolves(true);
+			stub(dao, 'getPublicEntityNamesInFolder').resolves([]);
+			stub(dao, 'getInfoOfTxToBePinned').resolves({
+				pinnedDataOwner: stubArweaveAddress(),
+				size: new ByteCount(2048),
+				dataContentType: 'image/png'
+			});
+			// Force the Turbo path so no AR cost estimation / wallet balance lookup is needed.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			stub((arDrive as any).uploadPlanner, 'isTurboUpload').returns(true);
+			const pinStub = stub(dao, 'pinPublicFile').resolves({
+				fileId: stubEntityID,
+				dataTxId,
+				metaDataTxId: stubTransactionID,
+				dataCaches: [],
+				fastFinalityIndexes: []
+			});
+
+			const result = await arDrive.pinPublicFile({
+				parentFolderId: stubEntityID,
+				dataTxId,
+				pinnedFileName: 'pinned.png'
+			});
+
+			expect(result.created.length).to.equal(1);
+			expect(result.created[0].type).to.equal('file');
+			expect(`${result.created[0].entityId}`).to.equal(`${stubEntityID}`);
+			expect(`${result.created[0].dataTxId}`).to.equal(`${dataTxId}`);
+			expect(result.created[0].entityName).to.equal('pinned.png');
+
+			// The DAO receives pin metadata reusing the caller's dataTxId with a non-null pinnedDataOwner.
+			const daoArgs = pinStub.firstCall.args[0];
+			expect(`${daoArgs.dataTxId}`).to.equal(`${dataTxId}`);
+			const json = JSON.parse(daoArgs.transactionData.asTransactionData());
+			expect(json.pinnedDataOwner).to.equal(`${stubArweaveAddress()}`);
+			expect(json.dataTxId).to.equal(`${dataTxId}`);
+			expect(json.name).to.equal('pinned.png');
 		});
 	});
 });

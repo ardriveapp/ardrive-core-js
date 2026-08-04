@@ -105,6 +105,19 @@ export interface CreatePublicFolderParams {
 }
 export type CreatePrivateFolderParams = CreatePublicFolderParams & WithDriveKey;
 
+export interface PinPublicFileParams {
+	/** Destination folder for the new pinned file entity. */
+	parentFolderId: FolderID;
+	/** The EXISTING data transaction to pin — its bytes are reused, never re-uploaded. */
+	dataTxId: TransactionID;
+	/** Name for the new pinned file (validated via assertValidArFSFileName). */
+	pinnedFileName: string;
+	/** Destination drive id; resolved from `parentFolderId` when omitted. */
+	driveId?: DriveID;
+	/** Name-conflict behavior in the destination folder. `skip` yields an empty result; otherwise a duplicate name throws. */
+	conflictResolution?: FileNameConflictResolution;
+}
+
 export interface UploadParams {
 	parentFolderId: FolderID;
 	conflictResolution?: FileNameConflictResolution;

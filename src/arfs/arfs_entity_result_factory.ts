@@ -107,6 +107,12 @@ export interface ArFSMoveFileResult extends ArFSMoveEntityResult {
 	dataTxId: TransactionID;
 }
 
+/** Result of pinning a public file: a NEW fileId plus the reused (unchanged) data tx. */
+export interface ArFSPinPublicFileResult extends ArFSWriteResult {
+	fileId: FileID;
+	dataTxId: TransactionID;
+}
+
 export type ArFSRenameEntityResult = ArFSWriteResult;
 
 export interface ArFSRenameFileResult extends ArFSRenameEntityResult {

@@ -11,9 +11,12 @@ import {
 	ArFSPublicDriveTransactionData,
 	ArFSPublicFileDataTransactionData,
 	ArFSPublicFileMetadataTransactionData,
+	ArFSPublicFilePinMetadataTransactionData,
 	ArFSPublicFolderTransactionData
 } from './arfs_tx_data_types';
 import {
+	ArweaveAddress,
+	ByteCount,
 	DataContentType,
 	DriveID,
 	FileID,
@@ -287,6 +290,83 @@ export class ArFSPublicFileMetaDataPrototype extends ArFSFileMetaDataPrototype {
 			fileId,
 			parentFolderId,
 			wrappedFile.customMetaData?.metaDataGqlTags
+		);
+	}
+}
+
+export interface ArFSPublicFilePinMetaDataPrototypeParams {
+	/** The EXISTING data tx being pinned (reused; no bytes uploaded). */
+	dataTxId: TransactionID;
+	/** Owner address of the SOURCE data tx — the pin recognition key (PINNING-PLAN §0.3). */
+	pinnedDataOwner: ArweaveAddress;
+	/** Byte size of the source data (from GQL `data.size`). */
+	size: ByteCount;
+	/** Content type of the source data (from GQL `data.type`, or a fallback). */
+	dataContentType: DataContentType;
+	pinnedFileName: string;
+	/** Minted fresh at pin time, in MILLISECONDS (mirrors ardrive-web). */
+	lastModifiedDate: UnixTime;
+	driveId: DriveID;
+	/** Freshly minted file id — never the source's. */
+	fileId: FileID;
+	parentFolderId: FolderID;
+}
+
+/**
+ * Prototype for a PUBLIC file *pin*. Identical to a public file-metadata entity except
+ * that it appends the two pin-specific tags — `ArFS-Pin=true` and `Pinned-Data-Tx` — as
+ * first-class *protected* tags (they are not in the base file protected set, so this is
+ * purely additive). Matches ardrive-web's on-chain tag set (PINNING-PLAN §0.1). Public
+ * only: a private destination would encrypt the metadata JSON and omit these tags.
+ */
+export class ArFSPublicFilePinMetaDataPrototype extends ArFSFileMetaDataPrototype {
+	readonly contentType: ContentType = JSON_CONTENT_TYPE;
+
+	constructor(
+		readonly objectData: ArFSPublicFilePinMetadataTransactionData,
+		readonly driveId: DriveID,
+		readonly fileId: FileID,
+		readonly parentFolderId: FolderID,
+		private readonly pinnedDataTxId: TransactionID,
+		readonly customMetaDataTags: CustomMetaDataGqlTags = {}
+	) {
+		super(customMetaDataTags);
+	}
+
+	protected get protectedTags(): GQLTagInterface[] {
+		const tags = super.protectedTags;
+
+		// Appended last, mirroring ardrive-web (pin_file_bloc.dart:325/329). Public only.
+		tags.push({ name: 'ArFS-Pin', value: 'true' });
+		tags.push({ name: 'Pinned-Data-Tx', value: `${this.pinnedDataTxId}` });
+
+		return tags;
+	}
+
+	public static fromPin({
+		dataTxId,
+		pinnedDataOwner,
+		size,
+		dataContentType,
+		pinnedFileName,
+		lastModifiedDate,
+		driveId,
+		fileId,
+		parentFolderId
+	}: ArFSPublicFilePinMetaDataPrototypeParams): ArFSPublicFilePinMetaDataPrototype {
+		return new ArFSPublicFilePinMetaDataPrototype(
+			new ArFSPublicFilePinMetadataTransactionData(
+				pinnedFileName,
+				size,
+				lastModifiedDate,
+				dataTxId,
+				dataContentType,
+				pinnedDataOwner
+			),
+			driveId,
+			fileId,
+			parentFolderId,
+			dataTxId
 		);
 	}
 }
