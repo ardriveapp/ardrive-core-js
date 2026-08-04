@@ -132,10 +132,14 @@ describe('ArFSPublicFileBuilder', () => {
 		// Two DISTINCT, individually-VALID transaction ids: the tag references one tx, the JSON another.
 		const jsonDataTxId = `${stubTxID}`;
 		const taggedDataTxId = `${stubTxIDAlt}`;
+		// The metadata tx id is deliberately DISTINCT from the JSON dataTxId, so this test only
+		// passes if the builder compares the tag against the JSON dataTxId (not the node id).
+		const pinMetadataTxId = `${stubTxIDAlt}`;
 		expect(jsonDataTxId).to.not.equal(taggedDataTxId);
+		expect(pinMetadataTxId).to.not.equal(jsonDataTxId);
 
 		const stubMismatchedPinNode: Partial<GQLNodeInterface> = {
-			id: `${stubTxID}`,
+			id: pinMetadataTxId,
 			tags: [
 				...(stubPublicFileGQLNode.tags ?? []),
 				{ name: 'ArFS-Pin', value: 'true' },
@@ -172,9 +176,12 @@ describe('ArFSPublicFileBuilder', () => {
 	it('keeps pinnedDataTxId when the Pinned-Data-Tx tag matches the JSON dataTxId', async () => {
 		const pinnedDataOwner = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH';
 		const matchingDataTxId = `${stubTxID}`;
+		// Metadata tx id distinct from the JSON dataTxId (see the mismatch test above).
+		const pinMetadataTxId = `${stubTxIDAlt}`;
+		expect(pinMetadataTxId).to.not.equal(matchingDataTxId);
 
 		const stubMatchedPinNode: Partial<GQLNodeInterface> = {
-			id: `${stubTxID}`,
+			id: pinMetadataTxId,
 			tags: [
 				...(stubPublicFileGQLNode.tags ?? []),
 				{ name: 'ArFS-Pin', value: 'true' },
