@@ -26,7 +26,9 @@ import {
 	stubSmallFileToUpload,
 	stubSignedTransaction
 } from '../../tests/stubs';
-import { DriveKey, EID, FeeMultiple, FileID, FileKey, FolderID, W } from '../types';
+import { ByteCount, DriveKey, EID, FeeMultiple, FileID, FileKey, FolderID, UnixTime, W } from '../types';
+import { ArFSPublicFilePinMetadataTransactionData } from './tx/arfs_tx_data_types';
+import { ArFSPublicFilePinMetaDataPrototype } from './tx/arfs_prototypes';
 import { readJWKFile, BufferToString } from '../utils/common';
 import {
 	ArFSCache,
@@ -40,7 +42,7 @@ import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_ent
 import { ArFSPrivateFileBuilder } from './arfs_builders/arfs_file_builders';
 import { InvalidFileStateException } from '../types/exceptions';
 import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache, defaultCacheParams } from './arfsdao_anonymous';
-import { stub, SinonStub } from 'sinon';
+import { spy, stub, SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
 import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
@@ -1185,6 +1187,183 @@ describe('The ArFSDAO class', () => {
 			expect(+fileDataReward).to.equal(10);
 
 			expect(newMetaDataInfo).to.be.undefined;
+		});
+	});
+
+	describe('pin methods', () => {
+		const pinDataTxId = stubTxID; // the EXISTING data tx being pinned (43-char tx id)
+		const pinnedDataOwner = stubArweaveAddress();
+
+		const buildPinTxData = (): ArFSPublicFilePinMetadataTransactionData =>
+			new ArFSPublicFilePinMetadataTransactionData(
+				'pinned file',
+				new ByteCount(2048),
+				new UnixTime(1700000000000),
+				pinDataTxId,
+				'image/png',
+				pinnedDataOwner
+			);
+
+		describe('getInfoOfTxToBePinned', () => {
+			it('resolves owner, size and content type of the source tx from GQL', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								// The real gateway returns data.size as a STRING (schema String!).
+								data: { size: '2048', type: 'image/png' },
+								tags: []
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				const info = await arfsDao.getInfoOfTxToBePinned(pinDataTxId);
+				expect(`${info.pinnedDataOwner}`).to.equal(`${pinnedDataOwner}`);
+				expect(+info.size).to.equal(2048);
+				expect(info.dataContentType).to.equal('image/png');
+			});
+
+			it('falls back to the Content-Type tag when GQL data.type is empty', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								// STRING size + null type (both as a real gateway returns them).
+								data: { size: '10', type: null },
+								tags: [{ name: 'Content-Type', value: 'text/plain' }]
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				const info = await arfsDao.getInfoOfTxToBePinned(pinDataTxId);
+				expect(info.dataContentType).to.equal('text/plain');
+			});
+
+			it('throws a clear error when the source data tx is not found', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({ pageInfo: { hasNextPage: false }, edges: [] });
+				await expectAsyncErrorThrow({
+					promiseToError: arfsDao.getInfoOfTxToBePinned(pinDataTxId),
+					errorMessage: `The data transaction to be pinned ("${pinDataTxId}") could not be found on the gateway!`
+				});
+			});
+
+			// Regression (Vector 5): the gateway returns data.size as a STRING (schema String!). A prior
+			// `new ByteCount(node.data.size)` threw on every real pin; a number-shaped stub hid it. This
+			// test fails against that code and passes with the Number() coercion.
+			it('coerces a string-shaped GQL data.size ("747") into the correct byte size', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								data: { size: '747', type: 'image/png' },
+								tags: []
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				const info = await arfsDao.getInfoOfTxToBePinned(pinDataTxId);
+				expect(+info.size).to.equal(747);
+			});
+
+			it('throws a CLEAR error (not a cryptic ByteCount throw) when data.size is missing/garbage', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								data: { size: null, type: 'image/png' },
+								tags: []
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				await expectAsyncErrorThrow({
+					promiseToError: arfsDao.getInfoOfTxToBePinned(pinDataTxId),
+					errorMessage: `Could not resolve the size of the source data tx to be pinned ("${pinDataTxId}") (gateway returned: null)`
+				});
+			});
+		});
+
+		describe('pinPublicFile', () => {
+			it('mints a NEW fileId, reuses the caller dataTxId, and posts metadata only (no data data-item)', async () => {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const uploadMetaDataStub = stub(arfsDao as any, 'uploadMetaData').resolves({
+					id: stubTxIDAlt,
+					dataCaches: ['https://arweave.net'],
+					fastFinalityIndexes: ['https://arweave.net']
+				});
+				// A pin never builds a file DATA transaction/data-item (no getFileDataBuffer).
+				const fileDataTxSpy = spy(arfsDao['txPreparer'], 'prepareFileDataTx');
+				const fileDataItemSpy = spy(arfsDao['txPreparer'], 'prepareFileDataDataItem');
+
+				const result = await arfsDao.pinPublicFile({
+					transactionData: buildPinTxData(),
+					dataTxId: pinDataTxId,
+					driveId: stubEntityID,
+					parentFolderId: stubEntityIDAlt,
+					metaDataBaseReward: { reward: W(10) }
+				});
+
+				// New fileId (a fresh uuid), never the source's dataTxId
+				expect(`${result.fileId}`).to.match(entityIdRegex);
+				expect(`${result.fileId}`).to.not.equal(`${pinDataTxId}`);
+				// dataTxId passes through unchanged
+				expect(`${result.dataTxId}`).to.equal(`${pinDataTxId}`);
+				expect(`${result.metaDataTxId}`).to.equal(`${stubTxIDAlt}`);
+				// metadata-only
+				expect(fileDataTxSpy.called).to.equal(false);
+				expect(fileDataItemSpy.called).to.equal(false);
+				expect(uploadMetaDataStub.calledOnce).to.equal(true);
+			});
+
+			it('builds a pin prototype carrying the ArFS-Pin/Pinned-Data-Tx tags and pinnedDataOwner JSON', async () => {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const uploadMetaDataStub = stub(arfsDao as any, 'uploadMetaData').resolves({ id: stubTxIDAlt });
+
+				await arfsDao.pinPublicFile({
+					transactionData: buildPinTxData(),
+					dataTxId: pinDataTxId,
+					driveId: stubEntityID,
+					parentFolderId: stubEntityIDAlt,
+					metaDataBaseReward: { reward: W(10) }
+				});
+
+				const prototype = uploadMetaDataStub.firstCall.args[0] as ArFSPublicFilePinMetaDataPrototype;
+				expect(prototype).to.be.instanceOf(ArFSPublicFilePinMetaDataPrototype);
+
+				const tags = prototype.gqlTags;
+				expect(tags.find((t) => t.name === 'ArFS-Pin')?.value).to.equal('true');
+				expect(tags.find((t) => t.name === 'Pinned-Data-Tx')?.value).to.equal(`${pinDataTxId}`);
+				expect(tags.find((t) => t.name === 'Entity-Type')?.value).to.equal('file');
+
+				const json = JSON.parse(prototype.objectData.asTransactionData() as string);
+				expect(json.pinnedDataOwner).to.equal(`${pinnedDataOwner}`);
+				expect(json.dataTxId).to.equal(`${pinDataTxId}`);
+			});
 		});
 	});
 });

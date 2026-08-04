@@ -1,5 +1,6 @@
 import { driveEncrypt, fileEncrypt, deriveFileKey } from '../../utils/crypto';
 import {
+	ArweaveAddress,
 	CipherIV,
 	DataContentType,
 	FileID,
@@ -272,6 +273,53 @@ export class ArFSPublicFileMetadataTransactionData extends ArFSFileMetadataTrans
 			this.baseDataJson,
 			this.dataJsonCustomMetaData
 		);
+	}
+
+	asTransactionData(): string {
+		return JSON.stringify(this.fullDataJson);
+	}
+}
+
+/**
+ * Data JSON for a PUBLIC file *pin*.
+ *
+ * A pin is an ArFS file-metadata entity whose `dataTxId` points at an EXISTING data
+ * transaction — no data bytes are re-uploaded. This mirrors ardrive-web's pin JSON
+ * (`file_entity.g.dart`): on top of the standard public-file fields it emits the
+ * recognition key `pinnedDataOwner` (the owner address of the SOURCE data tx) plus an
+ * explicit `thumbnail: null` and `assignedNames: null`.
+ *
+ * The key ORDER below is byte-significant: ardrive-web recognizes a pin by
+ * `pinnedDataOwner != null` in this JSON (NOT by the tags), so this field must be
+ * present and camelCase, and the serialized shape must match the interop contract
+ * (see docs/product/PINNING-PLAN-2026-07-19.md §0.2). `lastModifiedDate` is in
+ * MILLISECONDS (minted fresh at pin time), while the `Unix-Time` *tag* is in seconds.
+ */
+export class ArFSPublicFilePinMetadataTransactionData extends ArFSFileMetadataTransactionData {
+	private readonly fullDataJson: EntityMetaDataTransactionData;
+
+	constructor(
+		private readonly name: string,
+		private readonly size: ByteCount,
+		private readonly lastModifiedDate: UnixTime,
+		private readonly dataTxId: TransactionID,
+		private readonly dataContentType: DataContentType,
+		private readonly pinnedDataOwner: ArweaveAddress
+	) {
+		super();
+
+		// Insertion order matches ardrive-web's serialized pin JSON exactly (PINNING-PLAN §0.2).
+		// JSON.stringify preserves string-key insertion order, so this reproduces the on-chain bytes.
+		this.fullDataJson = {
+			name: this.name,
+			size: +this.size,
+			lastModifiedDate: +this.lastModifiedDate,
+			dataTxId: `${this.dataTxId}`,
+			dataContentType: this.dataContentType,
+			pinnedDataOwner: `${this.pinnedDataOwner}`,
+			thumbnail: null,
+			assignedNames: null
+		};
 	}
 
 	asTransactionData(): string {
