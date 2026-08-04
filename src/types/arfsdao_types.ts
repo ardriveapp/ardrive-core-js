@@ -1,6 +1,15 @@
 import { DataItem } from '@dha-team/arbundles';
 import Transaction from 'arweave/node/lib/transaction';
-import { FolderID, DriveID, RewardSettings, GQLTagInterface, FileID, ArweaveAddress } from '.';
+import {
+	FolderID,
+	DriveID,
+	RewardSettings,
+	GQLTagInterface,
+	FileID,
+	ArweaveAddress,
+	ByteCount,
+	DataContentType
+} from '.';
 import {
 	ArFSObjectMetadataPrototype,
 	CreateDriveMetaDataFactory,
@@ -9,6 +18,7 @@ import {
 	ArFSFolderTransactionData,
 	ArFSPublicFolderTransactionData,
 	ArFSPrivateFolderTransactionData,
+	ArFSPublicFilePinMetadataTransactionData,
 	PrivateDriveKeyData,
 	ArFSFileOrFolderEntity,
 	ArFSObjectTransactionData,
@@ -106,6 +116,27 @@ export type ArFSTxResult<R> = {
 	result: R;
 	transactions: Transaction[];
 };
+
+/** GQL-sourced info about the source data tx being pinned (owner/size/content-type). */
+export interface PinnedTxInfo {
+	/** Owner address of the SOURCE data tx — the pin recognition key (PINNING-PLAN §0.3). */
+	pinnedDataOwner: ArweaveAddress;
+	/** Byte size of the source data (GQL `data.size`). */
+	size: ByteCount;
+	/** Content type of the source data (GQL `data.type`, or Content-Type-tag fallback). */
+	dataContentType: DataContentType;
+}
+
+/** Parameters for the ArFSDAO.pinPublicFile metadata-only post. */
+export interface ArFSPinPublicFileParams {
+	/** Pre-built pin metadata JSON (name/size/lastModifiedDate/dataTxId/contentType/pinnedDataOwner). */
+	transactionData: ArFSPublicFilePinMetadataTransactionData;
+	/** The EXISTING data tx being pinned (unchanged; also emitted as the Pinned-Data-Tx tag). */
+	dataTxId: TransactionID;
+	driveId: DriveID;
+	parentFolderId: FolderID;
+	metaDataBaseReward?: RewardSettings;
+}
 
 /** Generic parameters for move file and move folder ArFSDAO methods */
 export interface ArFSMoveParams<

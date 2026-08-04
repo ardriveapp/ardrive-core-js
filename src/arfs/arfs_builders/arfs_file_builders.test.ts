@@ -76,6 +76,57 @@ describe('ArFSPublicFileBuilder', () => {
 		]);
 	});
 
+	it('leaves pinnedDataOwner / pinnedDataTxId undefined for a normal (non-pin) file', async () => {
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, gatewayApi);
+		stub(builder, 'getDataForTxID').resolves(stubPublicFileGetDataResult);
+
+		const fileMetaData = await builder.build(stubPublicFileGQLNode as GQLNodeInterface);
+
+		expect(fileMetaData.pinnedDataOwner).to.equal(undefined);
+		expect(fileMetaData.pinnedDataTxId).to.equal(undefined);
+	});
+
+	it('recognizes a pin: exposes pinnedDataOwner (from JSON) and pinnedDataTxId (from tag)', async () => {
+		const pinnedDataOwner = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH';
+		const pinnedDataTx = 'yAogaGWWYgWO5xWZevb45Y7YRp7E9iDsvkJvfR7To9c';
+
+		const stubPinNode: Partial<GQLNodeInterface> = {
+			id: `${stubTxID}`,
+			tags: [
+				...(stubPublicFileGQLNode.tags ?? []),
+				{ name: 'ArFS-Pin', value: 'true' },
+				{ name: 'Pinned-Data-Tx', value: pinnedDataTx }
+			]
+		};
+
+		const pinJson = Buffer.from(
+			JSON.stringify({
+				name: 'pinned',
+				size: 2048,
+				lastModifiedDate: 1639073634269,
+				dataTxId: pinnedDataTx,
+				dataContentType: 'image/png',
+				pinnedDataOwner,
+				thumbnail: null,
+				assignedNames: null
+			})
+		);
+
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPinNode as GQLNodeInterface, gatewayApi);
+		stub(builder, 'getDataForTxID').resolves(pinJson);
+
+		const fileMetaData = await builder.build(stubPinNode as GQLNodeInterface);
+
+		expect(fileMetaData.pinnedDataOwner).to.equal(pinnedDataOwner);
+		expect(`${fileMetaData.pinnedDataTxId}`).to.equal(pinnedDataTx);
+		// The pinned data tx is the file's own dataTxId (parsed from the JSON) — it downloads as a normal file.
+		expect(`${fileMetaData.dataTxId}`).to.equal(pinnedDataTx);
+		// Pin markers must NOT leak into customMetaData (they are first-class / consumed).
+		expect(fileMetaData.customMetaDataJson?.pinnedDataOwner).to.equal(undefined);
+		expect(fileMetaData.customMetaDataGqlTags?.['ArFS-Pin']).to.equal(undefined);
+		expect(fileMetaData.customMetaDataGqlTags?.['Pinned-Data-Tx']).to.equal(undefined);
+	});
+
 	it('fromArweaveNode method throws an error File-Id tag is missing', () => {
 		const stubNodeWithoutFileId = {
 			...stubPublicFileGQLNode,
