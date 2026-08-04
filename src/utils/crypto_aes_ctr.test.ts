@@ -19,11 +19,6 @@ describe('AES-256-CTR private-entity decryption — ardrive-web interop [aes-ctr
 	//   fileKey   : a fixed 32-byte KDF-derived key
 	//   Cipher-IV : a fixed 12-byte nonce; the initial counter block is nonce || 0x00000000
 	//   Cipher    : 'AES256-CTR'; NO MAC / auth tag (ardrive-web uses Mac.empty)
-	// AES-256-CTR is a standardized construction, so a ciphertext produced with this exact
-	// counter block is byte-identical to ardrive-web's output for the same key/nonce/plaintext.
-	// The ciphertext below is therefore a fixed web-interop vector: any regression in the
-	// counter/padding logic (e.g. treating the 12-byte IV as 16, or stripping an auth tag)
-	// changes the recovered plaintext and fails this test.
 	const fileKeyData = Buffer.from('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f', 'hex');
 	const fileKey = new EntityKey(fileKeyData);
 	const nonce = Buffer.from('ardrive-ctr!', 'utf8'); // 12-byte Cipher-IV nonce
@@ -32,11 +27,17 @@ describe('AES-256-CTR private-entity decryption — ardrive-web interop [aes-ctr
 		'The quick brown fox jumps over 13 lazy ArDrive dogs, spanning several AES blocks!!',
 		'utf8'
 	);
-	const goldenCiphertextHex =
+	// Fixed, externally-verified web-interop ciphertext — a HARDCODED literal, deliberately NOT
+	// recomputed from any helper under test (recomputation would make the golden-decrypt assertion
+	// circular). Provenance: verified byte-for-byte against ardrive-web's stream_aes.dart counterBlock
+	// (nonce‖0x00000000, low-32-bit BE) by an independent Python AES-ECB oracle — see the AES-CTR gate.
+	// Because it is a fixed literal, the golden-decrypt test below FAILS on any regression in the
+	// counter/CTR logic (e.g. treating the 12-byte IV as 16, or stripping a nonexistent auth tag).
+	const GOLDEN_CTR_CIPHERTEXT_HEX =
 		'fcfeb3afdd4685ac21858d6e9b0b6083f367a3fce833d4a47c79a8874d91864d' +
 		'173aae73fb9ab4ac4306d8cf12ec25ca49a7dab4954dc841e2f2f9680ed86105' +
 		'ebed3589e6442c0742eba20cff323c8c7339';
-	const goldenCiphertext = Buffer.from(goldenCiphertextHex, 'hex');
+	const goldenCiphertext = Buffer.from(GOLDEN_CTR_CIPHERTEXT_HEX, 'hex');
 
 	it('aesCtrInitialCounterFromIv zero-pads a 12-byte nonce to a 16-byte counter (nonce || 0x00000000)', () => {
 		const counter = aesCtrInitialCounterFromIv(nonce);
@@ -55,10 +56,15 @@ describe('AES-256-CTR private-entity decryption — ardrive-web interop [aes-ctr
 		expect(decrypted.equals(plaintext)).to.equal(true);
 	});
 
-	it('the golden vector is stable — the ardrive-web counter construction reproduces it', () => {
+	it('pins the ardrive-web counter construction (encrypt side) to the verified golden literal', () => {
+		// This exercises the ENCRYPT / counter-construction path, NOT the decrypt branch, so it is
+		// intentionally not the load-bearing decrypt guard (that is the golden-decrypt test above).
+		// Its job is to catch drift in aesCtrInitialCounterFromIv by pinning the produced keystream
+		// to the externally-verified GOLDEN_CTR_CIPHERTEXT_HEX literal — an independent constant, not
+		// a value recomputed from the same helper, so the check is not circular.
 		const c = createCipheriv('aes-256-ctr', fileKeyData, aesCtrInitialCounterFromIv(nonce));
 		const ct = Buffer.concat([c.update(plaintext), c.final()]);
-		expect(ct.equals(goldenCiphertext)).to.equal(true);
+		expect(ct.toString('hex')).to.equal(GOLDEN_CTR_CIPHERTEXT_HEX);
 	});
 
 	it('routes CTR-tagged input to the CTR path with NO auth-tag stripping (full length recovered)', async () => {

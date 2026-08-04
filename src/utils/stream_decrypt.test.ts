@@ -51,12 +51,16 @@ describe('the StreamDecrypt class — AES-256-CTR (ardrive-web streamed large fi
 	const ctrNonce = Buffer.from('ardrive-ctr!', 'utf8'); // 12-byte Cipher-IV
 	const ctrCipherIV = ctrNonce.toString('base64');
 	const ctrPlaintext = 'The quick brown fox jumps over 13 lazy ArDrive dogs, spanning several AES blocks!!';
-	const ctrCiphertext = Buffer.from(
+	// Fixed, externally-verified web-interop ciphertext (HARDCODED literal, not recomputed from any
+	// helper under test). This decrypt is load-bearing: fed straight into StreamDecrypt below, it fails
+	// on any CTR-counter regression. Provenance: verified byte-for-byte against ardrive-web's
+	// stream_aes.dart counterBlock (nonce‖0x00000000, low-32-bit BE) by an independent Python AES-ECB
+	// oracle — see the AES-CTR gate.
+	const GOLDEN_CTR_CIPHERTEXT_HEX =
 		'fcfeb3afdd4685ac21858d6e9b0b6083f367a3fce833d4a47c79a8874d91864d' +
-			'173aae73fb9ab4ac4306d8cf12ec25ca49a7dab4954dc841e2f2f9680ed86105' +
-			'ebed3589e6442c0742eba20cff323c8c7339',
-		'hex'
-	);
+		'173aae73fb9ab4ac4306d8cf12ec25ca49a7dab4954dc841e2f2f9680ed86105' +
+		'ebed3589e6442c0742eba20cff323c8c7339';
+	const ctrCiphertext = Buffer.from(GOLDEN_CTR_CIPHERTEXT_HEX, 'hex');
 
 	const collect = (stream: Readable, decrypt: StreamDecrypt): Promise<string> => {
 		let out = '';
