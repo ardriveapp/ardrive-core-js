@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-08-04
+
+### Added
+
+- **Public-file pinning — `ARDrive.pinPublicFile()`.** Creates a new **public** ArFS
+  File entity that "pins" an existing Arweave data transaction by its `dataTxId`,
+  **without re-uploading the data** — parity with ArDrive Web. The pin reuses the
+  target transaction's data, sets `pinnedDataOwner`, and is recognized on read via the
+  JSON `pinnedDataOwner` field. The destination drive is always resolved from the parent
+  folder; a supplied `driveId` that does not own that folder is rejected, so a public pin
+  can never be written into a private drive. A `Pinned-Data-Tx` tag that disagrees with the
+  metadata `dataTxId` is treated as malformed and dropped, and gateway string `data.size`
+  values are coerced in `getInfoOfTxToBePinned`. (#281)
+
+### Fixed
+
+- **Decrypt AES-256-CTR private files (large / streamed files).** ArDrive Web encrypts
+  *large* private files with **AES-256-CTR** (a streamable, unauthenticated cipher) while
+  small files use AES-256-GCM, recording the choice in the on-chain **`Cipher`** tag.
+  core-js was GCM-only and **silently dropped** CTR files from drive listings. It now reads
+  the `Cipher` tag and decrypts CTR correctly (12-byte `Cipher-IV` → CTR counter) in **both**
+  the buffer and streaming download paths. The CTR counter construction was verified
+  byte-for-byte against ArDrive Web's `stream_aes.dart`. (#282)
+- **Undecryptable entities no longer vanish silently.** `fileDecrypt`/`driveDecrypt` now
+  throw a typed `EntityDecryptionError` (carrying the cipher + entity) instead of returning
+  a `Buffer('Error')` / `'ERROR'` sentinel that private-drive enumeration then skipped.
+  Enumeration surfaces the error **per entity** and the rest of the listing survives. (#282)
+- **Reject malformed input on the CTR path.** A `Cipher-IV` that is not 12 or 16 bytes throws,
+  and an **unknown `Cipher` value** throws `EntityDecryptionError` instead of silently falling
+  back to GCM. Legacy files with no `Cipher` tag still decrypt as GCM. (#282)
+
 ## [4.2.0] - 2026-07-15
 
 ### Added
