@@ -1,5 +1,28 @@
 import { ArFSPrivateFileBuilder, ArFSPublicFileBuilder } from '../exports';
 
+// EntityDecryptionError
+//
+// Thrown when a private entity's data cannot be decrypted (wrong key, corrupt
+// ciphertext, missing/invalid auth tag, unknown cipher, etc.). This REPLACES the
+// historical silent `Buffer.from('Error')` / `'ERROR'` sentinels returned by
+// fileDecrypt()/driveDecrypt(): a genuine decryption failure is now an honest,
+// typed throw carrying the on-chain Cipher so callers can surface it clearly
+// instead of feeding a bogus buffer into JSON.parse() and silently dropping the
+// entity. Enumeration paths catch this per-entity (see arfsdao.ts) so one broken
+// file never aborts an entire drive listing.
+export class EntityDecryptionError extends Error {
+	readonly cipher: string;
+	readonly entity: string;
+
+	constructor(cipher: string, entity = 'entity', cause?: unknown) {
+		const reason = cause instanceof Error && cause.message ? `: ${cause.message}` : '';
+		super(`Failed to decrypt ${entity} (cipher ${cipher})${reason}`);
+		this.name = 'EntityDecryptionError';
+		this.cipher = cipher;
+		this.entity = entity;
+	}
+}
+
 // InvalidFileStateException
 export class InvalidFileStateException extends Error {
 	readonly missingProperties: string[];

@@ -220,7 +220,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 				throw new InvalidFileStateException(['fileKey']);
 			}
 
-			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer);
+			const decryptedFileBuffer: Buffer = await fileDecrypt(this.cipherIV, fileKey, dataBuffer, this.cipher);
 			const decryptedFileString: string = BufferToString(decryptedFileBuffer);
 			const decryptedFileJSON: FileMetaDataTransactionData = await JSON.parse(decryptedFileString);
 
@@ -270,7 +270,7 @@ export class ArFSPrivateFileBuilder extends ArFSFileBuilder<ArFSPrivateFile> {
 		// listing. Throw the semantically-correct InvalidFileStateException instead — which
 		// getPrivateFilesWithParentFolderIds already skips — naming the missing properties
 		// (e.g. `cipher`). This runs BEFORE any decryption, so it does not mask a decryption
-		// failure (those surface as a SyntaxError from the fileDecrypt "Error" sentinel).
+		// failure (those now surface as a typed EntityDecryptionError thrown by fileDecrypt).
 		throw new InvalidFileStateException(this.getMissingRequiredProperties());
 	}
 

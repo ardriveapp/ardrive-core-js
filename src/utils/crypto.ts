@@ -10,10 +10,67 @@ import { authTagLength } from './constants';
 import { EntityKey, FileKey, DriveSignatureType, DriveKey } from '../types';
 import { VersionedDriveKey } from '../types/entity_key';
 import { ArweaveSigner, JWKInterface, createData, getCryptoDriver } from '@dha-team/arbundles';
+import { EntityDecryptionError } from '../types/exceptions';
 
 const keyByteLength = 32;
 const algo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
+const ctrAlgo = 'aes-256-ctr'; // AES-256-CTR: ardrive-web writes this for streamed (large) private files
 const keyHash = 'SHA-256';
+
+// On-chain `Cipher` tag values (ArFS). Absent/legacy metadata is treated as GCM.
+export const CIPHER_AES_256_GCM = 'AES256-GCM';
+export const CIPHER_AES_256_CTR = 'AES256-CTR';
+
+/**
+ * Builds the 16-byte AES-256-CTR initial counter block from the on-chain `Cipher-IV`.
+ *
+ * INTEROP (ardrive-web streaming CTR): the `Cipher-IV` tag holds a 12-byte nonce and
+ * ardrive-web derives the initial counter block as `nonce(12) || 0x00000000` — a 96-bit
+ * fixed nonce prefix plus a 32-bit block counter starting at 0 (webcrypto AES-CTR with a
+ * 32-bit counter length). Node's `aes-256-ctr` takes the full 16-byte initial counter and
+ * increments the whole block big-endian; because the low 32 bits never carry into the nonce
+ * prefix until 2^32 blocks (= 64 GiB, far above the 2 GiB upload cap), the two constructions
+ * are byte-identical. A 16-byte `Cipher-IV` (e.g. a buffer-path CTR nonce) is used verbatim.
+ */
+export function aesCtrInitialCounterFromIv(iv: Buffer): Buffer {
+	if (iv.length === 16) {
+		return iv;
+	}
+	const counter = Buffer.alloc(16);
+	iv.copy(counter, 0, 0, Math.min(iv.length, 16));
+	return counter;
+}
+
+/**
+ * Shared buffer-path decryption for private ArFS entities. Branches on the on-chain
+ * `Cipher` tag: AES256-CTR (unauthenticated, ardrive-web streamed files) vs AES256-GCM
+ * (authenticated, the legacy default when the tag is absent). A genuine failure throws
+ * an {@link EntityDecryptionError} — never the historical `Buffer.from('Error')` sentinel.
+ */
+function decryptEntityBuffer(
+	cipherIV: string,
+	keyData: Buffer,
+	data: Buffer,
+	cipher: string,
+	entityLabel: string
+): Buffer {
+	try {
+		const iv: Buffer = Buffer.from(cipherIV, 'base64');
+		if (cipher === CIPHER_AES_256_CTR) {
+			// CTR carries no auth tag (ardrive-web decrypts with Mac.empty); all bytes are ciphertext.
+			const decipher = crypto.createDecipheriv(ctrAlgo, keyData, aesCtrInitialCounterFromIv(iv));
+			return Buffer.concat([decipher.update(data), decipher.final()]);
+		}
+		// AES256-GCM (or absent/legacy default): last authTagLength bytes are the GCM auth tag.
+		const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
+		const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
+		const decipher = crypto.createDecipheriv(algo, keyData, iv, { authTagLength });
+		decipher.setAuthTag(authTag);
+		return Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
+	} catch (error) {
+		throw new EntityDecryptionError(cipher || CIPHER_AES_256_GCM, entityLabel, error);
+	}
+}
 
 // Gets an unsalted SHA256 signature from an Arweave wallet's private PEM file
 export async function generateWalletSignatureV1(jwk: JWK, data: Uint8Array): Promise<Uint8Array> {
@@ -186,32 +243,28 @@ export async function getFileAndEncrypt(fileKey: FileKey, filePath: string): Pro
 	return encryptedFile;
 }
 
-// New ArFS Drive decryption function, using ArDrive KDF and AES-256-GCM
-export async function driveDecrypt(cipherIV: string, driveKey: DriveKey, data: Buffer): Promise<Buffer> {
-	const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
-	const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
-	const iv: Buffer = Buffer.from(cipherIV, 'base64');
-	const decipher = crypto.createDecipheriv(algo, driveKey.keyData, iv, { authTagLength });
-	decipher.setAuthTag(authTag);
-	const decryptedDrive: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-	return decryptedDrive;
+// ArFS Drive decryption. Reads the on-chain `Cipher` (AES256-GCM default, AES256-CTR for
+// streamed data) and throws {@link EntityDecryptionError} on a genuine failure.
+export async function driveDecrypt(
+	cipherIV: string,
+	driveKey: DriveKey,
+	data: Buffer,
+	cipher: string = CIPHER_AES_256_GCM
+): Promise<Buffer> {
+	return decryptEntityBuffer(cipherIV, driveKey.keyData, data, cipher, 'drive');
 }
 
-// New ArFS File decryption function, using ArDrive KDF and AES-256-GCM
-export async function fileDecrypt(cipherIV: string, fileKey: FileKey, data: Buffer): Promise<Buffer> {
-	try {
-		const authTag: Buffer = data.slice(data.byteLength - authTagLength, data.byteLength);
-		const encryptedDataSlice: Buffer = data.slice(0, data.byteLength - authTagLength);
-		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		const decipher = crypto.createDecipheriv(algo, fileKey.keyData, iv, { authTagLength });
-		decipher.setAuthTag(authTag);
-		const decryptedFile: Buffer = Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
-		return decryptedFile;
-	} catch (err) {
-		// console.log (err);
-		console.log('Error decrypting file data');
-		return Buffer.from('Error', 'ascii');
-	}
+// ArFS File/Folder metadata decryption. Reads the on-chain `Cipher` (AES256-GCM default,
+// AES256-CTR for streamed data). A genuine failure now throws {@link EntityDecryptionError}
+// instead of silently returning a `Buffer.from('Error')` sentinel that downstream JSON.parse()
+// would choke on — which caused undecryptable files to vanish from drive listings.
+export async function fileDecrypt(
+	cipherIV: string,
+	fileKey: FileKey,
+	data: Buffer,
+	cipher: string = CIPHER_AES_256_GCM
+): Promise<Buffer> {
+	return decryptEntityBuffer(cipherIV, fileKey.keyData, data, cipher, 'file');
 }
 
 // gets hash of a file using SHA512

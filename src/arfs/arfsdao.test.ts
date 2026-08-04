@@ -38,7 +38,7 @@ import {
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
 import { ArFSPrivateFileBuilder } from './arfs_builders/arfs_file_builders';
-import { InvalidFileStateException } from '../types/exceptions';
+import { EntityDecryptionError, InvalidFileStateException } from '../types/exceptions';
 import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache, defaultCacheParams } from './arfsdao_anonymous';
 import { stub, SinonStub } from 'sinon';
 import { expect } from 'chai';
@@ -606,10 +606,8 @@ describe('The ArFSDAO class', () => {
 
 			const goodFile = await stubPrivateFile({ fileId: EID(fileId1), parentFolderId, driveId: listDriveId });
 
-			// build() is invoked in edge order. Simulate the live failure mode: the first
-			// (good) file builds normally; the second file's data fails to decrypt, so
-			// fileDecrypt() returns the "Error" sentinel buffer and JSON.parse() throws a
-			// SyntaxError inside the builder.
+			// build() is invoked in edge order. The first (good) file builds normally; the second
+			// file's data decrypts to non-JSON, so JSON.parse() throws a SyntaxError in the builder.
 			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build');
 			buildStub.onFirstCall().resolves(goodFile);
 			buildStub.onSecondCall().rejects(new SyntaxError(`Unexpected token 'E', "Error" is not valid JSON`));
@@ -623,6 +621,38 @@ describe('The ArFSDAO class', () => {
 			);
 
 			// The listing completes (does NOT throw) and returns the healthy file, the broken one skipped.
+			expect(files).to.have.lengthOf(1);
+			expect(`${files[0].fileId}`).to.equal(fileId1);
+		});
+
+		it('surfaces a genuine decrypt failure (EntityDecryptionError) per-entity without aborting the listing or dropping the whole drive [aes-ctr]', async () => {
+			// After the sentinel-kill, fileDecrypt() THROWS a typed EntityDecryptionError on a real
+			// decrypt failure instead of returning a bogus Buffer('Error'). The enumeration must
+			// catch it per-entity: the good file still lists, the drive listing does NOT crash, and
+			// the failure is honestly reported (not a silent skip masquerading as invalid metadata).
+			gqlRequestStub = stub(fakeGatewayApi, 'gqlRequest');
+			gqlRequestStub.resolves({
+				edges: [
+					buildFileEdge(`${stubTxID}`, fileId1, 'cursor1'),
+					buildFileEdge(`${stubTxIDAlt}`, fileId2, 'cursor2')
+				],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const goodFile = await stubPrivateFile({ fileId: EID(fileId1), parentFolderId, driveId: listDriveId });
+
+			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build');
+			buildStub.onFirstCall().resolves(goodFile);
+			buildStub.onSecondCall().rejects(new EntityDecryptionError('AES256-CTR', 'file'));
+
+			const files = await arfsDao.getPrivateFilesWithParentFolderIds(
+				[parentFolderId],
+				stubDriveKey,
+				stubArweaveAddress(),
+				listDriveId,
+				true
+			);
+
 			expect(files).to.have.lengthOf(1);
 			expect(`${files[0].fileId}`).to.equal(fileId1);
 		});
