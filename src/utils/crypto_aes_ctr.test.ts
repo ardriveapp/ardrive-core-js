@@ -51,6 +51,22 @@ describe('AES-256-CTR private-entity decryption — ardrive-web interop [aes-ctr
 		expect(aesCtrInitialCounterFromIv(sixteen).equals(sixteen)).to.equal(true);
 	});
 
+	// CTR is unauthenticated: silently zero-padding/truncating a malformed Cipher-IV to 16 bytes
+	// would produce corrupted plaintext with NO error. The guard must reject bad lengths loudly.
+	it('rejects a malformed 10-byte Cipher-IV with a RangeError (no silent zero-pad)', () => {
+		expect(() => aesCtrInitialCounterFromIv(Buffer.alloc(10, 5))).to.throw(
+			RangeError,
+			/must be 12 or 16 bytes, got 10/
+		);
+	});
+
+	it('rejects a malformed 20-byte Cipher-IV with a RangeError (no silent truncation)', () => {
+		expect(() => aesCtrInitialCounterFromIv(Buffer.alloc(20, 5))).to.throw(
+			RangeError,
+			/must be 12 or 16 bytes, got 20/
+		);
+	});
+
 	it('decrypts the golden AES-256-CTR ciphertext back to the exact plaintext (buffer path)', async () => {
 		const decrypted = await fileDecrypt(cipherIV, fileKey, goldenCiphertext, CIPHER_AES_256_CTR);
 		expect(decrypted.equals(plaintext)).to.equal(true);
@@ -159,5 +175,37 @@ describe('genuine decryption failures throw EntityDecryptionError — no silent 
 			result = undefined;
 		}
 		expect(result, 'must throw rather than return a buffer').to.equal(undefined);
+	});
+});
+
+describe('cipher dispatch (buffer path) — unknown ciphers refused, absent/empty routes to legacy GCM [aes-ctr]', () => {
+	const fileKey = new EntityKey(
+		Buffer.from('606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f', 'hex')
+	);
+
+	it('throws EntityDecryptionError for an unknown NON-EMPTY cipher — never a silent GCM decrypt', async () => {
+		// Encrypt a VALID GCM payload, then ask to decrypt it under a bogus cipher tag. A silent GCM
+		// fallback (the old `else` branch) would happily decrypt this and return the plaintext; the
+		// explicit dispatch must refuse the unrecognized cipher instead.
+		const plaintext = Buffer.from('{"name":"attacker-controlled"}', 'utf8');
+		const enc = await fileEncrypt(fileKey, plaintext);
+		let thrown: unknown;
+		try {
+			await fileDecrypt(enc.cipherIV, fileKey, enc.data, 'AES256-XYZ');
+		} catch (e) {
+			thrown = e;
+		}
+		expect(thrown, 'must throw, not silently GCM-decrypt an unknown cipher').to.be.instanceOf(
+			EntityDecryptionError
+		);
+		expect((thrown as EntityDecryptionError).cipher).to.equal('AES256-XYZ');
+	});
+
+	it('treats an empty-string cipher as legacy GCM (absent-tag safety) and decrypts normally', async () => {
+		// Legacy ArFS data with no/empty Cipher tag must still decrypt as GCM, not throw as "unknown".
+		const plaintext = Buffer.from('legacy gcm metadata blob', 'utf8');
+		const enc = await fileEncrypt(fileKey, plaintext);
+		const dec = await fileDecrypt(enc.cipherIV, fileKey, enc.data, ''); // '' => GCM default
+		expect(dec.toString('utf8')).to.equal('legacy gcm metadata blob');
 	});
 });

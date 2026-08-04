@@ -3,6 +3,7 @@ import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
 import { EntityKey } from '../types';
 import { StreamDecrypt } from './stream_decrypt';
+import { EntityDecryptionError } from '../types/exceptions';
 
 const pipelinePromise = promisify(pipeline);
 
@@ -87,5 +88,26 @@ describe('the StreamDecrypt class — AES-256-CTR (ardrive-web streamed large fi
 		src.push(null);
 		const decryptingStream = new StreamDecrypt(ctrCipherIV, ctrFileKey, null, 'AES256-CTR');
 		return collect(src, decryptingStream).then((decrypted) => expect(decrypted).to.equal(ctrPlaintext));
+	});
+});
+
+// Cipher-dispatch guard: the stream constructor must not silently fall through to GCM for an
+// unrecognized cipher, but absent/empty (legacy) must still route to the authenticated GCM path.
+describe('the StreamDecrypt class — cipher dispatch guard [aes-ctr]', () => {
+	const healthyCipherIV = '44PEY4EvVXq6TuBp';
+	const healthyFileKey = new EntityKey(Buffer.from('Zzaf6YeMb0chjYXjGkluCnLdufiu7/SxbuEbyPzR+1g=', 'base64'));
+	const rawEncryptedData = Buffer.from('boFKovaNPFrbNHt0mftHjmQexP4=', 'base64');
+	const authTag = rawEncryptedData.slice(rawEncryptedData.length - 16, rawEncryptedData.length);
+
+	it('throws EntityDecryptionError for an unknown NON-EMPTY cipher instead of falling through to GCM', () => {
+		// A VALID GCM auth tag is supplied, so the old silent `else` GCM path would construct fine.
+		// The explicit dispatch must reject the unrecognized cipher at construction time.
+		expect(() => new StreamDecrypt(healthyCipherIV, healthyFileKey, authTag, 'AES256-XYZ')).to.throw(
+			EntityDecryptionError
+		);
+	});
+
+	it('treats an empty-string cipher as legacy GCM (constructs the authenticated path)', () => {
+		expect(() => new StreamDecrypt(healthyCipherIV, healthyFileKey, authTag, '')).to.not.throw();
 	});
 });

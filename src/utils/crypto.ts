@@ -31,14 +31,24 @@ export const CIPHER_AES_256_CTR = 'AES256-CTR';
  * increments the whole block big-endian; because the low 32 bits never carry into the nonce
  * prefix until 2^32 blocks (= 64 GiB, far above the 2 GiB upload cap), the two constructions
  * are byte-identical. A 16-byte `Cipher-IV` (e.g. a buffer-path CTR nonce) is used verbatim.
+ *
+ * Any OTHER `Cipher-IV` length is rejected. CTR is unauthenticated, so a malformed IV would
+ * otherwise be silently zero-padded/truncated to 16 bytes and produce corrupted plaintext with
+ * no error at all — better to surface the bad on-chain tag loudly.
  */
 export function aesCtrInitialCounterFromIv(iv: Buffer): Buffer {
 	if (iv.length === 16) {
+		// Buffer-path CTR nonce: the 16-byte Cipher-IV IS the initial counter block.
 		return iv;
 	}
-	const counter = Buffer.alloc(16);
-	iv.copy(counter, 0, 0, Math.min(iv.length, 16));
-	return counter;
+	if (iv.length === 12) {
+		// ardrive-web streaming CTR: 12-byte nonce -> initial counter `nonce || 0x00000000`.
+		// Byte-identical to the historical construction (Math.min(12, 16) === 12); interop-critical.
+		const counter = Buffer.alloc(16);
+		iv.copy(counter, 0, 0, 12);
+		return counter;
+	}
+	throw new RangeError(`AES-256-CTR Cipher-IV must be 12 or 16 bytes, got ${iv.length}`);
 }
 
 /**
@@ -54,9 +64,18 @@ function decryptEntityBuffer(
 	cipher: string,
 	entityLabel: string
 ): Buffer {
+	// Absent/empty Cipher tag is legacy AES256-GCM (the public wrappers default the param to
+	// CIPHER_AES_256_GCM; an empty on-chain value is likewise treated as absent). Dispatch ONLY the
+	// two recognized ciphers explicitly — a genuinely-unknown NON-EMPTY cipher is refused up front
+	// rather than silently routed to GCM, which could otherwise decrypt a crafted GCM payload and
+	// contradict the documented "unknown cipher throws EntityDecryptionError" behavior.
+	const resolvedCipher = cipher || CIPHER_AES_256_GCM;
+	if (resolvedCipher !== CIPHER_AES_256_CTR && resolvedCipher !== CIPHER_AES_256_GCM) {
+		throw new EntityDecryptionError(resolvedCipher, entityLabel);
+	}
 	try {
 		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		if (cipher === CIPHER_AES_256_CTR) {
+		if (resolvedCipher === CIPHER_AES_256_CTR) {
 			// CTR carries no auth tag (ardrive-web decrypts with Mac.empty); all bytes are ciphertext.
 			const decipher = crypto.createDecipheriv(ctrAlgo, keyData, aesCtrInitialCounterFromIv(iv));
 			return Buffer.concat([decipher.update(data), decipher.final()]);
@@ -68,7 +87,7 @@ function decryptEntityBuffer(
 		decipher.setAuthTag(authTag);
 		return Buffer.concat([decipher.update(encryptedDataSlice), decipher.final()]);
 	} catch (error) {
-		throw new EntityDecryptionError(cipher || CIPHER_AES_256_GCM, entityLabel, error);
+		throw new EntityDecryptionError(resolvedCipher, entityLabel, error);
 	}
 }
 

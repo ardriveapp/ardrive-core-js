@@ -3,6 +3,7 @@ import { Transform } from 'stream';
 import { CipherIV, FileKey } from '../types';
 import { authTagLength } from './constants';
 import { aesCtrInitialCounterFromIv, CIPHER_AES_256_CTR, CIPHER_AES_256_GCM } from './crypto';
+import { EntityDecryptionError } from '../types/exceptions';
 
 const gcmAlgo = 'aes-256-gcm'; // crypto library does not accept this in uppercase. So gotta keep using aes-256-gcm
 const ctrAlgo = 'aes-256-ctr'; // AES-256-CTR: ardrive-web writes this for streamed (large) private files
@@ -23,16 +24,23 @@ export class StreamDecrypt extends Transform {
 
 	constructor(cipherIV: CipherIV, fileKey: FileKey, authTag: Buffer | null, cipher: string = CIPHER_AES_256_GCM) {
 		super();
+		// Absent/empty Cipher tag is legacy AES256-GCM (the param defaults to CIPHER_AES_256_GCM;
+		// an empty on-chain value is likewise treated as absent). Dispatch ONLY the two recognized
+		// ciphers — a genuinely-unknown NON-EMPTY cipher is refused rather than silently falling
+		// through to the GCM path (which could otherwise decrypt a crafted GCM payload).
+		const resolvedCipher = cipher || CIPHER_AES_256_GCM;
 		const iv: Buffer = Buffer.from(cipherIV, 'base64');
-		if (cipher === CIPHER_AES_256_CTR) {
+		if (resolvedCipher === CIPHER_AES_256_CTR) {
 			this.decipher = createDecipheriv(ctrAlgo, fileKey.keyData, aesCtrInitialCounterFromIv(iv));
-		} else {
+		} else if (resolvedCipher === CIPHER_AES_256_GCM) {
 			if (!authTag) {
 				throw new Error(`Missing auth tag for ${gcmAlgo} stream decryption`);
 			}
 			const gcm: DecipherGCM = createDecipheriv(gcmAlgo, fileKey.keyData, iv, { authTagLength });
 			gcm.setAuthTag(authTag);
 			this.decipher = gcm;
+		} else {
+			throw new EntityDecryptionError(resolvedCipher, 'file data');
 		}
 	}
 

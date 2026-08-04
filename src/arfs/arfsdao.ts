@@ -2230,6 +2230,13 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	 * @returns {Promise<Readable>}
 	 */
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		// Range-calc note (CTR safety): `encryptedDataSize` = plaintextSize + authTagLength (it
+		// models a trailing GCM auth tag), and this range subtracts `authTagLength` back off — so the
+		// requested range is exactly [0, plaintextSize). For GCM that is the ciphertext MINUS its
+		// trailing tag (fetched separately by getAuthTagForPrivateFile). For CTR the +authTagLength in
+		// `encryptedDataSize` and the -authTagLength here CANCEL: a CTR tx has no tag and its
+		// ciphertext length == plaintextSize, so this range spans the FULL CTR ciphertext. The
+		// cancellation is deliberate and load-bearing — do NOT "simplify" it away.
 		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - authTagLength;
 		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${privateFile.dataTxId}`;
@@ -2680,7 +2687,9 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);
 				}
 				// AES256-CTR (ardrive-web streamed large files) has no auth tag; only fetch one
-				// for the authenticated GCM path (absent Cipher => GCM default).
+				// for the authenticated GCM path (absent Cipher => GCM default). The data stream
+				// still covers the full CTR ciphertext — see the +16/-16 range cancellation note in
+				// getPrivateDataStream.
 				const dataCipher = fileCipherIVResult.cipher ?? CIPHER_AES_256_GCM;
 				const authTag = dataCipher === CIPHER_AES_256_CTR ? null : await this.getAuthTagForPrivateFile(file);
 				const decryptingStream = new StreamDecrypt(fileCipherIVResult.cipherIV, fileKey, authTag, dataCipher);
