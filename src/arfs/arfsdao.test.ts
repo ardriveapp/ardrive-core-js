@@ -1215,7 +1215,8 @@ describe('The ArFSDAO class', () => {
 							node: {
 								id: `${pinDataTxId}`,
 								owner: { address: `${pinnedDataOwner}`, key: '' },
-								data: { size: 2048, type: 'image/png' },
+								// The real gateway returns data.size as a STRING (schema String!).
+								data: { size: '2048', type: 'image/png' },
 								tags: []
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							} as any
@@ -1238,7 +1239,8 @@ describe('The ArFSDAO class', () => {
 							node: {
 								id: `${pinDataTxId}`,
 								owner: { address: `${pinnedDataOwner}`, key: '' },
-								data: { size: 10, type: '' },
+								// STRING size + null type (both as a real gateway returns them).
+								data: { size: '10', type: null },
 								tags: [{ name: 'Content-Type', value: 'text/plain' }]
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							} as any
@@ -1255,6 +1257,53 @@ describe('The ArFSDAO class', () => {
 				await expectAsyncErrorThrow({
 					promiseToError: arfsDao.getInfoOfTxToBePinned(pinDataTxId),
 					errorMessage: `The data transaction to be pinned ("${pinDataTxId}") could not be found on the gateway!`
+				});
+			});
+
+			// Regression (Vector 5): the gateway returns data.size as a STRING (schema String!). A prior
+			// `new ByteCount(node.data.size)` threw on every real pin; a number-shaped stub hid it. This
+			// test fails against that code and passes with the Number() coercion.
+			it('coerces a string-shaped GQL data.size ("747") into the correct byte size', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								data: { size: '747', type: 'image/png' },
+								tags: []
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				const info = await arfsDao.getInfoOfTxToBePinned(pinDataTxId);
+				expect(+info.size).to.equal(747);
+			});
+
+			it('throws a CLEAR error (not a cryptic ByteCount throw) when data.size is missing/garbage', async () => {
+				stub(fakeGatewayApi, 'gqlRequest').resolves({
+					pageInfo: { hasNextPage: false },
+					edges: [
+						{
+							cursor: '',
+							node: {
+								id: `${pinDataTxId}`,
+								owner: { address: `${pinnedDataOwner}`, key: '' },
+								data: { size: null, type: 'image/png' },
+								tags: []
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any
+						}
+					]
+				});
+
+				await expectAsyncErrorThrow({
+					promiseToError: arfsDao.getInfoOfTxToBePinned(pinDataTxId),
+					errorMessage: `Could not resolve the size of the source data tx to be pinned ("${pinDataTxId}") (gateway returned: null)`
 				});
 			});
 		});

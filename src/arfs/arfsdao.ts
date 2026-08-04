@@ -688,7 +688,27 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			throw new Error(`The data transaction to be pinned ("${dataTxId}") has no resolvable owner address!`);
 		}
 		const pinnedDataOwner = new ArweaveAddress(node.owner.address);
-		const size = new ByteCount(node.data.size);
+
+		// The Arweave GraphQL gateway returns `data.size` as a JSON STRING (schema `String!`, e.g. "747"),
+		// even though our GQLMetaDataInterface types it as `number`. ByteCount rejects non-integers, so
+		// coerce first and fail with a CLEAR error (rather than a cryptic ByteCount throw) if the gateway
+		// did not report a usable size.
+		const rawSize: unknown = node.data?.size;
+		const coercedSize = Number(rawSize);
+		if (
+			rawSize === null ||
+			rawSize === undefined ||
+			rawSize === '' ||
+			!Number.isInteger(coercedSize) ||
+			coercedSize < 0
+		) {
+			throw new Error(
+				`Could not resolve the size of the source data tx to be pinned ("${dataTxId}") (gateway returned: ${JSON.stringify(
+					rawSize
+				)})`
+			);
+		}
+		const size = new ByteCount(coercedSize);
 
 		let dataContentType: DataContentType = node.data.type;
 		if (!dataContentType) {
