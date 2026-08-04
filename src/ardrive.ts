@@ -1101,7 +1101,18 @@ export class ArDrive extends ArDriveAnonymous {
 	}: PinPublicFileParams): Promise<ArFSResult> {
 		assertValidArFSFileName(pinnedFileName);
 
-		const destDriveId = driveId ?? (await this.arFsDao.getDriveIdForFolderId(parentFolderId));
+		// Always resolve the destination drive from the folder that will actually contain the pin —
+		// never trust a caller-supplied driveId. A supplied driveId is treated as an ASSERTION: if it
+		// does not own parentFolderId we throw here, BEFORE the public-drive guard / GQL lookup / post,
+		// so a public driveId can never smuggle a pin (plaintext metadata JSON + ArFS-Pin tags) into a
+		// folder that actually lives in a PRIVATE drive. Mirrors movePublicFile / createPublicFolder,
+		// which resolve the drive from the folder unconditionally.
+		const destDriveId = await this.arFsDao.getDriveIdForFolderId(parentFolderId);
+		if (driveId && !destDriveId.equals(driveId)) {
+			throw new Error(
+				`Supplied driveId (${driveId}) does not own the destination folder (${parentFolderId}), which belongs to drive ${destDriveId}`
+			);
+		}
 		const owner = await this.getOwnerAddress();
 
 		// Pinning is public-only (R1): a private destination would encrypt the metadata JSON and omit

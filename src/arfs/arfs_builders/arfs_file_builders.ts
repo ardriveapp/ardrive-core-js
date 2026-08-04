@@ -145,6 +145,13 @@ export class ArFSPublicFileBuilder extends ArFSFileBuilder<ArFSPublicFile> {
 			this.size = new ByteCount(dataJSON.size);
 			this.lastModifiedDate = new UnixTime(dataJSON.lastModifiedDate);
 			this.dataTxId = new TransactionID(dataJSON.dataTxId);
+			// Pin tx-id consistency: the `Pinned-Data-Tx` tag (promoted to `pinnedDataTxId` in
+			// parseFromArweaveNode) must reference the same tx as the JSON `dataTxId`. A mismatch is
+			// malformed — clear it, matching how an invalid `Pinned-Data-Tx` tag is dropped above, so we
+			// never report one tx in `pinnedDataTxId` while the file downloads another via `dataTxId`.
+			if (this.pinnedDataTxId && !this.pinnedDataTxId.equals(this.dataTxId)) {
+				this.pinnedDataTxId = undefined;
+			}
 			this.dataContentType = dataJSON.dataContentType || extToMime(this.name);
 			this.isHidden = typeof dataJSON.isHidden === 'boolean' ? dataJSON.isHidden : undefined;
 			// Pin recognition key: present (and non-null) iff this file entity is a pin. Read

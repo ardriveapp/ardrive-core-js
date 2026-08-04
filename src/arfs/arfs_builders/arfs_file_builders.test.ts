@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { fakeArweave, stubTxID } from '../../../tests/stubs';
+import { fakeArweave, stubTxID, stubTxIDAlt } from '../../../tests/stubs';
 import { expectAsyncErrorThrow } from '../../../tests/test_helpers';
 import { DriveSignatureType, GQLNodeInterface } from '../../types';
 import { VersionedDriveKey } from '../../types/entity_key';
@@ -125,6 +125,83 @@ describe('ArFSPublicFileBuilder', () => {
 		expect(fileMetaData.customMetaDataJson?.pinnedDataOwner).to.equal(undefined);
 		expect(fileMetaData.customMetaDataGqlTags?.['ArFS-Pin']).to.equal(undefined);
 		expect(fileMetaData.customMetaDataGqlTags?.['Pinned-Data-Tx']).to.equal(undefined);
+	});
+
+	it('clears pinnedDataTxId when the Pinned-Data-Tx tag disagrees with the JSON dataTxId', async () => {
+		const pinnedDataOwner = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH';
+		// Two DISTINCT, individually-VALID transaction ids: the tag references one tx, the JSON another.
+		const jsonDataTxId = `${stubTxID}`;
+		const taggedDataTxId = `${stubTxIDAlt}`;
+		expect(jsonDataTxId).to.not.equal(taggedDataTxId);
+
+		const stubMismatchedPinNode: Partial<GQLNodeInterface> = {
+			id: `${stubTxID}`,
+			tags: [
+				...(stubPublicFileGQLNode.tags ?? []),
+				{ name: 'ArFS-Pin', value: 'true' },
+				{ name: 'Pinned-Data-Tx', value: taggedDataTxId }
+			]
+		};
+
+		const pinJson = Buffer.from(
+			JSON.stringify({
+				name: 'pinned',
+				size: 2048,
+				lastModifiedDate: 1639073634269,
+				dataTxId: jsonDataTxId,
+				dataContentType: 'image/png',
+				pinnedDataOwner,
+				thumbnail: null,
+				assignedNames: null
+			})
+		);
+
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubMismatchedPinNode as GQLNodeInterface, gatewayApi);
+		stub(builder, 'getDataForTxID').resolves(pinJson);
+
+		const fileMetaData = await builder.build(stubMismatchedPinNode as GQLNodeInterface);
+
+		// The mismatched Pinned-Data-Tx is malformed and must not be trusted...
+		expect(fileMetaData.pinnedDataTxId).to.equal(undefined);
+		// ...while the file's own dataTxId (which downloads it) still comes from the JSON.
+		expect(`${fileMetaData.dataTxId}`).to.equal(jsonDataTxId);
+		// Pin recognition still works via the JSON pinnedDataOwner.
+		expect(fileMetaData.pinnedDataOwner).to.equal(pinnedDataOwner);
+	});
+
+	it('keeps pinnedDataTxId when the Pinned-Data-Tx tag matches the JSON dataTxId', async () => {
+		const pinnedDataOwner = 'abcdefghijklmnopqrxtuvwxyz123456789ABCDEFGH';
+		const matchingDataTxId = `${stubTxID}`;
+
+		const stubMatchedPinNode: Partial<GQLNodeInterface> = {
+			id: `${stubTxID}`,
+			tags: [
+				...(stubPublicFileGQLNode.tags ?? []),
+				{ name: 'ArFS-Pin', value: 'true' },
+				{ name: 'Pinned-Data-Tx', value: matchingDataTxId }
+			]
+		};
+
+		const pinJson = Buffer.from(
+			JSON.stringify({
+				name: 'pinned',
+				size: 2048,
+				lastModifiedDate: 1639073634269,
+				dataTxId: matchingDataTxId,
+				dataContentType: 'image/png',
+				pinnedDataOwner,
+				thumbnail: null,
+				assignedNames: null
+			})
+		);
+
+		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubMatchedPinNode as GQLNodeInterface, gatewayApi);
+		stub(builder, 'getDataForTxID').resolves(pinJson);
+
+		const fileMetaData = await builder.build(stubMatchedPinNode as GQLNodeInterface);
+
+		expect(`${fileMetaData.pinnedDataTxId}`).to.equal(matchingDataTxId);
+		expect(`${fileMetaData.dataTxId}`).to.equal(matchingDataTxId);
 	});
 
 	it('fromArweaveNode method throws an error File-Id tag is missing', () => {
