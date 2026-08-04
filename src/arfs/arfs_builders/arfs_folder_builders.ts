@@ -181,7 +181,12 @@ export class ArFSPrivateFolderBuilder extends ArFSFolderBuilder<ArFSPrivateFolde
 			const txData = await this.getDataForTxID(this.txId);
 			const dataBuffer = Buffer.from(txData);
 
-			const decryptedFolderBuffer: Buffer = await fileDecrypt(this.cipherIV, this.driveKey, dataBuffer);
+			const decryptedFolderBuffer: Buffer = await fileDecrypt(
+				this.cipherIV,
+				this.driveKey,
+				dataBuffer,
+				this.cipher
+			);
 			const decryptedFolderString: string = BufferToString(decryptedFolderBuffer);
 			const decryptedFolderJSON = await JSON.parse(decryptedFolderString);
 

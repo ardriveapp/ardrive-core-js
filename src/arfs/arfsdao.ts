@@ -85,7 +85,7 @@ import {
 import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER, GQLQuery } from '../utils/query';
 import { buildDriveHistoryComposite, sortNodesNewestFirst } from '../snapshots';
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
-import { deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -203,7 +203,7 @@ import { DrivePrivacy } from '../types/type_guards';
 import { DriveSignatureInfo, DriveSignatureType } from '../types/types';
 import { errorMessage } from '../utils/error_message';
 import { parseDriveSignatureType } from '../utils/common_browser';
-import { InvalidFileStateException } from '../types/exceptions';
+import { EntityDecryptionError, InvalidFileStateException } from '../types/exceptions';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -1797,6 +1797,17 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 							return null;
 						}
 
+						// [decrypt-failed] Honest, distinct reporting of a genuine decryption failure
+						// (replaces the old silent skip that masqueraded as invalid metadata via the
+						// `Buffer.from('Error')` sentinel). The folder's data could not be decrypted with
+						// this drive key. Surface it as a decrypt failure and exclude it from the listing
+						// rather than aborting the whole drive listing or emitting a bogus buffer. With
+						// AES256-CTR interop in place, only genuinely corrupt / wrong-key folders reach here.
+						if (e instanceof EntityDecryptionError) {
+							console.error(`[decrypt-failed] Excluding undecryptable folder from listing: ${e.message}`);
+							return null;
+						}
+
 						throw e;
 					}
 				}
@@ -1857,16 +1868,15 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 						return this.caches.privateFileCache.put(cacheKey, Promise.resolve(file));
 					} catch (e) {
 						// CORE-6: Tolerate individual broken private files instead of aborting the
-						// whole drive listing. When a private file's data cannot be decrypted,
-						// fileDecrypt() swallows the error and returns the "Error" sentinel buffer,
-						// so JSON.parse() of the "decrypted" metadata throws a SyntaxError. The public
-						// file-listing path (getPublicFilesWithParentFolderIds) and the private
-						// folder-listing path (getAllFoldersOfPrivateDrive) already skip such entities;
-						// the private file path did not, so one undecryptable/incomplete file killed
-						// the entire private-drive reconstruction. Mirror the public path exactly:
-						// skip SyntaxError (unparseable/undecryptable metadata) and
-						// InvalidFileStateException (metadata missing required properties), but keep
-						// re-throwing any other error so genuine/unexpected failures are not masked.
+						// whole drive listing, so one undecryptable/incomplete file never kills the
+						// entire private-drive reconstruction. Three tolerated, per-entity cases:
+						//   - EntityDecryptionError: the data could not be decrypted (wrong key /
+						//     corrupt / unknown cipher). fileDecrypt() now throws this honest, typed
+						//     error instead of returning the old "Error" sentinel buffer (handled just
+						//     below in the EntityDecryptionError branch).
+						//   - SyntaxError: the data decrypted but the plaintext is not valid JSON.
+						//   - InvalidFileStateException: metadata missing required properties.
+						// Any other error is re-thrown so genuine/unexpected failures are not masked.
 						if (e instanceof SyntaxError) {
 							console.error(`Error building file. Skipping... Error: ${e}`);
 							return null;
@@ -1874,6 +1884,17 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 						if (e instanceof InvalidFileStateException) {
 							console.error(`Error building file. Skipping... Error: ${e}`);
+							return null;
+						}
+
+						// [decrypt-failed] Honest, distinct reporting of a genuine decryption failure
+						// (replaces the old silent skip that masqueraded as invalid metadata via the
+						// `Buffer.from('Error')` sentinel). The file's data could not be decrypted with
+						// this drive key. Surface it as a decrypt failure and exclude it from the listing
+						// rather than aborting the whole drive listing or emitting a bogus buffer. With
+						// AES256-CTR interop in place, only genuinely corrupt / wrong-key files reach here.
+						if (e instanceof EntityDecryptionError) {
+							console.error(`[decrypt-failed] Excluding undecryptable file from listing: ${e.message}`);
 							return null;
 						}
 
@@ -2302,7 +2323,12 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					throw new Error("The private file doesn't have a valid Cipher-IV");
 				}
 				const cipherIV = cipherIVTag.value;
-				result.push({ txId, cipherIV });
+				// Read the data transaction's own Cipher tag so streaming decryption can branch
+				// GCM (auth tag) vs CTR (no auth tag). ardrive-web writes AES256-CTR for streamed
+				// (large) file data even though the file's METADATA is AES256-GCM, so this must
+				// come from the data tx, not the metadata entity. Absent => GCM default.
+				const cipher = tags.find((tag) => tag.name === 'Cipher')?.value;
+				result.push({ txId, cipherIV, cipher });
 			});
 		}
 		return result;
@@ -2314,6 +2340,13 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 	 * @returns {Promise<Readable>}
 	 */
 	async getPrivateDataStream(privateFile: ArFSPrivateFile): Promise<Readable> {
+		// Range-calc note (CTR safety): `encryptedDataSize` = plaintextSize + authTagLength (it
+		// models a trailing GCM auth tag), and this range subtracts `authTagLength` back off — so the
+		// requested range is exactly [0, plaintextSize). For GCM that is the ciphertext MINUS its
+		// trailing tag (fetched separately by getAuthTagForPrivateFile). For CTR the +authTagLength in
+		// `encryptedDataSize` and the -authTagLength here CANCEL: a CTR tx has no tag and its
+		// ciphertext length == plaintextSize, so this range spans the FULL CTR ciphertext. The
+		// cancellation is deliberate and load-bearing — do NOT "simplify" it away.
 		const dataLength = privateFile.encryptedDataSize;
 		const authTagIndex = +dataLength - authTagLength;
 		const dataTxUrl = `${gatewayUrlForArweave(this.arweave).href}${privateFile.dataTxId}`;
@@ -2763,8 +2796,13 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 				if (!fileCipherIVResult) {
 					throw new Error(`Could not find the CipherIV for the private file with ID ${file.fileId}`);
 				}
-				const authTag = await this.getAuthTagForPrivateFile(file);
-				const decryptingStream = new StreamDecrypt(fileCipherIVResult.cipherIV, fileKey, authTag);
+				// AES256-CTR (ardrive-web streamed large files) has no auth tag; only fetch one
+				// for the authenticated GCM path (absent Cipher => GCM default). The data stream
+				// still covers the full CTR ciphertext — see the +16/-16 range cancellation note in
+				// getPrivateDataStream.
+				const dataCipher = fileCipherIVResult.cipher ?? CIPHER_AES_256_GCM;
+				const authTag = dataCipher === CIPHER_AES_256_CTR ? null : await this.getAuthTagForPrivateFile(file);
+				const decryptingStream = new StreamDecrypt(fileCipherIVResult.cipherIV, fileKey, authTag, dataCipher);
 				const fileWrapper = new ArFSPrivateFileToDownload(
 					file,
 					dataStream,
@@ -2797,6 +2835,17 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					console.error(`Error building folder. Skipping... Error: ${e}`);
 					return null;
 				}
+				// [decrypt-failed] Honest, distinct reporting of a genuine decryption failure
+				// (replaces the old silent skip that masqueraded as invalid metadata via the
+				// `Buffer.from('Error')` sentinel). The folder's data could not be decrypted with
+				// this drive key. Surface it as a decrypt failure and exclude it from the listing
+				// rather than aborting the whole drive listing or emitting a bogus buffer. With
+				// AES256-CTR interop in place, only genuinely corrupt / wrong-key folders reach here.
+				if (e instanceof EntityDecryptionError) {
+					console.error(`[decrypt-failed] Excluding undecryptable folder from listing: ${e.message}`);
+					return null;
+				}
+
 				throw e;
 			}
 		});
@@ -2825,6 +2874,17 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 					console.error(`Error building file. Skipping... Error: ${e}`);
 					return null;
 				}
+				// [decrypt-failed] Honest, distinct reporting of a genuine decryption failure
+				// (replaces the old silent skip that masqueraded as invalid metadata via the
+				// `Buffer.from('Error')` sentinel). The file's data could not be decrypted with
+				// this drive key. Surface it as a decrypt failure and exclude it from the listing
+				// rather than aborting the whole drive listing or emitting a bogus buffer. With
+				// AES256-CTR interop in place, only genuinely corrupt / wrong-key files reach here.
+				if (e instanceof EntityDecryptionError) {
+					console.error(`[decrypt-failed] Excluding undecryptable file from listing: ${e.message}`);
+					return null;
+				}
+
 				throw e;
 			}
 		});

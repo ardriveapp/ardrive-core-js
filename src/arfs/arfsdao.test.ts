@@ -26,7 +26,7 @@ import {
 	stubSmallFileToUpload,
 	stubSignedTransaction
 } from '../../tests/stubs';
-import { ByteCount, DriveKey, EID, FeeMultiple, FileID, FileKey, FolderID, UnixTime, W } from '../types';
+import { ByteCount, DriveKey, EID, EntityKey, FeeMultiple, FileID, FileKey, FolderID, UnixTime, W } from '../types';
 import { ArFSPublicFilePinMetadataTransactionData } from './tx/arfs_tx_data_types';
 import { ArFSPublicFilePinMetaDataPrototype } from './tx/arfs_prototypes';
 import { readJWKFile, BufferToString } from '../utils/common';
@@ -40,13 +40,17 @@ import {
 import { PromiseCache } from '@ardrive/ardrive-promise-cache';
 import { ArFSPrivateDrive, ArFSPrivateFile, ArFSPrivateFolder } from './arfs_entities';
 import { ArFSPrivateFileBuilder } from './arfs_builders/arfs_file_builders';
-import { InvalidFileStateException } from '../types/exceptions';
+import { EntityDecryptionError, InvalidFileStateException } from '../types/exceptions';
 import { ArFSPublicFolderCacheKey, defaultArFSAnonymousCache, defaultCacheParams } from './arfsdao_anonymous';
 import { spy, stub, SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { expectAsyncErrorThrow, getDecodedTags } from '../../tests/test_helpers';
-import { deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
+import { CIPHER_AES_256_CTR, deriveFileKey, driveDecrypt, fileDecrypt } from '../utils/crypto';
+import { StreamDecrypt } from '../utils/stream_decrypt';
 import { DataItem } from '@dha-team/arbundles';
+import axios from 'axios';
+import { Readable, pipeline } from 'stream';
+import { promisify } from 'util';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { BundleResult, FileResult, FolderResult } from './arfs_entity_result_factory';
 import { NameConflictInfo } from '../utils/mapper_functions';
@@ -608,10 +612,8 @@ describe('The ArFSDAO class', () => {
 
 			const goodFile = await stubPrivateFile({ fileId: EID(fileId1), parentFolderId, driveId: listDriveId });
 
-			// build() is invoked in edge order. Simulate the live failure mode: the first
-			// (good) file builds normally; the second file's data fails to decrypt, so
-			// fileDecrypt() returns the "Error" sentinel buffer and JSON.parse() throws a
-			// SyntaxError inside the builder.
+			// build() is invoked in edge order. The first (good) file builds normally; the second
+			// file's data decrypts to non-JSON, so JSON.parse() throws a SyntaxError in the builder.
 			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build');
 			buildStub.onFirstCall().resolves(goodFile);
 			buildStub.onSecondCall().rejects(new SyntaxError(`Unexpected token 'E', "Error" is not valid JSON`));
@@ -625,6 +627,38 @@ describe('The ArFSDAO class', () => {
 			);
 
 			// The listing completes (does NOT throw) and returns the healthy file, the broken one skipped.
+			expect(files).to.have.lengthOf(1);
+			expect(`${files[0].fileId}`).to.equal(fileId1);
+		});
+
+		it('surfaces a genuine decrypt failure (EntityDecryptionError) per-entity without aborting the listing or dropping the whole drive [aes-ctr]', async () => {
+			// After the sentinel-kill, fileDecrypt() THROWS a typed EntityDecryptionError on a real
+			// decrypt failure instead of returning a bogus Buffer('Error'). The enumeration must
+			// catch it per-entity: the good file still lists, the drive listing does NOT crash, and
+			// the failure is honestly reported (not a silent skip masquerading as invalid metadata).
+			gqlRequestStub = stub(fakeGatewayApi, 'gqlRequest');
+			gqlRequestStub.resolves({
+				edges: [
+					buildFileEdge(`${stubTxID}`, fileId1, 'cursor1'),
+					buildFileEdge(`${stubTxIDAlt}`, fileId2, 'cursor2')
+				],
+				pageInfo: { hasNextPage: false }
+			});
+
+			const goodFile = await stubPrivateFile({ fileId: EID(fileId1), parentFolderId, driveId: listDriveId });
+
+			buildStub = stub(ArFSPrivateFileBuilder.prototype, 'build');
+			buildStub.onFirstCall().resolves(goodFile);
+			buildStub.onSecondCall().rejects(new EntityDecryptionError('AES256-CTR', 'file'));
+
+			const files = await arfsDao.getPrivateFilesWithParentFolderIds(
+				[parentFolderId],
+				stubDriveKey,
+				stubArweaveAddress(),
+				listDriveId,
+				true
+			);
+
 			expect(files).to.have.lengthOf(1);
 			expect(`${files[0].fileId}`).to.equal(fileId1);
 		});
@@ -707,6 +741,78 @@ describe('The ArFSDAO class', () => {
 			);
 
 			expect(files).to.have.lengthOf(0);
+		});
+	});
+
+	// FIX C (CodeRabbit): the CTR download range `encryptedDataSize - authTagLength` is CORRECT via
+	// cancellation, not a bug. This drives the REAL getPrivateDataStream (axios intercepted at the
+	// default adapter — no network) for a CTR file and proves the requested range spans the FULL CTR
+	// ciphertext (offset 0, length == plaintext), then that those exact bytes decrypt to plaintext.
+	describe('getPrivateDataStream — AES-256-CTR download range covers the full ciphertext [aes-ctr]', () => {
+		// Same golden vector as crypto_aes_ctr.test.ts / stream_decrypt.test.ts.
+		const goldenKey = new EntityKey(
+			Buffer.from('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f', 'hex')
+		);
+		const goldenNonce = Buffer.from('ardrive-ctr!', 'utf8'); // 12-byte Cipher-IV
+		const goldenCipherIV = goldenNonce.toString('base64');
+		const goldenPlaintext = 'The quick brown fox jumps over 13 lazy ArDrive dogs, spanning several AES blocks!!';
+		const GOLDEN_CTR_CIPHERTEXT_HEX =
+			'fcfeb3afdd4685ac21858d6e9b0b6083f367a3fce833d4a47c79a8874d91864d' +
+			'173aae73fb9ab4ac4306d8cf12ec25ca49a7dab4954dc841e2f2f9680ed86105' +
+			'ebed3589e6442c0742eba20cff323c8c7339';
+		const goldenCiphertext = Buffer.from(GOLDEN_CTR_CIPHERTEXT_HEX, 'hex');
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let originalAdapter: any;
+		beforeEach(() => {
+			originalAdapter = axios.defaults.adapter;
+		});
+		afterEach(() => {
+			axios.defaults.adapter = originalAdapter;
+		});
+
+		it('requests bytes=0-(size-1) — the full CTR ciphertext — and those bytes decrypt to plaintext', async () => {
+			// CTR ciphertext length == plaintext length (no auth tag, no block padding).
+			expect(goldenCiphertext.length).to.equal(Buffer.byteLength(goldenPlaintext));
+
+			// A private file whose plaintext size IS the golden size. encryptedDataSize = size + 16,
+			// so the production range math yields bytes=0-(size-1) after the -authTagLength cancels.
+			const file = await stubPrivateFile({ dataTxId: stubTxID });
+			file.size = new ByteCount(goldenCiphertext.length);
+			// Bind the CTR decrypt params onto the entity so the test reads cipher/cipherIV/fileKey
+			// off `file` rather than standalone constants (the props are readonly in production, hence
+			// the cast). NB: the real download path sources the cipher from the data-tx Cipher tag,
+			// not this entity field — this binding is for test intent/regression coverage only.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const ctrFile = file as any;
+			ctrFile.cipher = CIPHER_AES_256_CTR;
+			ctrFile.cipherIV = goldenCipherIV;
+			ctrFile.fileKey = goldenKey;
+
+			let capturedRange: string | undefined;
+			axios.defaults.adapter = async (config) => {
+				capturedRange = config.headers?.Range;
+				return {
+					data: Readable.from(goldenCiphertext),
+					status: 206,
+					statusText: 'Partial Content',
+					headers: {},
+					config
+				};
+			};
+
+			const stream = await arfsDao.getPrivateDataStream(file);
+
+			// (1) Range is offset 0 and spans exactly `size` bytes == the full CTR ciphertext.
+			expect(capturedRange).to.equal(`bytes=0-${goldenCiphertext.length - 1}`);
+
+			// (2) The streamed bytes decrypt correctly through the production CTR stream path,
+			// with the decrypt params read off the file entity (see the binding above).
+			const decrypt = new StreamDecrypt(file.cipherIV, file.fileKey, null, file.cipher);
+			const chunks: Buffer[] = [];
+			decrypt.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+			await promisify(pipeline)(stream, decrypt);
+			expect(Buffer.concat(chunks).toString('utf8')).to.equal(goldenPlaintext);
 		});
 	});
 

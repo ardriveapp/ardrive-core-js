@@ -29,7 +29,7 @@ import {
 import { ArFSDAO } from './arfs/arfsdao';
 import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState } from './types/sync_types';
 import { CommunityOracle } from './community/community_oracle';
-import { deriveFileKey } from './utils/crypto';
+import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
 import {
 	FeeMultiple,
@@ -1638,9 +1638,17 @@ export class ArDrive extends ArDriveAnonymous {
 		const fullPath = joinPath(destFolderPath, outputFileName);
 		const data = await this.arFsDao.getPrivateDataStream(privateFile);
 		const fileKey = await deriveFileKey(`${fileId}`, driveKey);
-		const fileCipherIV = await this.arFsDao.getPrivateTransactionCipherIV(privateFile.dataTxId);
-		const authTag = await this.arFsDao.getAuthTagForPrivateFile(privateFile);
-		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag);
+		// Read the DATA transaction's own Cipher/Cipher-IV. ardrive-web encrypts streamed (large)
+		// file data with AES256-CTR (no auth tag) even when the file's metadata is AES256-GCM, so
+		// branch on the data tx's cipher: CTR has no auth tag to fetch (absent Cipher => GCM). The
+		// data stream itself still covers the full CTR ciphertext — the +16/-16 range cancellation is
+		// documented in getPrivateDataStream.
+		const [dataTxCipherResult] = await this.arFsDao.getCipherIVOfPrivateTransactionIDs([privateFile.dataTxId]);
+		const fileCipherIV = dataTxCipherResult.cipherIV;
+		const dataCipher = dataTxCipherResult.cipher ?? CIPHER_AES_256_GCM;
+		const authTag =
+			dataCipher === CIPHER_AES_256_CTR ? null : await this.arFsDao.getAuthTagForPrivateFile(privateFile);
+		const decipher = new StreamDecrypt(fileCipherIV, fileKey, authTag, dataCipher);
 		const fileToDownload = new ArFSPrivateFileToDownload(privateFile, data, fullPath, decipher);
 		await fileToDownload.write();
 	}
