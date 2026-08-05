@@ -48,7 +48,7 @@ jobs:
 
       # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22's bundled npm is older.
       - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.5.1 # exact OIDC minimum; npm@latest (12.x) requires Node >= 22.22
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
