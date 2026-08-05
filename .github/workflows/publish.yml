@@ -1,8 +1,8 @@
 name: Publish to npm
 
-# Publishes ardrive-core-js to npm. Two ways to trigger:
-#   1. Push a version tag `vX.Y.Z` (recommended: cut from master after merge).
-#   2. Manually via the Actions tab (workflow_dispatch) with a dry_run toggle.
+# Publishes ardrive-core-js to npm.
+#   - PUBLISH: push a version tag `vX.Y.Z` (the ONLY path that publishes; gated by the version check).
+#   - VALIDATE: run manually (workflow_dispatch) to build + pack + verify — never publishes.
 #
 # Auth: npm Trusted Publishing (OIDC) — no token/secret. One-time owner setup on
 # npm: the ardrive-core-js package -> Settings -> Trusted Publishers -> add a
@@ -24,12 +24,7 @@ on:
       # (unambiguous in GitHub's filter-pattern syntax) rather than a
       # `[0-9]+`-style pattern that reads like regex.
       - "v*.*.*"
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Build + pack + verify, but do NOT publish"
-        type: boolean
-        default: true
+  workflow_dispatch: {} # manual run: build + pack + verify only; never publishes (publish = tag push)
 
 permissions:
   contents: read
@@ -48,7 +43,10 @@ jobs:
 
       # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22's bundled npm is older.
       - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest
+        run: |
+          npm install -g npm@11.5.1 # exact OIDC minimum; npm@latest (12.x) requires Node >= 22.22
+          # Fail closed if the pinned npm didn't actually install (supply-chain integrity).
+          test "$(npm --version)" = "11.5.1" || { echo "::error::npm is $(npm --version), expected 11.5.1"; exit 1; }
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -84,12 +82,15 @@ jobs:
           '
 
       - name: Publish to npm (trusted publishing / OIDC)
-        if: github.event_name == 'push' || inputs.dry_run == false
+        # Publish ONLY on a version-tag push, which passes through the "Verify tag
+        # matches package.json version" gate above. workflow_dispatch NEVER publishes
+        # (build/pack/verify only) — closes the tag/version-check bypass CodeRabbit flagged.
+        if: github.event_name == 'push'
         # No NODE_AUTH_TOKEN — authenticated via OIDC against the npm Trusted
         # Publisher configured for this repo + workflow. Provenance is generated
         # automatically under trusted publishing (no --provenance flag needed).
         run: npm publish --access public
 
       - name: Dry-run summary
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
-        run: echo "Dry run complete — built, packed, and verified. Nothing published."
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Validation complete — built, packed, and verified. workflow_dispatch never publishes; push a vX.Y.Z tag to publish."
