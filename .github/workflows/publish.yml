@@ -4,8 +4,10 @@ name: Publish to npm
 #   1. Push a version tag `vX.Y.Z` (recommended: cut from master after merge).
 #   2. Manually via the Actions tab (workflow_dispatch) with a dry_run toggle.
 #
-# Prerequisite (one-time, owner): add an `NPM_TOKEN` repo secret — an npm
-# automation token with publish rights for `ardrive-core-js`.
+# Auth: npm Trusted Publishing (OIDC) — no token/secret. One-time owner setup on
+# npm: the ardrive-core-js package -> Settings -> Trusted Publishers -> add a
+# GitHub Actions publisher for ardriveapp/ardrive-core-js + workflow publish.yml.
+# Requires npm >= 11.5.1, Node >= 22.14.0, and `id-token: write` (all set below).
 #
 # Why this exists: `npm publish` runs the `prepare` hook (tsc -> lib/) but does
 # NOT build the browser bundle `dist/web/`, which the package's `files` array
@@ -41,8 +43,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version: "22.14.0" # OIDC trusted publishing needs Node >= 22.14.0 (repo .nvmrc is 18)
           registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22's bundled npm is older.
+      - name: Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -77,11 +83,12 @@ jobs:
             console.log(`Package OK: ${files.length} files, lib/ + dist/web/ present`);
           '
 
-      - name: Publish to npm (with provenance)
+      - name: Publish to npm (trusted publishing / OIDC)
         if: github.event_name == 'push' || inputs.dry_run == false
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # No NODE_AUTH_TOKEN — authenticated via OIDC against the npm Trusted
+        # Publisher configured for this repo + workflow. Provenance is generated
+        # automatically under trusted publishing (no --provenance flag needed).
+        run: npm publish --access public
 
       - name: Dry-run summary
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
