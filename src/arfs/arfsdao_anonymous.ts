@@ -22,7 +22,7 @@ import {
 	SnapshotWithBody,
 	TailQueryBound
 } from '../snapshots';
-import { latestRevisionFilter, latestRevisionFilterForDrives } from '../utils/filter_methods';
+import { keepLatestRevisions, keepLatestRevisionsForDrives } from '../utils/filter_methods';
 import { FolderHierarchy } from './folder_hierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
@@ -271,7 +271,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			allDrives.push(...drives);
 		}
 
-		return latestRevisionsOnly ? allDrives.filter(latestRevisionFilterForDrives) : allDrives;
+		return latestRevisionsOnly ? keepLatestRevisionsForDrives(allDrives) : allDrives;
 	}
 
 	async getPublicFilesWithParentFolderIds(
@@ -333,7 +333,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 			allFiles.push(...validFiles);
 		}
-		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
+		return latestRevisionsOnly ? keepLatestRevisions(allFiles) : allFiles;
 	}
 
 	async getAllFoldersOfPublicDrive({
@@ -391,7 +391,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 			allFolders.push(...validFolders);
 		}
-		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
+		return latestRevisionsOnly ? keepLatestRevisions(allFolders) : allFolders;
 	}
 
 	/**
@@ -574,7 +574,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 	/**
 	 * Snapshot-accelerated whole-drive entity fetch. Returns every file and folder
-	 * revision of the drive (the caller applies `latestRevisionFilter`), sourced from
+	 * revision of the drive (the caller applies `keepLatestRevisions`), sourced from
 	 * snapshot bodies for the snapshot-covered heights and from the live GraphQL tail
 	 * for the rest. Returns `null` when the drive has no snapshots (→ full replay).
 	 * THROWS on any snapshot fetch/parse failure (→ caller falls back to full replay).
@@ -662,7 +662,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		}
 
 		const allFolderEntitiesOfDrive = snapshotEntities
-			? snapshotEntities.folders.filter(latestRevisionFilter)
+			? keepLatestRevisions(snapshotEntities.folders)
 			: await this.getAllFoldersOfPublicDrive({
 					driveId: driveIdOfFolder,
 					owner,
@@ -702,7 +702,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 
 		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
 		// Keep only the latest revision (highest unixTime) for each unique fileId
-		const uniqueFiles = childrenFileEntities.filter(latestRevisionFilter);
+		const uniqueFiles = keepLatestRevisions(childrenFileEntities);
 
 		const children: (ArFSPublicFolder | ArFSPublicFile)[] = [];
 		for (const en of childrenFolderEntities) {

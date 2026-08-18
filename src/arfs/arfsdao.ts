@@ -119,7 +119,7 @@ import {
 	ADDR,
 	UploadStats
 } from '../types';
-import { latestRevisionFilter, fileFilter, folderFilter } from '../utils/filter_methods';
+import { keepLatestRevisions, fileFilter, folderFilter } from '../utils/filter_methods';
 import { Wallet } from '../wallet';
 import { ArFSTagSettings } from './arfs_tag_settings';
 import { ArFSTagAssembler } from './tags/tag_assembler';
@@ -1818,7 +1818,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			allFolders.push(...(await Promise.all(validFolders)));
 		}
 
-		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
+		return latestRevisionsOnly ? keepLatestRevisions(allFolders) : allFolders;
 	}
 
 	async getPrivateFilesWithParentFolderIds(
@@ -1905,7 +1905,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			const validFiles = files.filter((f) => f !== null) as ArFSPrivateFile[];
 			allFiles.push(...validFiles);
 		}
-		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
+		return latestRevisionsOnly ? keepLatestRevisions(allFiles) : allFiles;
 	}
 
 	async getEntitiesInFolder<T extends ArFSFileOrFolderEntity<'file'> | ArFSFileOrFolderEntity<'folder'>>(
@@ -1963,7 +1963,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 			allEntities.push(...folders);
 		}
-		return latestRevisionsOnly ? allEntities.filter(latestRevisionFilter) : allEntities;
+		return latestRevisionsOnly ? keepLatestRevisions(allEntities) : allEntities;
 	}
 
 	async getPrivateEntitiesInFolder(
@@ -2970,7 +2970,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		}
 
 		const allFolderEntitiesOfDrive = snapshotEntities
-			? snapshotEntities.folders.filter(latestRevisionFilter)
+			? keepLatestRevisions(snapshotEntities.folders)
 			: await this.getAllFoldersOfPrivateDrive({
 					driveId: driveIdOfFolder,
 					owner,
@@ -3003,7 +3003,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 
 		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
 		// Keep only the latest revision (highest unixTime) for each unique fileId
-		const uniqueFiles = childFiles.filter(latestRevisionFilter);
+		const uniqueFiles = keepLatestRevisions(childFiles);
 
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);
 		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>
