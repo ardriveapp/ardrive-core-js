@@ -48,7 +48,7 @@ import { ArFSPrivateDriveBuilder } from '../arfs/arfs_builders/arfs_drive_builde
 import { ArFSPrivateFolderBuilder } from '../arfs/arfs_builders/arfs_folder_builders';
 import { ArFSPrivateFileBuilder } from '../arfs/arfs_builders/arfs_file_builders';
 import { FolderHierarchy } from '../arfs/folder_hierarchy';
-import { latestRevisionFilter } from '../utils/filter_methods';
+import { keepLatestRevisions } from '../utils/filter_methods';
 import { SeparatedFolderHierarchy } from '../types/arfsdao_types';
 import { InvalidFileStateException } from '../types/exceptions';
 
@@ -298,7 +298,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			allFolders.push(...validFolders);
 		}
 
-		return latestRevisionsOnly ? allFolders.filter(latestRevisionFilter) : allFolders;
+		return latestRevisionsOnly ? keepLatestRevisions(allFolders) : allFolders;
 	}
 
 	/**
@@ -357,7 +357,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 			allFiles.push(...validFiles);
 		}
 
-		return latestRevisionsOnly ? allFiles.filter(latestRevisionFilter) : allFiles;
+		return latestRevisionsOnly ? keepLatestRevisions(allFiles) : allFiles;
 	}
 
 	/**
@@ -394,7 +394,7 @@ export class ArFSDAOAuthenticatedWeb extends ArFSDAOAuthenticatedBase {
 
 		// Deduplicate files by entityId - when a file is moved, it appears in multiple parent folders
 		// Keep only the latest revision (highest unixTime) for each unique fileId
-		const uniqueFiles = childFiles.filter(latestRevisionFilter);
+		const uniqueFiles = keepLatestRevisions(childFiles);
 
 		const [, ...subFolderIDs]: FolderID[] = hierarchy.folderIdSubtreeFromFolderId(folder.entityId, maxDepth + 1);
 		const childFolders = allFolderEntitiesOfDrive.filter((folder) =>
