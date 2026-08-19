@@ -9,7 +9,7 @@ import {
 	stubPublicFolder
 } from '../../tests/stubs';
 import { FolderHierarchy, FolderTreeNode } from '../exports';
-import { EntityID } from '../types';
+import { EID, EntityID } from '../types';
 import { RootFolderID } from './arfs_builders/arfs_folder_builders';
 
 describe('FolderHierarchy class', () => {
@@ -163,6 +163,96 @@ describe('FolderHierarchy class', () => {
 		expect(namesPath).to.equal(
 			'/0000000000000000000000000000000000000000000/0000000000000000000000000000000000000000000/0000000000000000000000000000000000000000000/0000000000000000000000000000000000000000000/'
 		);
+	});
+
+	describe('scale and structural correctness', () => {
+		// Build a valid UUID-format folder id deterministically from a numeric index.
+		const folderIdForIndex = (index: number): EntityID =>
+			EID(`00000000-0000-0000-0000-${index.toString(16).padStart(12, '0')}`);
+
+		const makeFolder = (folderId: EntityID, parentFolderId: EntityID) =>
+			stubPublicFolder({ folderId, parentFolderId, folderName: `Folder ${folderId}` });
+
+		it('builds a large deep+wide hierarchy well under the O(folders^2) time bound', () => {
+			const TOTAL_FOLDERS = 10_000;
+			const SPINE_DEPTH = 100;
+
+			const rootId = folderIdForIndex(0);
+			// Root's parent is the drive root placeholder (never present in the node map).
+			const entities = [makeFolder(rootId, new RootFolderID())];
+			// Deep spine: each node's parent is the previous spine node.
+			for (let i = 1; i < SPINE_DEPTH; i++) {
+				entities.push(makeFolder(folderIdForIndex(i), folderIdForIndex(i - 1)));
+			}
+			// Wide fan-out: the remaining folders spread as children across the spine nodes.
+			for (let i = SPINE_DEPTH; i < TOTAL_FOLDERS; i++) {
+				entities.push(makeFolder(folderIdForIndex(i), folderIdForIndex(i % SPINE_DEPTH)));
+			}
+			expect(entities.length).to.equal(TOTAL_FOLDERS);
+
+			// Time ONLY the hierarchy build (entity construction above is excluded).
+			const start = Date.now();
+			const hierarchy = FolderHierarchy.newFromEntities(entities);
+			const elapsedMs = Date.now() - start;
+
+			// Sanity: all folders present and the true drive root is detected.
+			expect(hierarchy.allFolderIDs().length).to.equal(TOTAL_FOLDERS);
+			expect(`${hierarchy.rootNode.folderId}`).to.equal(`${rootId}`);
+
+			// O(folders^2) regression guard: linear node setup finishes in milliseconds, while a
+			// quadratic regression at 10k folders takes multiple seconds. The bound is deliberately
+			// generous so the guard stays non-flaky on slow CI yet still trips on a re-regression.
+			expect(elapsedMs, `newFromEntities took ${elapsedMs}ms for ${TOTAL_FOLDERS} folders`).to.be.lessThan(500);
+		});
+
+		it('preserves hierarchy structure: root, child ordering, subtree membership and depth', () => {
+			// Deterministic fixture, given in strict parent-before-child order:
+			//   R
+			//   ├─ A ── A1, A2
+			//   └─ B ── B1
+			const R = folderIdForIndex(0);
+			const A = folderIdForIndex(1);
+			const B = folderIdForIndex(2);
+			const A1 = folderIdForIndex(3);
+			const A2 = folderIdForIndex(4);
+			const B1 = folderIdForIndex(5);
+
+			const entities = [
+				makeFolder(R, new RootFolderID()),
+				makeFolder(A, R),
+				makeFolder(B, R),
+				makeFolder(A1, A),
+				makeFolder(A2, A),
+				makeFolder(B1, B)
+			];
+
+			const hierarchy = FolderHierarchy.newFromEntities(entities);
+
+			// Root id and that the root truly has no parent.
+			const rootNode = hierarchy.rootNode;
+			expect(`${rootNode.folderId}`).to.equal(`${R}`);
+			expect(rootNode.parent).to.be.undefined;
+
+			// Child ordering under the root follows entity order: A then B.
+			expect(rootNode.children.map((c) => `${c.folderId}`)).to.deep.equal([`${A}`, `${B}`]);
+
+			// Child ordering under A: A1 then A2.
+			const nodeA = rootNode.children[0];
+			expect(nodeA.children.map((c) => `${c.folderId}`)).to.deep.equal([`${A1}`, `${A2}`]);
+
+			// Subtree membership: A's subtree is exactly { A, A1, A2 }.
+			const subtreeOfA = hierarchy.folderIdSubtreeFromFolderId(A, Number.MAX_SAFE_INTEGER).map((id) => `${id}`);
+			expect(subtreeOfA).to.have.members([`${A}`, `${A1}`, `${A2}`]);
+			expect(subtreeOfA).to.have.lengthOf(3);
+
+			// Depths, expressed as full name paths (drive root at depth 0).
+			expect(hierarchy.pathToFolderId(A1)).to.equal(`/Folder ${R}/Folder ${A}/Folder ${A1}/`);
+			expect(hierarchy.pathToFolderId(B1)).to.equal(`/Folder ${R}/Folder ${B}/Folder ${B1}/`);
+
+			// maxDepth cap: depth 0 yields only the node itself; a full flatten yields all 6 nodes.
+			expect(hierarchy.nodeAndChildrenOf(rootNode, 0)).to.have.lengthOf(1);
+			expect(hierarchy.nodeAndChildrenOf(rootNode, Number.MAX_SAFE_INTEGER)).to.have.lengthOf(6);
+		});
 	});
 
 	describe('FolderTreeNode class', () => {
