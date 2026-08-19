@@ -41,8 +41,13 @@ export class FolderHierarchy {
 		folderIdToEntityMap: { [k: string]: ArFSFileOrFolderEntity<'folder'> },
 		folderIdToNodeMap: { [k: string]: FolderTreeNode }
 	): void {
-		const folderIdKeyIsPresent = Object.keys(folderIdToNodeMap).includes(`${entity.entityId}`);
-		const parentFolderIdKeyIsPresent = Object.keys(folderIdToNodeMap).includes(`${entity.parentFolderId}`);
+		// O(1) own-key lookups instead of Object.keys(map).includes(key), which allocates an
+		// array of the map's current size and linearly scans it for every entity — that made
+		// node setup O(folders^2) on folder-heavy drives (stalls large-drive listing). The maps
+		// are plain object literals keyed only by string folder ids, so `in` is equivalent to the
+		// original own-enumerable-key membership test (no colliding prototype-chain keys).
+		const folderIdKeyIsPresent = `${entity.entityId}` in folderIdToNodeMap;
+		const parentFolderIdKeyIsPresent = `${entity.parentFolderId}` in folderIdToNodeMap;
 		if (!folderIdKeyIsPresent) {
 			if (!parentFolderIdKeyIsPresent) {
 				const parentFolderEntity = folderIdToEntityMap[`${entity.parentFolderId}`];
