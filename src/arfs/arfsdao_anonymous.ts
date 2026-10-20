@@ -460,6 +460,23 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		return this.driveStateSource.read(params);
 	}
 
+	/**
+	 * The drive's newest published drive state that a reader accepts, as a floor
+	 * for a new build's entity count. Read rather than taken from its
+	 * `Entity-Count` tag: a gateway reports tags unverified, and a refused
+	 * artifact's claim must not block the owner from publishing.
+	 */
+	protected async publishedDriveState(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		protection: DriveStateProtection
+	): Promise<{ txId: string; entityCount: number } | undefined> {
+		const result = await this.driveStateSource.read({ driveId, owner, protection });
+		return result.outcome === 'used' && result.contents && result.txId
+			? { txId: result.txId, entityCount: result.contents.entityCount }
+			: undefined;
+	}
+
 	/** Whether reads use Drive State, given a caller's `useDriveState` option. */
 	isDriveStateEnabled(useDriveState?: boolean): boolean {
 		return this.driveStateEnabled(useDriveState);
@@ -869,7 +886,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			producer,
 			driveStateId: uuidv4(),
 			log,
-			published: await this.driveStateSource.largestPublished({ driveId, owner }),
+			published: await this.publishedDriveState(driveId, owner, { kind: 'public' }),
 			chain: this.driveStateChain(driveId, owner, false, async (_node, data) => JSON.parse(data.toString('utf8')))
 		});
 	}

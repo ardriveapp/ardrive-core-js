@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drive State: the schema check refuses any object besides the nine tables.** Its
   `NOT LIKE 'sqlite_%'` treated `_` as a wildcard, so a view, index, trigger or tenth
   table named `sqlite` plus any character was let through.
-- **Producing Drive State refuses to publish fewer entities than a drive state already
-  published for the drive** (`incomplete-index`). ArFS never deletes an entity, so
+- **Producing Drive State refuses to publish fewer entities than the newest drive state
+  already published for the drive that a reader accepts** (`incomplete-index`). ArFS never deletes an entity, so
   fewer means the gateway has not indexed the whole drive, as with a gateway that
   unbundles only some bundles; publishing would have hidden the rest from every reader.
 - **Producing Drive State reads the result back as every reader will before it is
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `DriveStateReadParams.convert`, `DriveStateSourceParams.currentHeight`,
-  `DriveStateSource.largestPublished`, `BuildDriveStateParams.published`,
+  `BuildDriveStateParams.published`,
   `ArtifactDatabase.prepare` (optional) and `gunzipBoundedPortable`.
 
 ### Notes on 4.4.0

@@ -257,35 +257,6 @@ export class DriveStateSource {
 		return last!;
 	}
 
-	/**
-	 * Of the drive states already published for a drive, the one holding the
-	 * most entities, from its `Entity-Count` tag. Undefined when there is none
-	 * or discovery fails: a producer then has nothing to check its count against.
-	 */
-	async largestPublished({
-		driveId,
-		owner
-	}: {
-		driveId: DriveID;
-		owner: ArweaveAddress;
-	}): Promise<{ txId: string; entityCount: number } | undefined> {
-		let candidates: DriveStateCandidate[];
-		try {
-			candidates = await this.discover({ driveId, owner, protection: { kind: 'public' } });
-		} catch (e) {
-			this.log(`[drive-state] ${driveId}: could not look up published drive states: ${e}`);
-			return undefined;
-		}
-		let largest: { txId: string; entityCount: number } | undefined;
-		for (const candidate of candidates) {
-			const entityCount = Number(candidate.tags[DriveStateTagName.entityCount]);
-			if (Number.isSafeInteger(entityCount) && entityCount > (largest?.entityCount ?? 0)) {
-				largest = { txId: candidate.txId, entityCount };
-			}
-		}
-		return largest;
-	}
-
 	private async heightOrError(): Promise<number | Error> {
 		try {
 			const height = await this.currentHeight!();

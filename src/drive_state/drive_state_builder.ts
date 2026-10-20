@@ -63,10 +63,10 @@ export interface BuildDriveStateParams {
 	/** Progress, for a person watching a large drive. */
 	log?: (line: string) => void;
 	/**
-	 * The most entities a drive state already published for this drive holds.
-	 * ArFS never deletes an entity, so a build with fewer was read from a
-	 * gateway that has not indexed the whole drive, and is refused rather than
-	 * published as the drive's state.
+	 * The entities in the newest drive state already published for this drive
+	 * that a reader accepts. ArFS never deletes an entity, so a build with fewer
+	 * was read from a gateway that has not indexed the whole drive, and is
+	 * refused rather than published as the drive's state.
 	 */
 	published?: { txId: string; entityCount: number };
 }

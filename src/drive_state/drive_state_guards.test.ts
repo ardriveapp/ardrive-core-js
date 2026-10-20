@@ -241,14 +241,31 @@ describe('DriveStateSource, after the reader accepts', () => {
 		expect(result.txId).to.equal('G'.repeat(43));
 		expect(result.converted).to.equal('entities');
 	});
+});
 
-	it('finds the most entities any published drive state holds', async () => {
-		const { gateway } = gatewayServing(
-			[edge('A'.repeat(43), { 'Entity-Count': '40' }), edge('B'.repeat(43), { 'Entity-Count': '52' })],
-			{}
-		);
+describe('the floor a new build is held to', () => {
+	const floorFrom = async (result: Record<string, unknown>) => {
+		const dao = new ArFSDAOAnonymous(Arweave.init({ host: 'localhost', port: 443, protocol: 'https' }));
+		dao.setDriveStateSource({
+			read: async () => ({ attempts: 1, detail: '', ...result })
+		} as unknown as DriveStateSource);
+		return (
+			dao as unknown as {
+				publishedDriveState(...args: unknown[]): Promise<{ txId: string; entityCount: number } | undefined>;
+			}
+		).publishedDriveState(EID(DRIVE), ADDR(OWNER), { kind: 'public' });
+	};
 
-		expect(await source(gateway).largestPublished(params)).to.deep.equal({ txId: 'B'.repeat(43), entityCount: 52 });
+	it('is the entity count of the newest drive state a reader accepts, as read', async () => {
+		expect(await floorFrom({ outcome: 'used', txId: 'U'.repeat(43), contents: { entityCount: 9 } })).to.deep.equal({
+			txId: 'U'.repeat(43),
+			entityCount: 9
+		});
+	});
+
+	it('is nothing when no published drive state reads, whatever its tags claim', async () => {
+		expect(await floorFrom({ outcome: 'count-mismatch', txId: 'U'.repeat(43) })).to.equal(undefined);
+		expect(await floorFrom({ outcome: 'none-found' })).to.equal(undefined);
 	});
 });
 
