@@ -53,7 +53,7 @@ import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPat
 import { gatewayUrlForArweave } from '../utils/common_browser';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
-import { DriveStateSource } from '../drive_state/drive_state_source';
+import { DriveStateReadParams, DriveStateReadResult, DriveStateSource } from '../drive_state/drive_state_source';
 import { driveStateSupported } from '../drive_state/artifact_engine';
 import { DriveStateContents } from '../drive_state/drive_state_reader';
 import { DriveStateProtection } from '../drive_state/drive_state_envelope';
@@ -437,6 +437,16 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	/** Replaces how drive state is found and read, such as with a test double. */
 	setDriveStateSource(source: DriveStateSource): void {
 		this.driveStateSourceInstance = source;
+	}
+
+	/** Finds and reads a drive's Drive State artifact. Never throws. */
+	readDriveState(params: DriveStateReadParams): Promise<DriveStateReadResult> {
+		return this.driveStateSource.read(params);
+	}
+
+	/** Whether reads use Drive State, given a caller's `useDriveState` option. */
+	isDriveStateEnabled(useDriveState?: boolean): boolean {
+		return this.driveStateEnabled(useDriveState);
 	}
 
 	/**
