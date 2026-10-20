@@ -163,7 +163,10 @@ export async function readDriveState(
 	const blockEnd = intTag(candidate, DriveStateTagName.blockEnd);
 	// Absent reads as 0: every artifact starts there, and a payload that says
 	// otherwise is caught at the coverage check.
-	const blockStart = tag(candidate, DriveStateTagName.blockStart) === undefined ? 0 : intTag(candidate, DriveStateTagName.blockStart);
+	const blockStart =
+		tag(candidate, DriveStateTagName.blockStart) === undefined
+			? 0
+			: intTag(candidate, DriveStateTagName.blockStart);
 	const declaredCount = intTag(candidate, DriveStateTagName.entityCount);
 	const cipher = tag(candidate, DriveStateTagName.cipher);
 	const cipherIV = tag(candidate, DriveStateTagName.cipherIV);
@@ -216,7 +219,10 @@ export async function readDriveState(
 	}
 	const current = DriveStateFormatVersion.current;
 	if (taggedVersion.isNewerThanThisBuild) {
-		refuse('unknown-version', `State-Version is ${taggedVersion} and this build reads ${current}: the artifact is newer`);
+		refuse(
+			'unknown-version',
+			`State-Version is ${taggedVersion} and this build reads ${current}: the artifact is newer`
+		);
 	}
 	if (taggedVersion.isOlderThanThisBuild) {
 		refuse(
@@ -359,7 +365,10 @@ function readOpened(db: ArtifactDatabase, candidate: DriveStateCandidate, claims
 	// 5. The payload's claims. Version first: the tag and the payload must
 	//    agree, minor included.
 	if (!payloadVersion.equals(taggedVersion)) {
-		refuse('integrity-failed', `State-Version is tagged ${taggedVersion} and the payload declares ${payloadVersion}`);
+		refuse(
+			'integrity-failed',
+			`State-Version is tagged ${taggedVersion} and the payload declares ${payloadVersion}`
+		);
 	}
 
 	// Identity: the drive the tag names, every row in it, its privacy and owner.
@@ -409,13 +418,19 @@ function readOpened(db: ArtifactDatabase, candidate: DriveStateCandidate, claims
 
 	// Coverage, both ends.
 	if (payloadEnd !== blockEnd || payloadStart !== blockStart) {
-		refuse('coverage-mismatch', `the tags claim [${blockStart}, ${blockEnd}] and the payload claims [${payloadStart}, ${payloadEnd}]`);
+		refuse(
+			'coverage-mismatch',
+			`the tags claim [${blockStart}, ${blockEnd}] and the payload claims [${payloadStart}, ${payloadEnd}]`
+		);
 	}
 
 	// No going backwards. Equal coverage is still read: it can hold entities a
 	// sync skipped.
 	if (options.syncedToBlock !== undefined && payloadEnd < options.syncedToBlock) {
-		refuse('range-already-covered', `the artifact ends at ${payloadEnd}, below the ${options.syncedToBlock} already synced`);
+		refuse(
+			'range-already-covered',
+			`the artifact ends at ${payloadEnd}, below the ${options.syncedToBlock} already synced`
+		);
 	}
 
 	// The folder graph: the root must resolve, and no folder may be its own
@@ -454,7 +469,9 @@ function typeViolation(db: ArtifactDatabase, table: DriveStateTable): string | u
 	}
 	for (const column of columns) {
 		const kind = driveStateColumnKind(table, column);
-		const bad = db.all(`SELECT typeof(${column}) AS t FROM ${table} WHERE NOT ${driveStateColumnHolds(column, kind)} LIMIT 1`);
+		const bad = db.all(
+			`SELECT typeof(${column}) AS t FROM ${table} WHERE NOT ${driveStateColumnHolds(column, kind)} LIMIT 1`
+		);
 		if (bad.length > 0) {
 			return `${table}.${column} holds a ${bad[0].t} value where the format declares ${kind}`;
 		}
@@ -513,7 +530,11 @@ function toDrive(row: ArtifactRow): DriveStateDriveRow {
  * reduced here: the tables carry no index, so a correlated subquery per row
  * would be quadratic.
  */
-function newestRevisionTx(db: ArtifactDatabase, table: 'folder_revisions' | 'file_revisions', idColumn: string): Map<string, string> {
+function newestRevisionTx(
+	db: ArtifactDatabase,
+	table: 'folder_revisions' | 'file_revisions',
+	idColumn: string
+): Map<string, string> {
 	const newest = new Map<string, { date: number; txId: string }>();
 	for (const row of db.all(`SELECT ${idColumn} AS id, dateCreated, metadataTxId FROM ${table}`)) {
 		const id = row.id as string;
@@ -571,7 +592,9 @@ function readFiles(db: ArtifactDatabase): DriveStateFileRow[] {
 }
 
 /** The first parent cycle among [folders], as the path around it. */
-export function firstFolderCycle(folders: readonly { id: string; parentFolderId: string | null }[]): string[] | undefined {
+export function firstFolderCycle(
+	folders: readonly { id: string; parentFolderId: string | null }[]
+): string[] | undefined {
 	const parents = new Map<string, string | null>();
 	for (const folder of folders) {
 		parents.set(folder.id, folder.parentFolderId);

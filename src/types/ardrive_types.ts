@@ -251,6 +251,10 @@ export interface DownloadPublicFileParameters {
 export type DownloadPrivateFileParameters = DownloadPublicFileParameters & WithDriveKey;
 
 export interface DownloadPublicFolderParameters {
+	/** See `ArFSListPublicFolderParams.useSnapshots`. */
+	useSnapshots?: boolean;
+	/** See `ArFSListPublicFolderParams.useDriveState`. */
+	useDriveState?: boolean;
 	folderId: FolderID;
 	destFolderPath: string;
 	customFolderName?: string;
@@ -261,6 +265,10 @@ export interface DownloadPublicFolderParameters {
 export type DownloadPrivateFolderParameters = DownloadPublicFolderParameters & WithDriveKey;
 
 export interface DownloadPublicDriveParameters {
+	/** See `ArFSListPublicFolderParams.useSnapshots`. */
+	useSnapshots?: boolean;
+	/** See `ArFSListPublicFolderParams.useDriveState`. */
+	useDriveState?: boolean;
 	driveId: DriveID;
 	destFolderPath: string;
 	customFolderName?: string;

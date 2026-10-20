@@ -63,7 +63,10 @@ export function decodeCipherIV(tag: string): Uint8Array {
  * payload of {@link DRIVE_STATE_MAX_PLAINTEXT_BYTES} or more, which every
  * reader would refuse.
  */
-export async function sealDriveState(plaintext: Uint8Array, protection: DriveStateProtection): Promise<SealedDriveState> {
+export async function sealDriveState(
+	plaintext: Uint8Array,
+	protection: DriveStateProtection
+): Promise<SealedDriveState> {
 	if (plaintext.byteLength >= DRIVE_STATE_MAX_PLAINTEXT_BYTES) {
 		throw new Error(
 			`the drive state is ${plaintext.byteLength} bytes, at or above the ` +
@@ -145,7 +148,10 @@ export async function openDriveState(
 		refuse('privacy-mismatch', `the drive is public and the artifact declares ${envelope.cipher}`);
 	}
 	if (encrypted && envelope.cipher !== DRIVE_STATE_CIPHER) {
-		refuse('unknown-version', `encrypted drive states are ${DRIVE_STATE_CIPHER} only, and this one declares ${envelope.cipher}`);
+		refuse(
+			'unknown-version',
+			`encrypted drive states are ${DRIVE_STATE_CIPHER} only, and this one declares ${envelope.cipher}`
+		);
 	}
 
 	let compressed = body;
@@ -159,7 +165,10 @@ export async function openDriveState(
 
 	if (startsWith(compressed, SQLITE_HEADER)) {
 		if (compressed.byteLength > limit) {
-			refuse('integrity-failed', `the SQLite file is ${compressed.byteLength} bytes, past the ${limit} byte limit`);
+			refuse(
+				'integrity-failed',
+				`the SQLite file is ${compressed.byteLength} bytes, past the ${limit} byte limit`
+			);
 		}
 		return compressed;
 	}

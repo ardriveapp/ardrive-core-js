@@ -27,7 +27,14 @@ import { FolderHierarchy } from './folder_hierarchy';
 import { ArFSPublicDriveBuilder, SafeArFSDriveBuilder } from './arfs_builders/arfs_drive_builders';
 import { ArFSPublicFolderBuilder } from './arfs_builders/arfs_folder_builders';
 import { ArFSPublicFileBuilder } from './arfs_builders/arfs_file_builders';
-import { ArFSDriveEntity, ArFSPublicDrive, ArFSPublicFile, ArFSPublicFolder } from './arfs_entities';
+import {
+	ArFSDriveEntity,
+	ArFSPrivateFile,
+	ArFSPrivateFolder,
+	ArFSPublicDrive,
+	ArFSPublicFile,
+	ArFSPublicFolder
+} from './arfs_entities';
 import { PrivateKeyData } from './private_key_data';
 import {
 	DEFAULT_APP_NAME,
@@ -46,6 +53,10 @@ import { ArFSPublicFileWithPaths, ArFSPublicFolderWithPaths, publicEntityWithPat
 import { gatewayUrlForArweave } from '../utils/common_browser';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
+import { DriveStateSource } from '../drive_state/drive_state_source';
+import { DriveStateContents } from '../drive_state/drive_state_reader';
+import { DriveStateProtection } from '../drive_state/drive_state_envelope';
+import { publicEntitiesFromContents } from '../drive_state/drive_state_entities';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -92,6 +103,21 @@ export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
 /**
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
+/**
+ * [base] with each entity [later] holds replaced by [later]'s copy. [later] is
+ * one revision per entity.
+ */
+export function laterRevisionsWin<T extends { entityId: { toString(): string } }>(base: T[], later: T[]): T[] {
+	const byId = new Map<string, T>();
+	for (const entity of base) {
+		byId.set(`${entity.entityId}`, entity);
+	}
+	for (const entity of later) {
+		byId.set(`${entity.entityId}`, entity);
+	}
+	return [...byId.values()];
+}
+
 export class ArFSDAOAnonymous extends ArFSDAOType {
 	constructor(
 		protected readonly arweave: Arweave,
@@ -394,6 +420,103 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		return latestRevisionsOnly ? keepLatestRevisions(allFolders) : allFolders;
 	}
 
+	private driveStateSourceInstance?: DriveStateSource;
+
+	/** Finds and reads drive state artifacts, created on first use. */
+	protected get driveStateSource(): DriveStateSource {
+		if (!this.driveStateSourceInstance) {
+			this.driveStateSourceInstance = new DriveStateSource({ gatewayApi: this.gatewayApi });
+		}
+		return this.driveStateSourceInstance;
+	}
+
+	/** Replaces how drive state is found and read, such as with a test double. */
+	setDriveStateSource(source: DriveStateSource): void {
+		this.driveStateSourceInstance = source;
+	}
+
+	/**
+	 * Whether listing reads a drive's Drive State artifact first. Default ON; a
+	 * caller can opt out per listing (`useDriveState: false`) or globally with
+	 * `ARDRIVE_DISABLE_DRIVE_STATE=1`. Any artifact that cannot be used falls
+	 * back to the snapshot path and then to a full replay, so this only exists
+	 * to force those paths.
+	 */
+	protected driveStateEnabled(useDriveState?: boolean): boolean {
+		if (process.env['ARDRIVE_DISABLE_DRIVE_STATE'] === '1') {
+			return false;
+		}
+		return useDriveState !== false;
+	}
+
+	/**
+	 * A drive's current entities from its Drive State artifact, brought up to
+	 * date from snapshots and GraphQL. Returns the latest revision of every
+	 * folder and file, or `null` when the drive has no usable artifact (the
+	 * caller then lists it as it would without one).
+	 *
+	 * The artifact is the drive's state through `coveredThroughBlock`, a margin
+	 * below its `Block-End`. Snapshots and GraphQL supply every height above
+	 * that, and an entity they return replaces the artifact's copy: those
+	 * sources cover every height above the margin, so whatever they hold for an
+	 * entity is at least as new as the artifact's.
+	 */
+	protected async driveEntitiesViaDriveState<
+		Folder extends ArFSPublicFolder | ArFSPrivateFolder,
+		File extends ArFSPublicFile | ArFSPrivateFile
+	>({
+		driveId,
+		owner,
+		protection,
+		fromContents,
+		buildFromNodes
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+		protection: DriveStateProtection;
+		fromContents: (contents: DriveStateContents) => Promise<{ folders: Folder[]; files: File[] }>;
+		buildFromNodes: (
+			folderNodes: GQLNodeInterface[],
+			fileNodes: GQLNodeInterface[]
+		) => Promise<{ folders: Folder[]; files: File[] }>;
+	}): Promise<{ folders: Folder[]; files: File[] } | null> {
+		const result = await this.driveStateSource.read({ driveId, owner, protection });
+		if (result.outcome !== 'used' || !result.contents || result.coveredThroughBlock === undefined) {
+			return null;
+		}
+		const base = await fromContents(result.contents);
+		const floor = result.coveredThroughBlock;
+
+		const snapshots = (await this.fetchDriveSnapshotsWithBodies(driveId, owner, floor)) ?? [];
+		const composite = buildDriveHistoryComposite({
+			snapshotsNewestFirst: snapshots,
+			owner,
+			isPrivate: protection.kind === 'private',
+			lastBlockHeight: floor
+		});
+		for (const entry of composite.metadataCache) {
+			this.gatewayApi.cacheMetadataForTxId(TxID(entry.txId), entry.data);
+		}
+		const tailNodes = await this.getSnapshotTailNodes(driveId, owner, ['folder', 'file'], composite.tailBounds);
+
+		const entityType = (node: GQLNodeInterface) => node.tags?.find((tag) => tag.name === 'Entity-Type')?.value;
+		const later = await buildFromNodes(
+			sortNodesNewestFirst([
+				...tailNodes.filter((n) => entityType(n) === 'folder'),
+				...composite.snapshotNodes.filter((n) => entityType(n) === 'folder')
+			]),
+			sortNodesNewestFirst([
+				...tailNodes.filter((n) => entityType(n) === 'file'),
+				...composite.snapshotNodes.filter((n) => entityType(n) === 'file')
+			])
+		);
+
+		return {
+			folders: laterRevisionsWin(base.folders, keepLatestRevisions(later.folders)),
+			files: laterRevisionsWin(base.files, keepLatestRevisions(later.files))
+		};
+	}
+
 	/**
 	 * Whether the snapshot-accelerated listing path is enabled. Default ON; a caller
 	 * can opt out per-listing (`useSnapshots: false`) or globally via the
@@ -418,14 +541,22 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	 */
 	protected async fetchDriveSnapshotsWithBodies(
 		driveId: DriveID,
-		owner: ArweaveAddress
+		owner: ArweaveAddress,
+		floor?: number
 	): Promise<SnapshotWithBody[] | null> {
 		// 1. Enumerate the drive's snapshot transactions (owner-scoped, HEIGHT_DESC).
+		//    With a floor, heights [0, floor] are already accounted for, and a
+		//    snapshot mined at or below it can cover nothing above it.
 		const snapshotNodes: GQLNodeInterface[] = [];
 		let cursor: string | undefined = undefined;
 		let hasNextPage = true;
 		while (hasNextPage) {
-			const gqlQuery = buildSnapshotQuery({ driveId, owner, cursor });
+			const gqlQuery = buildSnapshotQuery({
+				driveId,
+				owner,
+				cursor,
+				minBlockHeight: floor !== undefined ? floor + 1 : undefined
+			});
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 			hasNextPage = transactions.pageInfo.hasNextPage;
 			for (const edge of transactions.edges) {
@@ -450,7 +581,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		entities.sort((a, b) => (b.blockHeight ?? b.blockEnd) - (a.blockHeight ?? a.blockEnd));
 
 		// 3. Only the snapshots that own live sub-ranges need their (large) bodies fetched.
-		const { obscured } = computeSnapshotSubRanges(entities);
+		const { obscured } = computeSnapshotSubRanges(entities, floor);
 		const snapshots: SnapshotWithBody[] = [];
 		for (const { snapshot, subRanges } of obscured) {
 			if (subRanges.rangeSegments.length === 0) {
@@ -573,6 +704,59 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	}
 
 	/**
+	 * Every folder and file revision of a public drive from its Drive State
+	 * artifact or its snapshots, whichever is usable first, or `null` when
+	 * neither is (the caller then replays the drive's history). Never throws.
+	 */
+	protected async acceleratedPublicDriveEntities(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		useSnapshots?: boolean,
+		useDriveState?: boolean
+	): Promise<{ folders: ArFSPublicFolder[]; files: ArFSPublicFile[] } | null> {
+		// DRIVE STATE FIRST (isolated): the drive's published state plus later
+		// revisions. Any failure falls through to the snapshot path.
+		if (this.driveStateEnabled(useDriveState)) {
+			try {
+				const entities = await this.getPublicDriveEntitiesViaDriveState(driveId, owner);
+				if (entities) {
+					return entities;
+				}
+			} catch (e) {
+				console.error(`[drive-state] ${driveId}: falling back to snapshots: ${e}`);
+			}
+		}
+		if (this.snapshotsEnabled(useSnapshots)) {
+			try {
+				return await this.getPublicDriveEntitiesViaSnapshots(driveId, owner);
+			} catch (e) {
+				console.error(`[snapshot] falling back to full-history replay for drive ${driveId}: ${e}`);
+			}
+		}
+		return null;
+	}
+
+	/** {@link driveEntitiesViaDriveState} for a public drive. */
+	protected async getPublicDriveEntitiesViaDriveState(
+		driveId: DriveID,
+		owner: ArweaveAddress
+	): Promise<{ folders: ArFSPublicFolder[]; files: ArFSPublicFile[] } | null> {
+		return this.driveEntitiesViaDriveState<ArFSPublicFolder, ArFSPublicFile>({
+			driveId,
+			owner,
+			protection: { kind: 'public' },
+			fromContents: async (contents) => publicEntitiesFromContents(contents),
+			buildFromNodes: async (folderNodes, fileNodes) => {
+				const [folders, files] = await Promise.all([
+					this.buildPublicFoldersFromNodes(folderNodes, owner),
+					this.buildPublicFilesFromNodes(fileNodes, owner)
+				]);
+				return { folders, files };
+			}
+		});
+	}
+
+	/**
 	 * Snapshot-accelerated whole-drive entity fetch. Returns every file and folder
 	 * revision of the drive (the caller applies `keepLatestRevisions`), sourced from
 	 * snapshot bodies for the snapshot-covered heights and from the live GraphQL tail
@@ -637,7 +821,8 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		maxDepth,
 		includeRoot,
 		owner,
-		useSnapshots
+		useSnapshots,
+		useDriveState
 	}: ArFSListPublicFolderParams): Promise<(ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
 			throw new Error('maxDepth should be a non-negative integer!');
@@ -651,15 +836,12 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		// SNAPSHOT-ACCELERATED PATH (isolated). Any failure or the absence of snapshots
 		// transparently falls back to the full-history replay below — a drive without
 		// snapshots, and any snapshot failure, lists EXACTLY as it does today.
-		let snapshotEntities: { folders: ArFSPublicFolder[]; files: ArFSPublicFile[] } | null = null;
-		if (this.snapshotsEnabled(useSnapshots)) {
-			try {
-				snapshotEntities = await this.getPublicDriveEntitiesViaSnapshots(driveIdOfFolder, owner);
-			} catch (e) {
-				console.error(`[snapshot] falling back to full-history replay for drive ${driveIdOfFolder}: ${e}`);
-				snapshotEntities = null;
-			}
-		}
+		const snapshotEntities = await this.acceleratedPublicDriveEntities(
+			driveIdOfFolder,
+			owner,
+			useSnapshots,
+			useDriveState
+		);
 
 		const allFolderEntitiesOfDrive = snapshotEntities
 			? keepLatestRevisions(snapshotEntities.folders)
@@ -686,8 +868,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const childrenFileEntities: ArFSPublicFile[] = [];
 
 		if (snapshotEntities) {
-			// Files were already fetched drive-wide; keep those parented within the search subtree.
-			for (const file of snapshotEntities.files) {
+			// Files were already fetched drive-wide. Each file's latest revision is
+			// chosen before filtering by folder: filtering first would keep an older
+			// revision in a folder the file has since moved out of.
+			for (const file of keepLatestRevisions(snapshotEntities.files)) {
 				if (searchFolderIDs.some((fid) => fid.equals(file.parentFolderId))) {
 					childrenFileEntities.push(file);
 				}
@@ -738,16 +922,26 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		destFolderPath,
 		customFolderName,
 		maxDepth,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: ArFSDownloadPublicFolderParams): Promise<void> {
 		const publicFolder = await this.getPublicFolder(folderId, owner);
 		// Fetch all of the folder entities within the drive
 		const driveIdOfFolder = publicFolder.driveId;
-		const allFolderEntitiesOfDrive = await this.getAllFoldersOfPublicDrive({
-			driveId: driveIdOfFolder,
+		const accelerated = await this.acceleratedPublicDriveEntities(
+			driveIdOfFolder,
 			owner,
-			latestRevisionsOnly: true
-		});
+			useSnapshots,
+			useDriveState
+		);
+		const allFolderEntitiesOfDrive = accelerated
+			? keepLatestRevisions(accelerated.folders)
+			: await this.getAllFoldersOfPublicDrive({
+					driveId: driveIdOfFolder,
+					owner,
+					latestRevisionsOnly: true
+				});
 
 		// Feed entities to FolderHierarchy
 		const hierarchy = FolderHierarchy.newFromEntities(allFolderEntitiesOfDrive);
@@ -760,13 +954,13 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			subFolderIDs.some((subFolderID) => subFolderID.equals(folder.entityId))
 		);
 
-		// Fetch all file entities within all Folders of the drive
-		const childrenFileEntities = await this.getPublicFilesWithParentFolderIds(
-			searchFolderIDs,
-			owner,
-			driveIdOfFolder,
-			true
-		);
+		// Fetch all file entities within all Folders of the drive. From drive-wide
+		// data, each file's latest revision is chosen before filtering by folder.
+		const childrenFileEntities = accelerated
+			? keepLatestRevisions(accelerated.files).filter((file) =>
+					searchFolderIDs.some((fid) => fid.equals(file.parentFolderId))
+				)
+			: await this.getPublicFilesWithParentFolderIds(searchFolderIDs, owner, driveIdOfFolder, true);
 		const folderWrapper = new ArFSFolderToDownload(
 			publicEntityWithPathsFactory(publicFolder, hierarchy),
 			customFolderName

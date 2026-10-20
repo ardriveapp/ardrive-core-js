@@ -19,10 +19,8 @@ export type DriveStateTable =
 	| 'transaction_statuses';
 
 export const DRIVE_STATE_SCHEMA: Readonly<Record<DriveStateTable, string>> = {
-	meta:
-		'CREATE TABLE meta (version TEXT NOT NULL, driveId TEXT NOT NULL, ownerAddress TEXT NOT NULL, privacy TEXT NOT NULL, blockStart INTEGER NOT NULL, blockEnd INTEGER NOT NULL, entityCount INTEGER NOT NULL, producer TEXT NOT NULL)',
-	drives:
-		'CREATE TABLE drives (id TEXT NOT NULL, rootFolderId TEXT NOT NULL, ownerAddress TEXT NOT NULL, name TEXT NOT NULL, privacy TEXT NOT NULL, bundledIn TEXT, customJsonMetadata TEXT, customGQLTags TEXT, isHidden INTEGER NOT NULL, signatureType TEXT, dateCreated INTEGER NOT NULL, lastUpdated INTEGER NOT NULL)',
+	meta: 'CREATE TABLE meta (version TEXT NOT NULL, driveId TEXT NOT NULL, ownerAddress TEXT NOT NULL, privacy TEXT NOT NULL, blockStart INTEGER NOT NULL, blockEnd INTEGER NOT NULL, entityCount INTEGER NOT NULL, producer TEXT NOT NULL)',
+	drives: 'CREATE TABLE drives (id TEXT NOT NULL, rootFolderId TEXT NOT NULL, ownerAddress TEXT NOT NULL, name TEXT NOT NULL, privacy TEXT NOT NULL, bundledIn TEXT, customJsonMetadata TEXT, customGQLTags TEXT, isHidden INTEGER NOT NULL, signatureType TEXT, dateCreated INTEGER NOT NULL, lastUpdated INTEGER NOT NULL)',
 	folder_entries:
 		'CREATE TABLE folder_entries (id TEXT NOT NULL, driveId TEXT NOT NULL, name TEXT NOT NULL, parentFolderId TEXT, dateCreated INTEGER NOT NULL, lastUpdated INTEGER NOT NULL, customJsonMetadata TEXT, customGQLTags TEXT, isHidden INTEGER NOT NULL)',
 	file_entries:
@@ -35,8 +33,7 @@ export const DRIVE_STATE_SCHEMA: Readonly<Record<DriveStateTable, string>> = {
 		'CREATE TABLE file_revisions (fileId TEXT NOT NULL, driveId TEXT NOT NULL, name TEXT NOT NULL, parentFolderId TEXT NOT NULL, size INTEGER NOT NULL, lastModifiedDate INTEGER NOT NULL, dataContentType TEXT, metadataTxId TEXT NOT NULL, dataTxId TEXT NOT NULL, licenseTxId TEXT, thumbnail TEXT, bundledIn TEXT, dateCreated INTEGER NOT NULL, customJsonMetadata TEXT, customGQLTags TEXT, action TEXT NOT NULL, pinnedDataOwnerAddress TEXT, isHidden INTEGER NOT NULL, assignedNames TEXT, fallbackTxId TEXT, originalOwner TEXT, importSource TEXT)',
 	licenses:
 		'CREATE TABLE licenses (fileId TEXT NOT NULL, driveId TEXT NOT NULL, dataTxId TEXT NOT NULL, licenseTxType TEXT NOT NULL, licenseTxId TEXT NOT NULL, bundledIn TEXT, dateCreated INTEGER NOT NULL, licenseType TEXT NOT NULL, customGQLTags TEXT)',
-	transaction_statuses:
-		'CREATE TABLE transaction_statuses (id TEXT NOT NULL, status TEXT NOT NULL)',
+	transaction_statuses: 'CREATE TABLE transaction_statuses (id TEXT NOT NULL, status TEXT NOT NULL)'
 };
 
 /** The tables in the order the format lists them. */
@@ -45,14 +42,116 @@ export const DRIVE_STATE_TABLES = Object.keys(DRIVE_STATE_SCHEMA) as DriveStateT
 /** Each table's columns, in declaration order. */
 export const DRIVE_STATE_COLUMNS: Readonly<Record<DriveStateTable, readonly string[]>> = {
 	meta: ['version', 'driveId', 'ownerAddress', 'privacy', 'blockStart', 'blockEnd', 'entityCount', 'producer'],
-	drives: ['id', 'rootFolderId', 'ownerAddress', 'name', 'privacy', 'bundledIn', 'customJsonMetadata', 'customGQLTags', 'isHidden', 'signatureType', 'dateCreated', 'lastUpdated'],
-	folder_entries: ['id', 'driveId', 'name', 'parentFolderId', 'dateCreated', 'lastUpdated', 'customJsonMetadata', 'customGQLTags', 'isHidden'],
-	file_entries: ['id', 'driveId', 'name', 'parentFolderId', 'size', 'lastModifiedDate', 'dataContentType', 'dataTxId', 'licenseTxId', 'bundledIn', 'thumbnail', 'pinnedDataOwnerAddress', 'customJsonMetadata', 'customGQLTags', 'isHidden', 'dateCreated', 'lastUpdated', 'assignedNames', 'fallbackTxId', 'originalOwner', 'importSource'],
-	drive_revisions: ['driveId', 'rootFolderId', 'ownerAddress', 'name', 'privacy', 'metadataTxId', 'dateCreated', 'action', 'bundledIn', 'customJsonMetadata', 'customGQLTags', 'isHidden'],
-	folder_revisions: ['folderId', 'driveId', 'name', 'parentFolderId', 'metadataTxId', 'dateCreated', 'action', 'customJsonMetadata', 'customGQLTags', 'isHidden'],
-	file_revisions: ['fileId', 'driveId', 'name', 'parentFolderId', 'size', 'lastModifiedDate', 'dataContentType', 'metadataTxId', 'dataTxId', 'licenseTxId', 'thumbnail', 'bundledIn', 'dateCreated', 'customJsonMetadata', 'customGQLTags', 'action', 'pinnedDataOwnerAddress', 'isHidden', 'assignedNames', 'fallbackTxId', 'originalOwner', 'importSource'],
-	licenses: ['fileId', 'driveId', 'dataTxId', 'licenseTxType', 'licenseTxId', 'bundledIn', 'dateCreated', 'licenseType', 'customGQLTags'],
-	transaction_statuses: ['id', 'status'],
+	drives: [
+		'id',
+		'rootFolderId',
+		'ownerAddress',
+		'name',
+		'privacy',
+		'bundledIn',
+		'customJsonMetadata',
+		'customGQLTags',
+		'isHidden',
+		'signatureType',
+		'dateCreated',
+		'lastUpdated'
+	],
+	folder_entries: [
+		'id',
+		'driveId',
+		'name',
+		'parentFolderId',
+		'dateCreated',
+		'lastUpdated',
+		'customJsonMetadata',
+		'customGQLTags',
+		'isHidden'
+	],
+	file_entries: [
+		'id',
+		'driveId',
+		'name',
+		'parentFolderId',
+		'size',
+		'lastModifiedDate',
+		'dataContentType',
+		'dataTxId',
+		'licenseTxId',
+		'bundledIn',
+		'thumbnail',
+		'pinnedDataOwnerAddress',
+		'customJsonMetadata',
+		'customGQLTags',
+		'isHidden',
+		'dateCreated',
+		'lastUpdated',
+		'assignedNames',
+		'fallbackTxId',
+		'originalOwner',
+		'importSource'
+	],
+	drive_revisions: [
+		'driveId',
+		'rootFolderId',
+		'ownerAddress',
+		'name',
+		'privacy',
+		'metadataTxId',
+		'dateCreated',
+		'action',
+		'bundledIn',
+		'customJsonMetadata',
+		'customGQLTags',
+		'isHidden'
+	],
+	folder_revisions: [
+		'folderId',
+		'driveId',
+		'name',
+		'parentFolderId',
+		'metadataTxId',
+		'dateCreated',
+		'action',
+		'customJsonMetadata',
+		'customGQLTags',
+		'isHidden'
+	],
+	file_revisions: [
+		'fileId',
+		'driveId',
+		'name',
+		'parentFolderId',
+		'size',
+		'lastModifiedDate',
+		'dataContentType',
+		'metadataTxId',
+		'dataTxId',
+		'licenseTxId',
+		'thumbnail',
+		'bundledIn',
+		'dateCreated',
+		'customJsonMetadata',
+		'customGQLTags',
+		'action',
+		'pinnedDataOwnerAddress',
+		'isHidden',
+		'assignedNames',
+		'fallbackTxId',
+		'originalOwner',
+		'importSource'
+	],
+	licenses: [
+		'fileId',
+		'driveId',
+		'dataTxId',
+		'licenseTxType',
+		'licenseTxId',
+		'bundledIn',
+		'dateCreated',
+		'licenseType',
+		'customGQLTags'
+	],
+	transaction_statuses: ['id', 'status']
 };
 
 /** What a column must hold for a reader to accept the row. */

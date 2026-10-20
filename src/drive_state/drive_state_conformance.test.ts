@@ -47,7 +47,11 @@ async function read(sidecar: Sidecar): Promise<{ outcome: string; contents?: Dri
 			tags[tag.name] = tag.value;
 		}
 	}
-	const candidate: DriveStateCandidate = { txId: sidecar.transaction.id, ownerAddress: sidecar.transaction.owner, tags };
+	const candidate: DriveStateCandidate = {
+		txId: sidecar.transaction.id,
+		ownerAddress: sidecar.transaction.owner,
+		tags
+	};
 	const protection: DriveStateProtection =
 		sidecar.reader.privacy === 'private'
 			? { kind: 'private', driveKey: Buffer.from(sidecar.reader.driveKey!, 'base64') }
@@ -91,7 +95,9 @@ describe('the golden drive state fixtures', () => {
 		it(`${sidecar.name}: ${kebab(sidecar.expected.outcome)}`, async () => {
 			const result = await read(sidecar);
 
-			expect(result.outcome, `${sidecar.description}\n${result.detail ?? ''}`).to.equal(kebab(sidecar.expected.outcome));
+			expect(result.outcome, `${sidecar.description}\n${result.detail ?? ''}`).to.equal(
+				kebab(sidecar.expected.outcome)
+			);
 
 			if (result.contents && sidecar.expected.tables) {
 				const tables = sidecar.expected.tables;

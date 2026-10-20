@@ -85,6 +85,11 @@ describe('bounded-concurrency folder downloads', () => {
 
 		beforeEach(() => {
 			dao = new ArFSDAOAnonymous(fakeArweave);
+			// No drive state and no snapshots: the full-replay path.
+			stub(
+				dao as unknown as { acceleratedPublicDriveEntities: () => Promise<null> },
+				'acceleratedPublicDriveEntities'
+			).resolves(null);
 			stub(dao, 'getPublicFolder').resolves(rootFolder);
 			stub(dao, 'getAllFoldersOfPublicDrive').resolves([rootFolder]);
 			stub(dao, 'getPublicFilesWithParentFolderIds').resolves(files);

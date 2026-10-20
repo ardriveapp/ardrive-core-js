@@ -1517,7 +1517,9 @@ export class ArDrive extends ArDriveAnonymous {
 		maxDepth = 0,
 		includeRoot = false,
 		owner,
-		withKeys = false
+		withKeys = false,
+		useSnapshots,
+		useDriveState
 	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -1531,7 +1533,9 @@ export class ArDrive extends ArDriveAnonymous {
 			maxDepth,
 			includeRoot,
 			owner,
-			withPathsFactory
+			withPathsFactory,
+			useSnapshots,
+			useDriveState
 		});
 		return children;
 	}
@@ -2272,7 +2276,9 @@ export class ArDrive extends ArDriveAnonymous {
 		customFolderName,
 		maxDepth,
 		driveKey,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPrivateFolderParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -2284,7 +2290,9 @@ export class ArDrive extends ArDriveAnonymous {
 			customFolderName,
 			maxDepth,
 			driveKey,
-			owner
+			owner,
+			useSnapshots,
+			useDriveState
 		});
 	}
 
@@ -2294,7 +2302,9 @@ export class ArDrive extends ArDriveAnonymous {
 		customFolderName,
 		maxDepth,
 		driveKey,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPrivateDriveParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -2307,7 +2317,9 @@ export class ArDrive extends ArDriveAnonymous {
 			customFolderName,
 			maxDepth,
 			driveKey,
-			owner
+			owner,
+			useSnapshots,
+			useDriveState
 		};
 
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);

@@ -194,6 +194,12 @@ export interface ArFSListPublicFolderParams {
 	 * so this only exists for explicit opt-out / A-B verification.
 	 */
 	useSnapshots?: boolean;
+	/**
+	 * Whether to read the drive's Drive State artifact first (defaults to `true`).
+	 * Set `false` to skip it. Any artifact that cannot be used falls back to the
+	 * snapshot path, so this only exists for explicit opt-out and comparison.
+	 */
+	useDriveState?: boolean;
 	withPathsFactory?: (
 		entity: ArFSPrivateFile | ArFSPrivateFolder,
 		hierarchy: FolderHierarchy,
@@ -278,6 +284,10 @@ export interface ArFSDownloadPublicFolderParams {
 	customFolderName?: string;
 	maxDepth: number;
 	owner: ArweaveAddress;
+	/** See {@link ArFSListPublicFolderParams.useSnapshots}. */
+	useSnapshots?: boolean;
+	/** See {@link ArFSListPublicFolderParams.useDriveState}. */
+	useDriveState?: boolean;
 }
 
 export interface ArFSDownloadPrivateFolderParams {
@@ -287,6 +297,10 @@ export interface ArFSDownloadPrivateFolderParams {
 	maxDepth: number;
 	owner: ArweaveAddress;
 	driveKey: DriveKey;
+	/** See {@link ArFSListPublicFolderParams.useSnapshots}. */
+	useSnapshots?: boolean;
+	/** See {@link ArFSListPublicFolderParams.useDriveState}. */
+	useDriveState?: boolean;
 }
 
 export interface SeparatedFolderHierarchy<FileType, FolderType> {
