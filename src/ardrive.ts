@@ -29,6 +29,7 @@ import {
 import { ArFSDAO } from './arfs/arfsdao';
 import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState, EntitySyncState } from './types/sync_types';
 import { ArFSDAOAnonymous, laterRevisionsWin } from './arfs/arfsdao_anonymous';
+import { selectLatestRevisions } from './utils/sync_state';
 import { DriveStateProtection } from './drive_state/drive_state_envelope';
 import { DriveStateContents } from './drive_state/drive_state_reader';
 import { privateEntitiesFromContents, publicEntitiesFromContents } from './drive_state/drive_state_entities';
@@ -2450,9 +2451,13 @@ export class ArDrive extends ArDriveAnonymous {
 
 		// An entity the later blocks hold replaces the artifact's copy of it, unless
 		// the artifact's is newer (see laterRevisionsWin).
+		// With includeRevisions the sync returns every revision; the change set and
+		// the merge take its newest of each, as the sync itself does without it.
 		const merged = laterRevisionsWin(
 			seed.entities,
-			(options.includeRevisions ? [] : result.entities) as typeof seed.entities
+			(options.includeRevisions
+				? selectLatestRevisions(result.entities)
+				: result.entities) as typeof seed.entities
 		);
 		const byId = new Map(merged.map((entity) => [`${entity.entityId}`, entity]));
 		const entities = options.includeRevisions ? [...seed.entities, ...result.entities] : merged;

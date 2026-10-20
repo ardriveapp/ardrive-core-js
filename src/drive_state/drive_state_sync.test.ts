@@ -103,6 +103,37 @@ describe('a first incremental sync from drive state', () => {
 		expect(synced.driveState).to.deep.equal({ txId: c.txId, blockEnd: c.blockEnd });
 	});
 
+	it('with includeRevisions, reports an entity created after the artifact as added, once, at its newest', async () => {
+		const c = await contents();
+		const folderId = c.files[0].parentFolderId;
+		const revision = (name: string, txChar: string, block: number) => {
+			const file = stubPublicFile({
+				fileId: EID('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'),
+				fileName: name,
+				parentFolderId: EID(folderId),
+				driveId: EID(DRIVE),
+				txId: TxID(txChar.repeat(43))
+			});
+			(file as any).blockHeight = block;
+			(file as any).unixTime = new UnixTime(c.blockEnd + block);
+			return file;
+		};
+		const created = revision('new.txt', 'N', c.blockEnd + 5);
+		const renamed = revision('newer.txt', 'M', c.blockEnd + 6);
+		const sync = stub().resolves(result([created, renamed], c.blockEnd + 6));
+
+		const synced = await arDriveWith(
+			incSyncReading({ outcome: 'used', contents: c, attempts: 1, detail: '' }, sync)
+		).syncPublicDrive(EID(DRIVE), ADDR(OWNER), { includeRevisions: true });
+
+		// Every revision is returned, the artifact's and the later ones.
+		expect(synced.entities).to.have.length(c.folders.length + c.files.length + 2);
+		const added = synced.changes.added.filter((e) => `${e.entityId}` === `${created.entityId}`);
+		expect(added).to.have.length(1);
+		expect(added[0].name).to.equal('newer.txt');
+		expect(synced.changes.added).to.have.length(c.folders.length + c.files.length + 1);
+	});
+
 	it('keeps the artifact height when nothing came after it', async () => {
 		const c = await contents();
 		const sync = stub().resolves(result([], 0));
