@@ -5,7 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.5.0] - 2026-10-20
+
+### Fixed
+
+- **Drive State: `Block-End` is honoured only up to the current block height**, as the
+  format requires. An artifact claiming a later block would have started every read
+  after it above blocks that do not exist yet, hiding later changes from listings and
+  from the sync state a first sync returns.
+- **Drive State: an artifact whose `Block-Start` is not 0 is refused.** Every drive
+  state is a full copy from block 0; one starting later said nothing about the blocks
+  before it and was read as if it covered them.
+- **Drive State: an artifact whose rows pass the reader but make no valid entity** (a
+  negative size, unparseable custom metadata) is refused and the next candidate tried.
+  It was cached, logged as `used`, and the listing fell back without trying the others.
+- **Drive State: the schema check refuses any object besides the nine tables.** Its
+  `NOT LIKE 'sqlite_%'` treated `_` as a wildcard, so a view, index, trigger or tenth
+  table named `sqlite` plus any character was let through.
+- **Producing Drive State refuses to publish fewer entities than the newest drive state
+  already published for the drive that a reader accepts** (`incomplete-index`). ArFS never deletes an entity, so
+  fewer means the gateway has not indexed the whole drive, as with a gateway that
+  unbundles only some bundles; publishing would have hidden the rest from every reader.
+- **Producing Drive State reads the result back as every reader will before it is
+  uploaded**, and refuses (`unreadable`, or `incomplete-index` when the drive's root
+  folder is missing) anything a reader would refuse, rather than charge for it.
+- A refusal for unparseable custom metadata no longer quotes the parse error, which
+  on recent Node includes part of the (for a private drive, decrypted) input.
+
+### Changed
+
+- **Drive State is faster to read and build.** Measured with
+  `tests/measurement/drive_state_scale.ts` on 41,767 files: opening a public drive state
+  went from 5.1 s to 2.5 s and a private one from 8.4 s to 3.9 s; building and sealing
+  from 9.6 s to 4.8 s (public) and 10.5 s to 6.3 s (private). Rows are read as arrays
+  with their column names fetched once, Node inflates with its own zlib (still bounded
+  at 100 MiB; the browser build keeps fflate), and the builder prepares each insert
+  once per table.
+
+### Added
+
+- `DriveStateReadParams.convert`, `DriveStateSourceParams.currentHeight`,
+  `BuildDriveStateParams.published`,
+  `ArtifactDatabase.prepare` (optional) and `gunzipBoundedPortable`.
+
+### Notes on 4.4.0
+
+- Entities read from a drive state carry empty `appName`, `appVersion`, `arFS` and
+  `cipherIV`, and dates to the second: the format does not carry them, as in
+  ardrive-web. Their `txId` is the newest revision the format keeps.
+- `downloadPublicFolder` and `downloadPublicDrive` read through drive state and JSON
+  snapshots. With `ARDRIVE_DISABLE_DRIVE_STATE=1` they still use JSON snapshots, which
+  they did not before 4.4.0; `ARDRIVE_DISABLE_SNAPSHOTS=1` turns those off too.
+
+## [4.4.0] - 2026-10-20
 
 ### Added
 

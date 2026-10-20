@@ -17,7 +17,7 @@
  *    `customGQLTags` the tags minus those ArFS defines, as an array of
  *    `{name, value}` in transaction order.
  */
-import { ArtifactDatabase, ArtifactEngine, defaultArtifactEngine } from './artifact_engine';
+import { ArtifactDatabase, ArtifactEngine, ArtifactStatement, defaultArtifactEngine } from './artifact_engine';
 import { DriveStateFormatVersion } from './drive_state_format_version';
 import { DRIVE_STATE_SCHEMA, DRIVE_STATE_TABLES, DriveStateTable } from './drive_state_schema';
 import { DRIVE_STATE_APPLICATION_ID, DRIVE_STATE_MAX_PLAINTEXT_BYTES } from './drive_state_tags';
@@ -524,12 +524,23 @@ export async function buildDriveStateFile(
 		for (const table of DRIVE_STATE_TABLES) {
 			db.run(DRIVE_STATE_SCHEMA[table]);
 		}
+		// One prepared statement per table and column list: preparing for every
+		// row is most of the cost of building a large drive.
+		const statements = new Map<string, ArtifactStatement>();
 		const insert = (table: DriveStateTable, row: Row) => {
 			const columns = Object.keys(row);
-			db.run(
-				`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
-				columns.map((c) => row[c])
-			);
+			const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
+			const params = columns.map((c) => row[c]);
+			if (!db.prepare) {
+				db.run(sql, params);
+				return;
+			}
+			let statement = statements.get(sql);
+			if (!statement) {
+				statement = db.prepare(sql);
+				statements.set(sql, statement);
+			}
+			statement.run(params);
 		};
 		for (const table of [
 			'drives',
@@ -558,6 +569,9 @@ export async function buildDriveStateFile(
 			entityCount,
 			producer: meta.producer
 		});
+		for (const statement of statements.values()) {
+			statement.free();
+		}
 		db.run('COMMIT');
 		const bytes = db.exportBytes();
 		if (bytes.byteLength >= DRIVE_STATE_MAX_PLAINTEXT_BYTES) {

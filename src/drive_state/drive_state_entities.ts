@@ -36,8 +36,10 @@ export interface DriveStateEntities<Folder, File> {
 function parseJson(raw: string, column: string, id: string): unknown {
 	try {
 		return JSON.parse(raw);
-	} catch (e) {
-		refuse('integrity-failed', `${column} of ${id} is not JSON: ${e}`);
+	} catch {
+		// Not the parse error's text: on recent Node it quotes the input, which
+		// for a private drive is decrypted metadata.
+		refuse('integrity-failed', `${column} of ${id} is not JSON`);
 	}
 }
 

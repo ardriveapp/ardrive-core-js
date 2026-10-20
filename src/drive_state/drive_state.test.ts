@@ -3,7 +3,14 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { gzipSync } from 'fflate';
 import { DriveStateFormatVersion } from './drive_state_format_version';
-import { decodeCipherIV, encodeCipherIV, gunzipBounded, openDriveState, sealDriveState } from './drive_state_envelope';
+import {
+	decodeCipherIV,
+	encodeCipherIV,
+	gunzipBounded,
+	gunzipBoundedPortable,
+	openDriveState,
+	sealDriveState
+} from './drive_state_envelope';
 import { DriveStateRefused } from './drive_state_outcome';
 import { DriveStateCandidate, firstFolderCycle, readDriveState } from './drive_state_reader';
 import { isUsableCandidate, orderCandidates } from './drive_state_discovery';
@@ -107,12 +114,30 @@ describe('the drive state envelope', () => {
 		expect(threw).to.equal(true);
 	});
 
-	it('stops inflating at the first byte past the bound', () => {
-		const bomb = gzipSync(new Uint8Array(1024 * 1024), { level: 9 });
+	// Node inflates with zlib and the browser build with fflate: both must agree.
+	for (const [name, gunzip] of [
+		['zlib', gunzipBounded],
+		['fflate', gunzipBoundedPortable]
+	] as const) {
+		it(`${name}: stops inflating at the first byte past the bound`, () => {
+			const bomb = gzipSync(new Uint8Array(1024 * 1024), { level: 9 });
 
-		expect(() => gunzipBounded(bomb, 1024 * 1024)).not.to.throw();
-		expect(() => gunzipBounded(bomb, 1024 * 1024 - 1)).to.throw(/inflated past/);
-	});
+			expect(() => gunzip(bomb, 1024 * 1024)).not.to.throw();
+			expect(() => gunzip(bomb, 1024 * 1024 - 1)).to.throw(/inflated past/);
+		});
+
+		it(`${name}: inflates to the bytes that were compressed`, () => {
+			const bytes = Uint8Array.from({ length: 200_000 }, (_, i) => (i * 31) % 251);
+
+			expect(Buffer.from(gunzip(gzipSync(bytes)))).to.deep.equal(Buffer.from(bytes));
+		});
+
+		it(`${name}: throws on a truncated stream`, () => {
+			const compressed = gzipSync(Uint8Array.from({ length: 50_000 }, (_, i) => i % 7));
+
+			expect(() => gunzip(compressed.subarray(0, compressed.byteLength - 20))).to.throw();
+		});
+	}
 
 	it('refuses a raw SQLite file past the bound', async () => {
 		const result = await refusal(openDriveState(sqlite, {}, { kind: 'public' }, sqlite.byteLength - 1));

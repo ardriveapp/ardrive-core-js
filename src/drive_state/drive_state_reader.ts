@@ -309,7 +309,11 @@ function readOpened(db: ArtifactDatabase, candidate: DriveStateCandidate, claims
 	// Exactly the format's tables: no view, trigger, index or virtual table, and
 	// every table's DDL identical to the format's, byte for byte.
 	const seen = new Map<string, string>();
-	for (const row of db.all("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'")) {
+	for (const row of db.all(
+		// Escaped: in LIKE, `_` matches any character, which would also skip
+		// a table or view named, say, `sqlitex`.
+		"SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\'"
+	)) {
 		if (row.type !== 'table') {
 			refuse('integrity-failed', `found ${row.type} "${row.name}"`);
 		}
@@ -422,6 +426,13 @@ function readOpened(db: ArtifactDatabase, candidate: DriveStateCandidate, claims
 			'coverage-mismatch',
 			`the tags claim [${blockStart}, ${blockEnd}] and the payload claims [${payloadStart}, ${payloadEnd}]`
 		);
+	}
+
+	// Every drive state is a full copy from block 0. One that starts later says
+	// nothing about the blocks before it, and a reader that took it as the
+	// drive's whole state would lose every entity last changed there.
+	if (payloadStart !== 0) {
+		refuse('coverage-mismatch', `the artifact starts at block ${payloadStart}; a drive state covers from block 0`);
 	}
 
 	// No going backwards. Equal coverage is still read: it can hold entities a

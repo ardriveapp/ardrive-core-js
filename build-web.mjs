@@ -29,6 +29,14 @@ const stubNodeModulesPlugin = {
         build.onResolve({ filter: /^fs$/ }, () => {
             return { path: 'fs', namespace: 'stub-fs' };
         });
+        // Stub zlib: Drive State inflates with Node's zlib when it is there and
+        // with fflate when it is not, so the browser needs none of it.
+        build.onResolve({ filter: /^zlib$/ }, () => {
+            return { path: 'zlib', namespace: 'stub-zlib' };
+        });
+        build.onLoad({ filter: /.*/, namespace: 'stub-zlib' }, () => {
+            return { contents: 'export default {}; export const gunzipSync = undefined;', loader: 'js' };
+        });
         build.onLoad({ filter: /.*/, namespace: 'stub-fs' }, () => {
             return {
                 contents:

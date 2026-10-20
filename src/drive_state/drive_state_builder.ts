@@ -11,6 +11,8 @@ import { ArtifactEngine } from './artifact_engine';
 import { DriveStateProtection, SealedDriveState, sealDriveState } from './drive_state_envelope';
 import { DriveStateFormatVersion } from './drive_state_format_version';
 import { buildDriveStateFile, deriveDriveStateRows, ProducerEntity, UnusableEntity } from './drive_state_producer';
+import { DriveStateRefused } from './drive_state_outcome';
+import { readDriveState } from './drive_state_reader';
 import { DRIVE_STATE_CONTENT_TYPE, DRIVE_STATE_ENTITY_TYPE, DriveStateTagName } from './drive_state_tags';
 
 export type DriveStateBuildRefusal =
@@ -18,7 +20,9 @@ export type DriveStateBuildRefusal =
 	| 'unconfirmed-changes'
 	| 'empty-drive'
 	| 'no-drive'
-	| 'too-large';
+	| 'too-large'
+	| 'incomplete-index'
+	| 'unreadable';
 
 export class DriveStateBuildRefused extends Error {
 	constructor(
@@ -58,6 +62,13 @@ export interface BuildDriveStateParams {
 	concurrency?: number;
 	/** Progress, for a person watching a large drive. */
 	log?: (line: string) => void;
+	/**
+	 * The entities in the newest drive state already published for this drive
+	 * that a reader accepts. ArFS never deletes an entity, so a build with fewer
+	 * was read from a gateway that has not indexed the whole drive, and is
+	 * refused rather than published as the drive's state.
+	 */
+	published?: { txId: string; entityCount: number };
 }
 
 export interface BuiltDriveState {
@@ -103,7 +114,8 @@ export async function buildDriveState({
 	driveStateId,
 	engine,
 	concurrency = 30,
-	log = () => undefined
+	log = () => undefined,
+	published
 }: BuildDriveStateParams): Promise<BuiltDriveState> {
 	// Block-End first: the listing that follows can only be complete through a
 	// height that existed before it started. Rows newer than the claim are
@@ -201,6 +213,15 @@ export async function buildDriveState({
 	if (rows.folder_entries.length + rows.file_entries.length === 0) {
 		throw new DriveStateBuildRefused('empty-drive', `drive ${driveId} has no folders or files to publish`);
 	}
+	const found = rows.drives.length + rows.folder_entries.length + rows.file_entries.length;
+	if (published && found < published.entityCount) {
+		throw new DriveStateBuildRefused(
+			'incomplete-index',
+			`the gateway returned ${found} entities, and the drive state ${published.txId} already published ` +
+				`for this drive holds ${published.entityCount}. Entities are never deleted, so this gateway has not ` +
+				'indexed the whole drive. Use a gateway that has'
+		);
+	}
 
 	// Data transactions: a reader trusts every one not listed, so only those the
 	// chain shows mined go unlisted.
@@ -246,6 +267,29 @@ export async function buildDriveState({
 				]
 			: [])
 	];
+
+	// Read back as every reader will, before anything is paid for. A drive whose
+	// root folder the gateway has not indexed, say, builds a file each reader
+	// refuses; publishing it would cost the upload and help no one.
+	try {
+		await readDriveState(
+			{
+				txId: 'DriveStateSelfCheck00000000000000000000000',
+				ownerAddress: owner,
+				tags: Object.fromEntries(tags.map((t) => [t.name, t.value]))
+			},
+			sealed.body,
+			{ expectedOwnerAddress: owner, protection, engine }
+		);
+	} catch (e) {
+		if (e instanceof DriveStateRefused) {
+			throw new DriveStateBuildRefused(
+				e.detail.includes('root folder') ? 'incomplete-index' : 'unreadable',
+				`every reader would refuse it (${e.outcome}): ${e.detail}`
+			);
+		}
+		throw e;
+	}
 
 	return {
 		sealed,
