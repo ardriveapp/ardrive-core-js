@@ -235,6 +235,52 @@ export class GatewayAPI {
 	}
 
 	/**
+	 * Fetches a transaction's data, refusing a body larger than [maxBytes].
+	 *
+	 * Unlike {@link getTxData} it neither reads nor writes the metadata cache,
+	 * and it gives up after a few attempts: it is for one large body that a
+	 * caller can do without, such as a Drive State artifact, whose failure is a
+	 * fallback rather than an error.
+	 */
+	public async getTxDataBounded(
+		txId: TransactionID,
+		maxBytes: number,
+		attempts = 3,
+		// Longer than the default request timeout: the body can be large.
+		timeoutMs = 300_000
+	): Promise<Buffer> {
+		let lastError: unknown;
+		for (let attempt = 0; attempt < attempts; attempt++) {
+			try {
+				const response = await this.axiosInstance.get<ArrayBuffer>(`${this.gatewayUrl.href}${txId}`, {
+					responseType: 'arraybuffer',
+					maxContentLength: maxBytes,
+					maxBodyLength: maxBytes,
+					timeout: timeoutMs,
+					validateStatus: undefined
+				});
+				if (response.status === 200) {
+					return Buffer.from(response.data);
+				}
+				lastError = new Error(`status ${response.status}`);
+				// Anything but a server error or a rate limit will not change on retry.
+				if (response.status < 500 && response.status !== rateLimitStatus) {
+					break;
+				}
+			} catch (err) {
+				lastError = err;
+				if (`${err}`.includes('maxContentLength')) {
+					break;
+				}
+			}
+			if (attempt + 1 < attempts) {
+				await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * this.initialErrorDelayMS));
+			}
+		}
+		throw new Error(`could not fetch ${txId}: ${lastError instanceof Error ? lastError.message : lastError}`);
+	}
+
+	/**
 	 * Retries the given request until the response returns a successful
 	 * status code or the maxRetries setting has been exceeded
 	 *

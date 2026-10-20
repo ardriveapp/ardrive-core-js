@@ -70,6 +70,13 @@ export interface IncrementalSyncOptions {
 	batchSize?: number;
 	/** Stop sync after finding this many known entities (optimization for catching up) */
 	stopAfterKnownCount?: number;
+	/**
+	 * Whether a first sync (no `syncState`) starts from the drive's Drive State
+	 * artifact, when it has a usable one, and then syncs only the blocks after
+	 * it (defaults to `true`; `ARDRIVE_DISABLE_DRIVE_STATE=1` also turns it off).
+	 * A sync that passes `syncState` never reads one.
+	 */
+	useDriveState?: boolean;
 }
 
 /**
@@ -84,6 +91,12 @@ export interface IncrementalSyncResult {
 	newSyncState: DriveSyncState;
 	/** Statistics about the sync operation */
 	stats: SyncStats;
+	/** The Drive State artifact a first sync started from, when it used one. */
+	driveState?: {
+		txId: string;
+		/** The artifact's Block-End. Entities below it came from the artifact, with blockHeight 0. */
+		blockEnd: number;
+	};
 }
 
 /**

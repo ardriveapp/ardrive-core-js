@@ -85,7 +85,14 @@ import {
 import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER, GQLQuery } from '../utils/query';
 import { buildDriveHistoryComposite, sortNodesNewestFirst } from '../snapshots';
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
-import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import {
+	CIPHER_AES_256_CTR,
+	CIPHER_AES_256_GCM,
+	deriveDriveKey,
+	deriveFileKey,
+	driveDecrypt,
+	fileDecrypt
+} from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -204,6 +211,9 @@ import { DriveSignatureInfo, DriveSignatureType } from '../types/types';
 import { errorMessage } from '../utils/error_message';
 import { parseDriveSignatureType } from '../utils/common_browser';
 import { EntityDecryptionError, InvalidFileStateException } from '../types/exceptions';
+import { privateEntitiesFromContents } from '../drive_state/drive_state_entities';
+import { BuiltDriveState, buildDriveState } from '../drive_state/drive_state_builder';
+import { ArFSDriveStatePrototype } from '../drive_state/drive_state_prototype';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -2214,6 +2224,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		includeRoot,
 		owner,
 		useSnapshots,
+		useDriveState,
 		withPathsFactory = privateEntityWithPathsKeylessFactory
 	}: ArFSListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!Number.isInteger(maxDepth) || maxDepth < 0) {
@@ -2228,7 +2239,8 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			owner,
 			driveKey,
 			maxDepth,
-			useSnapshots
+			useSnapshots,
+			useDriveState
 		);
 
 		if (includeRoot) {
@@ -2745,7 +2757,9 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		customFolderName,
 		maxDepth,
 		driveKey,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: ArFSDownloadPrivateFolderParams): Promise<void> {
 		const privateFolder = await this.getPrivateFolder(folderId, driveKey, owner);
 
@@ -2754,7 +2768,9 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			privateFolder,
 			owner,
 			driveKey,
-			maxDepth
+			maxDepth,
+			useSnapshots,
+			useDriveState
 		);
 		const folderWrapper = new ArFSFolderToDownload(
 			privateEntityWithPathsKeylessFactory(privateFolder, hierarchy),
@@ -2945,20 +2961,113 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		return { folders, files };
 	}
 
+	/**
+	 * Builds a private drive's Drive State artifact from chain data, sealed under
+	 * its drive key, ready to upload. Throws {@link DriveStateBuildRefused} when
+	 * the drive cannot be published as it stands.
+	 */
+	async buildPrivateDriveState({
+		driveId,
+		driveKey,
+		owner,
+		producer,
+		log
+	}: {
+		driveId: DriveID;
+		driveKey: DriveKey;
+		owner: ArweaveAddress;
+		/** `<App-Name>/<App-Version>`. */
+		producer: string;
+		log?: (line: string) => void;
+	}): Promise<BuiltDriveState> {
+		return buildDriveState({
+			driveId: `${driveId}`,
+			owner: `${owner}`,
+			protection: { kind: 'private', driveKey: driveKey.keyData },
+			producer,
+			driveStateId: uuidv4(),
+			log,
+			chain: this.driveStateChain(driveId, owner, true, async (node, data) => {
+				const tag = (name: string) => node.tags.find((t) => t.name === name)?.value;
+				const cipherIV = tag('Cipher-IV');
+				const cipher = tag('Cipher');
+				if (!cipherIV) {
+					throw new Error(`${node.id} has no Cipher-IV`);
+				}
+				const plaintext =
+					tag('Entity-Type') === 'file'
+						? await fileDecrypt(cipherIV, await deriveFileKey(tag('File-Id') ?? '', driveKey), data, cipher)
+						: await driveDecrypt(cipherIV, driveKey, data, cipher);
+				return JSON.parse(plaintext.toString('utf8'));
+			})
+		});
+	}
+
+	/** An L1 transaction for a built Drive State. */
+	async prepareDriveStateTransaction(
+		built: BuiltDriveState,
+		rewardSettings: RewardSettings = {}
+	): Promise<Transaction> {
+		return this.txPreparer.prepareMetaDataTx({
+			objectMetaData: new ArFSDriveStatePrototype(built) as unknown as ArFSEntityMetaDataPrototype,
+			rewardSettings
+		});
+	}
+
+	/** A signed data item for a built Drive State, for Turbo. */
+	async prepareDriveStateDataItem(built: BuiltDriveState): Promise<DataItem> {
+		return this.txPreparer.prepareMetaDataDataItem({
+			objectMetaData: new ArFSDriveStatePrototype(built) as unknown as ArFSEntityMetaDataPrototype
+		});
+	}
+
+	/** {@link driveEntitiesViaDriveState} for a private drive, under its drive key. */
+	protected async getPrivateDriveEntitiesViaDriveState(
+		driveId: DriveID,
+		driveKey: DriveKey,
+		owner: ArweaveAddress
+	): Promise<{ folders: ArFSPrivateFolder[]; files: ArFSPrivateFile[] } | null> {
+		return this.driveEntitiesViaDriveState<ArFSPrivateFolder, ArFSPrivateFile>({
+			driveId,
+			owner,
+			protection: { kind: 'private', driveKey: driveKey.keyData },
+			fromContents: (contents) => privateEntitiesFromContents(contents, driveKey),
+			buildFromNodes: async (folderNodes, fileNodes) => {
+				const [folders, files] = await Promise.all([
+					this.buildPrivateFoldersFromNodes(folderNodes, driveKey, owner),
+					this.buildPrivateFilesFromNodes(fileNodes, driveKey, owner)
+				]);
+				return { folders, files };
+			}
+		});
+	}
+
 	async separatedHierarchyOfFolder(
 		folder: ArFSPrivateFolder,
 		owner: ArweaveAddress,
 		driveKey: DriveKey,
 		maxDepth: number,
-		useSnapshots?: boolean
+		useSnapshots?: boolean,
+		useDriveState?: boolean
 	): Promise<SeparatedFolderHierarchy<ArFSPrivateFile, ArFSPrivateFolder>> {
 		// Fetch all of the folder entities within the drive
 		const driveIdOfFolder = folder.driveId;
 
+		let snapshotEntities: { folders: ArFSPrivateFolder[]; files: ArFSPrivateFile[] } | null = null;
+		// DRIVE STATE FIRST (isolated): the drive's published state plus later
+		// revisions. Any failure falls through to the snapshot path below.
+		if (this.driveStateEnabled(useDriveState)) {
+			try {
+				snapshotEntities = await this.getPrivateDriveEntitiesViaDriveState(driveIdOfFolder, driveKey, owner);
+			} catch (e) {
+				console.error(`[drive-state] ${driveIdOfFolder}: falling back to snapshots: ${e}`);
+				snapshotEntities = null;
+			}
+		}
+
 		// SNAPSHOT-ACCELERATED PATH (isolated). Falls back to full replay on the absence
 		// of snapshots or any snapshot failure — private listings then behave as today.
-		let snapshotEntities: { folders: ArFSPrivateFolder[]; files: ArFSPrivateFile[] } | null = null;
-		if (this.snapshotsEnabled(useSnapshots)) {
+		if (!snapshotEntities && this.snapshotsEnabled(useSnapshots)) {
 			try {
 				snapshotEntities = await this.getPrivateDriveEntitiesViaSnapshots(driveIdOfFolder, driveKey, owner);
 			} catch (e) {
@@ -2985,8 +3094,10 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		// Fetch all file entities within all Folders of the drive
 		const childFiles: ArFSPrivateFile[] = [];
 		if (snapshotEntities) {
-			// Files were already fetched drive-wide; keep those parented within the search subtree.
-			for (const file of snapshotEntities.files) {
+			// Files were already fetched drive-wide. Each file's latest revision is
+			// chosen before filtering by folder: filtering first would keep an older
+			// revision in a folder the file has since moved out of.
+			for (const file of keepLatestRevisions(snapshotEntities.files)) {
 				if (searchFolderIDs.some((fid) => fid.equals(file.parentFolderId))) {
 					childFiles.push(file);
 				}

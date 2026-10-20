@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Drive State.** Listing and downloading a drive read its newest ArFS Drive State
+  entity first: the drive's whole state up to a block height as one SQLite database,
+  published by its owner. Snapshots and GraphQL supply every block after it, and anything
+  that prevents its use falls back to them. A first `syncPublicDrive` or
+  `syncPrivateDrive` starts from one too. On by default; `useDriveState: false` or
+  `ARDRIVE_DISABLE_DRIVE_STATE=1` turns it off. Conformant with ardrive-web: core-js
+  reaches ardrive-web's outcome on each of its 43 golden fixtures, and ardrive-web reads
+  what core-js produces row for row.
+- **Producing Drive State.** `ArFSDAO.buildPublicDriveState` and `buildPrivateDriveState`
+  build a drive's Drive State from chain data, deriving revisions by ardrive-web's rules;
+  `prepareDriveStateTransaction` and `prepareDriveStateDataItem` prepare it for L1 or Turbo.
+- `DriveStateSource`, `readDriveState` and the format's constants for reading Drive State
+  directly, in Node and, after `enableDriveState`, in the browser build.
+- `GatewayAPI.getTxDataBounded`, a fetch that refuses a body past a size.
+- Dependencies: `sql.js` 1.14.2 and `fflate` 0.8.3.
+
+### Fixed
+
+- A listing from snapshots kept an older revision of a file that had moved out of the listed
+  folder: each file's latest revision is now chosen before filtering by folder.
+- `listPublicFolder` and `listPrivateFolder` on `ArDriveAnonymous` and `ArDrive` now pass
+  `useSnapshots` through to the DAO, which they had ignored.
+- `downloadPublicFolder` and `downloadPublicDrive` now use snapshots and Drive State instead
+  of always replaying the drive's history.
+
 ## [4.3.0] - 2026-08-04
 
 ### Added

@@ -484,7 +484,12 @@ describe('ArDrive class - integrated', () => {
 			const stubFileEntities = [stubPublicFileInRoot, stubPublicFileInParent, stubPublicFileInChild];
 
 			beforeEach(() => {
-				// These stubbed drives have no snapshots → exercise the full-replay path.
+				// These stubbed drives have no drive state and no snapshots → exercise
+				// the full-replay path.
+				stub(
+					arfsDao as unknown as { driveEntitiesViaDriveState: () => Promise<null> },
+					'driveEntitiesViaDriveState'
+				).resolves(null);
 				stub(
 					arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> },
 					'fetchDriveSnapshotsWithBodies'
@@ -632,7 +637,12 @@ describe('ArDrive class - integrated', () => {
 					stubPrivateFolder_3
 				];
 
-				// These stubbed drives have no snapshots → exercise the full-replay path.
+				// These stubbed drives have no drive state and no snapshots → exercise
+				// the full-replay path.
+				stub(
+					arfsDao as unknown as { driveEntitiesViaDriveState: () => Promise<null> },
+					'driveEntitiesViaDriveState'
+				).resolves(null);
 				stub(
 					arfsDao as unknown as { fetchDriveSnapshotsWithBodies: () => Promise<null> },
 					'fetchDriveSnapshotsWithBodies'

@@ -84,13 +84,22 @@ export class ArDriveAnonymous extends ArDriveType {
 		folderId,
 		maxDepth = 0,
 		includeRoot = false,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: ListPublicFolderParams): Promise<(ArFSPublicFolderWithPaths | ArFSPublicFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		const children = await this.arFsDao.listPublicFolder({ folderId, maxDepth, includeRoot, owner });
+		const children = await this.arFsDao.listPublicFolder({
+			folderId,
+			maxDepth,
+			includeRoot,
+			owner,
+			useSnapshots,
+			useDriveState
+		});
 		return children;
 	}
 
@@ -109,13 +118,23 @@ export class ArDriveAnonymous extends ArDriveType {
 		destFolderPath,
 		customFolderName,
 		maxDepth,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPublicFolderParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.arFsDao.getDriveOwnerForFolderId(folderId);
 		}
 
-		return this.arFsDao.downloadPublicFolder({ folderId, destFolderPath, maxDepth, owner, customFolderName });
+		return this.arFsDao.downloadPublicFolder({
+			folderId,
+			destFolderPath,
+			maxDepth,
+			owner,
+			customFolderName,
+			useSnapshots,
+			useDriveState
+		});
 	}
 
 	async downloadPublicDrive({
@@ -123,7 +142,9 @@ export class ArDriveAnonymous extends ArDriveType {
 		destFolderPath,
 		customFolderName,
 		maxDepth,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPublicDriveParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.arFsDao.getOwnerForDriveId(driveId);
@@ -135,7 +156,9 @@ export class ArDriveAnonymous extends ArDriveType {
 			destFolderPath,
 			customFolderName,
 			maxDepth,
-			owner
+			owner,
+			useSnapshots,
+			useDriveState
 		};
 
 		return this.arFsDao.downloadPublicFolder(downloadFolderArgs);

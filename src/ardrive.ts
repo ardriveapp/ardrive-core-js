@@ -27,7 +27,13 @@ import {
 	ArFSPrivateDriveTransactionData
 } from './arfs/tx/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
-import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState } from './types/sync_types';
+import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState, EntitySyncState } from './types/sync_types';
+import { ArFSDAOAnonymous, laterRevisionsWin } from './arfs/arfsdao_anonymous';
+import { selectLatestRevisions } from './utils/sync_state';
+import { DriveStateProtection } from './drive_state/drive_state_envelope';
+import { DriveStateContents } from './drive_state/drive_state_reader';
+import { privateEntitiesFromContents, publicEntitiesFromContents } from './drive_state/drive_state_entities';
+import { ArFSFileOrFolderEntity } from './arfs/arfs_entities';
 import { CommunityOracle } from './community/community_oracle';
 import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveFileKey } from './utils/crypto';
 import { ARDataPriceEstimator } from './pricing/ar_data_price_estimator';
@@ -1517,7 +1523,9 @@ export class ArDrive extends ArDriveAnonymous {
 		maxDepth = 0,
 		includeRoot = false,
 		owner,
-		withKeys = false
+		withKeys = false,
+		useSnapshots,
+		useDriveState
 	}: ListPrivateFolderParams): Promise<(ArFSPrivateFolderWithPaths | ArFSPrivateFileWithPaths)[]> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -1531,7 +1539,9 @@ export class ArDrive extends ArDriveAnonymous {
 			maxDepth,
 			includeRoot,
 			owner,
-			withPathsFactory
+			withPathsFactory,
+			useSnapshots,
+			useDriveState
 		});
 		return children;
 	}
@@ -2272,7 +2282,9 @@ export class ArDrive extends ArDriveAnonymous {
 		customFolderName,
 		maxDepth,
 		driveKey,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPrivateFolderParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -2284,7 +2296,9 @@ export class ArDrive extends ArDriveAnonymous {
 			customFolderName,
 			maxDepth,
 			driveKey,
-			owner
+			owner,
+			useSnapshots,
+			useDriveState
 		});
 	}
 
@@ -2294,7 +2308,9 @@ export class ArDrive extends ArDriveAnonymous {
 		customFolderName,
 		maxDepth,
 		driveKey,
-		owner
+		owner,
+		useSnapshots,
+		useDriveState
 	}: DownloadPrivateDriveParameters): Promise<void> {
 		if (!owner) {
 			owner = await this.getOwnerAddress();
@@ -2307,7 +2323,9 @@ export class ArDrive extends ArDriveAnonymous {
 			customFolderName,
 			maxDepth,
 			driveKey,
-			owner
+			owner,
+			useSnapshots,
+			useDriveState
 		};
 
 		return this.arFsDao.downloadPrivateFolder(downloadFolderArgs);
@@ -2336,7 +2354,125 @@ export class ArDrive extends ArDriveAnonymous {
 				'Incremental sync is not supported with the current ArFSDAO configuration. Use ArFSDAOIncrementalSync instead.'
 			);
 		}
-		return this.arFsDao.anonymousIncSync.getPublicDriveIncrementalSync(driveId, owner, options);
+		const incSync = this.arFsDao.anonymousIncSync;
+		return this.syncFromDriveState({
+			driveId,
+			owner,
+			options,
+			dao: incSync,
+			protection: { kind: 'public' },
+			drivePrivacy: 'public',
+			toEntities: async (contents) => publicEntitiesFromContents(contents),
+			sync: (opts) => incSync.getPublicDriveIncrementalSync(driveId, owner as ArweaveAddress, opts)
+		});
+	}
+
+	/**
+	 * Runs [sync], first seeding it from the drive's Drive State artifact when this
+	 * is a first sync and the drive has a usable one. The artifact gives every
+	 * entity's state up to a margin below its Block-End; [sync] then fetches only
+	 * the blocks above that, with no early stop, so an entity the artifact's
+	 * producer had not yet seen is still found. Anything that prevents the seed
+	 * falls back to [sync] alone.
+	 */
+	private async syncFromDriveState({
+		driveId,
+		owner,
+		options = {},
+		dao,
+		protection,
+		drivePrivacy,
+		toEntities,
+		sync
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+		options?: IncrementalSyncOptions;
+		dao: ArFSDAOAnonymous;
+		protection: DriveStateProtection;
+		drivePrivacy: 'public' | 'private';
+		toEntities: (
+			contents: DriveStateContents
+		) => Promise<{ folders: ArFSFileOrFolderEntity<'folder'>[]; files: ArFSFileOrFolderEntity<'file'>[] }>;
+		sync: (options: IncrementalSyncOptions) => Promise<IncrementalSyncResult>;
+	}): Promise<IncrementalSyncResult> {
+		// A caller with its own DAO, such as a test double, may not read drive state.
+		if (
+			options.syncState ||
+			typeof dao.isDriveStateEnabled !== 'function' ||
+			!dao.isDriveStateEnabled(options.useDriveState)
+		) {
+			return sync(options);
+		}
+
+		let seed:
+			| {
+					entities: (ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number })[];
+					read: DriveStateContents;
+			  }
+			| undefined;
+		try {
+			const read = await dao.readDriveState({ driveId, owner, protection });
+			if (read.outcome === 'used' && read.contents) {
+				const { folders, files } = await toEntities(read.contents);
+				seed = {
+					entities: [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & {
+						blockHeight: number;
+					})[],
+					read: read.contents
+				};
+			}
+		} catch (e) {
+			console.error(`[drive-state] ${driveId}: syncing without drive state: ${e}`);
+		}
+		if (!seed) {
+			return sync(options);
+		}
+
+		const stateOf = (
+			entity: ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number }
+		): EntitySyncState => ({
+			entityId: entity.entityId,
+			txId: entity.txId,
+			blockHeight: entity.blockHeight,
+			parentFolderId: entity.parentFolderId,
+			name: entity.name,
+			entityType: entity.entityType
+		});
+		const seedState: DriveSyncState = {
+			driveId,
+			drivePrivacy,
+			lastSyncedBlockHeight: seed.read.blockEnd,
+			lastSyncedTimestamp: new UnixTime(Math.floor(Date.now() / 1000)),
+			entityStates: new Map(seed.entities.map((entity) => [`${entity.entityId}`, stateOf(entity)]))
+		};
+
+		const result = await sync({ ...options, syncState: seedState, stopAfterKnownCount: Number.MAX_SAFE_INTEGER });
+
+		// An entity the later blocks hold replaces the artifact's copy of it, unless
+		// the artifact's is newer (see laterRevisionsWin).
+		// With includeRevisions the sync returns every revision; the change set and
+		// the merge take its newest of each, as the sync itself does without it.
+		const merged = laterRevisionsWin(
+			seed.entities,
+			(options.includeRevisions
+				? selectLatestRevisions(result.entities)
+				: result.entities) as typeof seed.entities
+		);
+		const byId = new Map(merged.map((entity) => [`${entity.entityId}`, entity]));
+		const entities = options.includeRevisions ? [...seed.entities, ...result.entities] : merged;
+
+		return {
+			...result,
+			entities,
+			// The caller held nothing before this sync, so everything is new to it.
+			changes: { added: [...byId.values()].map(stateOf), modified: [], unreachable: [] },
+			newSyncState: {
+				...result.newSyncState,
+				lastSyncedBlockHeight: Math.max(result.newSyncState.lastSyncedBlockHeight, seed.read.blockEnd)
+			},
+			driveState: { txId: seed.read.txId, blockEnd: seed.read.blockEnd }
+		};
 	}
 
 	/**
@@ -2363,7 +2499,17 @@ export class ArDrive extends ArDriveAnonymous {
 			throw new Error('ArFS DAO does not support incremental sync');
 		}
 
-		return this.arFsDao.getPrivateDriveIncrementalSync(driveId, driveKey, owner, options);
+		const incSync = this.arFsDao;
+		return this.syncFromDriveState({
+			driveId,
+			owner,
+			options,
+			dao: incSync,
+			protection: { kind: 'private', driveKey: driveKey.keyData },
+			drivePrivacy: 'private',
+			toEntities: (contents) => privateEntitiesFromContents(contents, driveKey),
+			sync: (opts) => incSync.getPrivateDriveIncrementalSync(driveId, driveKey, owner as ArweaveAddress, opts)
+		});
 	}
 
 	/**
