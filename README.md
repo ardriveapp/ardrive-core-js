@@ -29,6 +29,7 @@ Engage with the community in [Discord](https://discord.gg/7RuTBckX) for more inf
     - [Custom Metadata](#custom-metadata)
     - [Conflict Resolution](#conflict-resolution)
 - [Advanced Features](#advanced-features)
+  - [Drive State](#drive-state)
   - [Incremental Drive Synchronization](#incremental-drive-synchronization)
   - [Persistent Storage for Sync State](#persistent-storage-for-sync-state)
   - [Turbo Integration](#turbo-integration)
@@ -502,6 +503,67 @@ await arDrive.uploadAllEntities({
 ```
 
 ## Advanced Features
+
+### Drive State
+
+A Drive State entity (`Entity-Type: drive-state`) is a drive's whole state up to a block height, published by the drive's owner as one SQLite database: every folder and file and their revisions. Reading one replaces most of the GraphQL queries and metadata fetches a drive listing otherwise makes. The format is specified on [docs.ar.io](https://docs.ar.io/build/advanced/arfs/entity-types#drive-state); ArDrive's apps call these snapshots.
+
+#### Reading
+
+Listing and downloading read a drive's newest usable Drive State entity first, with nothing to configure: `listPublicFolder`, `listPrivateFolder`, `downloadPublicFolder`, `downloadPrivateFolder`, `downloadPublicDrive` and `downloadPrivateDrive`. A first `syncPublicDrive` or `syncPrivateDrive` with no `syncState` starts from one too, and its result's `driveState` names the entity it used.
+
+The entity gives the drive's state up to 240 blocks below its `Block-End`. Snapshots and GraphQL supply every block above that, and a revision they return replaces the entity's copy. An entity that cannot be used falls back to snapshots and then to a full replay, so a drive lists the same either way. Every refusal has a reason:
+
+| Outcome | Meaning |
+| --- | --- |
+| `used` | The entity was read |
+| `none-found` | The drive has none. With `discoveryFailed`, the query itself failed |
+| `unknown-version` | A format version, or a cipher, this version does not read |
+| `owner-mismatch` | Not uploaded by the drive's owner |
+| `decrypt-failed` | Did not decrypt under the drive key |
+| `integrity-failed` | Not the database its tags describe, or malformed |
+| `count-mismatch`, `coverage-mismatch` | `Entity-Count`, `Block-Start` or `Block-End` disagree with the database |
+| `privacy-mismatch` | Encrypted for a public drive, or not encrypted for a private one |
+| `fetch-failed` | Identified, and could not be downloaded |
+| `range-already-covered` | Covers nothing a stateful caller has not already synced |
+
+Each listing logs one line per drive to stderr, such as `[drive-state] <drive id>: read 1543 entities through block 2025061 (<tx id>) - outcome=used`. To skip Drive State, pass `useDriveState: false` to a listing, download or sync, or set `ARDRIVE_DISABLE_DRIVE_STATE=1`.
+
+A downloaded entity is cached by transaction id, the newest one per drive, under `~/.ardrive/caches/drive-state` (`ardrive-caches/drive-state` in the home folder on Windows). For a private drive the cache holds the encrypted body, never the decrypted one.
+
+To read one directly:
+
+```typescript
+import { DriveStateSource, GatewayAPI } from 'ardrive-core-js';
+
+const source = new DriveStateSource({ gatewayApi: new GatewayAPI({ gatewayUrl: new URL('https://ardrive.net') }) });
+const result = await source.read({ driveId, owner, protection: { kind: 'public' } });
+if (result.outcome === 'used') {
+	console.log(result.contents.files.length, result.contents.blockEnd);
+}
+```
+
+The database is read with [sql.js](https://github.com/sql-js/sql.js) (SQLite compiled to WebAssembly), loaded only when a drive state is first read. In the browser build, call `enableDriveState` with where the page serves `sql-wasm-browser.wasm` from the `sql.js` package; until then, browser listings skip Drive State:
+
+```typescript
+import { enableDriveState } from 'ardrive-core-js/web';
+
+enableDriveState({ locateFile: (file) => `/assets/${file}` });
+```
+
+#### Producing
+
+`ArFSDAO.buildPublicDriveState` and `buildPrivateDriveState` build a drive's entity from its chain data: every drive, folder and file revision, read through its snapshots where it has them. `prepareDriveStateTransaction` and `prepareDriveStateDataItem` turn the result into an L1 transaction or a data item for Turbo. Only the drive's owner can produce one, because readers trust no one else's.
+
+The build refuses, with a `DriveStateBuildRefused` naming the reason, rather than publish a drive state it cannot vouch for:
+
+- `unconfirmed-changes`: a change to the drive is not yet mined.
+- `skipped-entities`: a revision's metadata could not be read or decrypted.
+- `empty-drive`: the drive has no folders or files.
+- `no-drive`: no drive entity was found from the owner, or its privacy is not the one asked for.
+- `too-large`: the database is 100 MiB or more, which every reader refuses.
+
+Licence details are not included. Readers read each file's licence from its `licenseTxId`, which is included.
 
 ### Incremental Drive Synchronization
 

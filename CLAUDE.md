@@ -91,6 +91,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/types/sync_types.ts` - Incremental sync type definitions
 - `src/utils/constants.ts` - Important constants and limits
 - `src/utils/sync_state.ts` - Sync state management utilities
+- `src/drive_state/` - ArFS Drive State: reading a drive's published state (listing and first syncs read it first) and producing one; `tests/fixtures/drive_state/` are ardrive-web's golden fixtures, copied, and must all reach their recorded outcome
 
 ### Incremental Drive Synchronization
 
@@ -101,7 +102,7 @@ The library provides efficient incremental sync capabilities:
 3. **State Persistence**: Sync state can be serialized/deserialized for cross-session continuity
 4. **Progress Tracking**: Built-in progress callbacks for UI integration
 5. **Optimizations**: 
-   - Configurable batch sizes (default/max: 100)
+   - Configurable batch sizes (default: the GraphQL page size, 1000)
    - Early termination after N consecutive known entities
    - Query optimization starting from last synced block + 1
 
@@ -114,7 +115,7 @@ Sync Options:
 ```typescript
 interface IncrementalSyncOptions {
   earlyTerminationConsecutiveEntityThreshold?: number; // Default: 25
-  graphqlPageSize?: number; // Default: 100, Max: 100
+  batchSize?: number; // Default: the configured GraphQL page size (1000), set with setGqlPageSize()
   progressCallback?: (progress: IncrementalSyncProgress) => void;
 }
 ```
