@@ -19,8 +19,11 @@ setDriveStateCipher(webDriveStateCipher);
 
 /**
  * Turns on reading drives from their Drive State artifacts in the browser.
- * [locateFile] returns the URL of `sql-wasm.wasm` from the `sql.js` package,
- * which the page must serve. Until this is called, listings skip Drive State.
+ * [locateFile] maps the wasm file name sql.js asks for to its URL. The name
+ * depends on which sql.js entry the bundler picks: `sql-wasm-browser.wasm`
+ * under the `browser` export condition, `sql-wasm.wasm` otherwise. Serving
+ * the package's `dist/` directory covers both. Until this is called, listings
+ * skip Drive State.
  *
  *     enableDriveState({ locateFile: (file) => `/assets/${file}` });
  */

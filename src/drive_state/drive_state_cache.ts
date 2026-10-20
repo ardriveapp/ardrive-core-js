@@ -39,6 +39,15 @@ export class DriveStateBodyCache {
 		}
 	}
 
+	/** Drops a cached body, such as one the reader refused. Never throws. */
+	async remove(driveId: string, txId: string): Promise<void> {
+		try {
+			await fs.promises.rm(this.pathFor(driveId, txId), { force: true });
+		} catch {
+			// Nothing to drop.
+		}
+	}
+
 	/** Stores [body] as the drive's one cached artifact. Never throws. */
 	async put(driveId: string, txId: string, body: Uint8Array): Promise<void> {
 		try {

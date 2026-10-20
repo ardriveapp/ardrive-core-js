@@ -1,6 +1,7 @@
 import Arweave from 'arweave';
 import { expect } from 'chai';
-import { readFileSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { stub } from 'sinon';
 import { stubPublicFile } from '../../tests/stubs';
@@ -9,6 +10,7 @@ import { ArFSPublicFile, ArFSPublicFolder } from '../arfs/arfs_entities';
 import { ADDR, EID, TxID, UnixTime } from '../types';
 import { GQLNodeInterface } from '../types/gql_Types';
 import { GatewayAPI } from '../utils/gateway_api';
+import { DriveStateBodyCache } from './drive_state_cache';
 import { DriveStateCandidate, DriveStateContents, readDriveState } from './drive_state_reader';
 import { DriveStateReadParams, DriveStateReadResult, DriveStateSource } from './drive_state_source';
 
@@ -141,6 +143,54 @@ describe('DriveStateSource', () => {
 
 		expect(result.outcome).to.equal('range-already-covered');
 		expect(fetch.called).to.equal(false);
+	});
+
+	describe('with a disk cache', () => {
+		let folder: string;
+		let cache: DriveStateBodyCache;
+
+		beforeEach(() => {
+			folder = mkdtempSync(join(tmpdir(), 'drive-state-cache-'));
+			cache = new DriveStateBodyCache(folder);
+		});
+		afterEach(() => rmSync(folder, { recursive: true, force: true }));
+
+		it('keeps a body only once it has been read', async () => {
+			const edge = edgeFor('public-gzip');
+			const bad = fakeGateway([edge], { [edge.node.id]: Buffer.from('<html>bad gateway</html>') });
+
+			const refused = await new DriveStateSource({ gatewayApi: bad.gateway, cache, log }).read(params);
+			expect(refused.outcome).to.not.equal('used');
+			expect(await cache.get(DRIVE, edge.node.id)).to.equal(undefined);
+
+			const good = fakeGateway([edge], { [edge.node.id]: bodyOf('public-gzip') });
+			expect(
+				(await new DriveStateSource({ gatewayApi: good.gateway, cache, log }).read(params)).outcome
+			).to.equal('used');
+			expect(await cache.get(DRIVE, edge.node.id)).to.not.equal(undefined);
+
+			// The second read comes from disk.
+			const offline = fakeGateway([edge], {});
+			expect(
+				(await new DriveStateSource({ gatewayApi: offline.gateway, cache, log }).read(params)).outcome
+			).to.equal('used');
+			expect(offline.fetch.called).to.equal(false);
+		});
+
+		it('drops a cached body the reader refuses, so the next read downloads it again', async () => {
+			const edge = edgeFor('public-gzip');
+			await cache.put(DRIVE, edge.node.id, Buffer.from('corrupted on disk'));
+
+			const { gateway, fetch } = fakeGateway([edge], { [edge.node.id]: bodyOf('public-gzip') });
+			const first = await new DriveStateSource({ gatewayApi: gateway, cache, log }).read(params);
+			expect(first.outcome).to.not.equal('used');
+			expect(fetch.called).to.equal(false);
+			expect(await cache.get(DRIVE, edge.node.id)).to.equal(undefined);
+
+			const second = await new DriveStateSource({ gatewayApi: gateway, cache, log }).read(params);
+			expect(second.outcome).to.equal('used');
+			expect(fetch.calledOnce).to.equal(true);
+		});
 	});
 });
 

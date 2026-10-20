@@ -62,7 +62,7 @@ class SqlJsArtifactDatabase implements ArtifactDatabase {
 
 export interface SqlJsEngineOptions {
 	/**
-	 * Where the browser fetches `sql-wasm.wasm` from. Node resolves it from the
+	 * Maps the wasm file name sql.js asks for to the URL the browser fetches it from. Node resolves it from the
 	 * `sql.js` package and needs nothing.
 	 */
 	locateFile?: (file: string) => string;

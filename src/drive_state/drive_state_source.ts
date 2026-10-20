@@ -162,8 +162,9 @@ export class DriveStateSource {
 			}
 
 			let body: Uint8Array;
+			let fromCache: boolean;
 			try {
-				body = await this.fetch(driveId, candidate.txId);
+				({ body, fromCache } = await this.fetch(driveId, candidate.txId));
 			} catch (e) {
 				last = { outcome: 'fetch-failed', detail: `${e}`, txId: candidate.txId, attempts };
 				continue;
@@ -176,6 +177,11 @@ export class DriveStateSource {
 					syncedToBlock,
 					engine: this.engine
 				});
+				// Cached only once read: a bad body served with a 200 would otherwise
+				// be refused from disk forever, since the key never goes stale.
+				if (!fromCache) {
+					await this.cache?.put(`${driveId}`, candidate.txId, body);
+				}
 				return {
 					outcome: 'used',
 					detail: `read ${contents.entityCount} entities through block ${contents.blockEnd}`,
@@ -191,6 +197,10 @@ export class DriveStateSource {
 				last = { outcome: e.outcome, detail: e.detail, txId: candidate.txId, attempts };
 				if (e.outcome === 'range-already-covered') {
 					return last;
+				}
+				if (fromCache) {
+					// The next read downloads it again rather than trusting the disk.
+					await this.cache?.remove(`${driveId}`, candidate.txId);
 				}
 			}
 		}
@@ -209,16 +219,15 @@ export class DriveStateSource {
 		return orderCandidates(candidates);
 	}
 
-	private async fetch(driveId: DriveID, txId: string): Promise<Uint8Array> {
+	private async fetch(driveId: DriveID, txId: string): Promise<{ body: Uint8Array; fromCache: boolean }> {
 		const cached = await this.cache?.get(`${driveId}`, txId);
 		if (cached) {
-			return cached;
+			return { body: cached, fromCache: true };
 		}
 		const body = await this.gatewayApi.getTxDataBounded(
 			TxID(txId),
 			DRIVE_STATE_MAX_PLAINTEXT_BYTES + FETCH_SLACK_BYTES
 		);
-		await this.cache?.put(`${driveId}`, txId, body);
-		return body;
+		return { body, fromCache: false };
 	}
 }

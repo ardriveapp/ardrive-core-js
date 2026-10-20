@@ -543,7 +543,7 @@ if (result.outcome === 'used') {
 }
 ```
 
-The database is read with [sql.js](https://github.com/sql-js/sql.js) (SQLite compiled to WebAssembly), loaded only when a drive state is first read. In the browser build, call `enableDriveState` with where the page serves `sql-wasm-browser.wasm` from the `sql.js` package; until then, browser listings skip Drive State:
+The database is read with [sql.js](https://github.com/sql-js/sql.js) (SQLite compiled to WebAssembly), loaded only when a drive state is first read. In the browser build, call `enableDriveState` with a `locateFile` that maps the wasm file name sql.js asks for to its URL. The name depends on which sql.js entry your bundler picks (`sql-wasm-browser.wasm` under the `browser` export condition, `sql-wasm.wasm` otherwise), so serve the whole `node_modules/sql.js/dist/` directory. Until then, browser listings skip Drive State:
 
 ```typescript
 import { enableDriveState } from 'ardrive-core-js/web';
