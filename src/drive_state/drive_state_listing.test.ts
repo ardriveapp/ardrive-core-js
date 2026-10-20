@@ -230,6 +230,24 @@ describe('listing from drive state', () => {
 		expect(result!.files.find((f) => `${f.fileId}` === report.id)!.name).to.equal('report.pdf');
 	});
 
+	it('still uses the artifact when a later snapshot cannot be read, covering its blocks from GraphQL', async () => {
+		const contents = await contentsOf('public-gzip');
+		const { internals } = await daoUsing({
+			outcome: 'used',
+			contents,
+			coveredThroughBlock: contents.blockEnd - 240
+		});
+		stub(internals, 'fetchDriveSnapshotsWithBodies').rejects(new Error('snapshot body 404'));
+		const tail = stub(internals, 'getSnapshotTailNodes').resolves([]);
+		stub(internals, 'buildPublicFoldersFromNodes').resolves([]);
+		stub(internals, 'buildPublicFilesFromNodes').resolves([]);
+
+		const result = await internals.getPublicDriveEntitiesViaDriveState(EID(DRIVE), ADDR(OWNER));
+
+		expect(result!.files).to.have.length(contents.files.length);
+		expect(tail.firstCall.args[3]).to.deep.equal([{ minBlockHeight: contents.blockEnd - 240 + 1 }]);
+	});
+
 	it('is null, so the caller lists another way, when the drive has no usable artifact', async () => {
 		const { internals } = await daoUsing({ outcome: 'none-found' });
 

@@ -514,7 +514,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 		const base = await fromContents(result.contents);
 		const floor = result.coveredThroughBlock;
 
-		const snapshots = (await this.fetchDriveSnapshotsWithBodies(driveId, owner, floor)) ?? [];
+		// A snapshot that cannot be read costs only its own blocks: GraphQL covers
+		// them instead, and the artifact is still used.
+		let snapshots: SnapshotWithBody[] = [];
+		try {
+			snapshots = (await this.fetchDriveSnapshotsWithBodies(driveId, owner, floor)) ?? [];
+		} catch (e) {
+			console.error(`[drive-state] ${driveId}: reading the blocks after the artifact without snapshots: ${e}`);
+		}
 		const composite = buildDriveHistoryComposite({
 			snapshotsNewestFirst: snapshots,
 			owner,
