@@ -2987,6 +2987,7 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 			producer,
 			driveStateId: uuidv4(),
 			log,
+			published: await this.driveStateSource.largestPublished({ driveId, owner }),
 			chain: this.driveStateChain(driveId, owner, true, async (node, data) => {
 				const tag = (name: string) => node.tags.find((t) => t.name === name)?.value;
 				const cipherIV = tag('Cipher-IV');

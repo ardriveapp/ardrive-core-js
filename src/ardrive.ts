@@ -2412,9 +2412,11 @@ export class ArDrive extends ArDriveAnonymous {
 			  }
 			| undefined;
 		try {
-			const read = await dao.readDriveState({ driveId, owner, protection });
+			const read = await dao.readDriveState({ driveId, owner, protection, convert: toEntities });
 			if (read.outcome === 'used' && read.contents) {
-				const { folders, files } = await toEntities(read.contents);
+				const { folders, files } =
+					(read.converted as Awaited<ReturnType<typeof toEntities>> | undefined) ??
+					(await toEntities(read.contents));
 				seed = {
 					entities: [...folders, ...files] as (ArFSFileOrFolderEntity<'file' | 'folder'> & {
 						blockHeight: number;

@@ -37,6 +37,8 @@ export interface DriveStateReadResult {
 	 * after the producer's last sync is in no artifact.
 	 */
 	coveredThroughBlock?: number;
+	/** What {@link DriveStateReadParams.convert} returned, when the outcome is `used`. */
+	converted?: unknown;
 }
 
 export interface DriveStateReadParams {
@@ -47,6 +49,13 @@ export interface DriveStateReadParams {
 	syncedToBlock?: number;
 	/** The artifact a stateful caller last imported, so it is not read again. */
 	lastImported?: { txId: string; syncedThroughBlock: number };
+	/**
+	 * Turns the rows into the caller's entities. Run before an artifact counts
+	 * as used, so one whose rows pass the reader but make no valid entity (a
+	 * negative size, say) is refused like any other and the next candidate is
+	 * tried. Its result is {@link DriveStateReadResult.converted}.
+	 */
+	convert?: (contents: DriveStateContents) => Promise<unknown>;
 }
 
 export interface DriveStateSourceParams {
@@ -58,6 +67,12 @@ export interface DriveStateSourceParams {
 	maxCandidates?: number;
 	/** Where the one line per drive goes. */
 	log?: (line: string) => void;
+	/**
+	 * The network's current block height. A `Block-End` above it is honoured
+	 * only up to it, as the format requires: a claim past the chain's tip would
+	 * otherwise start every later read above blocks that do not exist yet.
+	 */
+	currentHeight?: () => Promise<number>;
 }
 
 /** A gateway may add framing; a body this far past the format's bound is not an artifact. */
@@ -69,14 +84,17 @@ export class DriveStateSource {
 	private readonly cache?: DriveStateBodyCache;
 	private readonly maxCandidates: number;
 	private readonly log: (line: string) => void;
+	private readonly currentHeight?: () => Promise<number>;
 
 	constructor({
 		gatewayApi,
 		engine,
 		cache,
 		maxCandidates = 3,
-		log = (line) => console.error(line)
+		log = (line) => console.error(line),
+		currentHeight
 	}: DriveStateSourceParams) {
+		this.currentHeight = currentHeight;
 		this.gatewayApi = gatewayApi;
 		this.engine = engine;
 		this.cache = cache === false ? undefined : (cache ?? new DriveStateBodyCache());
@@ -115,6 +133,7 @@ export class DriveStateSource {
 
 		let last: DriveStateReadResult | undefined;
 		let attempts = 0;
+		let height: number | Error | undefined;
 		for (const candidate of candidates.slice(0, this.maxCandidates)) {
 			attempts++;
 			const blockEnd = Number(candidate.tags[DriveStateTagName.blockEnd]);
@@ -171,24 +190,55 @@ export class DriveStateSource {
 			}
 
 			try {
-				const contents = await readDriveState(candidate, body, {
+				let contents = await readDriveState(candidate, body, {
 					expectedOwnerAddress: `${owner}`,
 					protection,
 					syncedToBlock,
 					engine: this.engine
 				});
+				let converted: unknown;
+				if (params.convert) {
+					try {
+						converted = await params.convert(contents);
+					} catch (e) {
+						if (e instanceof DriveStateRefused) {
+							throw e;
+						}
+						throw new DriveStateRefused(
+							'integrity-failed',
+							`its rows do not make valid entities: ${e instanceof Error ? e.message : e}`
+						);
+					}
+				}
 				// Cached only once read: a bad body served with a 200 would otherwise
 				// be refused from disk forever, since the key never goes stale.
 				if (!fromCache) {
 					await this.cache?.put(`${driveId}`, candidate.txId, body);
 				}
+				let clamped = '';
+				if (this.currentHeight) {
+					height ??= await this.heightOrError();
+					if (height instanceof Error) {
+						return {
+							outcome: 'fetch-failed',
+							detail: `could not read the current block height to bound Block-End: ${height.message}`,
+							txId: candidate.txId,
+							attempts
+						};
+					}
+					if (height < contents.blockEnd) {
+						clamped = `, honoured up to the current height ${height}`;
+						contents = { ...contents, blockEnd: height };
+					}
+				}
 				return {
 					outcome: 'used',
-					detail: `read ${contents.entityCount} entities through block ${contents.blockEnd}`,
+					detail: `read ${contents.entityCount} entities through block ${candidate.tags[DriveStateTagName.blockEnd]}${clamped}`,
 					txId: candidate.txId,
 					attempts,
 					contents,
-					coveredThroughBlock: Math.max(0, contents.blockEnd - DRIVE_STATE_LOOK_BACK_BLOCKS)
+					coveredThroughBlock: Math.max(0, contents.blockEnd - DRIVE_STATE_LOOK_BACK_BLOCKS),
+					converted
 				};
 			} catch (e) {
 				if (!(e instanceof DriveStateRefused)) {
@@ -205,6 +255,47 @@ export class DriveStateSource {
 			}
 		}
 		return last!;
+	}
+
+	/**
+	 * Of the drive states already published for a drive, the one holding the
+	 * most entities, from its `Entity-Count` tag. Undefined when there is none
+	 * or discovery fails: a producer then has nothing to check its count against.
+	 */
+	async largestPublished({
+		driveId,
+		owner
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+	}): Promise<{ txId: string; entityCount: number } | undefined> {
+		let candidates: DriveStateCandidate[];
+		try {
+			candidates = await this.discover({ driveId, owner, protection: { kind: 'public' } });
+		} catch (e) {
+			this.log(`[drive-state] ${driveId}: could not look up published drive states: ${e}`);
+			return undefined;
+		}
+		let largest: { txId: string; entityCount: number } | undefined;
+		for (const candidate of candidates) {
+			const entityCount = Number(candidate.tags[DriveStateTagName.entityCount]);
+			if (Number.isSafeInteger(entityCount) && entityCount > (largest?.entityCount ?? 0)) {
+				largest = { txId: candidate.txId, entityCount };
+			}
+		}
+		return largest;
+	}
+
+	private async heightOrError(): Promise<number | Error> {
+		try {
+			const height = await this.currentHeight!();
+			if (!Number.isSafeInteger(height) || height <= 0) {
+				return new Error(`the gateway reported height ${height}`);
+			}
+			return height;
+		} catch (e) {
+			return e instanceof Error ? e : new Error(`${e}`);
+		}
 	}
 
 	private async discover({ driveId, owner, syncedToBlock }: DriveStateReadParams): Promise<DriveStateCandidate[]> {

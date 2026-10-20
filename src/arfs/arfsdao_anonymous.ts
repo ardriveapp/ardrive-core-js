@@ -442,7 +442,10 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	/** Finds and reads drive state artifacts, created on first use. */
 	protected get driveStateSource(): DriveStateSource {
 		if (!this.driveStateSourceInstance) {
-			this.driveStateSourceInstance = new DriveStateSource({ gatewayApi: this.gatewayApi });
+			this.driveStateSourceInstance = new DriveStateSource({
+				gatewayApi: this.gatewayApi,
+				currentHeight: async () => (await this.arweave.network.getInfo()).height
+			});
 		}
 		return this.driveStateSourceInstance;
 	}
@@ -507,11 +510,14 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			fileNodes: GQLNodeInterface[]
 		) => Promise<{ folders: Folder[]; files: File[] }>;
 	}): Promise<{ folders: Folder[]; files: File[] } | null> {
-		const result = await this.driveStateSource.read({ driveId, owner, protection });
+		const result = await this.driveStateSource.read({ driveId, owner, protection, convert: fromContents });
 		if (result.outcome !== 'used' || !result.contents || result.coveredThroughBlock === undefined) {
 			return null;
 		}
-		const base = await fromContents(result.contents);
+		// A source that does not convert, such as a test double, leaves it to here.
+		const base =
+			(result.converted as { folders: Folder[]; files: File[] } | undefined) ??
+			(await fromContents(result.contents));
 		const floor = result.coveredThroughBlock;
 
 		// A snapshot that cannot be read costs only its own blocks: GraphQL covers
@@ -863,6 +869,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			producer,
 			driveStateId: uuidv4(),
 			log,
+			published: await this.driveStateSource.largestPublished({ driveId, owner }),
 			chain: this.driveStateChain(driveId, owner, false, async (_node, data) => JSON.parse(data.toString('utf8')))
 		});
 	}

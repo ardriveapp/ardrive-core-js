@@ -562,6 +562,10 @@ The build refuses, with a `DriveStateBuildRefused` naming the reason, rather tha
 - `empty-drive`: the drive has no folders or files.
 - `no-drive`: no drive entity was found from the owner, or its privacy is not the one asked for.
 - `too-large`: the database is 100 MiB or more, which every reader refuses.
+- `incomplete-index`: the gateway returned fewer entities than a drive state already published for the drive holds, or not the drive's root folder. Entities are never deleted, so the gateway has not indexed the whole drive; build through one that has.
+- `unreadable`: the built drive state fails the checks every reader runs, so it is not uploaded.
+
+The build reads its result back as a reader would before returning it.
 
 Licence details are not included. Readers read each file's licence from its `licenseTxId`, which is included.
 

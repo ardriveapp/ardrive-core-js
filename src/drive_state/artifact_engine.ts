@@ -18,9 +18,21 @@ export interface ArtifactDatabase {
 	all(sql: string, params?: SqlValue[]): ArtifactRow[];
 	/** Runs [sql] for its effect. */
 	run(sql: string, params?: SqlValue[]): void;
+	/**
+	 * Prepares [sql] once to run with many parameter lists, which a builder
+	 * inserting tens of thousands of rows needs. Optional: callers fall back to
+	 * {@link run}.
+	 */
+	prepare?(sql: string): ArtifactStatement;
 	/** The database file's bytes. */
 	exportBytes(): Uint8Array;
 	close(): void;
+}
+
+/** A statement prepared by {@link ArtifactDatabase.prepare}. */
+export interface ArtifactStatement {
+	run(params: SqlValue[]): void;
+	free(): void;
 }
 
 export interface ArtifactEngine {
@@ -37,9 +49,17 @@ class SqlJsArtifactDatabase implements ArtifactDatabase {
 		const statement = this.db.prepare(sql);
 		try {
 			statement.bind(params);
+			// getAsObject reads the column names again for every row, which
+			// is most of the cost of reading a large table.
+			const columns = statement.getColumnNames();
 			const rows: ArtifactRow[] = [];
 			while (statement.step()) {
-				rows.push(statement.getAsObject() as ArtifactRow);
+				const values = statement.get();
+				const row: ArtifactRow = {};
+				for (let i = 0; i < columns.length; i++) {
+					row[columns[i]] = values[i];
+				}
+				rows.push(row);
 			}
 			return rows;
 		} finally {
@@ -49,6 +69,18 @@ class SqlJsArtifactDatabase implements ArtifactDatabase {
 
 	run(sql: string, params: SqlValue[] = []): void {
 		this.db.run(sql, params);
+	}
+
+	prepare(sql: string): ArtifactStatement {
+		const statement = this.db.prepare(sql);
+		return {
+			run: (params) => {
+				statement.run(params);
+			},
+			free: () => {
+				statement.free();
+			}
+		};
 	}
 
 	exportBytes(): Uint8Array {
