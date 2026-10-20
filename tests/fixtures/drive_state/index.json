@@ -75,7 +75,7 @@
     "driveKey": null,
     "syncedToBlock": 0
   },
-  "payloadSha256": "b503b8edc0d7a4e9ba0d825d5ab60b1df9dd9733d0e661691a0edea899c35219",
+  "payloadSha256": "dac2c30b3bd30282b32aa044e90c15382638647d6c169c746283493b51144153",
   "expected": {
     "outcome": "integrityFailed",
     "detail": "found index \"file_names\""

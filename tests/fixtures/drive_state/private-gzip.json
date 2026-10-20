@@ -83,10 +83,10 @@
     "driveKey": "CzBVep_E6Q4zWH2ix-wRNluApcrvFDleg6jN8hc8YYY",
     "syncedToBlock": 0
   },
-  "payloadSha256": "2d485c4d1dc48f7440e92a798382b6e004e4893615afe1a7b54d190e071c5066",
+  "payloadSha256": "42d26bcf7ff3c9785fc94ed1cf5297a2f36f1b57956b72fa0a8cc14f9b3784d9",
   "expected": {
     "outcome": "used",
-    "detail": "imported=8 of 9 entities (folders=3 files=5 drive=1 kept-local=0 materialised-folders=0) revisions=15 licenses=1 transactions=21 watermark=1500000 parse=43ms merge=21ms",
+    "detail": "imported=8 of 9 entities (folders=3 files=5 drive=1 kept-local=0 materialised-folders=0) revisions=15 licenses=1 transactions=21 watermark=1500000 parse=49ms merge=20ms",
     "tables": {
       "meta": [
         {
@@ -109,7 +109,7 @@
           "privacy": "private",
           "bundledIn": "wkC4FAG6X3Sg4uZgp0ZNXaIHSI76tCTqrzGyJiwTmxo",
           "customJsonMetadata": "{\"project\":\"fixtures\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"drive\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"drive\"}]",
           "isHidden": 0,
           "signatureType": "1",
           "dateCreated": 1700000000,
@@ -129,7 +129,7 @@
           "isHidden": 0
         },
         {
-          "id": "folder-docs",
+          "id": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Documents",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -140,23 +140,23 @@
           "isHidden": 0
         },
         {
-          "id": "folder-archive",
+          "id": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Archive",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
           "dateCreated": 1700000030,
           "lastUpdated": 1700000040,
           "customJsonMetadata": "{\"why\":\"old\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"folder\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"folder\"}]",
           "isHidden": 1
         }
       ],
       "file_entries": [
         {
-          "id": "file-report",
+          "id": "2b3c4d5e-0001-4000-8000-0000000e9077",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "report.pdf",
-          "parentFolderId": "folder-docs",
+          "parentFolderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "size": 1024,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -166,17 +166,17 @@
           "thumbnail": "{\"variants\":[{\"name\":\"thumbnail\",\"txId\":\"JbHelS6zOIZpRKnyWLZc5R-OF_JPQuO0fU6rstjoaro\",\"size\":2048,\"width\":256,\"height\":256}]}",
           "pinnedDataOwnerAddress": null,
           "customJsonMetadata": "{\"department\":\"finance\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"report\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"report\"}]",
           "isHidden": 0,
           "dateCreated": 1700000100,
           "lastUpdated": 1700000120,
-          "assignedNames": "[\"report_fixtures\"]",
+          "assignedNames": "{\"assignedNames\":[\"report_fixtures\"]}",
           "fallbackTxId": null,
           "originalOwner": null,
           "importSource": null
         },
         {
-          "id": "file-pinned",
+          "id": "2b3c4d5e-0002-4000-8000-0000000b1a7e",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "pinned.jpg",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -199,10 +199,10 @@
           "importSource": "arweave"
         },
         {
-          "id": "file-hidden",
+          "id": "2b3c4d5e-0003-4000-8000-0000000d1dde",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "old.txt",
-          "parentFolderId": "folder-archive",
+          "parentFolderId": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "size": 12,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -222,10 +222,10 @@
           "importSource": null
         },
         {
-          "id": "file-pending",
+          "id": "2b3c4d5e-0004-4000-8000-0000000be4d1",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "uploading.mov",
-          "parentFolderId": "folder-docs",
+          "parentFolderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "size": 52428800,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -245,7 +245,7 @@
           "importSource": null
         },
         {
-          "id": "file-failed",
+          "id": "2b3c4d5e-0005-4000-8000-0000000fa11e",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "failed.zip",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -280,7 +280,7 @@
           "action": "create",
           "bundledIn": "1h55U_ks4FUYEDxulNXVsmgomrvPhhS8YSIqsJTl-H4",
           "customJsonMetadata": "{\"project\":\"fixtures\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"drive\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"drive\"}]",
           "isHidden": 0
         },
         {
@@ -294,7 +294,7 @@
           "action": "rename",
           "bundledIn": "mmKBADaNgcruutyIJlpagOa8D-AK_k4rkAT65BvOI8c",
           "customJsonMetadata": "{\"project\":\"fixtures\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"drive\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"drive\"}]",
           "isHidden": 0
         }
       ],
@@ -312,7 +312,7 @@
           "isHidden": 0
         },
         {
-          "folderId": "folder-docs",
+          "folderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Docs",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -324,7 +324,7 @@
           "isHidden": 0
         },
         {
-          "folderId": "folder-docs",
+          "folderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Documents",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -336,7 +336,7 @@
           "isHidden": 0
         },
         {
-          "folderId": "folder-archive",
+          "folderId": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Archive",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -344,11 +344,11 @@
           "dateCreated": 1700000030,
           "action": "create",
           "customJsonMetadata": "{\"why\":\"old\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"folder\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"folder\"}]",
           "isHidden": 0
         },
         {
-          "folderId": "folder-archive",
+          "folderId": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "Archive",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -356,13 +356,13 @@
           "dateCreated": 1700000040,
           "action": "hide",
           "customJsonMetadata": "{\"why\":\"old\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"folder\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"folder\"}]",
           "isHidden": 1
         }
       ],
       "file_revisions": [
         {
-          "fileId": "file-report",
+          "fileId": "2b3c4d5e-0001-4000-8000-0000000e9077",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "draft.pdf",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -376,17 +376,17 @@
           "bundledIn": "15cQMe9bMN5ijmZlx0hziyunxNmWxDXrtCcv2yq7phs",
           "dateCreated": 1700000100,
           "customJsonMetadata": "{\"department\":\"finance\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"report\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"report\"}]",
           "action": "create",
           "pinnedDataOwnerAddress": null,
           "isHidden": 0,
-          "assignedNames": "[\"report_fixtures\"]",
+          "assignedNames": "{\"assignedNames\":[\"report_fixtures\"]}",
           "fallbackTxId": null,
           "originalOwner": null,
           "importSource": null
         },
         {
-          "fileId": "file-report",
+          "fileId": "2b3c4d5e-0001-4000-8000-0000000e9077",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "report.pdf",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -400,20 +400,20 @@
           "bundledIn": "15cQMe9bMN5ijmZlx0hziyunxNmWxDXrtCcv2yq7phs",
           "dateCreated": 1700000110,
           "customJsonMetadata": "{\"department\":\"finance\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"report\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"report\"}]",
           "action": "rename",
           "pinnedDataOwnerAddress": null,
           "isHidden": 0,
-          "assignedNames": "[\"report_fixtures\"]",
+          "assignedNames": "{\"assignedNames\":[\"report_fixtures\"]}",
           "fallbackTxId": null,
           "originalOwner": null,
           "importSource": null
         },
         {
-          "fileId": "file-report",
+          "fileId": "2b3c4d5e-0001-4000-8000-0000000e9077",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "report.pdf",
-          "parentFolderId": "folder-docs",
+          "parentFolderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "size": 1024,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -424,17 +424,17 @@
           "bundledIn": "15cQMe9bMN5ijmZlx0hziyunxNmWxDXrtCcv2yq7phs",
           "dateCreated": 1700000120,
           "customJsonMetadata": "{\"department\":\"finance\"}",
-          "customGQLTags": "{\"Fixture-Tag\":\"report\"}",
+          "customGQLTags": "[{\"name\":\"Fixture-Tag\",\"value\":\"report\"}]",
           "action": "move",
           "pinnedDataOwnerAddress": null,
           "isHidden": 0,
-          "assignedNames": "[\"report_fixtures\"]",
+          "assignedNames": "{\"assignedNames\":[\"report_fixtures\"]}",
           "fallbackTxId": null,
           "originalOwner": null,
           "importSource": null
         },
         {
-          "fileId": "file-pinned",
+          "fileId": "2b3c4d5e-0002-4000-8000-0000000b1a7e",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "pinned.jpg",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -458,10 +458,10 @@
           "importSource": "arweave"
         },
         {
-          "fileId": "file-hidden",
+          "fileId": "2b3c4d5e-0003-4000-8000-0000000d1dde",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "old.txt",
-          "parentFolderId": "folder-archive",
+          "parentFolderId": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "size": 12,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -482,10 +482,10 @@
           "importSource": null
         },
         {
-          "fileId": "file-hidden",
+          "fileId": "2b3c4d5e-0003-4000-8000-0000000d1dde",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "old.txt",
-          "parentFolderId": "folder-archive",
+          "parentFolderId": "1a2b3c4d-0002-4000-8000-0000000a7c41",
           "size": 12,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -506,10 +506,10 @@
           "importSource": null
         },
         {
-          "fileId": "file-pending",
+          "fileId": "2b3c4d5e-0004-4000-8000-0000000be4d1",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "uploading.mov",
-          "parentFolderId": "folder-docs",
+          "parentFolderId": "1a2b3c4d-0001-4000-8000-00000000d0c5",
           "size": 52428800,
           "lastModifiedDate": 1699913600,
           "dataContentType": "application/pdf",
@@ -530,7 +530,7 @@
           "importSource": null
         },
         {
-          "fileId": "file-failed",
+          "fileId": "2b3c4d5e-0005-4000-8000-0000000fa11e",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "name": "failed.zip",
           "parentFolderId": "0f1e2d3c-4b5a-4968-8776-655443322110",
@@ -556,7 +556,7 @@
       ],
       "licenses": [
         {
-          "fileId": "file-report",
+          "fileId": "2b3c4d5e-0001-4000-8000-0000000e9077",
           "driveId": "6e5f8f5a-2d1b-4c3e-9a7b-0c1d2e3f4a5b",
           "dataTxId": "eR5CJwRgZKAuP7MwvaPdKsrtnz-57r-XmAf3vsd-O4U",
           "licenseTxType": "assertion",

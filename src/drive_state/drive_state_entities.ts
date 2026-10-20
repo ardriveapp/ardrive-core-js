@@ -33,20 +33,118 @@ export interface DriveStateEntities<Folder, File> {
 	files: File[];
 }
 
-function parseJsonObject<T>(raw: string | null, column: string, id: string): T | undefined {
-	if (raw === null) {
-		return undefined;
-	}
-	let parsed: unknown;
+function parseJson(raw: string, column: string, id: string): unknown {
 	try {
-		parsed = JSON.parse(raw);
+		return JSON.parse(raw);
 	} catch (e) {
 		refuse('integrity-failed', `${column} of ${id} is not JSON: ${e}`);
 	}
-	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		refuse('integrity-failed', `${column} of ${id} is not a JSON object`);
+}
+
+/**
+ * Tags core-js's own entity builders consume rather than keep as custom
+ * metadata, so an entity read from an artifact carries the same custom tags as
+ * one built from GraphQL.
+ */
+const CONSUMED_TAGS = new Set([
+	'App-Name',
+	'App-Version',
+	'ArFS',
+	'Content-Type',
+	'Drive-Id',
+	'Entity-Type',
+	'Unix-Time',
+	'Boost',
+	'File-Id',
+	'Folder-Id',
+	'Parent-Folder-Id',
+	'Cipher',
+	'Cipher-IV',
+	'Pinned-Data-Tx',
+	'ArFS-Pin'
+]);
+
+/**
+ * `customGQLTags`: ardrive-web writes the tags as a JSON array of
+ * `{name, value}` in transaction order. core-js keeps custom tags as a record,
+ * with a repeated name's values in an array.
+ */
+export function customTagsFromColumn(
+	raw: string | null,
+	id: string
+): { tags?: CustomMetaDataGqlTags; pinnedDataTxId?: string } {
+	if (raw === null) {
+		return {};
 	}
-	return parsed as T;
+	const parsed = parseJson(raw, 'customGQLTags', id);
+	const pairs: { name: unknown; value: unknown }[] = Array.isArray(parsed)
+		? parsed
+		: parsed !== null && typeof parsed === 'object'
+			? Object.entries(parsed as Record<string, unknown>).flatMap(([name, value]) =>
+					Array.isArray(value) ? value.map((v) => ({ name, value: v })) : [{ name, value }]
+				)
+			: refuse('integrity-failed', `customGQLTags of ${id} is not a JSON array`);
+	const tags: CustomMetaDataGqlTags = {};
+	let pinnedDataTxId: string | undefined;
+	for (const pair of pairs) {
+		if (
+			pair === null ||
+			typeof pair !== 'object' ||
+			typeof pair.name !== 'string' ||
+			typeof pair.value !== 'string'
+		) {
+			refuse('integrity-failed', `customGQLTags of ${id} holds an entry that is not a name and a value`);
+		}
+		if (pair.name === 'Pinned-Data-Tx') {
+			pinnedDataTxId ??= pair.value;
+		}
+		if (CONSUMED_TAGS.has(pair.name)) {
+			continue;
+		}
+		const previous = tags[pair.name];
+		tags[pair.name] =
+			previous === undefined
+				? pair.value
+				: Array.isArray(previous)
+					? [...previous, pair.value]
+					: [previous, pair.value];
+	}
+	return { tags: Object.keys(tags).length > 0 ? tags : undefined, pinnedDataTxId };
+}
+
+/** Metadata JSON keys core-js's builders model, per entity type. */
+const MODELLED_JSON_KEYS = {
+	file: new Set([
+		'name',
+		'size',
+		'lastModifiedDate',
+		'dataTxId',
+		'dataContentType',
+		'isHidden',
+		'pinnedDataOwner',
+		'thumbnail',
+		'assignedNames'
+	]),
+	folder: new Set(['name', 'isHidden'])
+};
+
+/** `customJsonMetadata`: a JSON object of the metadata fields ArFS does not define. */
+export function customJsonFromColumn(
+	raw: string | null,
+	id: string,
+	entityType: 'file' | 'folder'
+): CustomMetaDataJsonFields | undefined {
+	if (raw === null) {
+		return undefined;
+	}
+	const parsed = parseJson(raw, 'customJsonMetadata', id);
+	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		refuse('integrity-failed', `customJsonMetadata of ${id} is not a JSON object`);
+	}
+	const kept = Object.entries(parsed as Record<string, unknown>).filter(
+		([key]) => !MODELLED_JSON_KEYS[entityType].has(key)
+	);
+	return kept.length > 0 ? (Object.fromEntries(kept) as CustomMetaDataJsonFields) : undefined;
 }
 
 function metadataTxId(row: { id: string; metadataTxId: string | null }) {
@@ -86,8 +184,8 @@ export function publicFolderFromRow(row: DriveStateFolderRow): ArFSPublicFolder 
 			parentOf(row),
 			EID(row.id),
 			undefined,
-			parseJsonObject<CustomMetaDataGqlTags>(row.customGQLTags, 'customGQLTags', row.id),
-			parseJsonObject<CustomMetaDataJsonFields>(row.customJsonMetadata, 'customJsonMetadata', row.id)
+			customTagsFromColumn(row.customGQLTags, row.id).tags,
+			customJsonFromColumn(row.customJsonMetadata, row.id, 'folder')
 		);
 		folder.isHidden = row.isHidden;
 		return folder;
@@ -98,6 +196,15 @@ function setPin(entity: ArFSPublicFile | ArFSPrivateFile, row: DriveStateFileRow
 	entity.isHidden = row.isHidden;
 	if (row.pinnedDataOwnerAddress !== null) {
 		entity.pinnedDataOwner = row.pinnedDataOwnerAddress;
+	}
+	// As the builders do, a malformed Pinned-Data-Tx tag is ignored.
+	const { pinnedDataTxId } = customTagsFromColumn(row.customGQLTags, row.id);
+	if (pinnedDataTxId !== undefined) {
+		try {
+			entity.pinnedDataTxId = TxID(pinnedDataTxId);
+		} catch {
+			// ignored
+		}
 	}
 }
 
@@ -121,8 +228,8 @@ export function publicFileFromRow(row: DriveStateFileRow): ArFSPublicFile {
 			TxID(row.dataTxId),
 			row.dataContentType ?? extToMime(row.name),
 			undefined,
-			parseJsonObject<CustomMetaDataGqlTags>(row.customGQLTags, 'customGQLTags', row.id),
-			parseJsonObject<CustomMetaDataJsonFields>(row.customJsonMetadata, 'customJsonMetadata', row.id)
+			customTagsFromColumn(row.customGQLTags, row.id).tags,
+			customJsonFromColumn(row.customJsonMetadata, row.id, 'file')
 		);
 		setPin(file, row);
 		return file;
@@ -146,8 +253,8 @@ export function privateFolderFromRow(row: DriveStateFolderRow, driveKey: DriveKe
 			'',
 			driveKey,
 			undefined,
-			parseJsonObject<CustomMetaDataGqlTags>(row.customGQLTags, 'customGQLTags', row.id),
-			parseJsonObject<CustomMetaDataJsonFields>(row.customJsonMetadata, 'customJsonMetadata', row.id)
+			customTagsFromColumn(row.customGQLTags, row.id).tags,
+			customJsonFromColumn(row.customJsonMetadata, row.id, 'folder')
 		);
 		folder.isHidden = row.isHidden;
 		return folder;
@@ -177,8 +284,8 @@ export async function privateFileFromRow(row: DriveStateFileRow, driveKey: Drive
 			fileKey,
 			driveKey,
 			undefined,
-			parseJsonObject<CustomMetaDataGqlTags>(row.customGQLTags, 'customGQLTags', row.id),
-			parseJsonObject<CustomMetaDataJsonFields>(row.customJsonMetadata, 'customJsonMetadata', row.id)
+			customTagsFromColumn(row.customGQLTags, row.id).tags,
+			customJsonFromColumn(row.customJsonMetadata, row.id, 'file')
 		);
 		setPin(file, row);
 		return file;
