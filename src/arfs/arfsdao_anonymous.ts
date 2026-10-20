@@ -57,6 +57,9 @@ import { DriveStateSource } from '../drive_state/drive_state_source';
 import { DriveStateContents } from '../drive_state/drive_state_reader';
 import { DriveStateProtection } from '../drive_state/drive_state_envelope';
 import { publicEntitiesFromContents } from '../drive_state/drive_state_entities';
+import { BuiltDriveState, buildDriveState, DriveStateChain, NodeWithBundle } from '../drive_state/drive_state_builder';
+import { buildDriveHistoryQuery, buildMinedTxIdsQuery } from '../drive_state/drive_state_query';
+import { v4 as uuidv4 } from 'uuid';
 
 export abstract class ArFSDAOType {
 	protected abstract readonly arweave: Arweave;
@@ -734,6 +737,103 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 			}
 		}
 		return null;
+	}
+
+	/** Every page of a drive's own revisions of [entityTypes] between two heights, oldest first. */
+	protected async driveHistoryNodes(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		entityTypes: string[],
+		bounds: { minBlockHeight?: number; maxBlockHeight?: number } = {}
+	): Promise<NodeWithBundle[]> {
+		const nodes: NodeWithBundle[] = [];
+		let cursor: string | undefined;
+		let hasNextPage = true;
+		while (hasNextPage) {
+			const page = await this.gatewayApi.gqlRequest(
+				buildDriveHistoryQuery({ driveId, owner, entityTypes, cursor, ...bounds })
+			);
+			hasNextPage = page.pageInfo.hasNextPage;
+			if (page.edges.length === 0) {
+				break;
+			}
+			for (const edge of page.edges) {
+				cursor = edge.cursor;
+				nodes.push(edge.node as NodeWithBundle);
+			}
+		}
+		return nodes;
+	}
+
+	/**
+	 * The chain as a drive state producer reads it: the drive's revisions from
+	 * snapshots where it has them and GraphQL for the rest, with metadata read
+	 * through [readMetadata].
+	 */
+	protected driveStateChain(
+		driveId: DriveID,
+		owner: ArweaveAddress,
+		isPrivate: boolean,
+		readMetadata: (node: GQLNodeInterface, data: Buffer) => Promise<Record<string, unknown>>
+	): DriveStateChain {
+		return {
+			currentHeight: async () => (await this.arweave.network.getInfo()).height,
+			driveNodes: () => this.driveHistoryNodes(driveId, owner, ['drive']),
+			folderAndFileNodes: async () => {
+				let snapshots: SnapshotWithBody[] = [];
+				try {
+					snapshots = (await this.fetchDriveSnapshotsWithBodies(driveId, owner)) ?? [];
+				} catch (e) {
+					console.error(`[drive-state] ${driveId}: reading the drive without its snapshots: ${e}`);
+				}
+				const composite = buildDriveHistoryComposite({ snapshotsNewestFirst: snapshots, owner, isPrivate });
+				for (const entry of composite.metadataCache) {
+					this.gatewayApi.cacheMetadataForTxId(TxID(entry.txId), entry.data);
+				}
+				const tail: NodeWithBundle[] = [];
+				for (const bound of composite.tailBounds) {
+					tail.push(...(await this.driveHistoryNodes(driveId, owner, ['folder', 'file'], bound)));
+				}
+				return [...(composite.snapshotNodes as NodeWithBundle[]), ...tail];
+			},
+			metadata: async (node) => readMetadata(node, await this.gatewayApi.getTxData(TxID(node.id))),
+			minedTxIds: async (ids) => {
+				const page = await this.gatewayApi.gqlRequest(buildMinedTxIdsQuery(ids));
+				return new Set(
+					page.edges
+						.filter((edge) => edge.node.block && edge.node.block.height !== null)
+						.map((edge) => edge.node.id)
+				);
+			}
+		};
+	}
+
+	/**
+	 * Builds a public drive's Drive State artifact from chain data, ready to
+	 * upload. Throws {@link DriveStateBuildRefused} when the drive cannot be
+	 * published as it stands.
+	 */
+	async buildPublicDriveState({
+		driveId,
+		owner,
+		producer,
+		log
+	}: {
+		driveId: DriveID;
+		owner: ArweaveAddress;
+		/** `<App-Name>/<App-Version>`. */
+		producer: string;
+		log?: (line: string) => void;
+	}): Promise<BuiltDriveState> {
+		return buildDriveState({
+			driveId: `${driveId}`,
+			owner: `${owner}`,
+			protection: { kind: 'public' },
+			producer,
+			driveStateId: uuidv4(),
+			log,
+			chain: this.driveStateChain(driveId, owner, false, async (_node, data) => JSON.parse(data.toString('utf8')))
+		});
 	}
 
 	/** {@link driveEntitiesViaDriveState} for a public drive. */

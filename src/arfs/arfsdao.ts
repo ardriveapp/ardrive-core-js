@@ -85,7 +85,14 @@ import {
 import { buildQuery, ASCENDING_ORDER, DESCENDING_ORDER, GQLQuery } from '../utils/query';
 import { buildDriveHistoryComposite, sortNodesNewestFirst } from '../snapshots';
 import { DataItem, bundleAndSignData, createData } from '@dha-team/arbundles';
-import { CIPHER_AES_256_CTR, CIPHER_AES_256_GCM, deriveDriveKey, deriveFileKey, driveDecrypt } from '../utils/crypto';
+import {
+	CIPHER_AES_256_CTR,
+	CIPHER_AES_256_GCM,
+	deriveDriveKey,
+	deriveFileKey,
+	driveDecrypt,
+	fileDecrypt
+} from '../utils/crypto';
 import {
 	DEFAULT_APP_NAME,
 	DEFAULT_APP_VERSION,
@@ -205,6 +212,8 @@ import { errorMessage } from '../utils/error_message';
 import { parseDriveSignatureType } from '../utils/common_browser';
 import { EntityDecryptionError, InvalidFileStateException } from '../types/exceptions';
 import { privateEntitiesFromContents } from '../drive_state/drive_state_entities';
+import { BuiltDriveState, buildDriveState } from '../drive_state/drive_state_builder';
+import { ArFSDriveStatePrototype } from '../drive_state/drive_state_prototype';
 
 /** Utility class for holding the driveId and driveKey of a new drive */
 export class PrivateDriveKeyData {
@@ -2950,6 +2959,66 @@ export class ArFSDAO extends ArFSDAOAnonymous implements IArFSDAO {
 		]);
 
 		return { folders, files };
+	}
+
+	/**
+	 * Builds a private drive's Drive State artifact from chain data, sealed under
+	 * its drive key, ready to upload. Throws {@link DriveStateBuildRefused} when
+	 * the drive cannot be published as it stands.
+	 */
+	async buildPrivateDriveState({
+		driveId,
+		driveKey,
+		owner,
+		producer,
+		log
+	}: {
+		driveId: DriveID;
+		driveKey: DriveKey;
+		owner: ArweaveAddress;
+		/** `<App-Name>/<App-Version>`. */
+		producer: string;
+		log?: (line: string) => void;
+	}): Promise<BuiltDriveState> {
+		return buildDriveState({
+			driveId: `${driveId}`,
+			owner: `${owner}`,
+			protection: { kind: 'private', driveKey: driveKey.keyData },
+			producer,
+			driveStateId: uuidv4(),
+			log,
+			chain: this.driveStateChain(driveId, owner, true, async (node, data) => {
+				const tag = (name: string) => node.tags.find((t) => t.name === name)?.value;
+				const cipherIV = tag('Cipher-IV');
+				const cipher = tag('Cipher');
+				if (!cipherIV) {
+					throw new Error(`${node.id} has no Cipher-IV`);
+				}
+				const plaintext =
+					tag('Entity-Type') === 'file'
+						? await fileDecrypt(cipherIV, await deriveFileKey(tag('File-Id') ?? '', driveKey), data, cipher)
+						: await driveDecrypt(cipherIV, driveKey, data, cipher);
+				return JSON.parse(plaintext.toString('utf8'));
+			})
+		});
+	}
+
+	/** An L1 transaction for a built Drive State. */
+	async prepareDriveStateTransaction(
+		built: BuiltDriveState,
+		rewardSettings: RewardSettings = {}
+	): Promise<Transaction> {
+		return this.txPreparer.prepareMetaDataTx({
+			objectMetaData: new ArFSDriveStatePrototype(built) as unknown as ArFSEntityMetaDataPrototype,
+			rewardSettings
+		});
+	}
+
+	/** A signed data item for a built Drive State, for Turbo. */
+	async prepareDriveStateDataItem(built: BuiltDriveState): Promise<DataItem> {
+		return this.txPreparer.prepareMetaDataDataItem({
+			objectMetaData: new ArFSDriveStatePrototype(built) as unknown as ArFSEntityMetaDataPrototype
+		});
 	}
 
 	/** {@link driveEntitiesViaDriveState} for a private drive, under its drive key. */

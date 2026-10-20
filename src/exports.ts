@@ -74,3 +74,4 @@ export * from './utils/sync_state_store_browser';
 
 // Snapshots (consumption foundation — CORE-3)
 export * from './snapshots';
+export * from './drive_state';

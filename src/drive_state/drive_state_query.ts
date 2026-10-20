@@ -1,5 +1,5 @@
 import { ArweaveAddress, EntityID } from '../types';
-import { DESCENDING_ORDER, GQLQuery } from '../utils/query';
+import { ASCENDING_ORDER, DESCENDING_ORDER, GQLQuery } from '../utils/query';
 import { DRIVE_STATE_ENTITY_TYPE, DriveStateTagName } from './drive_state_tags';
 
 export interface BuildDriveStateQueryParams {
@@ -50,6 +50,93 @@ export function buildDriveStateQuery({ driveId, owner, minBlockHeight }: BuildDr
 						tags {
 							name
 							value
+						}
+					}
+				}
+			}
+		}`
+	};
+}
+
+/**
+ * A page of a drive's own entity revisions, oldest first, with the fields a
+ * producer records: the owner, the bundle a revision was posted in, its block
+ * and its tags.
+ */
+export function buildDriveHistoryQuery({
+	driveId,
+	owner,
+	entityTypes,
+	cursor,
+	minBlockHeight,
+	maxBlockHeight
+}: {
+	driveId: EntityID;
+	owner: ArweaveAddress;
+	entityTypes: string[];
+	cursor?: string;
+	minBlockHeight?: number;
+	maxBlockHeight?: number;
+}): GQLQuery {
+	const bounds = [
+		minBlockHeight !== undefined ? `min: ${minBlockHeight}` : '',
+		maxBlockHeight !== undefined ? `max: ${maxBlockHeight}` : ''
+	].filter((b) => b);
+	return {
+		query: `query {
+			transactions(
+				first: 100
+				sort: ${ASCENDING_ORDER}
+				owners: ["${owner}"]
+				${cursor ? `after: "${cursor}"` : ''}
+				${bounds.length ? `block: { ${bounds.join(', ')} }` : ''}
+				tags: [
+					{ name: "Drive-Id", values: ["${driveId}"] }
+					{ name: "Entity-Type", values: [${entityTypes.map((t) => `"${t}"`).join(', ')}] }
+				]
+			) {
+				pageInfo {
+					hasNextPage
+				}
+				edges {
+					cursor
+					node {
+						id
+						owner {
+							address
+						}
+						bundledIn {
+							id
+						}
+						block {
+							height
+							timestamp
+						}
+						tags {
+							name
+							value
+						}
+					}
+				}
+			}
+		}`
+	};
+}
+
+/** Which of [ids] the gateway knows as mined: transactions and bundled data items alike. */
+export function buildMinedTxIdsQuery(ids: string[]): GQLQuery {
+	return {
+		query: `query {
+			transactions(first: 100, ids: [${ids.map((id) => `"${id}"`).join(', ')}]) {
+				pageInfo {
+					hasNextPage
+				}
+				edges {
+					cursor
+					node {
+						id
+						block {
+							height
 						}
 					}
 				}

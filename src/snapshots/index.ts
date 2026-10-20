@@ -1,8 +1,7 @@
-// ArFS snapshot consumption foundation (CORE-3).
+// ArFS snapshot consumption.
 //
-// Pure, self-contained building blocks for replaying drive history from ArFS
-// snapshots. These are NOT yet wired into the live listing path — that
-// integration (composite merge, entity cache) is a later phase.
+// Building blocks for replaying drive history from ArFS snapshots, used by the
+// listing path after a drive's Drive State artifact (see ../drive_state).
 export * from './range';
 export * from './height_range';
 export * from './snapshot_obscuring';
