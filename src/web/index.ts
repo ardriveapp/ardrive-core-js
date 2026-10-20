@@ -27,6 +27,13 @@ export {
 } from './ardrive_web';
 export { TurboWeb, type TurboSettings } from './turbo_web';
 
+// Drive State: reading drives from their published state. Off until the page
+// says where sql.js's wasm is.
+export { enableDriveState } from './drive_state_web';
+export { DriveStateSource, type DriveStateReadResult } from '../drive_state/drive_state_source';
+export { readDriveState, type DriveStateContents, type DriveStateCandidate } from '../drive_state/drive_state_reader';
+export type { DriveStateOutcome } from '../drive_state/drive_state_outcome';
+
 // Re-export signer types and classes for convenience
 export type { ArweaveSigner, Signer } from '@dha-team/arbundles';
 export { ArconnectSigner } from '@dha-team/arbundles';

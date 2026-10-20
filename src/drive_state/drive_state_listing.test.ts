@@ -107,6 +107,16 @@ describe('DriveStateSource', () => {
 		expect(result.attempts).to.equal(3);
 	});
 
+	it('refuses a format it does not read without downloading it', async () => {
+		const edge = edgeFor('state-version-next-major');
+		const { gateway, fetch } = fakeGateway([edge], {});
+
+		const result = await new DriveStateSource({ gatewayApi: gateway, cache: false, log }).read(params);
+
+		expect(result.outcome).to.equal('unknown-version');
+		expect(fetch.called).to.equal(false);
+	});
+
 	it('ignores a node from another owner or drive', async () => {
 		const stranger = edgeFor('public-gzip', 'S'.repeat(43));
 		stranger.node.owner = { address: 'someone-else' } as GQLNodeInterface['owner'];

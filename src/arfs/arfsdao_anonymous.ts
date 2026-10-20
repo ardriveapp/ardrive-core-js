@@ -54,6 +54,7 @@ import { gatewayUrlForArweave } from '../utils/common_browser';
 import { GatewayAPI } from '../utils/gateway_api';
 import { InvalidFileStateException } from '../types/exceptions';
 import { DriveStateSource } from '../drive_state/drive_state_source';
+import { driveStateSupported } from '../drive_state/artifact_engine';
 import { DriveStateContents } from '../drive_state/drive_state_reader';
 import { DriveStateProtection } from '../drive_state/drive_state_envelope';
 import { publicEntitiesFromContents } from '../drive_state/drive_state_entities';
@@ -446,7 +447,7 @@ export class ArFSDAOAnonymous extends ArFSDAOType {
 	 * to force those paths.
 	 */
 	protected driveStateEnabled(useDriveState?: boolean): boolean {
-		if (process.env['ARDRIVE_DISABLE_DRIVE_STATE'] === '1') {
+		if (process.env['ARDRIVE_DISABLE_DRIVE_STATE'] === '1' || !driveStateSupported()) {
 			return false;
 		}
 		return useDriveState !== false;

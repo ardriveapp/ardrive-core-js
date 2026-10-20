@@ -12,6 +12,7 @@ import { DriveStateBodyCache } from './drive_state_cache';
 import { candidateFromNode, isUsableCandidate, orderCandidates } from './drive_state_discovery';
 import { DriveStateProtection } from './drive_state_envelope';
 import { DriveStateOutcome, DriveStateRefused } from './drive_state_outcome';
+import { DriveStateFormatVersion } from './drive_state_format_version';
 import { buildDriveStateQuery } from './drive_state_query';
 import { DriveStateCandidate, DriveStateContents, readDriveState } from './drive_state_reader';
 import { DRIVE_STATE_LOOK_BACK_BLOCKS, DRIVE_STATE_MAX_PLAINTEXT_BYTES, DriveStateTagName } from './drive_state_tags';
@@ -144,6 +145,20 @@ export class DriveStateSource {
 					txId: candidate.txId,
 					attempts
 				};
+			}
+
+			// A format this build does not read is refused from its tag, without
+			// downloading the body only to refuse it. The reader would refuse it the
+			// same way; this only saves the download.
+			const version = DriveStateFormatVersion.tryParse(candidate.tags[DriveStateTagName.stateVersion]);
+			if (version && !version.isReadableByThisBuild) {
+				last = {
+					outcome: 'unknown-version',
+					detail: `State-Version is ${version} and this build reads ${DriveStateFormatVersion.current}`,
+					txId: candidate.txId,
+					attempts
+				};
+				continue;
 			}
 
 			let body: Uint8Array;

@@ -31,7 +31,9 @@ export class DriveStateBodyCache {
 
 	async get(driveId: string, txId: string): Promise<Buffer | undefined> {
 		try {
-			return await fs.promises.readFile(this.pathFor(driveId, txId));
+			const body = await fs.promises.readFile(this.pathFor(driveId, txId));
+			// An empty file is no body: a write that never finished, or a stubbed fs.
+			return body.byteLength > 0 ? body : undefined;
 		} catch {
 			return undefined;
 		}

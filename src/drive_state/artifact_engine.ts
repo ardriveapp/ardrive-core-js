@@ -100,12 +100,27 @@ export class SqlJsArtifactEngine implements ArtifactEngine {
 
 let defaultEngine: ArtifactEngine | undefined;
 
+/** Whether this is a browser page rather than Node. */
+function inBrowser(): boolean {
+	return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
 /** The engine used when a caller passes none. */
 export function defaultArtifactEngine(): ArtifactEngine {
 	if (!defaultEngine) {
 		defaultEngine = new SqlJsArtifactEngine();
 	}
 	return defaultEngine;
+}
+
+/**
+ * Whether Drive State can be read here. Always in Node. In a browser only once
+ * the page has said where sql.js's wasm is ({@link setDefaultArtifactEngine},
+ * or `enableDriveState` in the web build): without it every read would fail
+ * and fall back, at the cost of a query and a download per drive.
+ */
+export function driveStateSupported(): boolean {
+	return !inBrowser() || defaultEngine !== undefined;
 }
 
 /** Replaces the default engine, such as the web build's, which knows where its wasm is. */
