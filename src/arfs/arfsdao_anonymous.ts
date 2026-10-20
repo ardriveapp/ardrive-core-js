@@ -108,16 +108,29 @@ export const defaultArFSAnonymousCache: ArFSAnonymousCache = {
  * Performs all ArFS spec operations that do NOT require a wallet for signing or decryption
  */
 /**
- * [base] with each entity [later] holds replaced by [later]'s copy. [later] is
- * one revision per entity.
+ * [base] with each entity [later] holds replaced by [later]'s copy, unless
+ * [base]'s is newer. [later] is one revision per entity.
+ *
+ * The later sources cover every block above the artifact's margin, so they
+ * normally hold the artifact's newest revision of an entity or a newer one. The
+ * check is for when they do not: a reader's gateway can lag the producer's,
+ * and its newest copy of an entity can then be older than the artifact's.
+ * Newer by `Unix-Time`, the order ardrive-web's merge uses; a tie goes to the
+ * later source.
  */
-export function laterRevisionsWin<T extends { entityId: { toString(): string } }>(base: T[], later: T[]): T[] {
+export function laterRevisionsWin<T extends { entityId: { toString(): string }; unixTime: { valueOf(): number } }>(
+	base: T[],
+	later: T[]
+): T[] {
 	const byId = new Map<string, T>();
 	for (const entity of base) {
 		byId.set(`${entity.entityId}`, entity);
 	}
 	for (const entity of later) {
-		byId.set(`${entity.entityId}`, entity);
+		const held = byId.get(`${entity.entityId}`);
+		if (held === undefined || +entity.unixTime >= +held.unixTime) {
+			byId.set(`${entity.entityId}`, entity);
+		}
 	}
 	return [...byId.values()];
 }

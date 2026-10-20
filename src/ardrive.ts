@@ -28,7 +28,7 @@ import {
 } from './arfs/tx/arfs_tx_data_types';
 import { ArFSDAO } from './arfs/arfsdao';
 import { IncrementalSyncOptions, IncrementalSyncResult, DriveSyncState, EntitySyncState } from './types/sync_types';
-import { ArFSDAOAnonymous } from './arfs/arfsdao_anonymous';
+import { ArFSDAOAnonymous, laterRevisionsWin } from './arfs/arfsdao_anonymous';
 import { DriveStateProtection } from './drive_state/drive_state_envelope';
 import { DriveStateContents } from './drive_state/drive_state_reader';
 import { privateEntitiesFromContents, publicEntitiesFromContents } from './drive_state/drive_state_entities';
@@ -2448,19 +2448,14 @@ export class ArDrive extends ArDriveAnonymous {
 
 		const result = await sync({ ...options, syncState: seedState, stopAfterKnownCount: Number.MAX_SAFE_INTEGER });
 
-		// Every entity the later blocks hold replaces the artifact's copy of it.
-		const byId = new Map<string, ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number }>();
-		for (const entity of seed.entities) {
-			byId.set(`${entity.entityId}`, entity);
-		}
-		const later = options.includeRevisions ? [] : result.entities;
-		for (const entity of later) {
-			byId.set(
-				`${entity.entityId}`,
-				entity as ArFSFileOrFolderEntity<'file' | 'folder'> & { blockHeight: number }
-			);
-		}
-		const entities = options.includeRevisions ? [...seed.entities, ...result.entities] : [...byId.values()];
+		// An entity the later blocks hold replaces the artifact's copy of it, unless
+		// the artifact's is newer (see laterRevisionsWin).
+		const merged = laterRevisionsWin(
+			seed.entities,
+			(options.includeRevisions ? [] : result.entities) as typeof seed.entities
+		);
+		const byId = new Map(merged.map((entity) => [`${entity.entityId}`, entity]));
+		const entities = options.includeRevisions ? [...seed.entities, ...result.entities] : merged;
 
 		return {
 			...result,

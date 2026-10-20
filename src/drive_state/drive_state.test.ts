@@ -248,6 +248,19 @@ describe('drive state rows as entities', () => {
 		expect(`${root.parentFolderId}`).to.equal('root folder');
 	});
 
+	it('skips a file filed under an empty parent instead of refusing the drive', async () => {
+		const { candidate, body, owner } = fixture('public-gzip');
+		const contents = await readDriveState(candidate, body, {
+			expectedOwnerAddress: owner,
+			protection: { kind: 'public' }
+		});
+		contents.files[0].parentFolderId = '';
+
+		const { files } = publicEntitiesFromContents(contents);
+
+		expect(files).to.have.length(contents.files.length - 1);
+	});
+
 	it('derives each private file key from the drive key', async () => {
 		const { candidate, body, owner, driveKey } = fixture('private-gzip');
 		const contents = await readDriveState(candidate, body, {

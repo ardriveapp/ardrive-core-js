@@ -292,12 +292,30 @@ export async function privateFileFromRow(row: DriveStateFileRow, driveKey: Drive
 	});
 }
 
+/**
+ * Whether a file row can be listed. ardrive-web files a file whose metadata
+ * has no `Parent-Folder-Id` under an empty parent, which no folder can hold:
+ * core-js's own builders skip such a file, so a reader skips its row rather
+ * than refuse the whole artifact over it.
+ */
+function listable(row: DriveStateFileRow): boolean {
+	try {
+		EID(row.parentFolderId);
+		return true;
+	} catch {
+		console.error(
+			`[drive-state] skipping file ${row.id}: its parent folder id "${row.parentFolderId}" is not an entity id`
+		);
+		return false;
+	}
+}
+
 export function publicEntitiesFromContents(
 	contents: DriveStateContents
 ): DriveStateEntities<ArFSPublicFolder, ArFSPublicFile> {
 	return {
 		folders: contents.folders.map(publicFolderFromRow),
-		files: contents.files.map(publicFileFromRow)
+		files: contents.files.filter(listable).map(publicFileFromRow)
 	};
 }
 
@@ -306,7 +324,7 @@ export async function privateEntitiesFromContents(
 	driveKey: DriveKey
 ): Promise<DriveStateEntities<ArFSPrivateFolder, ArFSPrivateFile>> {
 	const files: ArFSPrivateFile[] = [];
-	for (const row of contents.files) {
+	for (const row of contents.files.filter(listable)) {
 		files.push(await privateFileFromRow(row, driveKey));
 	}
 	return {

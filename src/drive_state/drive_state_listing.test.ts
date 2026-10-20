@@ -190,6 +190,7 @@ describe('listing from drive state', () => {
 			driveId: EID(DRIVE),
 			txId: TxID('M'.repeat(43))
 		});
+		(moved as { unixTime: UnixTime }).unixTime = new UnixTime(report.lastUpdated + 1);
 		stub(internals, 'buildPublicFoldersFromNodes').resolves([]);
 		stub(internals, 'buildPublicFilesFromNodes').resolves([moved]);
 
@@ -201,6 +202,32 @@ describe('listing from drive state', () => {
 		const listed = result!.files.find((f) => `${f.fileId}` === report.id)!;
 		expect(listed.name).to.equal('moved.pdf');
 		expect(result!.folders).to.have.length(contents.folders.length);
+	});
+
+	it("keeps the artifact's copy when a lagging gateway's newest revision is older", async () => {
+		const contents = await contentsOf('public-gzip');
+		const { internals } = await daoUsing({
+			outcome: 'used',
+			contents,
+			coveredThroughBlock: contents.blockEnd - 240
+		});
+		stub(internals, 'fetchDriveSnapshotsWithBodies').resolves(null);
+		stub(internals, 'getSnapshotTailNodes').resolves([]);
+		const report = contents.files.find((f) => f.name === 'report.pdf')!;
+		const stale = stubPublicFile({
+			fileId: EID(report.id),
+			fileName: 'draft.pdf',
+			parentFolderId: EID(contents.drive.rootFolderId),
+			driveId: EID(DRIVE),
+			txId: TxID('S'.repeat(43))
+		});
+		(stale as { unixTime: UnixTime }).unixTime = new UnixTime(report.lastUpdated - 1);
+		stub(internals, 'buildPublicFoldersFromNodes').resolves([]);
+		stub(internals, 'buildPublicFilesFromNodes').resolves([stale]);
+
+		const result = await internals.getPublicDriveEntitiesViaDriveState(EID(DRIVE), ADDR(OWNER));
+
+		expect(result!.files.find((f) => `${f.fileId}` === report.id)!.name).to.equal('report.pdf');
 	});
 
 	it('is null, so the caller lists another way, when the drive has no usable artifact', async () => {
@@ -228,6 +255,7 @@ describe('listing from drive state', () => {
 			driveId: EID(DRIVE),
 			txId: TxID('M'.repeat(43))
 		});
+		(moved as { unixTime: UnixTime }).unixTime = new UnixTime(report.lastUpdated + 1);
 		stub(internals, 'buildPublicFilesFromNodes').resolves([moved]);
 		const docs = contents.folders.find((f) => f.id === report.parentFolderId)!;
 		const docsFolder = (await internals.getPublicDriveEntitiesViaDriveState(EID(DRIVE), ADDR(OWNER)))!.folders.find(

@@ -242,7 +242,13 @@ export class GatewayAPI {
 	 * caller can do without, such as a Drive State artifact, whose failure is a
 	 * fallback rather than an error.
 	 */
-	public async getTxDataBounded(txId: TransactionID, maxBytes: number, attempts = 3): Promise<Buffer> {
+	public async getTxDataBounded(
+		txId: TransactionID,
+		maxBytes: number,
+		attempts = 3,
+		// Longer than the default request timeout: the body can be large.
+		timeoutMs = 300_000
+	): Promise<Buffer> {
 		let lastError: unknown;
 		for (let attempt = 0; attempt < attempts; attempt++) {
 			try {
@@ -250,6 +256,7 @@ export class GatewayAPI {
 					responseType: 'arraybuffer',
 					maxContentLength: maxBytes,
 					maxBodyLength: maxBytes,
+					timeout: timeoutMs,
 					validateStatus: undefined
 				});
 				if (response.status === 200) {

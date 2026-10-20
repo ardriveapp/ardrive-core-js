@@ -84,6 +84,7 @@ describe('a first incremental sync from drive state', () => {
 			txId: TxID('R'.repeat(43))
 		});
 		(renamed as any).blockHeight = c.blockEnd + 10;
+		(renamed as any).unixTime = new UnixTime(report.lastUpdated + 1);
 		const sync = stub().resolves(result([renamed], c.blockEnd + 10));
 
 		const synced = await arDriveWith(
