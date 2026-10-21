@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Requires Node.js 22.12 or later** (`engines`), and is developed and published on Node 24
+  LTS. Node 18 and 20 are end of life and receive no security fixes. 22.12 is the first
+  22.x that loads ES-module-only dependencies from CommonJS, which current versions of
+  `uuid` (through `@ardrive/turbo-sdk`) need: a fresh install on Node 18 fails with
+  `ERR_REQUIRE_ESM`. CI tests 22 and 24.
+
 ## [4.5.0] - 2026-10-20
 
 ### Fixed
