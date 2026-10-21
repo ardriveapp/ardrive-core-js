@@ -39,6 +39,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc" # OIDC trusted publishing needs Node >= 22.14.0
+          check-latest: true # the newest patch, not the runner's cached one
           registry-url: "https://registry.npmjs.org"
 
       # Trusted publishing (OIDC) needs npm >= 11.5.1. Node 24 bundles a newer one,
