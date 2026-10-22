@@ -140,5 +140,5 @@ The library supports Turbo for optimized uploads:
 
 ### Node Version Requirements
 
-- Node.js >= 18 (enforced in package.json)
+- Node.js >= 22.12 (package.json `engines`); develop on 24, the version in `.nvmrc`. CI tests 22 and 24
 - Use with nvm: `nvm install && nvm use`

@@ -4,13 +4,18 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The supported LTS lines: 22 (maintenance) and 24 (.nvmrc).
+        node: ["22", "24"]
 
     steps:
       - uses: actions/checkout@v4
       - name: Set Up node
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version: ${{ matrix.node }}
+          check-latest: true # the newest patch, not the runner's cached one
           cache: "yarn"
 
       - name: Install dependencies
