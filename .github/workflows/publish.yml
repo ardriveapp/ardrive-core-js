@@ -56,6 +56,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      # Every wallet made from an ArDrive seed phrase depends on key derivation never
+      # changing. CI checks one known wallet; a release checks all of them.
+      - name: Verify seed phrase wallets
+        run: SEED_PHRASE_VECTORS=all npx mocha --no-config -r ts-node/register/transpile-only --exit src/utils/seed_phrase_keys.test.ts
+
       - name: Build Node bundle (lib/)
         run: yarn build
 

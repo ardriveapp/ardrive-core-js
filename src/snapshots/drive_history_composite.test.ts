@@ -124,6 +124,20 @@ describe('DriveHistoryComposite', () => {
 			expect(bounds(result.claimed)).to.deep.equal([{ min: 101, max: undefined }]);
 		});
 
+		it('emits an entity with empty metadata but leaves its metadata uncached', () => {
+			const entry = {
+				gqlNode: node({ id: 'file-tx', entityType: 'file', entityId: 'f1', height: 50 }),
+				jsonMetadata: ''
+			};
+			const result = buildDriveHistoryComposite({
+				snapshotsNewestFirst: [snapshot(0, 100, 'snapA', [entry])],
+				owner: ADDR(OWNER),
+				isPrivate: false
+			});
+			expect(result.snapshotNodes.map((n) => n.id)).to.deep.equal(['file-tx']);
+			expect(result.metadataCache).to.deep.equal([]);
+		});
+
 		it('newest-snapshot-wins: entities of a fully-obscured older snapshot are dropped', () => {
 			const newer = snapshot(0, 100, 'snapNew', [
 				{

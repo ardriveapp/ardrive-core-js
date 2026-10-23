@@ -49,6 +49,14 @@ describe('parseSnapshotData', () => {
 		expect(data.txSnapshots[0].jsonMetadata).to.be.null;
 	});
 
+	it('treats an empty jsonMetadata as missing, keeping the node', () => {
+		const body = JSON.stringify({ txSnapshots: [{ gqlNode: gqlNode('tx-1'), jsonMetadata: '' }] });
+		const data = parseSnapshotData(body);
+		expect(data.txSnapshots.length).to.equal(1);
+		expect(data.txSnapshots[0].gqlNode.id).to.equal('tx-1');
+		expect(data.txSnapshots[0].jsonMetadata).to.be.null;
+	});
+
 	describe('fail-soft behavior', () => {
 		it('returns empty for invalid JSON', () => {
 			expect(parseSnapshotData('{not json').txSnapshots).to.deep.equal([]);
