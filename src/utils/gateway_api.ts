@@ -220,7 +220,7 @@ export class GatewayAPI {
 			return snapshotCached;
 		}
 		const cachedData = await ArFSMetadataCache.get(txId);
-		if (cachedData) {
+		if (cachedData && cachedData.length > 0) {
 			return cachedData;
 		}
 		const { data: txData } = await this.retryRequestUntilMaxRetries<ArrayBuffer>(() =>
@@ -231,7 +231,10 @@ export class GatewayAPI {
 
 		// Convert ArrayBuffer to Buffer for consistent handling across Node.js and browser
 		const buffer = Buffer.from(txData);
-		await ArFSMetadataCache.put(txId, buffer);
+		// An empty body is not metadata: return it, but do not keep it.
+		if (buffer.length > 0) {
+			await ArFSMetadataCache.put(txId, buffer);
+		}
 		return buffer;
 	}
 

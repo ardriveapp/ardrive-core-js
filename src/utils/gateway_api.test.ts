@@ -559,5 +559,26 @@ describe('GatewayAPI class', () => {
 			expect(await gatewayApi.getTxData(txId)).to.deep.equal(metadata);
 			expect(axiosGet.callCount).to.equal(1);
 		});
+
+		it('treats empty metadata on disk as a miss and fetches it', async () => {
+			stub(ArFSMetadataCache, 'get').resolves(Buffer.alloc(0));
+			const diskPut = stub(ArFSMetadataCache, 'put').resolves();
+			const axiosGet = stub(axiosInstance, 'get').resolves({ status: 200, data: metadata });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			expect(await gatewayApi.getTxData(txId)).to.deep.equal(metadata);
+			expect(axiosGet.callCount).to.equal(1);
+			expect(diskPut.calledOnceWith(txId, metadata)).to.be.true;
+		});
+
+		it('does not store an empty body on disk', async () => {
+			stub(ArFSMetadataCache, 'get').resolves(undefined);
+			const diskPut = stub(ArFSMetadataCache, 'put').resolves();
+			stub(axiosInstance, 'get').resolves({ status: 200, data: new ArrayBuffer(0) });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+
+			expect((await gatewayApi.getTxData(txId)).length).to.equal(0);
+			expect(diskPut.callCount).to.equal(0);
+		});
 	});
 });
