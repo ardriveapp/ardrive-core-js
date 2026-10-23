@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [5.0.0] - 2026-10-23
 
 ### Changed
 
@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   22.x that loads ES-module-only dependencies from CommonJS, which current versions of
   `uuid` (through `@ardrive/turbo-sdk`) need: a fresh install on Node 18 fails with
   `ERR_REQUIRE_ESM`. CI tests 22 and 24.
+- **Installs on npm 11 again.** Seed phrase wallet derivation no longer comes from a fork
+  of `human-crypto-keys` installed from git, which npm 11.19 (bundled with Node 24)
+  refuses in a project install (`EALLOWSCRIPTS`). The derivation is now part of core-js,
+  with its dependencies pinned (`bip39`, `node-forge`, `hmac-drbg`, `hash.js`). It makes
+  byte-identical wallets: tests pin the full private key of 11 known seed phrases made by
+  4.5.0, CI checks one and every publish checks all of them.
+
+### Fixed
+
+- **A snapshot entry with empty metadata no longer breaks listings and manifests.** Some
+  snapshots carry `""` as a file's metadata. It was cached as the metadata and parsed,
+  so the file was dropped from listings with `Unexpected end of JSON input`, and
+  `create-manifest` failed. Empty metadata is now treated as missing and fetched from the
+  gateway as usual ([ardrive-cli#384](https://github.com/ardriveapp/ardrive-cli/issues/384)).
 
 ## [4.5.0] - 2026-10-20
 
