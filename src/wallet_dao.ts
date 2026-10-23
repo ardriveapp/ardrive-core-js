@@ -16,8 +16,7 @@ import {
 import { Wallet } from './wallet';
 import { DEFAULT_APP_NAME, DEFAULT_APP_VERSION } from './utils/constants';
 import assertTagLimits from './arfs/tags/tag_assertions';
-import { generateKeyPair, getKeyPairFromMnemonic } from 'human-crypto-keys';
-import nodeCrypto from 'node:crypto';
+import { generateSeedPhraseMnemonic, rsaJwkFromMnemonic } from './utils/seed_phrase_keys';
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
 export type ARTransferResult = {
@@ -25,9 +24,6 @@ export type ARTransferResult = {
 	winston: Winston;
 	reward: NetworkReward;
 };
-
-const algorithm = { id: 'rsa', modulusLength: 4096 } as const;
-const options = { privateKeyFormat: 'pkcs8-pem' } as const;
 
 export class WalletDAO {
 	constructor(
@@ -37,17 +33,12 @@ export class WalletDAO {
 	) {}
 
 	async generateSeedPhrase(): Promise<SeedPhrase> {
-		const keys = await generateKeyPair(algorithm, options);
-		return new SeedPhrase(keys.mnemonic);
+		return new SeedPhrase(generateSeedPhraseMnemonic());
 	}
 
 	async generateJWKWallet(seedPhrase: SeedPhrase): Promise<JWKWallet> {
-		const { privateKey } = await getKeyPairFromMnemonic(seedPhrase.toString(), algorithm, options);
-
-		const pem = nodeCrypto.createPrivateKey({ key: privateKey, format: 'pem' });
-		const jwk = pem.export({ format: 'jwk' });
-
-		return Promise.resolve(new JWKWallet(jwk as JWKInterface));
+		const jwk = await rsaJwkFromMnemonic(seedPhrase.toString());
+		return new JWKWallet(jwk as JWKInterface);
 	}
 
 	async getWalletWinstonBalance(wallet: Wallet): Promise<Winston> {
