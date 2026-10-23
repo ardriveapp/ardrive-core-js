@@ -36,8 +36,12 @@ function parseTxSnapshot(raw: unknown): TxSnapshot | null {
 	}
 
 	let jsonMetadata: string | null;
-	if (typeof entry.jsonMetadata === 'string') {
+	if (typeof entry.jsonMetadata === 'string' && entry.jsonMetadata.length > 0) {
 		jsonMetadata = entry.jsonMetadata;
+	} else if (entry.jsonMetadata === '') {
+		// Snapshots in the wild carry "" for an entity whose metadata the writer could
+		// not fetch. It is not metadata: keep the node, and fetch the metadata as usual.
+		jsonMetadata = null;
 	} else if (entry.jsonMetadata === null || entry.jsonMetadata === undefined) {
 		jsonMetadata = null;
 	} else {

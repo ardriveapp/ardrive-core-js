@@ -13,6 +13,7 @@ import {
 	FATAL_CHUNK_UPLOAD_ERRORS
 } from './constants';
 import { GatewayAPI } from './gateway_api';
+import { ArFSMetadataCache } from '../arfs/arfs_metadata_cache';
 
 describe('GatewayAPI class', () => {
 	const arweave = Arweave.init({
@@ -530,6 +531,33 @@ describe('GatewayAPI class', () => {
 			// path (NOT a 60s wait) and did NOT consume the rate-limit budget.
 			expect(throttleSpy.callCount).to.equal(1);
 			expect(axiosSpy.callCount).to.equal(3);
+		});
+	});
+
+	describe('getTxData method', () => {
+		const txId = stubTransactionID;
+		const metadata = Buffer.from('{"name":"file.txt"}');
+
+		it('returns metadata seeded from a snapshot without a disk or network read', async () => {
+			const diskGet = stub(ArFSMetadataCache, 'get').resolves(undefined);
+			const axiosGet = stub(axiosInstance, 'get');
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+			gatewayApi.cacheMetadataForTxId(txId, metadata);
+
+			expect(await gatewayApi.getTxData(txId)).to.deep.equal(metadata);
+			expect(diskGet.callCount).to.equal(0);
+			expect(axiosGet.callCount).to.equal(0);
+		});
+
+		it('treats empty seeded metadata as a miss and fetches it', async () => {
+			stub(ArFSMetadataCache, 'get').resolves(undefined);
+			stub(ArFSMetadataCache, 'put').resolves();
+			const axiosGet = stub(axiosInstance, 'get').resolves({ status: 200, data: metadata });
+			const gatewayApi = new GatewayAPI({ gatewayUrl, axiosInstance });
+			gatewayApi.cacheMetadataForTxId(txId, Buffer.alloc(0));
+
+			expect(await gatewayApi.getTxData(txId)).to.deep.equal(metadata);
+			expect(axiosGet.callCount).to.equal(1);
 		});
 	});
 });

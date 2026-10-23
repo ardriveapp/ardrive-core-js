@@ -215,7 +215,8 @@ export class GatewayAPI {
 		// Snapshot-seeded in-memory cache first: a hit here means the metadata came
 		// from a snapshot body and no network fetch (nor even a disk read) is needed.
 		const snapshotCached = this.snapshotMetadataCache.get(`${txId}`);
-		if (snapshotCached) {
+		// An empty Buffer is truthy, and no metadata is empty: treat it as a miss.
+		if (snapshotCached && snapshotCached.length > 0) {
 			return snapshotCached;
 		}
 		const cachedData = await ArFSMetadataCache.get(txId);

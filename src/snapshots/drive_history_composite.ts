@@ -177,7 +177,8 @@ export function buildDriveHistoryComposite(params: {
 
 			snapshotNodes.push(node);
 
-			if (entry.jsonMetadata !== null && entry.jsonMetadata !== undefined) {
+			// Empty metadata is no metadata: leave it uncached so it is fetched.
+			if (entry.jsonMetadata) {
 				const bytes = isPrivate
 					? Buffer.from(entry.jsonMetadata, 'base64')
 					: Buffer.from(entry.jsonMetadata, 'utf8');
