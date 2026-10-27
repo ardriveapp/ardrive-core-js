@@ -86,7 +86,9 @@ export class ArFSTagSettings {
 		tags.push(
 			...(isPrivate
 				? [privateOctetContentTypeTag, privateCipherTag, fakePrivateCipherIVTag]
-				: [{ name: 'Content-Type', value: dataContentType }])
+				: [{ name: 'Content-Type', value: dataContentType }]),
+			// As ArFSFileDataPrototype stamps it: ten digits until the year 2286
+			{ name: 'Unix-Time', value: `${Math.floor(Date.now() / 1000)}` }
 		);
 
 		return tags;

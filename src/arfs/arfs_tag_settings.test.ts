@@ -37,11 +37,33 @@ describe('ArFSTagSettings class', () => {
 		]);
 	});
 
-	it('returns the expected file data item tags', () => {
-		expect(arFSTagSettings.getFileDataItemTags(false, 'application/json')).to.deep.equal([
+	it('returns the expected file data item tags, dated in seconds as the file data prototype dates them', () => {
+		const tags = arFSTagSettings.getFileDataItemTags(false, 'application/json');
+		expect(tags.slice(0, 3)).to.deep.equal([
 			{ name: 'App-Name', value: 'Tag-Builder-Test' },
 			{ name: 'App-Version', value: '1.2' },
 			{ name: 'Content-Type', value: 'application/json' }
 		]);
+		expect(tags).to.have.length(4);
+		expectNowInSeconds(tags[3]);
+	});
+
+	it('returns the expected private file data item tags, dated as well', () => {
+		const tags = arFSTagSettings.getFileDataItemTags(true, 'application/json');
+		expect(tags.map((t) => t.name)).to.deep.equal([
+			'App-Name',
+			'App-Version',
+			'Content-Type',
+			'Cipher',
+			'Cipher-IV',
+			'Unix-Time'
+		]);
+		expectNowInSeconds(tags[5]);
 	});
 });
+
+function expectNowInSeconds(tag: { name: string; value: string }): void {
+	expect(tag.name).to.equal('Unix-Time');
+	expect(tag.value).to.match(/^\d{10}$/);
+	expect(Math.abs(+tag.value - Date.now() / 1000)).to.be.lessThan(60);
+}

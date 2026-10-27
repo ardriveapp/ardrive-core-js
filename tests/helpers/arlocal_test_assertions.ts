@@ -364,11 +364,13 @@ export function assertFileDataTxGqlTags(
 	const expectedCustomTags: GQLTagInterface[] = mapMetaDataTagInterfaceToGqlTagInterface(customMetaData);
 
 	const cipherIv = dataTxTags.find((tag) => tag.name === 'Cipher-IV')?.value;
+	const unixTime = assertFileDataIsDated(dataTxTags);
 	const isPublic = !cipherIv;
 	if (isPublic) {
 		expect(dataTxTags).to.deep.equal([
 			...expectedCustomTags,
 			{ name: 'Content-Type', value: contentType ?? defaultPublicDataContentType },
+			{ name: 'Unix-Time', value: unixTime },
 			{ name: 'App-Name', value: 'ArLocal Integration Test' },
 			{ name: 'App-Version', value: 'FAKE_VERSION' },
 			{ name: 'Tip-Type', value: 'data upload' }
@@ -377,6 +379,7 @@ export function assertFileDataTxGqlTags(
 		expect(dataTxTags).to.deep.equal([
 			...expectedCustomTags,
 			{ name: 'Content-Type', value: contentType ?? defaultPrivateDataContentType },
+			{ name: 'Unix-Time', value: unixTime },
 			{ name: 'Cipher', value: 'AES256-GCM' },
 			{ name: 'Cipher-IV', value: cipherIv },
 			{ name: 'App-Name', value: 'ArLocal Integration Test' },
@@ -384,4 +387,14 @@ export function assertFileDataTxGqlTags(
 			{ name: 'Tip-Type', value: 'data upload' }
 		]);
 	}
+}
+
+/** File data carries one Unix-Time tag: whole seconds, stamped within the last ten minutes. Returns its value. */
+export function assertFileDataIsDated(tags: GQLTagInterface[]): string {
+	const dated = tags.filter((t) => t.name === 'Unix-Time');
+	expect(dated, 'one Unix-Time tag on the file data').to.have.length(1);
+	const value = dated[0].value;
+	expect(value).to.match(/^\d{10}$/);
+	expect(Date.now() / 1000 - +value).to.be.within(-5, 600);
+	return value;
 }

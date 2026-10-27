@@ -1524,7 +1524,7 @@ describe('ArDrive class - integrated', () => {
 
 				assertUploadFileExpectations({
 					result,
-					fileFee: W(5959),
+					fileFee: W(5980),
 					metadataFee: W(166),
 					expectedTip: W(1),
 					expectedEntityName: 'test_wallet.json',
@@ -1806,7 +1806,7 @@ describe('ArDrive class - integrated', () => {
 				});
 				assertUploadFileExpectations({
 					result,
-					fileFee: W(6097),
+					fileFee: W(6118),
 					metadataFee: W(187),
 					expectedTip: W(1),
 					expectPrivateKey: true,
@@ -2874,7 +2874,7 @@ describe('ArDrive class - integrated', () => {
 				folderId: stubEntityID
 			});
 
-			assertUploadManifestExpectations(result, W(3130), W(186), W(1), undefined, undefined, true);
+			assertUploadManifestExpectations(result, W(3151), W(186), W(1), undefined, undefined, true);
 		});
 
 		it('returns the correct turbo ArFSResult for manifest', async () => {
@@ -2960,7 +2960,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(5959),
+				fileFee: W(5980),
 				metadataFee: W(166),
 				expectedTip: W(1),
 				expectedEntityName: 'test_wallet.json',
@@ -3176,7 +3176,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(16331);
+			expect(+fees[`${bundleTxId}`]).to.equal(16415);
 		});
 
 		// Legacy bulk method test for to confirm backwards compatibility and coverage
@@ -3199,7 +3199,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[8]);
 
 			expect(feeKeys[0]).to.equal(`${created[8].bundleTxId!}`);
-			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17183);
+			expect(+fees[`${created[8].bundleTxId}`]).to.equal(17267);
 		});
 
 		it('returns the expected ArFSResult with a folder that has conflicting names within its tree and uses --skip conflictResolution', async () => {
@@ -3319,7 +3319,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[3]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(17803);
+			expect(+fees[`${bundleTxId}`]).to.equal(17866);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3379,7 +3379,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[3]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(17828);
+			expect(+fees[`${bundleTxId}`]).to.equal(17891);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3440,7 +3440,7 @@ describe('ArDrive class - integrated', () => {
 			assertBundleCreatedResult(created[2]);
 
 			expect(feeKeys[0]).to.equal(`${bundleTxId}`);
-			expect(+fees[`${bundleTxId}`]).to.equal(11904);
+			expect(+fees[`${bundleTxId}`]).to.equal(11946);
 
 			assertTipSetting(tips[0], bundleTxId!);
 		});
@@ -3532,7 +3532,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(6097),
+				fileFee: W(6118),
 				metadataFee: W(187),
 				expectedTip: W(1),
 				expectPrivateKey: true,
@@ -3661,7 +3661,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2756),
+				fileFee: W(2777),
 				metadataFee: W(159),
 				expectedTip: W(1),
 				isBundled: true,
@@ -3681,7 +3681,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2764),
+				fileFee: W(2785),
 				metadataFee: W(163),
 				expectedTip: W(1),
 				isBundled: true,
@@ -3702,7 +3702,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2900),
+				fileFee: W(2921),
 				metadataFee: W(179),
 				expectedTip: W(1),
 				expectPrivateKey: true,
@@ -3729,7 +3729,7 @@ describe('ArDrive class - integrated', () => {
 
 			assertUploadFileExpectations({
 				result,
-				fileFee: W(2904),
+				fileFee: W(2925),
 				metadataFee: W(179),
 				expectedTip: W(1),
 				expectPrivateKey: true,

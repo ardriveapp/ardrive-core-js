@@ -181,7 +181,8 @@ export class ArDriveWeb extends ArDriveAnonymous {
 		const dataTags = [
 			{ name: 'App-Name', value: this.appName },
 			{ name: 'App-Version', value: this.appVersion },
-			{ name: 'Content-Type', value: file.contentType }
+			{ name: 'Content-Type', value: file.contentType },
+			{ name: 'Unix-Time', value: `${nowSec}` }
 		];
 
 		const dataItem = createData(fileBytes, this.signer, { tags: dataTags });
