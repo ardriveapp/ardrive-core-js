@@ -303,7 +303,8 @@ export class ArDriveWeb extends ArDriveAnonymous {
 			{ name: 'App-Version', value: this.appVersion },
 			{ name: 'Content-Type', value: 'application/octet-stream' },
 			{ name: 'Cipher', value: cipher },
-			{ name: 'Cipher-IV', value: cipherIV }
+			{ name: 'Cipher-IV', value: cipherIV },
+			{ name: 'Unix-Time', value: `${nowSec}` }
 		];
 		const dataItem = createData(encryptedData, this.signer, { tags: dataTags });
 		await dataItem.sign(this.signer);
