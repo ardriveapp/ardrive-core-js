@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-10-27
+
+### Added
+
+- **File data is dated.** File data transactions and data items carry a `Unix-Time` tag
+  (seconds), as file metadata always has and as ArDrive's web app already does. Indexes of
+  uploads can date file data without reading its metadata. Each file data item is 21 bytes
+  larger; the upload planner's size estimate includes the tag, so planned sizes, bundle
+  packing and Turbo's free-upload limit match the signed item exactly.
+
 ## [5.0.0] - 2026-10-23
 
 ### Changed

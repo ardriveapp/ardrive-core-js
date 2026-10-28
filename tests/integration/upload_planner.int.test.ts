@@ -4,7 +4,7 @@ import { ArFSTagAssembler } from '../../src/arfs/tags/tag_assembler';
 import { ArFSTagSettings } from '../../src/arfs/arfs_tag_settings';
 import { TxPreparer } from '../../src/arfs/tx/tx_preparer';
 import { UploadStats, ArFSFileToUpload, getPrepFileParams, TxID, W, readJWKFile, JWKWallet } from '../../src/exports';
-import { fakeArweave, stubFileUploadStats, stubEntityID } from '../stubs';
+import { fakeArweave, getStubDriveKey, stubFileUploadStats, stubEntityID } from '../stubs';
 
 describe('UploadPlanner + TxPreparer -- integrated', () => {
 	const wallet = readJWKFile('./test_wallet.json') as JWKWallet;
@@ -43,5 +43,33 @@ describe('UploadPlanner + TxPreparer -- integrated', () => {
 		});
 
 		expect(+plannedBundleByteCount).to.equal(bundle.data.length);
+	});
+
+	it('bundled byte count of a private file upload matches the predicted byte count from the Upload Planner', async () => {
+		const uploadPlan = await bundledUploadPlanner.planUploadAllEntities([
+			{ ...stubFileUploadStats(), driveKey: await getStubDriveKey() }
+		]);
+		const bundlePlan = uploadPlan.bundlePlans[0];
+		const uploadStats = bundlePlan.uploadStats[0] as UploadStats<ArFSFileToUpload>;
+
+		const prototypeFactories = getPrepFileParams(uploadStats);
+
+		const fileDataItem = await txPreparer.prepareFileDataDataItem({
+			objectMetaData: await prototypeFactories.dataPrototypeFactoryFn(
+				uploadStats.wrappedEntity.getFileDataBuffer(),
+				stubEntityID
+			)
+		});
+		// The planner counted the file data's Unix-Time tag: the signed item carries it.
+		expect(fileDataItem.tags.map((t) => t.name)).to.include('Unix-Time');
+		const metaDataItem = await txPreparer.prepareMetaDataDataItem({
+			objectMetaData: await prototypeFactories.metadataTxDataFactoryFn(stubEntityID, TxID(fileDataItem.id))
+		});
+		const bundle = await txPreparer.prepareBundleTx({
+			dataItems: [fileDataItem, metaDataItem],
+			rewardSettings: { reward: W(1) }
+		});
+
+		expect(+bundlePlan.totalByteCount).to.equal(bundle.data.length);
 	});
 });

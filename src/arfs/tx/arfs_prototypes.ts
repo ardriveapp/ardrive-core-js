@@ -432,9 +432,22 @@ export class ArFSPrivateFileMetaDataPrototype extends ArFSFileMetaDataPrototype 
 export abstract class ArFSFileDataPrototype extends ArFSObjectMetadataPrototype {
 	abstract readonly objectData: ArFSFileDataTransactionData;
 	abstract readonly contentType: DataContentType | typeof PRIVATE_CONTENT_TYPE;
+	readonly unixTime: UnixTime;
+
+	constructor(protected readonly customMetaDataTags: CustomMetaDataGqlTags) {
+		super(customMetaDataTags);
+
+		// The file data is dated as its metadata is, so an index of uploads can
+		// date it without the metadata (ArDrive's web app does the same).
+		// Seconds since the unix epoch, as the ArFS spec says for Unix-Time.
+		this.unixTime = new UnixTime(Math.floor(Date.now() / 1000));
+	}
 
 	protected get protectedTags(): GQLTagInterface[] {
-		return [{ name: 'Content-Type', value: this.contentType }];
+		return [
+			{ name: 'Content-Type', value: this.contentType },
+			{ name: 'Unix-Time', value: `${this.unixTime}` }
+		];
 	}
 }
 

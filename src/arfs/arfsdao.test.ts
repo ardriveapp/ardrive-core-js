@@ -333,8 +333,9 @@ describe('The ArFSDAO class', () => {
 			expect(tags.find((t) => t.name === 'App-Name')?.value).to.equal('ArFSDAO-Test');
 			expect(tags.find((t) => t.name === 'App-Version')?.value).to.equal('1.0');
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/json');
+			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.match(/^\d{10}$/);
 
-			expect(tags.length).to.equal(3);
+			expect(tags.length).to.equal(4);
 		});
 
 		it('produces an ArFS compliant private file data transaction', async () => {
@@ -351,8 +352,9 @@ describe('The ArFSDAO class', () => {
 			expect(tags.find((t) => t.name === 'Content-Type')?.value).to.equal('application/octet-stream');
 			expect(tags.find((t) => t.name === 'Cipher')?.value).to.equal('AES256-GCM');
 			expect(tags.find((t) => t.name === 'Cipher-IV')?.value).to.exist;
+			expect(tags.find((t) => t.name === 'Unix-Time')?.value).to.match(/^\d{10}$/);
 
-			expect(tags.length).to.equal(5);
+			expect(tags.length).to.equal(6);
 		});
 
 		it('includes the base ArFS tags by default', async () => {

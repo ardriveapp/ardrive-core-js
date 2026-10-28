@@ -14,7 +14,8 @@ import {
 	ArweaveAddress,
 	W,
 	TxID,
-	ArFSEntityData
+	ArFSEntityData,
+	GQLTagInterface
 } from '../../src/types';
 import { ARDataPriceNetworkEstimator } from '../../src/pricing/ar_data_price_network_estimator';
 import { WalletDAO } from '../../src/wallet_dao';
@@ -62,6 +63,7 @@ import {
 	assertFileMetaDataJson,
 	assertFileMetaDataGqlTags,
 	assertFileDataTxGqlTags,
+	assertFileDataIsDated,
 	assertPrivateDriveExpectations,
 	assertPrivateFolderExpectations,
 	assertPrivateFileExpectations,
@@ -152,6 +154,16 @@ describe('ArLocal Integration Tests', function () {
 		arFSTagSettings,
 		bundledUploadPlanner
 	);
+
+	/** A transaction's or data item's tags, as the gateway's GraphQL serves them. */
+	async function gqlTagsOf(id: TransactionID): Promise<GQLTagInterface[]> {
+		const res = await arweave.api.post('graphql', {
+			query: `query { transactions(ids: ["${id}"]) { edges { node { tags { name value } } } } }`
+		});
+		const edges = res.data.data.transactions.edges;
+		expect(edges, `${id} in GraphQL`).to.have.length(1);
+		return edges[0].node.tags;
+	}
 
 	const customMetaData: CustomMetaData = {
 		metaDataGqlTags: {
@@ -264,6 +276,9 @@ describe('ArLocal Integration Tests', function () {
 				entityName: 'file_in_parent.txt',
 				size: new ByteCount(12)
 			});
+
+			// The bundled file data item is dated too, as GraphQL serves it.
+			assertFileDataIsDated(await gqlTagsOf(created[0].dataTxId!));
 		});
 
 		it('we can upload a public folder with `createPublicFolderAndUploadChildren` and list the contents of that public folder with `listPublicFolder`', async () => {
@@ -1043,6 +1058,9 @@ describe('ArLocal Integration Tests', function () {
 				entityName: 'file_in_parent.txt',
 				size: new ByteCount(12)
 			});
+
+			// The bundled private file data item is dated too, as GraphQL serves it.
+			assertFileDataIsDated(await gqlTagsOf(created[0].dataTxId!));
 		});
 
 		it('we can upload a private folder with `createPrivateFolderAndUploadChildren` and list the contents of that private folder with `listPrivateFolder`', async () => {
