@@ -68,6 +68,85 @@ describe('ArFSPublicFileBuilder', () => {
 		expect(`${fileMetaData.parentFolderId}`).to.equal('6c312b3e-4778-4a18-8243-f2b346f5e7cb');
 	});
 
+	describe('when looking a file up by ID', () => {
+		const revisionNode = (id: string, blockHeight: number | undefined, unixTime: string): GQLNodeInterface =>
+			({
+				...stubPublicFileGQLNode,
+				id,
+				block: blockHeight === undefined ? null : { height: blockHeight, timestamp: 0 },
+				tags: stubPublicFileGQLNode.tags!.map((tag) =>
+					tag.name === 'Unix-Time' ? { name: 'Unix-Time', value: unixTime } : tag
+				)
+			}) as GQLNodeInterface;
+
+		const lookUp = async (nodes: GQLNodeInterface[]) => {
+			const builder = ArFSPublicFileBuilder.fromArweaveNode(
+				stubPublicFileGQLNode as GQLNodeInterface,
+				gatewayApi
+			);
+			const gqlRequest = stub(gatewayApi, 'gqlRequest').resolves({
+				pageInfo: { hasNextPage: false },
+				edges: nodes.map((node) => ({ cursor: node.id, node }))
+			});
+			stub(builder, 'getDataForTxID').resolves(stubPublicFileGetDataResult);
+			try {
+				return { file: await builder.build(), query: gqlRequest.firstCall.args[0].query };
+			} finally {
+				gqlRequest.restore();
+			}
+		};
+
+		// Two revisions of a real file, mined in block 2030120, in the order the gateway returns them:
+		// the user hid the file 56 seconds after the earlier edit
+		const earlierEdit = revisionNode('dee5oIkFfJz7Nw0cO0zfTWdz6rQvrvFmdyLS2ESaHDM', 2030120, '1793119420');
+		const laterEdit = revisionNode('TYRaXn6I5LqOPM1KJ796-HVOMURnQqLRcrw1iRjj1Ss', 2030120, '1793119476');
+
+		it('fetches more than one revision so same-block revisions can be compared', async () => {
+			const { query } = await lookUp([earlierEdit]);
+			expect(query).to.match(/first: 100\b/);
+		});
+
+		it('picks the later Unix-Time among revisions in the newest block, and keeps its block height', async () => {
+			const { file } = await lookUp([earlierEdit, laterEdit]);
+			expect(`${file.txId}`).to.equal('TYRaXn6I5LqOPM1KJ796-HVOMURnQqLRcrw1iRjj1Ss');
+			expect(file.blockHeight).to.equal(2030120);
+		});
+
+		it('keeps the newest block over a later Unix-Time in an older block', async () => {
+			const olderBlockLaterClock = revisionNode(`${stubTxIDAlt}`, 2030000, '1793119999');
+			const { file } = await lookUp([earlierEdit, olderBlockLaterClock]);
+			expect(`${file.txId}`).to.equal('dee5oIkFfJz7Nw0cO0zfTWdz6rQvrvFmdyLS2ESaHDM');
+		});
+
+		it('reads a Unix-Time written in milliseconds as milliseconds', async () => {
+			const earlierInMilliseconds = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119420000');
+			const { file } = await lookUp([laterEdit, earlierInMilliseconds]);
+			expect(`${file.txId}`).to.equal('TYRaXn6I5LqOPM1KJ796-HVOMURnQqLRcrw1iRjj1Ss');
+		});
+
+		it('compares by the last Unix-Time tag, the one the built file reports', async () => {
+			const duplicateTags = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119000');
+			duplicateTags.tags.push({ name: 'Unix-Time', value: '1793119476' });
+			const { file } = await lookUp([earlierEdit, duplicateTags]);
+			expect(`${file.txId}`).to.equal(`${stubTxIDAlt}`);
+			expect(+file.unixTime).to.equal(1793119476);
+		});
+
+		it('reads an invalid Unix-Time as 0, as listings do', async () => {
+			const invalid = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119476.5');
+			const { file } = await lookUp([earlierEdit, invalid]);
+			expect(`${file.txId}`).to.equal('dee5oIkFfJz7Nw0cO0zfTWdz6rQvrvFmdyLS2ESaHDM');
+		});
+
+		it('keeps the gateway order for revisions that are not yet mined', async () => {
+			const pendingEarlier = revisionNode(`${stubTxID}`, undefined, '1793119420');
+			const pendingLater = revisionNode(`${stubTxIDAlt}`, undefined, '1793119476');
+			const { file } = await lookUp([pendingEarlier, pendingLater]);
+			expect(`${file.txId}`).to.equal(`${stubTxID}`);
+			expect(file.blockHeight).to.equal(0);
+		});
+	});
+
 	it('returns the expected gql tags', () => {
 		const builder = ArFSPublicFileBuilder.fromArweaveNode(stubPublicFileGQLNode as GQLNodeInterface, gatewayApi);
 		expect(builder.getGqlQueryParameters()).to.deep.equal([

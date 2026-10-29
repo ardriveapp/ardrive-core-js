@@ -405,6 +405,7 @@ export class ArFSPublicFileWithPaths extends ArFSPublicFile implements ArFSWithP
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 
@@ -495,6 +496,7 @@ export class ArFSPrivateFileWithPaths extends ArFSPrivateFile implements ArFSWit
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 
@@ -547,6 +549,7 @@ export class ArFSPrivateFileKeyless extends ArFSPrivateFile {
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 		// @ts-expect-error
@@ -617,6 +620,7 @@ export class ArFSPublicFolderWithPaths extends ArFSPublicFolder implements ArFSW
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 
@@ -693,6 +697,7 @@ export class ArFSPrivateFolderWithPaths extends ArFSPrivateFolder implements ArF
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 
@@ -736,6 +741,7 @@ export class ArFSPrivateFolderKeyless extends ArFSPrivateFolder {
 			entity.customMetaDataJson
 		);
 		this.isHidden = entity.isHidden;
+		this.blockHeight = entity.blockHeight;
 		this.pinnedDataOwner = entity.pinnedDataOwner;
 		this.pinnedDataTxId = entity.pinnedDataTxId;
 		// @ts-expect-error

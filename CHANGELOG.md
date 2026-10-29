@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **The latest edit wins when two edits land in the same block.** A gateway lists the
+  revisions inside one block by their position in the block, not by when they were written,
+  and two Turbo bundles mined in the same block land in either order. Listings and lookups
+  took the first one, so a file hidden, renamed or re-uploaded seconds or minutes after an
+  earlier edit could show the earlier edit. Among revisions in the same block, the later
+  `Unix-Time` now wins, as in ArDrive's web app and in incremental sync. A lookup by ID
+  (`getPublicFile` and the like) fetches up to 100 revisions in its one request to compare
+  them. Revisions in different blocks, and revisions not yet mined, keep the gateway's order.
+  ([ardrive-cli#338](https://github.com/ardriveapp/ardrive-cli/issues/338))
+- **Entities report their block height.** Entities built from a gateway listing or lookup
+  carried `blockHeight: 0`; they now carry the height the gateway reported.
+
 ## [5.1.0] - 2026-10-27
 
 ### Added
