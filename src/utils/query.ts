@@ -120,7 +120,7 @@ export function buildQuery({
 		query: `query {
 			transactions(
 				${ids?.length ? `ids: [${ids.map((id) => `"${id}"`)}]` : ''}
-				first: ${singleResult ? latestResult : first !== undefined ? first : getGqlPageSize()}
+				first: ${first !== undefined ? first : singleResult ? latestResult : getGqlPageSize()}
 				sort: ${sort}
 				${singleResult ? '' : `after: "${cursor}"`}
 				${owner === undefined ? '' : `owners: ["${owner}"]`}

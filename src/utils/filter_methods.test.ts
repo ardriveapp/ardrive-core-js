@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { performance } from 'perf_hooks';
 import { ArFSPublicDrive, ArFSPublicFile } from '../arfs/arfs_entities';
-import { EID, Mutable, TxID } from '../types';
+import { EID, Mutable, TxID, UnixTime } from '../types';
 import {
 	fileFilter,
 	folderFilter,
@@ -248,6 +248,57 @@ describe('The keepLatestRevisions function (O(n) latestRevisionFilter replacemen
 		// practice (~13ms observed); the 500ms bound is deliberately generous to avoid flakiness
 		// while still catching any accidental reintroduction of O(n²) behavior.
 		expect(elapsedMs, `keepLatestRevisions(40k) took ${elapsedMs.toFixed(1)}ms`).to.be.lessThan(500);
+	});
+
+	describe('revisions mined in the same block', () => {
+		const revision = (entityIdNum: number, txIdNum: number, blockHeight: number, unixTime: number) => {
+			const file = makeFile(entityIdNum, txIdNum) as Mutable<ArFSPublicFile>;
+			file.blockHeight = blockHeight;
+			file.unixTime = new UnixTime(unixTime);
+			return file as ArFSPublicFile;
+		};
+
+		it('keeps the later Unix-Time, in its original position', () => {
+			const earlier = revision(1, 1, 2030120, 1793119420);
+			const other = revision(2, 2, 2030120, 1793119000);
+			const later = revision(1, 3, 2030120, 1793119476);
+			const older = revision(1, 4, 2030000, 1793119999);
+			expect(keepLatestRevisions([earlier, other, later, older])).to.deep.equal([other, later]);
+		});
+
+		it('keeps the first revision when the newest block holds only one', () => {
+			const newest = revision(1, 1, 2030120, 1793119420);
+			const olderBlockLaterClock = revision(1, 2, 2030000, 1793119999);
+			expect(keepLatestRevisions([newest, olderBlockLaterClock])).to.deep.equal([newest]);
+		});
+
+		it('keeps the first revision on equal Unix-Times', () => {
+			const first = revision(1, 1, 2030120, 1793119420);
+			const second = revision(1, 2, 2030120, 1793119420);
+			expect(keepLatestRevisions([first, second])).to.deep.equal([first]);
+		});
+
+		it('keeps the first revision when the block height is unknown (0)', () => {
+			const first = revision(1, 1, 0, 1793119420);
+			const second = revision(1, 2, 0, 1793119476);
+			expect(keepLatestRevisions([first, second])).to.deep.equal([first]);
+		});
+
+		it('reads a Unix-Time written in milliseconds as milliseconds', () => {
+			const later = revision(1, 1, 2030120, 1793119476);
+			const earlierInMilliseconds = revision(1, 2, 2030120, 1793119420000);
+			expect(keepLatestRevisions([later, earlierInMilliseconds])).to.deep.equal([later]);
+		});
+
+		it('applies to drives too', () => {
+			const earlier = makeDrive(1, 1) as Mutable<ArFSPublicDrive>;
+			earlier.blockHeight = 2030120;
+			earlier.unixTime = new UnixTime(1793119420);
+			const later = makeDrive(1, 2) as Mutable<ArFSPublicDrive>;
+			later.blockHeight = 2030120;
+			later.unixTime = new UnixTime(1793119476);
+			expect(keepLatestRevisionsForDrives([earlier, later])).to.deep.equal([later]);
+		});
 	});
 });
 

@@ -110,4 +110,13 @@ describe('Entities with paths classes', () => {
 		expect(fileWithKeys.driveKey).to.be.undefined;
 		expect(fileWithKeys.fileKey).to.be.undefined;
 	});
+
+	it('Entities with paths keep the block height of the entity they wrap', async () => {
+		stubFile.blockHeight = 2030120;
+		stubFolder_0.blockHeight = 2030121;
+		expect(privateEntityWithPathsFactory(stubFile, stubHierarchy).blockHeight).to.equal(2030120);
+		expect(privateEntityWithPathsKeylessFactory(stubFile, stubHierarchy).blockHeight).to.equal(2030120);
+		expect(privateEntityWithPathsFactory(stubFolder_0, stubHierarchy).blockHeight).to.equal(2030121);
+		expect(privateEntityWithPathsKeylessFactory(stubFolder_0, stubHierarchy).blockHeight).to.equal(2030121);
+	});
 });

@@ -23,6 +23,22 @@ import {
 	DriveKey
 } from '../../types';
 import { GatewayAPI } from '../../utils/gateway_api';
+import { isSameBlockLaterRevision } from '../../utils/revision_order';
+
+/**
+ * How many revisions a single-entity lookup fetches, so that revisions mined in the same block
+ * as the newest one can be compared by Unix-Time. One request either way.
+ */
+const SINGLE_ENTITY_LOOKUP_SIZE = 100;
+
+function revisionOrderFieldsOf(node: GQLNodeInterface): { blockHeight?: number; unixTime?: number } {
+	const unixTimeTag = node.tags.find((tag) => tag.name === 'Unix-Time');
+	const unixTime = unixTimeTag ? Number(unixTimeTag.value) : NaN;
+	return {
+		blockHeight: node.block?.height,
+		unixTime: Number.isFinite(unixTime) ? unixTime : undefined
+	};
+}
 
 /**
  * Tolerantly parses an entity's on-chain `Unix-Time` tag.
@@ -113,7 +129,11 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 	protected async parseFromArweaveNode(node?: GQLNodeInterface, owner?: ArweaveAddress): Promise<GQLTagInterface[]> {
 		const unparsedTags: GQLTagInterface[] = [];
 		if (!node) {
-			const gqlQuery = buildQuery({ tags: this.getGqlQueryParameters(), owner });
+			const gqlQuery = buildQuery({
+				tags: this.getGqlQueryParameters(),
+				owner,
+				first: SINGLE_ENTITY_LOOKUP_SIZE
+			});
 
 			const transactions = await this.gatewayApi.gqlRequest(gqlQuery);
 
@@ -123,7 +143,13 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 				throw new Error(`Entity with ID ${this.entityId} not found!`);
 			}
 
+			// Newest first, except that within the newest block the later Unix-Time wins
 			node = edges[0].node;
+			for (const { node: candidate } of edges.slice(1)) {
+				if (isSameBlockLaterRevision(revisionOrderFieldsOf(candidate), revisionOrderFieldsOf(node))) {
+					node = candidate;
+				}
+			}
 		}
 		this.txId = TxID(node.id);
 		// Extract block height if available
@@ -174,7 +200,12 @@ export abstract class ArFSMetadataEntityBuilder<T extends ArFSEntity> {
 		const extraTags = await this.parseFromArweaveNode(node, this.owner);
 		this.parseCustomMetaDataFromGqlTags(extraTags);
 
-		return this.buildEntity();
+		const entity = await this.buildEntity();
+		// The entity constructors default blockHeight to 0; carry the height the gateway reported
+		if (this.blockHeight && !entity.blockHeight) {
+			entity.blockHeight = this.blockHeight;
+		}
+		return entity;
 	}
 
 	private parseCustomMetaDataFromGqlTags(gqlTags: GQLTagInterface[]): void {
