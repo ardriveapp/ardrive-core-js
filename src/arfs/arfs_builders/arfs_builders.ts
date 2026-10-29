@@ -33,10 +33,15 @@ const SINGLE_ENTITY_LOOKUP_SIZE = 100;
 
 function revisionOrderFieldsOf(node: GQLNodeInterface): { blockHeight?: number; unixTime?: number } {
 	const unixTimeTag = node.tags.find((tag) => tag.name === 'Unix-Time');
-	const unixTime = unixTimeTag ? Number(unixTimeTag.value) : NaN;
+	if (!unixTimeTag) {
+		return { blockHeight: node.block?.height };
+	}
+	// Read it as parseEntityUnixTime does for listings (an invalid value counts as 0), so a lookup
+	// and a listing pick the same revision
+	const unixTime = Number(unixTimeTag.value);
 	return {
 		blockHeight: node.block?.height,
-		unixTime: Number.isFinite(unixTime) ? unixTime : undefined
+		unixTime: Number.isInteger(unixTime) && unixTime >= 0 ? unixTime : 0
 	};
 }
 

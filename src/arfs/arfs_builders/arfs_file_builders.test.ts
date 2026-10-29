@@ -124,6 +124,12 @@ describe('ArFSPublicFileBuilder', () => {
 			expect(`${file.txId}`).to.equal('TYRaXn6I5LqOPM1KJ796-HVOMURnQqLRcrw1iRjj1Ss');
 		});
 
+		it('reads an invalid Unix-Time as 0, as listings do', async () => {
+			const invalid = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119476.5');
+			const { file } = await lookUp([earlierEdit, invalid]);
+			expect(`${file.txId}`).to.equal('dee5oIkFfJz7Nw0cO0zfTWdz6rQvrvFmdyLS2ESaHDM');
+		});
+
 		it('keeps the gateway order for revisions that are not yet mined', async () => {
 			const pendingEarlier = revisionNode(`${stubTxID}`, undefined, '1793119420');
 			const pendingLater = revisionNode(`${stubTxIDAlt}`, undefined, '1793119476');
