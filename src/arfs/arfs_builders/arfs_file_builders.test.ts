@@ -124,6 +124,14 @@ describe('ArFSPublicFileBuilder', () => {
 			expect(`${file.txId}`).to.equal('TYRaXn6I5LqOPM1KJ796-HVOMURnQqLRcrw1iRjj1Ss');
 		});
 
+		it('compares by the last Unix-Time tag, the one the built file reports', async () => {
+			const duplicateTags = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119000');
+			duplicateTags.tags.push({ name: 'Unix-Time', value: '1793119476' });
+			const { file } = await lookUp([earlierEdit, duplicateTags]);
+			expect(`${file.txId}`).to.equal(`${stubTxIDAlt}`);
+			expect(+file.unixTime).to.equal(1793119476);
+		});
+
 		it('reads an invalid Unix-Time as 0, as listings do', async () => {
 			const invalid = revisionNode(`${stubTxIDAlt}`, 2030120, '1793119476.5');
 			const { file } = await lookUp([earlierEdit, invalid]);

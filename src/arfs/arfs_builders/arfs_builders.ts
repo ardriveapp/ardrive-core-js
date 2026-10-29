@@ -32,7 +32,8 @@ import { isSameBlockLaterRevision } from '../../utils/revision_order';
 const SINGLE_ENTITY_LOOKUP_SIZE = 100;
 
 function revisionOrderFieldsOf(node: GQLNodeInterface): { blockHeight?: number; unixTime?: number } {
-	const unixTimeTag = node.tags.find((tag) => tag.name === 'Unix-Time');
+	// The last Unix-Time tag, since the built entity keeps the last one
+	const unixTimeTag = node.tags.filter((tag) => tag.name === 'Unix-Time').pop();
 	if (!unixTimeTag) {
 		return { blockHeight: node.block?.height };
 	}

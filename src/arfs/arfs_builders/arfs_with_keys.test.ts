@@ -8,13 +8,16 @@ import {
 	stubEntityIDParent,
 	stubEntityIDRoot,
 	stubPrivateFile,
-	stubPrivateFolder
+	stubPrivateFolder,
+	stubPublicFile,
+	stubPublicFolder
 } from '../../../tests/stubs';
 import {
 	ArFSPrivateFile,
 	ArFSPrivateFileWithPaths,
 	ArFSPrivateFolder,
 	FolderHierarchy,
+	publicEntityWithPathsFactory,
 	privateEntityWithPathsFactory,
 	privateEntityWithPathsKeylessFactory
 } from '../../exports';
@@ -118,5 +121,12 @@ describe('Entities with paths classes', () => {
 		expect(privateEntityWithPathsKeylessFactory(stubFile, stubHierarchy).blockHeight).to.equal(2030120);
 		expect(privateEntityWithPathsFactory(stubFolder_0, stubHierarchy).blockHeight).to.equal(2030121);
 		expect(privateEntityWithPathsKeylessFactory(stubFolder_0, stubHierarchy).blockHeight).to.equal(2030121);
+
+		const publicFile = stubPublicFile({ fileId: stubEntityIDAltTwo, parentFolderId: stubEntityID });
+		const publicFolder = stubPublicFolder({ folderId: stubEntityID, parentFolderId: stubEntityIDParent });
+		publicFile.blockHeight = 2030120;
+		publicFolder.blockHeight = 2030121;
+		expect(publicEntityWithPathsFactory(publicFile, stubHierarchy).blockHeight).to.equal(2030120);
+		expect(publicEntityWithPathsFactory(publicFolder, stubHierarchy).blockHeight).to.equal(2030121);
 	});
 });
